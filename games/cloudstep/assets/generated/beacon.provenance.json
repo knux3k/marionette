@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "beacon",
+  "output": "model",
+  "file": "beacon.glb",
+  "sha256": "09964d9c2a4cb1370b666ab36b02096f162e0d52c61babc6d201b2c72db94f54",
+  "recipe": "beacon.recipe.json",
+  "recipe_sha256": "0dc1c797fd53f5972dc7dd32f9668d43d39d0c53010d12d6f11459e52dec8a24",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "beacon_ref",
+      "file": "beacon_ref.png",
+      "sha256": "04968e71413770f63b4d67383f021f76947530aa8f7414083829dd4f93076b8a",
+      "approved": true
+    },
+    "cache_key": "c7d02bea8e7ae7f50bd58f73aa6fd96f6b3c20749df9e0e4490f99a452a938a3",
+    "raw_sha256": "cf69fca486e0d042fbdbb1d8cceb7057cc963f48e21698deb1abb6c005211701",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.822285,
+        0.0,
+        -0.821265
+      ],
+      [
+        0.822285,
+        5.0,
+        0.821265
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 253540 to 9998 triangles (budget 10000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 5.001139,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.164314,
+        -0.499902,
+        -0.164296
+      ],
+      [
+        0.164525,
+        0.49987,
+        0.164135
+      ]
+    ],
+    "textures": 3,
+    "triangles": 9998
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

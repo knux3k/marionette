@@ -20,6 +20,7 @@ pub mod cache;
 pub mod model;
 pub mod provenance;
 pub mod recipe;
+pub mod slim;
 pub mod texture;
 
 use marionette_core::{Diagnostic, Errors};
@@ -393,7 +394,10 @@ fn paid_checks(
     entries: &[spend::Entry],
     pending: f64,
 ) -> Result<(bool, bool), Problem> {
-    let needs_approval = estimate > 0.0 && r.from.is_some();
+    let waived = approval::waived_providers(env.var)
+        .iter()
+        .any(|n| n == &p.provider.info().name.to_ascii_lowercase());
+    let needs_approval = estimate > 0.0 && r.from.is_some() && !waived;
     let approved = match (&r.from, &p.image) {
         (Some(from), Some((_, sha))) => approval::is_approved(dir, from, sha),
         _ => false,
@@ -466,6 +470,7 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
         }
     };
     let mut within_cap = true;
+    let waived_list = approval::waived_providers(env.var);
     // Processed bytes of images that will exist (on disk, from cache) for model steps.
     let mut images: BTreeMap<String, Option<Vec<u8>>> = BTreeMap::new();
     let mut steps = Vec::new();
@@ -479,6 +484,7 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
                     let config = config_for(&base, &dir, l);
                     let (provider, model) = providers::resolve(&config, Kind::Model3d)?;
                     let estimate = provider.estimate_usd(&model, &Request::Model(ModelRequest::default()));
+                    let waived = waived_list.contains(&provider.info().name.to_ascii_lowercase());
                     steps.push(StepPlan {
                         name: r.name.clone(),
                         output: r.output,
@@ -490,9 +496,9 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
                         status: StepStatus::WaitsForImage,
                         estimate_usd: estimate,
                         from: r.from.clone(),
-                        needs_approval: estimate > 0.0,
+                        needs_approval: estimate > 0.0 && !waived,
                         approved: false,
-                        blocked: (estimate > 0.0).then(|| {
+                        blocked: (estimate > 0.0 && !waived).then(|| {
                             problem(
                                 codes::NOT_APPROVED,
                                 format!("`{f}` must be generated and approved by a person before `{}` can spend credit", r.name),
@@ -537,7 +543,9 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
                     if prob.code == providers::codes::SPEND_CAP {
                         within_cap = false;
                     }
-                    step.needs_approval = estimate > 0.0 && r.from.is_some();
+                    step.needs_approval = estimate > 0.0
+                        && r.from.is_some()
+                        && !waived_list.contains(&p.provider.info().name.to_ascii_lowercase());
                     step.status = StepStatus::Blocked;
                     step.blocked = Some(prob);
                 }
@@ -837,6 +845,8 @@ fn build_one(
             file: f.clone(),
             sha256: sha.clone(),
             approved: approval::is_approved(dir, name, sha),
+            approval_waived: !approval::is_approved(dir, name, sha)
+                && approval::waived_providers(env.var).contains(&p.provider.info().name.to_ascii_lowercase()),
         }),
         _ => None,
     };

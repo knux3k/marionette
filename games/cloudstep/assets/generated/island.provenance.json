@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "island",
+  "output": "model",
+  "file": "island.glb",
+  "sha256": "f8b2e8415c78b066668b26b6352a914597f614494c84ee6af864fac9aac4800c",
+  "recipe": "island.recipe.json",
+  "recipe_sha256": "d39fa6ce89abc835251102385a7e2058c3c70005ad9b6ef93a9cf6032996ad59",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "island_ref",
+      "file": "island_ref.png",
+      "sha256": "2d53a07648ec6d6661a1b41fdadc34089eb0d89e38b4e659318f9f42077100eb",
+      "approved": true
+    },
+    "cache_key": "da71226628cfdac04b3523016e90727a1e0052c97647090b85e9d1be4a4873d1",
+    "raw_sha256": "2b86ddce041f4c88e8277c3545d7792e1e623c25fc3e2935290b4d7f00cf1208",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -2.518005,
+        0.0,
+        -1.74347
+      ],
+      [
+        2.518005,
+        3.0,
+        1.74347
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 446984 to 15000 triangles (budget 15000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 5.037719,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.5,
+        -0.297986,
+        -0.346256
+      ],
+      [
+        0.499661,
+        0.297521,
+        0.345911
+      ]
+    ],
+    "textures": 3,
+    "triangles": 15000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

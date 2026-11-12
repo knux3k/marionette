@@ -5,6 +5,7 @@
   "from": "drone_ref",
   "model": {
     "height_m": 0.6,
-    "max_triangles": 12000
+    "max_triangles": 12000,
+    "max_texture_px": 1024
   }
 }

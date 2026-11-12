@@ -5,6 +5,7 @@
   "from": "seed_ref",
   "model": {
     "height_m": 0.4,
-    "max_triangles": 3000
+    "max_triangles": 3000,
+    "max_texture_px": 512
   }
 }

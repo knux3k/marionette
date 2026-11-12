@@ -5,6 +5,7 @@
   "from": "car_ref",
   "model": {
     "height_m": 1.0,
-    "max_triangles": 20000
+    "max_triangles": 20000,
+    "max_texture_px": 1024
   }
 }

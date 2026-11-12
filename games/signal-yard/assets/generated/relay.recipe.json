@@ -5,6 +5,7 @@
   "from": "relay_ref",
   "model": {
     "height_m": 8.0,
-    "max_triangles": 20000
+    "max_triangles": 20000,
+    "max_texture_px": 1024
   }
 }

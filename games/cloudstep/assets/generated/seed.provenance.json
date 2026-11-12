@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "seed",
+  "output": "model",
+  "file": "seed.glb",
+  "sha256": "0e6eb71eed13a233f1cb5493c168a861838477023a2e2e12318ef7f1ebea3aa7",
+  "recipe": "seed.recipe.json",
+  "recipe_sha256": "f45c8ef227ce6ed3af339343fb1cb308105cd726551f19d94e9a82e9067cbcca",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "seed_ref",
+      "file": "seed_ref.png",
+      "sha256": "ad600c04e9d7578efeee1c20e5285306d71b39eec99dced8a08e271042f98bb4",
+      "approved": true
+    },
+    "cache_key": "f6d2234b58bf6443df39e41bf95ba75a5b3f7df2e8462ab7d820c299e65606ac",
+    "raw_sha256": "2740d25d2813832f1fc276cbc710c8aeec7bfe8b30256d672d86e30a22e04d8d",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.091942,
+        0.0,
+        -0.090291
+      ],
+      [
+        0.091942,
+        0.4,
+        0.090291
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 264548 to 3000 triangles (budget 3000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 0.400801,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.229903,
+        -0.499946,
+        -0.225384
+      ],
+      [
+        0.228889,
+        0.498056,
+        0.225168
+      ]
+    ],
+    "textures": 3,
+    "triangles": 3000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

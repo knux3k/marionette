@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "warden",
+  "output": "model",
+  "file": "warden.glb",
+  "sha256": "c5f28cff36879d15c8f5785aa53d4f1453951df9649dbb04005113a6d24e0c3c",
+  "recipe": "warden.recipe.json",
+  "recipe_sha256": "e30261530af4c12e4497aa409769aab7fd279f24ec855d4a3cf3cc32edc5b905",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "warden_ref",
+      "file": "warden_ref.png",
+      "sha256": "f5370d038217dea300d17db47e047fb2074a66809fe8ffab9b386878515c1b9a",
+      "approved": true
+    },
+    "cache_key": "1cd318a8db64dbbf247487b862632cbb62aa23849067125f8eb60ae0491e5c31",
+    "raw_sha256": "7e1d7683d382f2259762ae412f240c265ad6f0ac0bad2b4a3f17e571a9665756",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.410342,
+        0.0,
+        -0.57074
+      ],
+      [
+        0.410342,
+        1.8,
+        0.57074
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 491612 to 20000 triangles (budget 20000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 1.800212,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.227871,
+        -0.499884,
+        -0.317108
+      ],
+      [
+        0.228011,
+        0.499999,
+        0.316973
+      ]
+    ],
+    "textures": 3,
+    "triangles": 20000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

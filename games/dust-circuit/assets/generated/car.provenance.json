@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "car",
+  "output": "model",
+  "file": "car.glb",
+  "sha256": "23a0e9092e9d40b45b72e3081ea00fa478cc28c550874d91c96059446b3837aa",
+  "recipe": "car.recipe.json",
+  "recipe_sha256": "2bc8d6d0f83557da9c622e244aa8f550881b5c302a2b541c80f2f28ad3f788b0",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "car_ref",
+      "file": "car_ref.png",
+      "sha256": "d472bb2efe42591c1913ff9a6f031fa99e78b371ebe6548452e015fa99a0335d",
+      "approved": true
+    },
+    "cache_key": "697382724f9b494bbf09c69ec2df2c4b8d3a96dbae9975a6bf51ad6a51d085e4",
+    "raw_sha256": "efa24b9e8edbff79daa7ecbc8f6a38f916f10d6e4798ea6a7e0585dfacdc8d8a",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.88824,
+        0.0,
+        -0.709777
+      ],
+      [
+        0.88824,
+        1.0,
+        0.709777
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 502540 to 20000 triangles (budget 20000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 1.777437,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.499925,
+        -0.28182,
+        -0.399512
+      ],
+      [
+        0.499537,
+        0.280787,
+        0.39914
+      ]
+    ],
+    "textures": 3,
+    "triangles": 20000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
