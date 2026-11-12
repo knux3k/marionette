@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "crystal",
+  "output": "model",
+  "from": "crystal_ref",
+  "model": {
+    "height_m": 2.5,
+    "max_triangles": 8000
+  }
+}

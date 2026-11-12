@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "rooftops",
+  "output": "image",
+  "prompt": "wide night skyline of slanted tile rooftops and chimneys in deep blue silhouettes under a starry sky, painterly game background, no characters, no text",
+  "size": [
+    1536,
+    768
+  ]
+}

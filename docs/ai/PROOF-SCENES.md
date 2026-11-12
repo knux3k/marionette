@@ -31,6 +31,26 @@ that play the game with scripted input. Decision 0050. Proof test:
    `ScriptState.data.*` fields and the `state_hash`.
 5. Add the name to `GAMES` in `proof_scenes.rs`, a row above, and a stability mode.
 
+## Generated assets
+
+Each game has generation recipes in `assets/generated/` and a `providers.json` choosing Qwen
+for images and Tripo for models (decision 0045, `docs/ai/GENERATION.md`). Nothing has been
+generated: the paid run happens on the machine that holds the keys, and every 3D model waits
+for a person to approve its reference image.
+
+| Game | Recipes | Use once built |
+| --- | --- | --- |
+| Crystal Ward | `warden`, `crawler`, `crystal` (models, each from a `*_ref` image) | `Model` on the warden, the spawned crawlers and the crystal |
+| Dust Circuit | `car`, `rival_car` (models from `*_ref` images) | `Model` on the two cars |
+| Signal Yard | `drone` (model from `drone_ref`) | `Model` on spawned drones |
+| Cloudstep | `hero` (model from `hero_ref`) | `Model` on the hero |
+| Ember Run | `runner`, `ember` (sprites), `rooftops` (background) | `Sprite.image` |
+| Lantern Keeper | `keeper`, `lantern`, `ghost` (sprites), `hedge` (tileable texture) | `Sprite.image` |
+
+Estimate from `generate_plan`: 14 images at about $0.05 each and 7 models at about $0.40 each
+(about $2.80 of Tripo's cap). The swap is a build-recipe change per game (plus scripts that
+spawn models), and the pinned state hashes change with it.
+
 ## Engine gaps found
 
 Fixed while building (decision 0050 lists why): operations for scene resources; `batch_run`;
@@ -51,7 +71,7 @@ Open (not fixed here; each names the cheapest fix seen):
 | G3 | `entity.set` replaces the whole component; changing one sprite color repeats image, size and layer. | Lantern Keeper | `entity.patch(name, partial)` merging fields. |
 | G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
 | G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
-| G6 | No CC0 pool or generated assets yet; games use built-in primitives and images. | all | W3 pool and W4 generation (Qwen images, Tripo models), then swap through the recipes. |
+| G6 | No CC0 pool or generated assets in the games yet; they use built-in primitives and images. Generation recipes are written (see "Generated assets"); the outputs are not built yet. | all | Run the recipes on the machine with the keys, approve the reference images, then swap through the build recipes. |
 | G7 | A character standing on a moving kinematic platform is not carried; the platform slides out from under it. | Ember Run (the lift is a stepping stone) | Add the ground body's velocity to the character's movement in the controller. |
 | G8 | Colors are linear; values picked by eye come out pale on screen (0.2 looks like 0.5). | all | Document it in the component description, or accept sRGB colors in `Sprite`/`Material`/`UiText` behind a flag. |
 | G9 | No shadows; in a 3D platformer it is hard to judge where a jump lands. | Cloudstep | A shadow map for the first directional light (or a blob shadow under characters). |
@@ -65,3 +85,5 @@ Open (not fixed here; each names the cheapest fix seen):
 | G17 | The window does not lock or hide the cursor, and live gamepads are not read at all (`pad:` and stick `axis:` inputs only come from input files). Mouse look works but the cursor can leave the window. | Signal Yard | Cursor lock while a scene binds `axis:MouseX`/`axis:MouseY`; a gamepad backend (gilrs) feeding the same input names. |
 | G18 | No point or spot lights and no emissive materials: tracers, orbs and the relay beacon are only bright colors, and a night scene cannot be lit locally. | Signal Yard | `PointLight` component and an `emissive` color on `Material`. |
 | G19 | No hit feedback beyond what scripts fake: no decals, particles or screen flash. | Signal Yard | A small particle burst component (count, speed, lifetime, color) and a UI flash helper. |
+| G20 | Generated images have no transparency: a sprite comes back on a flat background, and post-processing only resizes and makes tiles seamless. The 2D recipes ask for a magenta background. | Ember Run, Lantern Keeper | A `key_color` (or background removal) step in image and texture post-processing. |
+| G21 | `Material` overrides a whole model's colour and `Material` has no texture, so a generated model loses its own look as soon as a script tints it (hit flashes, team colours), and primitives cannot be textured. | Signal Yard, Dust Circuit | A `tint` multiplier that keeps the model's textures, and a `base_color_texture` on `Material`. |
