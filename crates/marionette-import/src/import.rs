@@ -8,7 +8,7 @@ use crate::license::{self, LicenseRecord, LoadedDeclaration, YesNo};
 use crate::prefab::{self, MaterialInfo, PrefabEnv, Resolved};
 use crate::sha256_hex;
 use crate::tar::Limits;
-use crate::unity::{self, BadEntry, MetalLayout, PbrMapping, SourceEntry, Staging};
+use crate::unity::{self, BadEntry, MetalLayout, PbrMapping, SourceEntry};
 use crate::unreal;
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;
@@ -140,20 +140,6 @@ fn classify(rel: &str) -> Class {
 fn stem(rel: &str) -> String {
     let name = rel.rsplit('/').next().unwrap_or(rel);
     name.rsplit_once('.').map(|(s, _)| s).unwrap_or(name).to_string()
-}
-
-fn temp_staging() -> PathBuf {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static N: AtomicU64 = AtomicU64::new(0);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_nanos())
-        .unwrap_or(0);
-    std::env::temp_dir().join(format!(
-        "marionette-stage-{}-{}-{nanos}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ))
 }
 
 fn read(path: &Path, rel: &str) -> Result<Vec<u8>, Errors> {
@@ -778,10 +764,22 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
         library.ensure()?;
     }
 
-    let staging = Staging(temp_staging());
+    // Unpacked archives go in the process's run folder: removed when `staging` drops, and by
+    // the next engine start if this process dies first (decision 0032).
+    let mut staging = None;
     let mut unreal_scan: Option<unreal::Scan> = None;
     let (entries, bad): (Vec<SourceEntry>, Vec<BadEntry>) = match importer {
-        "unitypackage" => unity::stage_package(source, &staging.0, opts.limits)?,
+        "unitypackage" => {
+            let dir = marionette_host::temp_dir("import-stage").map_err(|e| {
+                Errors::from(Diagnostic::error(
+                    codes::IMPORT_SOURCE,
+                    format!("cannot create a staging folder: {e}"),
+                ))
+            })?;
+            let r = unity::stage_package(source, dir.path(), opts.limits)?;
+            staging = Some(dir);
+            r
+        }
         "unity_project" => (unity::scan_project(source), Vec::new()),
         "unreal_project" => {
             let mut scan = unreal::scan(source);

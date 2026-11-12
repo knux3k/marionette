@@ -49,6 +49,9 @@ pub mod codes {
     pub const NO_SESSION: &str = "agent.no_session";
     pub const NO_ENTITY: &str = "agent.no_entity";
     pub const TARGET: &str = "agent.target";
+    /// An operation hit an engine bug (a Rust panic). The process keeps serving; a live
+    /// session the operation named is closed, because its state may be half-updated.
+    pub const PANIC: &str = "agent.panic";
 }
 
 type Handler = Box<dyn Fn(&mut Agent, Value) -> Result<Value, Errors> + Send + Sync>;
@@ -193,7 +196,27 @@ impl Agent {
         // A shared handle to the table lets the handler borrow the agent mutably (and lets
         // `batch_run` call other operations).
         let ops = std::sync::Arc::clone(&self.ops);
-        (ops[index].handler)(self, input)
+        let session = input.get("session").and_then(Value::as_str).map(str::to_string);
+        // A panic is an engine bug, but it must not take down the process (an MCP server
+        // serves many calls); decision 0032.
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (ops[index].handler)(self, input)));
+        result.unwrap_or_else(|payload| {
+            let msg = payload
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| payload.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "unknown panic".into());
+            let closed = session.filter(|id| self.sessions.remove(id).is_some());
+            let mut d = Diagnostic::error(codes::PANIC, format!("`{name}` hit an engine bug: {msg}"));
+            d = match closed {
+                Some(id) => d.fix(format!(
+                    "session `{id}` was closed because its state may be broken; start it again and report the bug"
+                )),
+                None => d.fix("report the bug with the operation and its input; the server keeps running"),
+            };
+            Err(d.into())
+        })
     }
 
     /// Resolves a path from an operation. Relative paths are relative to the project root and
@@ -300,4 +323,44 @@ pub(crate) fn page<T: Clone>(items: &[T], offset: usize, limit: Option<usize>) -
         Vec::new()
     };
     (slice, (end < items.len()).then_some(end))
+}
+
+#[cfg(test)]
+mod panic_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn boom(_: &mut Agent, _: session::SessionInput) -> Result<session::StopOutput, Errors> {
+        panic!("deliberate test panic");
+    }
+
+    #[test]
+    fn a_panicking_operation_is_an_error_and_the_agent_keeps_serving() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+        let mut agent = Agent::new(root, false);
+        std::sync::Arc::get_mut(&mut agent.ops)
+            .unwrap()
+            .push(op("boom", "test only", true, boom));
+        let started = agent
+            .call("session_start", json!({ "scene": "drift.scene.json", "seed": 1 }))
+            .unwrap();
+        let id = started["session"].as_str().unwrap().to_string();
+        let err = agent.call("boom", json!({ "session": id })).unwrap_err();
+        let text = serde_json::to_string(&err).unwrap();
+        assert!(
+            text.contains(codes::PANIC) && text.contains("deliberate test panic"),
+            "{text}"
+        );
+        assert!(
+            agent.sessions.is_empty(),
+            "the possibly broken session was closed"
+        );
+        // The server keeps working.
+        assert!(agent.call("session_list", json!({})).is_ok());
+        assert!(
+            agent
+                .call("scene_validate", json!({ "scene": "drift.scene.json" }))
+                .is_ok()
+        );
+    }
 }

@@ -15,6 +15,17 @@ pub struct Gpu {
     pub queue: wgpu::Queue,
 }
 
+/// Counts of live GPU objects (see [`Gpu::live_objects`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuObjects {
+    pub buffers: usize,
+    pub textures: usize,
+    pub texture_views: usize,
+    pub bind_groups: usize,
+    pub samplers: usize,
+    pub render_pipelines: usize,
+}
+
 fn device_error(msg: String) -> Errors {
     Diagnostic::error(renderer::codes::DEVICE, msg).into()
 }
@@ -63,6 +74,20 @@ impl Gpu {
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env()),
             None,
         )
+    }
+
+    /// Live GPU objects the application holds, counted by wgpu. Leak tests compare these
+    /// before and after repeated work (decision 0032). `None` on backends without counts.
+    pub fn live_objects(&self) -> Option<GpuObjects> {
+        let hub = self.instance.generate_report()?.hub;
+        Some(GpuObjects {
+            buffers: hub.buffers.num_kept_from_user,
+            textures: hub.textures.num_kept_from_user,
+            texture_views: hub.texture_views.num_kept_from_user,
+            bind_groups: hub.bind_groups.num_kept_from_user,
+            samplers: hub.samplers.num_kept_from_user,
+            render_pipelines: hub.render_pipelines.num_kept_from_user,
+        })
     }
 
     /// GPU name and backend, e.g. `<adapter name> (Vulkan)`.
@@ -177,6 +202,16 @@ impl Offscreen {
 
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
+    }
+
+    /// See [`Renderer::trim`].
+    pub fn trim(&mut self, frame: &FrameData) -> usize {
+        self.renderer.trim(frame)
+    }
+
+    /// See [`Renderer::cached_assets`].
+    pub fn cached_assets(&self) -> usize {
+        self.renderer.cached_assets()
     }
 
     /// Renders the frame from the camera with stable id `camera` (or the first camera) and

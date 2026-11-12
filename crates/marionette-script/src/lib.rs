@@ -36,7 +36,9 @@ use marionette_core::{Diagnostic, Errors, Kind, Registry};
 use rquickjs::function::Opt;
 use rquickjs::{Context, Ctx, Exception, Function, Module as JsModule, Object, Persistent, Runtime, Value};
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 /// Stable error codes of this crate.
 pub mod codes {
@@ -50,7 +52,23 @@ pub mod codes {
     pub const NO_UPDATE: &str = "script.no_update";
     /// The JavaScript engine could not be created.
     pub const ENGINE: &str = "script.engine";
+    /// One script call ran longer than [`STEP_BUDGET`](super::STEP_BUDGET) allows (an
+    /// endless loop, usually). The call is stopped; the tick goes on.
+    pub const BUDGET: &str = "script.budget";
 }
+
+/// Most memory the script heap of one world may use. Past it, allocations throw inside the
+/// script (a `script_error` event), and the engine goes on (decision 0032).
+pub const MEMORY_LIMIT: usize = 64 << 20;
+
+/// Most work one script call (module load, or one entity's hooks in a tick) may do, in
+/// QuickJS interrupt checks. The interpreter checks every fixed number of operations, so the
+/// cut-off point is deterministic for a given history. About half a second of pure looping
+/// on a desktop CPU.
+pub const STEP_BUDGET: u64 = 50_000;
+
+/// Most native stack one script call may use; deeper recursion throws a `RangeError`.
+pub const STACK_LIMIT: usize = 512 << 10;
 
 /// Runs a TypeScript file every tick. `path` is relative to the scene file. The module must
 /// export `function update(self: Entity): void` (see the generated `marionette.d.ts`).
@@ -197,8 +215,10 @@ pub struct ScriptHost {
     destroy: Persistent<Function<'static>>,
     bridge: Shared,
     registry: Arc<Registry>,
+    /// Interrupt checks used by the current call; reset before each call.
+    fuel: Arc<AtomicU64>,
     ctx: Context,
-    _rt: Runtime,
+    rt: Runtime,
 }
 
 // SAFETY: built with rquickjs' `parallel` feature, so `Runtime` and `Context` are Send + Sync
@@ -254,15 +274,23 @@ fn source(dir: &std::path::Path, p: &str) -> marionette_core::Result<String> {
 }
 
 /// Evaluates one script module and returns its namespace.
-fn declare<'js>(ctx: &Ctx<'js>, path: &str, js: String) -> marionette_core::Result<Object<'js>> {
+fn declare<'js>(
+    ctx: &Ctx<'js>,
+    fuel: &AtomicU64,
+    path: &str,
+    js: String,
+) -> marionette_core::Result<Object<'js>> {
     let load_err =
         |msg: String| -> Errors { Diagnostic::error(codes::LOAD, msg).file(path.to_string()).into() };
     let declared =
         JsModule::declare(ctx.clone(), path.to_string(), js).map_err(|e| load_err(exception_text(ctx, e)))?;
-    let (module, promise) = declared.eval().map_err(|e| load_err(exception_text(ctx, e)))?;
-    promise
-        .finish::<()>()
-        .map_err(|e| load_err(exception_text(ctx, e)))?;
+    fuel.store(0, Ordering::Relaxed);
+    let module = guarded(ctx, fuel, || {
+        let (module, promise) = declared.eval()?;
+        promise.finish::<()>()?;
+        Ok(module)
+    })
+    .map_err(load_err)?;
     let ns: Object = module.namespace().map_err(|e| load_err(exception_text(ctx, e)))?;
     let update: Option<Function> = ns.get("update").ok();
     if update.is_none() {
@@ -298,8 +326,15 @@ impl ScriptHost {
         }
 
         let rt = Runtime::new().map_err(engine_error)?;
-        // Scripts get 64 MB and a deep-enough stack; runaway scripts fail instead of hanging memory.
-        rt.set_memory_limit(64 << 20);
+        // Runaway scripts fail as data instead of taking the engine down (decision 0032):
+        // bounded heap, bounded stack, bounded work per call.
+        rt.set_memory_limit(MEMORY_LIMIT);
+        rt.set_max_stack_size(STACK_LIMIT);
+        let fuel = Arc::new(AtomicU64::new(0));
+        let f = fuel.clone();
+        rt.set_interrupt_handler(Some(Box::new(move || {
+            f.fetch_add(1, Ordering::Relaxed) >= STEP_BUDGET
+        })));
         let ctx = Context::full(&rt).map_err(engine_error)?;
         let bridge: Shared = Arc::new(Mutex::new(None));
         ctx.with(|ctx| install(&ctx, &bridge)).map_err(engine_error)?;
@@ -310,7 +345,7 @@ impl ScriptHost {
             let destroy: Function = ctx.globals().get("__destroy").map_err(engine_error)?;
             let mut scripts = BTreeMap::new();
             for (path, js) in sources {
-                let ns = declare(&ctx, &path, js)?;
+                let ns = declare(&ctx, &fuel, &path, js)?;
                 scripts.insert(path.clone(), Persistent::save(&ctx, ns));
             }
             Ok((
@@ -326,8 +361,9 @@ impl ScriptHost {
             destroy,
             bridge,
             registry,
+            fuel,
             ctx,
-            _rt: rt,
+            rt,
         }))
     }
 
@@ -348,7 +384,7 @@ impl ScriptHost {
         for path in missing {
             let loaded = source(&dir, &path).and_then(|js| {
                 self.ctx
-                    .with(|ctx| declare(&ctx, &path, js).map(|ns| Persistent::save(&ctx, ns)))
+                    .with(|ctx| declare(&ctx, &self.fuel, &path, js).map(|ns| Persistent::save(&ctx, ns)))
             });
             match loaded {
                 Ok(ns) => {
@@ -370,9 +406,51 @@ impl ScriptHost {
     }
 }
 
+/// Runs one call into JavaScript and turns any failure into a message. A panic in engine
+/// code under the call (a bug, or an engine function used where it cannot work) is caught
+/// here, so it cannot unwind through the engine; rquickjs re-raises such panics when the
+/// exception is read, so the exception text is read inside the guard too. Budget overruns
+/// get the `script.budget` code.
+fn guarded<R>(ctx: &Ctx<'_>, fuel: &AtomicU64, f: impl FnOnce() -> rquickjs::Result<R>) -> Result<R, String> {
+    match catch_unwind(AssertUnwindSafe(|| f().map_err(|e| exception_text(ctx, e)))) {
+        Ok(Ok(r)) => Ok(r),
+        Ok(Err(text)) if fuel.load(Ordering::Relaxed) > STEP_BUDGET => Err(format!(
+            "{}: the call ran past its work budget ({STEP_BUDGET} interrupt checks) and was stopped; look for an endless loop\n{text}",
+            codes::BUDGET
+        )),
+        Ok(Err(text)) => Err(text),
+        Err(payload) => {
+            let msg = payload
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| payload.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "engine panic".into());
+            Err(format!("script.engine_panic: {msg}"))
+        }
+    }
+}
+
+/// The bridge lock. A panic while it was held (caught by [`guarded`]) leaves it poisoned;
+/// its data is still consistent (plain values), so poisoning is ignored.
+fn bridge_lock(bridge: &Shared) -> MutexGuard<'_, Option<Bridge>> {
+    bridge.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+impl ScriptHost {
+    /// Bytes the script heap of this world uses now (QuickJS's own count).
+    pub fn heap_bytes(&self) -> u64 {
+        self.rt.memory_usage().memory_used_size.max(0) as u64
+    }
+}
+
+/// Bytes the script heap of `world` uses, or `None` if it runs no scripts.
+pub fn heap_bytes(world: &World) -> Option<u64> {
+    world.get_resource::<ScriptHost>().map(ScriptHost::heap_bytes)
+}
+
 /// Runs `f` with the world of the current script call.
 fn with_world<R>(bridge: &Shared, f: impl FnOnce(&mut World, &mut Bridge) -> R) -> R {
-    let mut guard = bridge.lock().expect("script bridge lock");
+    let mut guard = bridge_lock(bridge);
     let b = guard
         .as_mut()
         .expect("engine functions are only callable during update()");
@@ -921,20 +999,16 @@ fn contacts(
         return out;
     }
     let mut events = Vec::new();
-    for ev in world.resource::<EventLog>().events.iter().rev() {
-        if ev.tick < tick - 1 {
-            break;
-        }
+    for ev in world.resource::<EventLog>().of_tick(tick - 1) {
         let enter = match ev.kind.as_str() {
             "collision_started" => true,
             "collision_stopped" => false,
             _ => continue,
         };
-        if let (true, Some(a), Some(b)) = (ev.tick == tick - 1, ev.entity, ev.other) {
+        if let (Some(a), Some(b)) = (ev.entity, ev.other) {
             events.push((enter, a, b));
         }
     }
-    events.reverse();
     let sensor = |id: u64| -> bool {
         let (Some(entry), Some(&e)) = (registry.get("Collider"), ids.get(&id)) else {
             return false;
@@ -984,7 +1058,7 @@ struct Outcome {
     error: Option<String>,
 }
 
-fn outcome(ctx: &Ctx<'_>, r: rquickjs::Result<rquickjs::Array<'_>>) -> Outcome {
+fn outcome(r: Result<rquickjs::Array<'_>, String>) -> Outcome {
     match r {
         Ok(a) => Outcome {
             state: a.get(0).ok().flatten(),
@@ -994,7 +1068,7 @@ fn outcome(ctx: &Ctx<'_>, r: rquickjs::Result<rquickjs::Array<'_>>) -> Outcome {
         Err(err) => Outcome {
             state: None,
             timers: None,
-            error: Some(exception_text(ctx, err)),
+            error: Some(err),
         },
     }
 }
@@ -1047,7 +1121,7 @@ fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
     // contact involving a sensor collider goes to the trigger hooks instead (Unity's split).
     let contacts = contacts(world, &ids, &host.registry, tick);
     let entity_of = ids.clone();
-    *host.bridge.lock().expect("script bridge lock") = Some(Bridge {
+    *bridge_lock(&host.bridge) = Some(Bridge {
         world: world as *mut World,
         registry: host.registry.clone(),
         ids,
@@ -1064,19 +1138,22 @@ fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
             };
             let module = module.clone().restore(&ctx).expect("script module");
             let c = contacts.get(&id).cloned().unwrap_or_default();
-            if let Some(b) = host.bridge.lock().expect("script bridge lock").as_mut() {
+            if let Some(b) = bridge_lock(&host.bridge).as_mut() {
                 b.current = id;
             }
             // No `ScriptState` yet means `start` has not run for this entity.
             let is_new = state.is_none();
             let state_in = state.clone().unwrap_or_else(|| "{}".into());
-            let r = run.call((module, id as f64, state_in, is_new, c, timers.clone()));
-            let out = outcome(&ctx, r);
-            while ctx.execute_pending_job() {}
+            host.fuel.store(0, Ordering::Relaxed);
+            let out = outcome(guarded(&ctx, &host.fuel, || {
+                let a = run.call((module, id as f64, state_in, is_new, c, timers.clone()))?;
+                while ctx.execute_pending_job() {}
+                Ok(a)
+            }));
             results.push((id, entity_of[&id], state, timers, out, path));
         }
     });
-    *host.bridge.lock().expect("script bridge lock") = None;
+    *bridge_lock(&host.bridge) = None;
     for (id, e, state_before, timers_before, out, path) in results {
         // Timers are saved even when the turn threw: a one-shot timer that fired is gone,
         // so a failing callback is not called again every tick.
@@ -1122,7 +1199,7 @@ fn destroy_marked(world: &mut World, host: Option<&ScriptHost>, tick: u64) {
             && due.iter().any(|d| d.2.is_some())
         {
             let (ids, names) = index(world);
-            *host.bridge.lock().expect("script bridge lock") = Some(Bridge {
+            *bridge_lock(&host.bridge) = Some(Bridge {
                 world: world as *mut World,
                 registry: host.registry.clone(),
                 ids,
@@ -1138,18 +1215,22 @@ fn destroy_marked(world: &mut World, host: Option<&ScriptHost>, tick: u64) {
                         continue;
                     };
                     let module = module.clone().restore(&ctx).expect("script module");
-                    if let Some(b) = host.bridge.lock().expect("script bridge lock").as_mut() {
+                    if let Some(b) = bridge_lock(&host.bridge).as_mut() {
                         b.current = *id;
                     }
                     let state_in = state.clone().unwrap_or_else(|| "{}".into());
-                    let out = outcome(&ctx, destroy.call((module, *id as f64, state_in)));
-                    while ctx.execute_pending_job() {}
+                    host.fuel.store(0, Ordering::Relaxed);
+                    let out = outcome(guarded(&ctx, &host.fuel, || {
+                        let a = destroy.call((module, *id as f64, state_in))?;
+                        while ctx.execute_pending_job() {}
+                        Ok(a)
+                    }));
                     if let Some(message) = out.error {
                         errors.push((*id, path.clone(), message));
                     }
                 }
             });
-            *host.bridge.lock().expect("script bridge lock") = None;
+            *bridge_lock(&host.bridge) = None;
             for (id, path, message) in errors {
                 script_error(world, tick, Some(id), &path, message);
             }

@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 marionette-core.workspace = true
+marionette-host.workspace = true
 marionette-assets = { path = "../marionette-assets" }
 marionette-import = { path = "../marionette-import" }
 marionette-providers = { path = "../marionette-providers" }

@@ -19,10 +19,9 @@ pub struct Curl;
 
 impl Transport for Curl {
     fn available(&self) -> bool {
-        std::process::Command::new("curl")
-            .arg("--version")
-            .output()
-            .is_ok_and(|o| o.status.success())
+        let mut cmd = std::process::Command::new("curl");
+        cmd.arg("--version");
+        marionette_host::output(cmd).is_ok_and(|o| o.status.success())
     }
 
     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
@@ -53,7 +52,8 @@ impl Transport for Curl {
             cmd.arg("--header").arg(format!("{}: {}", h.name, h.value));
         }
         cmd.arg("--").arg(&request.url);
-        let out = cmd.output().map_err(|e| format!("cannot run curl: {e}"))?;
+        // Through marionette_host so curl dies with the engine (decision 0032).
+        let out = marionette_host::output(cmd).map_err(|e| format!("cannot run curl: {e}"))?;
         if !out.status.success() {
             return Err(format!(
                 "curl failed: {}",

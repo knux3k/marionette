@@ -112,6 +112,23 @@ Stability suite (decision 0031, `docs/ai/STABILITY.md`):
   `.github/workflows/stability-soak.yml` (nightly long soak, 3 seeds).
 - Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670
   bytes per event); the nightly soak fails on it until the event log is bounded.
+Memory and crash hygiene (decision 0032, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
+- `crates/marionette-agent/tests/leaks.rs` (`memory_stays_flat_under_repeated_work`: session
+  load/unload, a long run past the event-log bound, script hot reload, entity churn,
+  screenshots; heap growth under 64 KB per scenario, counted by `marionette_host::alloc`).
+- `gpu_objects_come_back_after_repeated_setups_and_trims` in
+  `crates/marionette-render/tests/render.rs`.
+- `crates/marionette-host/tests/crash.rs` (`children_die_when_the_engine_is_killed`,
+  `a_killed_process_leaves_a_run_folder_that_the_next_start_removes`,
+  `shutdown_removes_the_run_folder_and_temp_dirs_clean_up_on_drop`);
+  `crates/marionette-cli/tests/crash.rs` (`a_run_killed_mid_simulation_is_cleaned_up_by_the_next_start`,
+  `a_clean_exit_leaves_no_run_folder`).
+- `crates/marionette-script/tests/misbehaving.rs` (endless loop, out of memory, deep recursion,
+  engine call at load); `a_panicking_operation_is_an_error_and_the_agent_keeps_serving` in
+  `crates/marionette-agent/src/lib.rs`; `the_event_log_is_bounded_and_positions_stay_absolute`
+  in `crates/marionette-core/src/module.rs`.
+- CI job `leaks (valgrind)`: core, host and script tests under valgrind, no definite leaks
+  (checked locally on Linux).
 
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
@@ -317,6 +334,8 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
+- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
+  passes clippy for a Windows target; first run is the CI run of its merge.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
@@ -411,3 +430,4 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
 | 2026-11-12 | W8: `games/dust-circuit` (racing, AI rival); `RoundCuboid` collider shape for box-shaped characters. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/signal-yard` (first-person shooter, played and recorded through MCP sessions); mouse axes `axis:MouseX`/`axis:MouseY` from the window. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: generation recipes for all six proof games (21 recipes in `games/*/assets/generated/`, Qwen images and Tripo models, nothing generated yet); stability modes for games 4 to 6; gaps G20 and G21. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | Memory and crash hygiene (decision 0032): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |

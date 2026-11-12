@@ -498,7 +498,9 @@ pub struct LogsOutput {
 
 fn logs(agent: &mut Agent, input: LogsInput) -> Result<LogsOutput, Errors> {
     let s = crate::session::get_mut(agent, &input.session)?;
-    let (entries, _) = page(&s.logs, input.cursor, input.limit);
+    // `seq` is absolute; old entries may have been dropped (session::LOG_KEEP).
+    let skip = s.logs.partition_point(|e| e.seq < input.cursor);
+    let (entries, _) = page(s.logs.make_contiguous(), skip, input.limit);
     let next_cursor = entries.last().map_or(input.cursor, |e| e.seq + 1);
     Ok(LogsOutput { entries, next_cursor })
 }
@@ -514,6 +516,15 @@ pub struct StatsOutput {
     pub step_ms_last: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub render_ms_last: Option<f64>,
+    /// Bytes the session's script heap uses (QuickJS's count); absent without scripts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_heap_bytes: Option<u64>,
+    /// Events held in the bounded event log.
+    pub events_held: usize,
+    /// Live Rust heap bytes of the whole process, when the binary counts allocations (the
+    /// `marionette` CLI and MCP server do); absent otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub process_heap_bytes: Option<u64>,
 }
 
 fn stats(agent: &mut Agent, input: crate::session::SessionInput) -> Result<StatsOutput, Errors> {
@@ -533,6 +544,9 @@ fn stats(agent: &mut Agent, input: crate::session::SessionInput) -> Result<Stats
         step_ms_max: r(st.max_ms),
         step_ms_last: r(st.last_ms),
         render_ms_last: st.last_render_ms,
+        script_heap_bytes: marionette_script::heap_bytes(&s.sim.world),
+        events_held: s.sim.events().events.len(),
+        process_heap_bytes: Some(marionette_host::alloc::stats().live_bytes).filter(|b| *b > 0),
     })
 }
 
@@ -600,6 +614,9 @@ pub struct EventsInput {
 pub struct EventsOutput {
     pub tick: u64,
     pub total: usize,
+    /// Older events already dropped from the bounded event log (it keeps the most recent
+    /// ones, at least 16,384); 0 in short runs.
+    pub dropped: u64,
     #[schemars(with = "Vec<Value>")]
     pub events: Vec<marionette_core::EngineEvent>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -620,6 +637,7 @@ fn events(agent: &mut Agent, input: EventsInput) -> Result<EventsOutput, Errors>
         Ok(EventsOutput {
             tick: sim.tick(),
             total: all.len(),
+            dropped: sim.events().dropped,
             events,
             next_offset,
         })

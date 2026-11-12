@@ -17,6 +17,7 @@ net = ["marionette-agent/net"]
 [dependencies]
 glam = "0.34"
 marionette-core.workspace = true
+marionette-host.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent" }
 marionette-generate = { path = "../marionette-generate" }

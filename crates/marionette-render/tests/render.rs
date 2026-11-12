@@ -123,3 +123,49 @@ fn loads_the_example_gltf() {
     assert!(model.images[m.base_color_texture.unwrap()].srgb);
     assert!(!model.images[m.normal_texture.unwrap()].srgb);
 }
+
+/// Repeated offscreen setups and scene switches give every GPU object back (decision 0032).
+#[test]
+fn gpu_objects_come_back_after_repeated_setups_and_trims() {
+    let Some(gpu) = gpu() else { return };
+    let settle = || {
+        gpu.device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+    };
+    let frames: Vec<_> = ["showcase.scene.json", "sprites.scene.json", "ui.scene.json"]
+        .iter()
+        .map(|s| extract(&sim(s).world))
+        .collect();
+    // One warm-up round so lazily created driver-side objects exist before the baseline.
+    let mut off = Offscreen::new(&gpu, 64, 64, 4, repo().join("examples"));
+    for f in &frames {
+        off.render(&gpu, f, None).unwrap();
+    }
+    drop(off);
+    settle();
+    let Some(baseline) = gpu.live_objects() else {
+        eprintln!("skipping: this wgpu backend does not count objects");
+        return;
+    };
+    for round in 0..10 {
+        let mut off = Offscreen::new(&gpu, 64 + round, 64, 4, repo().join("examples"));
+        for f in &frames {
+            off.render(&gpu, f, None).unwrap();
+            off.read_pixels(&gpu).unwrap();
+        }
+        // Scene switch: only the last scene's assets stay cached.
+        let held = off.cached_assets();
+        let freed = off.trim(&frames[2]);
+        assert!(
+            freed > 0 && off.cached_assets() < held,
+            "trim frees the other scenes' assets"
+        );
+        off.render(&gpu, &frames[0], None).unwrap();
+        drop(off);
+        settle();
+        assert_eq!(
+            gpu.live_objects().unwrap(),
+            baseline,
+            "round {round}: GPU objects leaked"
+        );
+    }
+}
