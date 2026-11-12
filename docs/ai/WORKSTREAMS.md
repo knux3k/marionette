@@ -13,7 +13,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | --- | --- | --- | --- |
 | W1 | Finish line 6 (input, physics, audio, UI) | done | - |
 | W2 | Assets A: local import path and Unity importer | now | W1, W5, W7 |
-| W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
+| W3 | Assets B: CC0 pool and CC0 library search | done (decision 0041) | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | done | - |
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | done (decision 0029) | - |
@@ -58,6 +58,9 @@ Unity prefabs, scenes, animation clips and audio are not covered and are listed 
   accepted by the pool; operations and tests exist for each path.
 
 ## W3: assets B, CC0 pool and library search
+
+Status: done (decision 0041). Publishing to the assets repository waits for the owner to create
+it; online adapters are tested against scripted answers.
 
 - Scope: the CC0 pool (lives in the assets repository; CC0 only, source recorded), search of
   the project files, owned library and pool in that order, then free CC0 libraries online (Poly
