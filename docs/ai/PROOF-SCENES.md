@@ -10,8 +10,8 @@ that play the game with scripted input. Decision 0050. Proof test:
 | Game | Genre | Directory | Status |
 | --- | --- | --- | --- |
 | Lantern Keeper | top-down 2D | `games/lantern-keeper/` | done: wins with scripted input; idle run loses all lives |
-| (planned) | 2D side-scroller | - | not started |
-| (planned) | 3D platformer | - | not started |
+| Ember Run | 2D side-scroller | `games/ember-run/` | done: wins with scripted input (14 of 15 embers, two hits); running into the first gap loses all lives |
+| Cloudstep | 3D platformer | `games/cloudstep/` | done: reaches the beacon in about 11 s with scripted input, no falls; walking straight ahead falls again and again |
 | (planned) | top-down 3D | - | not started |
 | (planned) | racing | - | not started |
 | (planned) | first-person shooter | - | not started |
@@ -48,3 +48,8 @@ Open (not fixed here; each names the cheapest fix seen):
 | G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
 | G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
 | G6 | No CC0 pool or generated assets yet; games use built-in primitives and images. | all | W3 pool and W4 generation (Qwen images, Tripo models), then swap through the recipes. |
+| G7 | A character standing on a moving kinematic platform is not carried; the platform slides out from under it. | Ember Run (the lift is a stepping stone) | Add the ground body's velocity to the character's movement in the controller. |
+| G8 | Colors are linear; values picked by eye come out pale on screen (0.2 looks like 0.5). | all | Document it in the component description, or accept sRGB colors in `Sprite`/`Material`/`UiText` behind a flag. |
+| G9 | No shadows; in a 3D platformer it is hard to judge where a jump lands. | Cloudstep | A shadow map for the first directional light (or a blob shadow under characters). |
+| G10 | Built-in meshes are cube, sphere and plane only; the hero is a stretched sphere over a capsule collider. | Cloudstep | Add `primitive:capsule` and `primitive:cylinder` to match the collider shapes. |
+| G11 | A character carried sideways by a moving platform keeps the drift after it leaves (contact pushes it); jumps need correcting. | Cloudstep | Part of G7. |

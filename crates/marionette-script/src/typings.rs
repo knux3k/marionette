@@ -103,6 +103,8 @@ interface RayHit {
 interface Entity {
   /** Stable scene id. */
   readonly id: number;
+  /** Scene name (`entity_create` name, or the name given to `engine.spawn`), or null. */
+  readonly name: string | null;
   /** Per-entity script state. Saved after every turn (component `ScriptState`), so it survives
    *  snapshots and is part of the state hash. Plain JSON values only. */
   state: Record<string, any>;

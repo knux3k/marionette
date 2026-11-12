@@ -1,0 +1,7 @@
+{
+  "format": "marionette.input-events",
+  "version": 1,
+  "events": [
+    {"tick":0,"input":"key:KeyW","value":1}
+  ]
+}

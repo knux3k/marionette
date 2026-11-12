@@ -550,6 +550,16 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
     )?;
     let b = bridge.clone();
     h.set(
+        "name",
+        Function::new(ctx.clone(), move |id: f64| {
+            with_world(&b, |world, br| {
+                let e = *br.ids.get(&(id as u64))?;
+                world.get::<SceneName>(e).map(|n| n.0.clone())
+            })
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
         "find",
         Function::new(ctx.clone(), move |name: String| {
             with_world(&b, |_, br| br.names.get(&name).map(|id| *id as f64))
