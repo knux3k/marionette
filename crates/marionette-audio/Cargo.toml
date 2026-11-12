@@ -1,0 +1,15 @@
+[package]
+name = "marionette-audio"
+description = "Marionette audio: sound components, a headless log of what played, kira playback in windowed mode."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+kira = { version = "0.12.6", default-features = false, features = ["cpal", "wav", "pcm", "ogg", "vorbis"] }
