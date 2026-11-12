@@ -104,11 +104,13 @@ Line 8, owned library and Unity import (W2, decision 0018):
 - OGG decoding (enabled in kira; no OGG file has been decoded).
 - The playground hashes have only been produced on Windows; Linux equality is unchecked.
 - Live gamepad input (format supported, no backend).
-- Unity importer against real Unity files: all fixtures are synthetic (built in the tests). No
-  real project or Asset Store `.unitypackage` has been imported (reading the owner's Unity
-  projects needs the owner's permission). The URP Unlit and HDRP Lit shader GUIDs in
-  `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
-  layout used by `package_location_reason` are from memory, not checked against a Unity install.
+- Unity importer on real files: checked read-only (dry run plus the readers, nothing written)
+  on one Unity project and five `.unitypackage` files (about 5,700 files, 214 materials, 800
+  textures). Engine content was refused as expected (TextMesh Pro resources, XR Interaction
+  Toolkit samples), every material parsed, the URP Lit and URP Unlit shader GUIDs matched real
+  materials, and two JPEGs saved as `.png` led to content sniffing. Still unchecked: the HDRP
+  Lit GUID, the Asset Store cache folder layout (no cache on the test machine), a real import
+  with a person-written declaration, and binary-serialized materials.
 - The pasted-license phrase list catches common wording only; it never grants permission.
 
 ## Session log
@@ -123,3 +125,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | W2 follow-up: read-only check against real Unity files; textures typed by content, not extension. | this commit |
