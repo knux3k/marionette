@@ -15,6 +15,7 @@ marionette-audio = { path = "../marionette-audio" }
 marionette-import = { path = "../marionette-import" }
 marionette-providers = { path = "../marionette-providers" }
 marionette-script = { path = "../marionette-script" }
+marionette-port = { path = "../marionette-port" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

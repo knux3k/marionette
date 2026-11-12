@@ -1,0 +1,12 @@
+Begin Object Class=/Script/BlueprintGraph.K2Node_Event Name="K2Node_Event_0"
+   EventReference=(MemberParent=Class'"/Script/Engine.Actor"',MemberName="ReceiveBeginPlay")
+End Object
+Begin Object Class=/Script/BlueprintGraph.K2Node_CallFunction Name="K2Node_CallFunction_0"
+   FunctionReference=(MemberParent=Class'"/Script/Engine.KismetSystemLibrary"',MemberName="Delay")
+End Object
+Begin Object Class=/Script/BlueprintGraph.K2Node_CallFunction Name="K2Node_CallFunction_1"
+   FunctionReference=(MemberParent=Class'"/Script/Engine.Actor"',MemberName="K2_SetActorLocation")
+End Object
+Begin Object Class=/Script/BlueprintGraph.K2Node_Event Name="K2Node_Event_1"
+   EventReference=(MemberParent=Class'"/Script/Engine.Actor"',MemberName="ReceiveActorBeginOverlap")
+End Object
