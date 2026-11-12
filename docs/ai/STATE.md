@@ -91,6 +91,24 @@ Line 8, owned library and Unity import (W2, decision 0018):
   false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
+- `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
+  (`unity_classes_roles_hooks_and_components`, `unity_api_uses_actions_gaps_and_hazards`,
+  `unreal_classes_definitions_and_bindings`, `blueprint_text_is_read`,
+  `reports_and_skeletons_are_deterministic`, `skeletons_keep_every_original_line_and_annotate_calls`,
+  `skeletons_type_check_with_tsc` (skips without `tsc`), `missing_and_empty_sources_are_errors`);
+  unit tests in `src/lex.rs`, `src/map.rs` (tables valid, no duplicates, every hazard has a note),
+  `src/convert.rs` (axis behaviour of Unity and Unreal Euler angles).
+- `crates/marionette-cli/tests/port_e2e.rs`: `scan_map_and_convert`,
+  `scaffold_writes_skeletons_and_refuses_to_overwrite`.
+- Operations `port_scan`, `port_map`, `port_scaffold`, `port_convert`; generated
+  `docs/ai/reference/porting-map.md`. Drift hash unchanged.
+- Next: when the script runtime adds spawning/despawn, `onDestroy`, trigger hooks, timers or
+  raycasts, flip the matching table entries (PORTING.md, "Extending the tables"); switch the
+  tsc test from `crates/marionette-port/tests/fixtures/script-api-stub.d.ts` to the generated
+  script typings; Unity prefab and scene YAML to Marionette scenes (entities, components,
+  converted transforms) would remove most of step 3 of the porting recipe.
+
 ## UNVERIFIED
 
 - CI has never run (no remote); the state hash has never been compared on Linux.
@@ -110,6 +128,12 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
   layout used by `package_location_reason` are from memory, not checked against a Unity install.
 - The pasted-license phrase list catches common wording only; it never grants permission.
+- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
+  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
+  those engines, not checked against their current documentation. The skeletons type-check
+  against a stand-in for the script typings (decision 0019), not the generated ones.
+- CI now installs ALSA headers on Linux (`libasound2-dev`, needed by the audio crate's kira/cpal
+  backend); this was missing before and has not run yet.
 
 ## Session log
 
@@ -123,3 +147,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020, CI installs ALSA headers on Linux. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
