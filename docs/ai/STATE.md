@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); pool and search (W3) not started. |
-| 9 | Six proof scenes | Not started. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): 1 of 6 games done (`games/lantern-keeper`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -180,6 +180,39 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
 
+Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
+- `crates/marionette-cli/tests/proof_scenes.rs`: `every_game_directory_is_listed`,
+  `recipes_rebuild_the_committed_scenes` (each `build.ops.json` replayed by `batch_run` gives
+  the committed scene bytes), `scenario_tests_pass_twice_with_identical_results`,
+  `each_game_is_played_with_scripted_input_and_pins_its_hash`.
+- Engine features added for the games: `crates/marionette-cli/tests/game_api.rs`
+  (`resources_are_set_and_removed_through_operations`,
+  `batches_stop_at_the_failing_step_and_do_not_nest`,
+  `scripts_cast_rays_that_skip_sensors_and_the_caster`,
+  `script_driven_characters_face_turn_and_jump_once`,
+  `emit_without_detail_assertions_on_script_state_and_event_counts`,
+  `observe_operations_replay_scripted_input`). Drift, playground, scripted and spawner hashes
+  unchanged.
+- Lantern Keeper: `marionette --project games/lantern-keeper op test_run '{}'` (play: wins
+  with all five lanterns and three lives; idle: caught three times, game over).
+- Not yet: 90 fps measured on a mid-range desktop GPU per game; pooled or generated assets.
+
+## Animation (decision 0028)
+
+- `cargo run -q -p marionette-cli -- run examples/animation.scene.json --headless --ticks 600 --seed 1`
+  prints `f409e570ea3b9d3c1e92a01adc3070dbbd49b39d147b0dd97caa39297dba6d13` (twice in a row).
+- Reference image `examples/reference/animation.png` (320x180, 15 ticks, seed 1, MSAA 4).
+- Tests: `crates/marionette-cli/tests/animation.rs` (recorded hash twice, snapshot mid-clip
+  and restore, bones move and loop exactly, cross-fade and `anim_finished`, unknown clips
+  refused, script `playClip` equals `anim_play`, clip listing, reference image, 64 skinned
+  characters in 4 draw calls, morph targets change the mesh); `crates/marionette-anim/tests/puppet.rs`;
+  unit tests in `crates/marionette-anim/src/lib.rs`, `crates/marionette-anim/src/sample.rs` and `crates/marionette-assets/src/rig.rs`.
+- Test character `examples/assets/puppet.glb` (CC0, made by
+  `cargo run -p marionette-anim --example make_puppet -- examples/assets/puppet.glb`,
+  byte-identical every run).
+- Not yet: root motion, additive layers, bone masks, animation events, IK; FBX blend shapes
+  (the FBX converter of the FBX branch writes skins and clips; blend shapes not yet).
+
 ## Performance (workstream WP)
 
 Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
@@ -243,6 +276,9 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Skinned and morphed characters have been rendered only on Mesa lavapipe (Linux container);
+  never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
+  export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
   Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
@@ -269,4 +305,6 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
+| 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | Line 8 part (W4): `marionette-generate` crate (recipes, request-keyed cache, provenance, person-only image approval, PNG and GLB post-processing), operations `generate_recipe`/`generate_plan`/`generate_run`/`generate_list`, `marionette generate`, providers: Tripo local-image upload, `net` feature transport, keys files, per-provider caps; decision 0045, `docs/ai/GENERATION.md`. Drift hash unchanged. | branch `claude/project-thread-3n87gn` |

@@ -1,0 +1,300 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.68,
+            "r": 0.55
+          },
+          "projection": {
+            "Perspective": {
+              "far": 100.0,
+              "fov_y_degrees": 40.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.95,
+            "z": 0.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.6,
+            "z": 6.2
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 0.96,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.5,
+            "y": -1.0,
+            "z": -0.6
+          },
+          "illuminance": 1.1
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.5,
+            "r": 0.42
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:plane"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 12.0,
+            "z": 12.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "ground"
+    },
+    {
+      "components": {
+        "Animator": {
+          "layers": [
+            {
+              "clip": "walk",
+              "fade": 0.0,
+              "looping": true,
+              "speed": 1.0,
+              "target_weight": 1.0,
+              "time": 0.0,
+              "weight": 1.0
+            }
+          ]
+        },
+        "Model": {
+          "asset": "assets/puppet.glb"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.953717,
+            "x": 0.0,
+            "y": 0.300706,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -2.4,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 4,
+      "name": "walker"
+    },
+    {
+      "components": {
+        "Animator": {
+          "layers": [
+            {
+              "clip": "wave",
+              "fade": 0.0,
+              "looping": true,
+              "speed": 1.0,
+              "target_weight": 1.0,
+              "time": 0.0,
+              "weight": 1.0
+            }
+          ]
+        },
+        "Model": {
+          "asset": "assets/puppet.glb"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.991445,
+            "x": 0.0,
+            "y": 0.130526,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -0.8,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 5,
+      "name": "waver"
+    },
+    {
+      "components": {
+        "Animator": {
+          "layers": [
+            {
+              "clip": "walk",
+              "fade": 0.0,
+              "looping": true,
+              "speed": 1.0,
+              "target_weight": 0.5,
+              "time": 0.0,
+              "weight": 0.5
+            },
+            {
+              "clip": "wave",
+              "fade": 0.0,
+              "looping": true,
+              "speed": 1.0,
+              "target_weight": 0.5,
+              "time": 0.0,
+              "weight": 0.5
+            }
+          ]
+        },
+        "Model": {
+          "asset": "assets/puppet.glb"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.991445,
+            "x": 0.0,
+            "y": -0.130526,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.8,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 6,
+      "name": "blender"
+    },
+    {
+      "components": {
+        "Animator": {
+          "layers": [
+            {
+              "clip": "idle",
+              "fade": 0.0,
+              "looping": true,
+              "speed": 1.0,
+              "target_weight": 1.0,
+              "time": 0.0,
+              "weight": 1.0
+            }
+          ]
+        },
+        "Model": {
+          "asset": "assets/puppet.glb"
+        },
+        "Script": {
+          "path": "scripts/greeter.ts"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.953717,
+            "x": 0.0,
+            "y": -0.300706,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 2.4,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 7,
+      "name": "idler"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 1.0,
+        "g": 0.7,
+        "r": 0.6
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}

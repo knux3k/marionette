@@ -47,6 +47,19 @@ pub(crate) fn ops() -> Vec<Op> {
             true,
             component_remove,
         ),
+        op(
+            "resource_set",
+            "Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, \
+             `FixedStep`).",
+            true,
+            resource_set,
+        ),
+        op(
+            "resource_remove",
+            "Remove one scene resource.",
+            true,
+            resource_remove,
+        ),
     ]
 }
 
@@ -150,7 +163,7 @@ fn entity_mut<'a>(s: &'a mut Scene, id: u64, target: &str) -> Result<&'a mut Sce
 }
 
 /// Applies `change` to the target, validates, then writes. Returns the diff.
-fn apply(
+pub(crate) fn apply(
     agent: &mut Agent,
     target: &EditTarget,
     change: impl FnOnce(&mut Scene, &str) -> Result<(), Errors>,
@@ -338,4 +351,65 @@ fn component_remove(agent: &mut Agent, input: ComponentRemoveInput) -> Result<Ed
         Ok(())
     })?;
     Ok(EditOutput { target, id, diff })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ResourceSetInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    /// Resource type name, e.g. `PhysicsSettings`.
+    pub resource: String,
+    /// The full resource value, e.g. {"mode": "Dim3", "gravity": {"x": 0, "y": -9.81, "z": 0}}.
+    pub value: Value,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct ResourceEditOutput {
+    /// The scene file or session that was changed.
+    pub target: String,
+    pub resource: String,
+    /// True when the resource existed before the edit.
+    pub replaced: bool,
+}
+
+fn resource_set(agent: &mut Agent, input: ResourceSetInput) -> Result<ResourceEditOutput, Errors> {
+    let mut replaced = false;
+    let (target, _) = apply(agent, &input.target, |s, _| {
+        replaced = s
+            .resources
+            .insert(input.resource.clone(), input.value.clone())
+            .is_some();
+        Ok(())
+    })?;
+    Ok(ResourceEditOutput {
+        target,
+        resource: input.resource,
+        replaced,
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ResourceRemoveInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    pub resource: String,
+}
+
+fn resource_remove(agent: &mut Agent, input: ResourceRemoveInput) -> Result<ResourceEditOutput, Errors> {
+    let (target, _) = apply(agent, &input.target, |s, t| {
+        if s.resources.remove(&input.resource).is_none() {
+            return Err(Diagnostic::error(
+                codes::NOT_FOUND,
+                format!("{t} has no resource `{}`", input.resource),
+            )
+            .fix("observe_tree or the scene file lists the resources in use")
+            .into());
+        }
+        Ok(())
+    })?;
+    Ok(ResourceEditOutput {
+        target,
+        resource: input.resource,
+        replaced: true,
+    })
 }

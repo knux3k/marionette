@@ -20,6 +20,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
+| WA | Skeletal animation (skins, clips, GPU skinning, blend shapes) | done, follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
@@ -114,6 +115,10 @@ Follow-ups listed under line 4 in STATE.md.
 
 ## W8: six proof scenes (line 9)
 
+Status: in progress (decision 0050, PROOF-SCENES.md). Games in `games/`; owns `games/`,
+`crates/marionette-cli/tests/proof_scenes.rs`, `crates/marionette-cli/tests/game_api.rs`,
+`crates/marionette-agent/src/batch.rs`.
+
 - Scope: an FPS, a racing game, a platformer, a top-down 3D game, a top-down 2D game and a 2D
   side-scroller, each built through operations only.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its
@@ -137,6 +142,16 @@ Status: done (decision 0020). Guide: PORTING.md.
   `crates/marionette-cli/tests/perf_proofs.rs`, `crates/marionette-cli/tests/perf_budgets.rs`.
 - Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
   a typed TypeScript subset compiled to WASM for job bodies (own workstream, after W7).
+
+## WA: skeletal animation
+
+- Done: decision 0028.
+- Owns: `crates/marionette-anim`, `crates/marionette-assets/src/rig.rs`,
+  `crates/marionette-render/src/skinning.rs`, `crates/marionette-render/src/shaders/skinned.wgsl`,
+  `crates/marionette-agent/src/anim.rs`, `crates/marionette-cli/tests/animation.rs`,
+  `examples/animation.scene.json`, `examples/assets/puppet.glb`, `examples/scripts/greeter.ts`.
+- Follow-ups: root motion, additive layers and bone masks, animation events at key times, IK,
+  FBX blend shapes in the converter, a real rigged CC0 character in the proof scenes (W8).
 
 ## W9: later (line 10)
 

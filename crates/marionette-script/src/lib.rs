@@ -29,7 +29,7 @@ use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
-use marionette_core::module::{EventLog, Module, SceneDir, Stage};
+use marionette_core::module::{EventLog, Module, RayCaster, RayFilter, SceneDir, Stage};
 use marionette_core::rng::SimRng;
 use marionette_core::scene::{SceneId, SceneName};
 use marionette_core::{Diagnostic, Errors, Kind, Registry};
@@ -375,6 +375,58 @@ fn throw(ctx: &Ctx<'_>, msg: String) -> rquickjs::Error {
     Exception::throw_message(ctx, &msg)
 }
 
+/// `Entity.playClip` / `blendClip` / `stopClip`: the same `Animator` changes as the
+/// `anim_play`, `anim_blend` and `anim_stop` operations (one implementation, in
+/// `marionette-anim`). Unknown clips throw `anim.unknown_clip`.
+fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
+    use marionette_anim::{Animator, Rigs};
+    let v: serde_json::Value =
+        serde_json::from_str(json).map_err(|err| format!("script.bad_value: {err}"))?;
+    let num = |k: &str, d: f64| v.get(k).and_then(serde_json::Value::as_f64).unwrap_or(d) as f32;
+    let looping = v
+        .get("looping")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let clip = v.get("clip").and_then(serde_json::Value::as_str);
+    if let Some(clip) = clip {
+        let model = world
+            .get::<marionette_core::spatial::Model>(e)
+            .ok_or_else(|| "anim.no_model: this entity has no Model".to_string())?;
+        let rig = world
+            .get_resource::<Rigs>()
+            .and_then(|r| r.0.get(&model.asset))
+            .ok_or_else(|| {
+                format!(
+                    "anim.asset: `{}` was not loaded as an animated model",
+                    model.asset
+                )
+            })?;
+        if rig.clip(clip).is_none() {
+            let names: Vec<&str> = rig.clips.iter().map(|c| c.name.as_str()).collect();
+            return Err(format!(
+                "anim.unknown_clip: `{}` has no clip `{clip}` (clips: {})",
+                model.asset,
+                names.join(", ")
+            ));
+        }
+    }
+    let mut animator = world.get::<Animator>(e).cloned().unwrap_or_default();
+    match (v.get("op").and_then(serde_json::Value::as_str), clip) {
+        (Some("play"), Some(c)) => animator.play(c, num("fade", 0.2), num("speed", 1.0), looping),
+        (Some("blend"), Some(c)) => animator.blend(
+            c,
+            num("weight", 1.0),
+            num("fade", 0.2),
+            num("speed", 1.0),
+            looping,
+        ),
+        (Some("stop"), c) => animator.stop(c, num("fade", 0.2)),
+        _ => return Err("script.bad_value: unknown animation call".into()),
+    }
+    world.entity_mut(e).insert(animator);
+    Ok(())
+}
+
 /// Native functions behind the prelude, the deterministic math, and the removed globals.
 fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
     let g = ctx.globals();
@@ -467,6 +519,24 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
                         .ids
                         .get(&(id as u64))
                         .is_some_and(|&e| entry.get(world, Some(e)).is_some()))
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "anim",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, json: String| -> rquickjs::Result<()> {
+                with_world(&b, |world, br| {
+                    let Some(&e) = br.ids.get(&(id as u64)) else {
+                        return Err(throw(
+                            &ctx,
+                            format!("script.no_entity: entity {id} does not exist"),
+                        ));
+                    };
+                    animate(world, e, &json).map_err(|msg| throw(&ctx, msg))
                 })
             },
         )?,
@@ -677,6 +747,34 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
                     let at = world.get::<DestroyAt>(e).map_or(at, |d| d.tick.min(at));
                     world.entity_mut(e).insert(DestroyAt { tick: at });
                     Ok(())
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "raycast",
+        Function::new(
+            ctx.clone(),
+            move |o: Vec<f64>, d: Vec<f64>, max: f64, exclude: Option<f64>| -> Option<String> {
+                with_world(&b, |world, _| {
+                    let caster = world.get_resource::<RayCaster>().copied()?;
+                    let v = |a: &[f64]| [0, 1, 2].map(|i| a.get(i).copied().unwrap_or(0.0) as f32);
+                    let filter = RayFilter {
+                        exclude: exclude.map(|e| e as u64),
+                        skip_sensors: true,
+                    };
+                    let hit = (caster.0)(world, v(&o), v(&d), max as f32, filter)?;
+                    let p = |a: [f32; 3]| serde_json::json!({ "x": a[0], "y": a[1], "z": a[2] });
+                    Some(
+                        serde_json::json!({
+                            "entity": hit.entity,
+                            "distance": hit.distance,
+                            "point": p(hit.point),
+                            "normal": p(hit.normal),
+                        })
+                        .to_string(),
+                    )
                 })
             },
         )?,
