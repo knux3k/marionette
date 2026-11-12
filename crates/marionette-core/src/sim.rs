@@ -61,6 +61,7 @@ impl Sim {
 
     fn new_world(&self, text: &str, file: Option<&str>, rng: SimRng, clock: SimClock) -> Result<World> {
         let mut world = World::new();
+        self.registry.init_world(&mut world);
         scene::load(text, file, &self.registry, &mut world)?;
         world.insert_resource(rng);
         world.insert_resource(clock);

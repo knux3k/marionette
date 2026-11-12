@@ -15,10 +15,11 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W2 | Assets A: local import path and Unity importer | now | W1, W5, W7 |
 | W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
-| W5 | Providers (line 7) | now | W1, W2, W3, W7 |
+| W5 | Providers (line 7) | done | - |
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | now | any |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
+| WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
 
@@ -72,11 +73,16 @@ and audio are not covered and are listed as later work in STATE.md.
   Qwen for images only, Tripo for 3D models, rigging (Tripo auto-rig first for humanoids and
   common animals, agent-scripted Blender otherwise), numeric rig checks, post-processing,
   validation, import.
-- Depends on providers (W5). Spending needs the user's approval and a spend cap; a generated
-  image is approved before 3D credit is spent.
+- Depends on providers (W5, done): add the network transport to `marionette-providers`
+  (`http::Transport`), verify each plug-in's format with one approved live call and set
+  `verified: true`. Spending needs the user's approval and a spend cap (decision 0019: the cap
+  is set by a person only); a generated image is approved before 3D credit is spent.
 - Acceptance (plan line 8): three assets rebuilt from recipes, each with license and source.
 
 ## W5: providers (line 7)
+
+Status: done (decision 0019). Live calls, the network transport and a local-model provider
+come with W4, after the owner approves spending.
 
 - Scope: language, image and 3D provider interfaces; Claude, Qwen and Tripo plug-ins behind
   feature flags; one config file, one switch command; keys from environment variables only;
@@ -104,6 +110,14 @@ and audio are not covered and are listed as later work in STATE.md.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its
   tests pass twice with identical results, uses pooled CC0 or recipe-generated assets, holds
   90 frames per second on a mid-range desktop GPU.
+
+## WP: performance
+
+- Done: decisions 0021 to 0024, `docs/ai/PERFORMANCE.md`.
+- Owns: `crates/marionette-jobs`, `crates/marionette-factory`, `crates/marionette-agent/src/perf.rs`,
+  `crates/marionette-cli/tests/perf_proofs.rs`, `crates/marionette-cli/tests/perf_budgets.rs`.
+- Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
+  a typed TypeScript subset compiled to WASM for job bodies (own workstream, after W7).
 
 ## W9: later (line 10)
 

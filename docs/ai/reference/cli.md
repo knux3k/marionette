@@ -16,6 +16,7 @@ Commands:
   scene       Scene file tools
   ops         List every operation with its description and JSON Schemas
   op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
+  provider    AI providers: list them, show this project's choices and spending, switch one
   mcp         Serve every operation as an MCP tool over stdio
   docs        Write the generated reference docs (operations, components, CLI help)
   help        Print this message or the help of the given subcommand(s)
@@ -229,10 +230,23 @@ Options:
           Refuse every operation that changes files or sessions
 
       --size <SIZE>
-          [default: 1920x1080]
+          Image size per eye (default 1920x1080, or 2160x2160 with --headset)
 
       --msaa <MSAA>
           [default: 4]
+
+      --eyes <EYES>
+          Views per frame: 2 renders a stereo pair (each eye at --size), as a headset does
+          
+          [default: 1]
+
+      --headset
+          Emulate a headset: 2 eyes at 2160x2160 each (unless --size), 64 mm apart, and the head turning +-25 degrees every 2 seconds, so culling and batching see motion
+
+      --warmup <WARMUP>
+          Untimed ticks (each with a frame) before measuring
+          
+          [default: 30]
 
   -h, --help
           Print help
@@ -304,6 +318,36 @@ Arguments:
 
   [INPUT]
           Input as a JSON object (default `{}`)
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette provider`
+
+```text
+AI providers: list them, show this project's choices and spending, switch one
+
+Usage: provider [OPTIONS] <COMMAND>
+
+Commands:
+  list    Every provider, the kinds it offers and whether its key is set (operation `provider_list`)
+  status  Provider and model per kind, readiness, spending and cap (operation `provider_status`)
+  use     Switch one kind to a provider: `marionette provider use image qwen` (operation `provider_use`)
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
       --json

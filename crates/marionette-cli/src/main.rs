@@ -93,10 +93,21 @@ enum Command {
         seed: u64,
         #[arg(long)]
         camera: Option<u64>,
-        #[arg(long, default_value = "1920x1080")]
-        size: String,
+        /// Image size per eye (default 1920x1080, or 2160x2160 with --headset).
+        #[arg(long)]
+        size: Option<String>,
         #[arg(long, default_value_t = 4)]
         msaa: u32,
+        /// Views per frame: 2 renders a stereo pair (each eye at --size), as a headset does.
+        #[arg(long, default_value_t = 1)]
+        eyes: u32,
+        /// Emulate a headset: 2 eyes at 2160x2160 each (unless --size), 64 mm apart, and the
+        /// head turning +-25 degrees every 2 seconds, so culling and batching see motion.
+        #[arg(long)]
+        headset: bool,
+        /// Untimed ticks (each with a frame) before measuring.
+        #[arg(long, default_value_t = 30)]
+        warmup: u32,
     },
     /// Scene file tools.
     Scene {
@@ -111,6 +122,11 @@ enum Command {
         /// Input as a JSON object (default `{}`).
         input: Option<String>,
     },
+    /// AI providers: list them, show this project's choices and spending, switch one.
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommand,
+    },
     /// Serve every operation as an MCP tool over stdio.
     Mcp,
     /// Write the generated reference docs (operations, components, CLI help).
@@ -121,6 +137,24 @@ enum Command {
         /// Do not write; fail if the committed files differ from what the code generates.
         #[arg(long)]
         check: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProviderCommand {
+    /// Every provider, the kinds it offers and whether its key is set (operation `provider_list`).
+    List,
+    /// Provider and model per kind, readiness, spending and cap (operation `provider_status`).
+    Status,
+    /// Switch one kind to a provider: `marionette provider use image qwen` (operation `provider_use`).
+    Use {
+        /// language, image or model3d.
+        kind: String,
+        /// Provider name, e.g. mock, claude, qwen, tripo.
+        provider: String,
+        /// Model name (default: the provider's default model).
+        #[arg(long)]
+        model: Option<String>,
     },
 }
 
@@ -216,7 +250,43 @@ fn main() -> ExitCode {
             camera,
             size,
             msaa,
-        } => render::bench(&scene, frames, seed, camera, &size, msaa),
+            eyes,
+            headset,
+            warmup,
+        } => render::bench(render::BenchOptions {
+            warmup,
+            path: &scene,
+            frames,
+            seed,
+            camera,
+            size: size
+                .as_deref()
+                .unwrap_or(if headset { "2160x2160" } else { "1920x1080" }),
+            msaa,
+            eyes: if headset { 2 } else { eyes },
+            headset,
+        }),
+        Command::Provider { command } => match command {
+            ProviderCommand::List => agent
+                .call("provider_list", json!({}))
+                .map(|v| merge("provider_list", v)),
+            ProviderCommand::Status => agent
+                .call("provider_status", json!({}))
+                .map(|v| merge("provider_status", v)),
+            ProviderCommand::Use {
+                kind,
+                provider,
+                model,
+            } => {
+                let mut input = json!({ "kind": kind, "provider": provider });
+                if let Some(m) = model {
+                    input["model"] = json!(m);
+                }
+                agent
+                    .call("provider_use", input)
+                    .map(|v| merge("provider_use", v))
+            }
+        },
         Command::Scene {
             command: SceneCommand::Fmt { scene, check: false },
         } => agent
@@ -364,17 +434,75 @@ fn human(value: &Value) -> String {
             s("state_hash")
         ),
         Some("bench") => format!(
-            "{} at {}x{}: avg {} ms, p99 {} ms, worst {} ms over {} frames",
+            "{} at {}x{} x{} eyes: avg {} ms, p99 {} ms, worst {} ms over {} frames \
+             (median sim {} / extract {} / record {} / gpu wait {} ms; {} draw calls, {} instances, {} triangles)",
             s("gpu"),
             s("width"),
             s("height"),
+            s("eyes"),
             s("avg_ms"),
             s("p99_ms"),
             s("max_ms"),
-            s("frames")
+            s("frames"),
+            value["phases_p50_ms"]["sim"],
+            value["phases_p50_ms"]["extract"],
+            value["phases_p50_ms"]["record"],
+            value["phases_p50_ms"]["gpu_wait"],
+            value["render"]["draw_calls"],
+            value["render"]["instances"],
+            value["render"]["triangles"]
         ),
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),
+        Some("provider_use") => format!(
+            "{} now uses {} (model {}; was {}); readiness: {}",
+            s("kind"),
+            s("provider"),
+            s("model"),
+            value["previous"]["provider"].as_str().unwrap_or(""),
+            s("readiness")
+        ),
+        Some("provider_status") => value["kinds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|k| {
+                format!(
+                    "{}: {} ({}), {}",
+                    k["kind"].as_str().unwrap_or(""),
+                    k["provider"].as_str().unwrap_or(""),
+                    k["model"].as_str().unwrap_or(""),
+                    k["readiness"].as_str().unwrap_or("")
+                )
+            })
+            .chain([format!(
+                "spent ${} of cap ${} ({})",
+                s("spent_usd"),
+                value["cap"]["usd"],
+                value["cap"]["source"].as_str().unwrap_or("")
+            )])
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some("provider_list") => value["providers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|p| {
+                format!(
+                    "{}: {} [{}]",
+                    p["name"].as_str().unwrap_or(""),
+                    p["kinds"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Value::as_str)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    p["readiness"].as_str().unwrap_or("")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
         _ => value.to_string(),
     }
 }
