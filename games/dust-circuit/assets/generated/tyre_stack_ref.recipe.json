@@ -2,5 +2,5 @@
   "format": "marionette.recipe/1",
   "name": "tyre_stack_ref",
   "output": "image",
-  "prompt": "a stack of four black racing tyres strapped together, trackside barrier, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text"
+  "prompt": "one single vertical column of exactly four black racing tyres lying flat on top of each other, strapped together, one trackside barrier stack only, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text"
 }
