@@ -34,7 +34,10 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
    and `<name>.provenance.json`. Steps already built are left alone; cached steps cost nothing.
 4. A model from an image with a paid 3D provider: the run builds the image and refuses the model
    (`generate.not_approved`). The project owner looks at the image and runs
-   `marionette generate approve <image name>` in a terminal; run again.
+   `marionette generate approve <image name>` in a terminal; run again. For many images at
+   once, `marionette generate approve --all` from the project root lists every reference image
+   models wait on and approves them all after the person types `yes`. Agents cannot approve,
+   even when the owner says so in chat: the owner runs the command.
 5. `generate_list`: state of every recipe (`built`, `stale`, `missing`).
 
 Use the outputs like any asset: a texture or image path in a `Sprite` or material, a model path

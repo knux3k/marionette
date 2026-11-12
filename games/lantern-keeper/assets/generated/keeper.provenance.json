@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "keeper",
+  "output": "image",
+  "file": "keeper.png",
+  "sha256": "831a1b8b3ea3d99b879f24f066b29af65804248dd09de0794ae4678f70d23231",
+  "recipe": "keeper.recipe.json",
+  "recipe_sha256": "e06e40450dcdd58c5b2dde67c347b18a0a60bf7e4f8afd352e663b437e033ec9",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small cloaked night keeper holding a lantern, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "fa74e5e5dcb552c1187a6a372afc26e2d83b5021106bef35ab2e71a69461dff2",
+    "raw_sha256": "7df2944b1fb599d868da9931a38b559801ccb009282d5201e24cc302ab06108c",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

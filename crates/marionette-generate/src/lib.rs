@@ -1035,3 +1035,85 @@ pub fn approvable(target: &Target, name: &str) -> Result<(PathBuf, String, Strin
     })?;
     Ok((path, file, sha256_hex(&bytes)))
 }
+
+/// One image waiting for a person's approval (see [`pending_approvals`]).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PendingApproval {
+    /// Recipe folder, relative to the project root, with `/` separators.
+    pub dir: String,
+    pub name: String,
+    pub file: String,
+    pub sha256: String,
+}
+
+/// Every reference image under `root` that a model recipe names in `from`, that exists, and
+/// that no approval covers yet: what `marionette generate approve --all` shows a person.
+/// Walks at most six folders deep and skips `target`, `.git`, `.marionette` and
+/// `node_modules`. Sorted by folder, then name.
+pub fn pending_approvals(root: &Path) -> Result<Vec<PendingApproval>, Errors> {
+    fn walk(base: &Path, rel: &Path, depth: u32, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(base.join(rel)) else {
+            return;
+        };
+        let mut has_recipe = false;
+        let mut subdirs = Vec::new();
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            match e.file_type() {
+                Ok(t) if t.is_dir() => {
+                    if !matches!(name.as_str(), "target" | ".git" | ".marionette" | "node_modules") {
+                        subdirs.push(rel.join(&name));
+                    }
+                }
+                Ok(t) if t.is_file() && name.ends_with(".recipe.json") => has_recipe = true,
+                _ => {}
+            }
+        }
+        if has_recipe {
+            out.push(rel.to_path_buf());
+        }
+        if depth < 6 {
+            subdirs.sort();
+            for d in subdirs {
+                walk(base, &d, depth + 1, out);
+            }
+        }
+    }
+    let mut dirs = Vec::new();
+    walk(root, Path::new(""), 0, &mut dirs);
+    let mut out = Vec::new();
+    for rel in dirs {
+        let shown = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        let all = recipe::load_dir(&root.join(&rel), &shown)?;
+        let mut refs: Vec<&str> = all
+            .iter()
+            .filter(|l| l.recipe.output == OutputKind::Model)
+            .filter_map(|l| l.recipe.from.as_deref())
+            .collect();
+        refs.sort();
+        refs.dedup();
+        let target = Target {
+            root,
+            dir: &shown,
+            names: &[],
+        };
+        for name in refs {
+            let Ok((_, file, sha)) = approvable(&target, name) else {
+                continue;
+            };
+            if !approval::is_approved(&root.join(&rel), name, &sha) {
+                out.push(PendingApproval {
+                    dir: shown.clone(),
+                    name: name.to_string(),
+                    file,
+                    sha256: sha,
+                });
+            }
+        }
+    }
+    Ok(out)
+}

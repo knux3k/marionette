@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "ember",
+  "output": "image",
+  "file": "ember.png",
+  "sha256": "4c7d5bf66deeaf31dd3996b829acb66146edd121fcc2ef8139a341ffa79ef10a",
+  "recipe": "ember.recipe.json",
+  "recipe_sha256": "1fd543dc574c95fcad1ae61a96f8158e31d5cdb72019918dc84feb8c42db3db2",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small glowing ember coal, round, orange and yellow, single game sprite, side view, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text, no shadow on the ground",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "9d67383244b15a39cccdd55fdc1150eece8443f1d2134401d0493107ac7af0d0",
+    "raw_sha256": "6f871ad23c9f521b6544a943d593a19bbbe4c04cce6cadd5378faa39105f6780",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

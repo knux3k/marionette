@@ -431,7 +431,7 @@ Commands:
   plan     What a run would do: cache hits, calls, cost, refusals (operation `generate_plan`)
   run      Build recipes into assets with provenance (operation `generate_run`)
   list     Recipes and the state of their outputs (operation `generate_list`)
-  approve  Approve a generated image so a paid 3D model may be made from it. A person must type the image's name at an interactive terminal; there is no operation for this
+  approve  Approve a generated image so a paid 3D model may be made from it. A person must type the image's name at an interactive terminal; there is no operation for this. With `--all`, every reference image under the project that still waits is listed and a person types `yes` once to approve them all
   help     Print this message or the help of the given subcommand(s)
 
 Options:

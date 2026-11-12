@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "hedge",
+  "output": "texture",
+  "file": "hedge.png",
+  "sha256": "68acf93aef78e93c4134fbc501773dc327c157874d6e7a270ab37e36fff8662a",
+  "recipe": "hedge.recipe.json",
+  "recipe_sha256": "f692160a9ca21cc68b72acea6b2d63951c9047a227a1f76dd934aa7b47d65f28",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "dense dark night hedge seen from directly above, even light, seamless",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "d6a97b5637a0414c172dc4644fa6a127f42933994c9286a8c41dd583e59ce339",
+    "raw_sha256": "0f71995532bc00e22e2f6043f43c3fa9e650ff8ad03d9bbd49457fded1c149af",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": true,
+    "size": [
+      512,
+      512
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": true
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
