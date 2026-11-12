@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); pool and search (W3) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); pool and search (W3) not started. |
 | 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -157,8 +157,19 @@ Line 8, owned library and Unity import (W2, decision 0018):
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
   false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
   (decision 0027); skinning in
-  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+  the renderer (skinned FBX models draw in bind pose), Unity scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
+- Unity prefabs (decision 0040): `crates/marionette-import/tests/prefab.rs`
+  (`a_prefab_becomes_entities_with_mapped_components`,
+  `nested_prefabs_and_models_follow_their_overrides`,
+  `variants_remove_components_and_override_materials`,
+  `broken_recursive_and_unlicensed_prefabs_are_reported`,
+  `conversion_is_deterministic_and_dry_runs_write_nothing`); unit tests in `src/unity_yaml.rs` and
+  `src/prefab.rs`; `crates/marionette-cli/tests/prefab_e2e.rs`
+  (`import_list_and_place_a_unity_prefab`: import, `library_list` kind `prefab`,
+  `prefab_instantiate` twice, `scene_run`). Not covered: sub-mesh selection inside a model,
+  overrides on model parts, point/spot lights, audio sources, physic materials, X/Z capsules,
+  compound bodies, Unity `.unity` scenes (same reader would serve them).
 
 Line 8, Unreal importer (W6, decision 0029):
 - `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
@@ -259,6 +270,11 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 
 ## UNVERIFIED
 
+- Unity prefab import (decision 0040) is tested only on hand-written prefab files in Unity's text
+  format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
+  rule, the nested file-id rule and the half turn for converted models are from knowledge of
+  Unity's serializer, not checked in the editor.
+
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
   the seed-2 hash, the playground hashes (`line6_proofs.rs`) and the scripted example hash
@@ -333,4 +349,5 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 | 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
 | 2026-11-12 | Line 8 part (W4): `marionette-generate` crate (recipes, request-keyed cache, provenance, person-only image approval, PNG and GLB post-processing), operations `generate_recipe`/`generate_plan`/`generate_run`/`generate_list`, `marionette generate`, providers: Tripo local-image upload, `net` feature transport, keys files, per-provider caps; decision 0045, `docs/ai/GENERATION.md`. Drift hash unchanged. | branch `claude/project-thread-3n87gn` |
+| 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | W4 follow-up: first live Qwen check on the owner's PC got HTTP 401 at the international address (nothing charged); the Qwen plug-in now finds the key's region (international, China, US). | branch `claude/project-thread-3n87gn` |

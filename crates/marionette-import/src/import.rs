@@ -5,6 +5,7 @@ use crate::codes;
 use crate::fbx;
 use crate::library::{AssetKind, AssetRecord, FileRecord, Library, RECORD_FORMAT, SourceRecord, slug};
 use crate::license::{self, LicenseRecord, LoadedDeclaration, YesNo};
+use crate::prefab::{self, MaterialInfo, PrefabEnv, Resolved};
 use crate::sha256_hex;
 use crate::tar::Limits;
 use crate::unity::{self, BadEntry, MetalLayout, PbrMapping, SourceEntry, Staging};
@@ -103,6 +104,7 @@ enum Class {
     Texture,
     Model,
     Material,
+    Prefab,
     Companion,
     Unsupported(&'static str),
 }
@@ -124,9 +126,9 @@ fn classify(rel: &str) -> Class {
         "cs" | "js" | "dll" | "shader" | "shadergraph" | "hlsl" | "cginc" | "compute" => {
             Class::Unsupported("code and shaders are not imported")
         }
-        "unity" | "prefab" | "asset" | "controller" | "anim" | "overridecontroller" | "mask"
-        | "physicmaterial" => {
-            Class::Unsupported("Unity scenes, prefabs and editor data are not imported yet")
+        "prefab" => Class::Prefab,
+        "unity" | "asset" | "controller" | "anim" | "overridecontroller" | "mask" | "physicmaterial" => {
+            Class::Unsupported("Unity scenes and editor data are not imported yet")
         }
         "wav" | "ogg" | "mp3" | "aif" | "aiff" | "flac" => {
             Class::Unsupported("audio import is not built yet")
@@ -845,6 +847,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
     };
 
     let mut materials: Vec<(&SourceEntry, usize)> = Vec::new();
+    let mut prefabs: Vec<(&SourceEntry, usize)> = Vec::new();
     let mut unreal_materials: Vec<(&SourceEntry, usize)> = Vec::new();
     let mut by_guid: BTreeMap<String, String> = BTreeMap::new();
     // Unreal object path (lowercase) to library id, and texture file stem to ids.
@@ -906,6 +909,11 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
                     materials.push((e, i));
                 }
             }
+            Class::Prefab => {
+                if let Some(i) = gate_report(&mut ctx, e) {
+                    prefabs.push((e, i));
+                }
+            }
             class @ (Class::Texture | Class::Model) => {
                 let Some(i) = gate_report(&mut ctx, e) else {
                     continue;
@@ -942,7 +950,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
 
     // Materials last, so their textures resolve to library ids (this import first, then any
     // earlier import that recorded the same Unity GUID).
-    if !materials.is_empty() {
+    if !materials.is_empty() || !prefabs.is_empty() {
         for r in library.records() {
             if let Some(g) = r.source.unity_guid {
                 by_guid.entry(g).or_insert(r.id);
@@ -964,7 +972,57 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
             }
         };
         let pending = material(&ctx, e, &bytes, &m, &by_guid, &entries);
-        ctx.put(pending, &decls[i])?;
+        let id = ctx.put(pending, &decls[i])?;
+        if let Some(g) = e.guid() {
+            by_guid.insert(g, id);
+        }
+    }
+
+    // Prefabs after everything they can refer to (decision 0040).
+    for (e, i) in prefabs {
+        let bytes = read(&e.data, &e.rel)?;
+        let text = String::from_utf8_lossy(&bytes).into_owned();
+        let env = PrefabSources {
+            library,
+            dry_run: opts.dry_run,
+            gate: &gate,
+            decl: i,
+            entries: &entries,
+            by_guid: &by_guid,
+            report: &ctx.report,
+        };
+        match prefab::convert(&e.rel, &text, &env) {
+            Ok(c) => {
+                let mut notes = vec![format!("converted from a Unity prefab: {} entities", c.entities)];
+                notes.extend(c.notes.iter().cloned());
+                let pending = Pending {
+                    kind: AssetKind::Prefab,
+                    name: stem(&e.rel),
+                    rel: e.rel.clone(),
+                    guid: e.guid(),
+                    original_sha: sha256_hex(&bytes),
+                    files: vec![
+                        (
+                            "prefab.json".to_string(),
+                            serde_json::to_vec_pretty(&c.doc).expect("json"),
+                        ),
+                        ("source.prefab".to_string(), bytes),
+                    ],
+                    main: Some("prefab.json".into()),
+                    engine_ready: true,
+                    notes,
+                    uses: c.uses,
+                    validate_gltf: false,
+                    unreal_path: None,
+                };
+                ctx.put(pending, &decls[i])?;
+            }
+            Err(why) => ctx.skip(
+                &e.rel,
+                codes::SKIPPED_BINARY_SERIALIZED,
+                format!("prefab not read: {why}"),
+            ),
+        }
     }
 
     if !unreal_materials.is_empty() {
@@ -1247,5 +1305,103 @@ fn material_from(ctx: &Ctx, e: &SourceEntry, bytes: &[u8], spec: MaterialSpec) -
         uses,
         validate_gltf: false,
         unreal_path: None,
+    }
+}
+
+/// What a prefab being converted may refer to: files of the same source (nested prefabs only
+/// under the prefab's own declaration, rule 12a) and library assets by Unity GUID.
+struct PrefabSources<'a> {
+    library: &'a Library,
+    dry_run: bool,
+    gate: &'a Gate<'a>,
+    decl: usize,
+    entries: &'a [SourceEntry],
+    by_guid: &'a BTreeMap<String, String>,
+    report: &'a ImportReport,
+}
+
+impl PrefabSources<'_> {
+    fn entry(&self, guid: &str) -> Option<&SourceEntry> {
+        self.entries.iter().find(|e| e.guid().as_deref() == Some(guid))
+    }
+
+    /// The record of a library asset, also during a dry run (from the report).
+    fn record(&self, id: &str) -> Option<(AssetKind, Option<String>, bool, String)> {
+        if let Ok(r) = self.library.get(id) {
+            return Some((r.kind, r.main, r.engine_ready, r.name));
+        }
+        self.report
+            .imported
+            .iter()
+            .find(|a| a.id == id)
+            .map(|a| (a.kind, None, a.engine_ready, stem(&a.path)))
+    }
+}
+
+impl PrefabEnv for PrefabSources<'_> {
+    fn resolve(&self, guid: &str) -> Resolved {
+        if let Some(e) = self.entry(guid)
+            && ext_of(&e.rel) == "prefab"
+        {
+            if let Some(why) = self.gate.dependency_refusal(&e.rel, self.decl) {
+                return Resolved::Refused(format!("nested prefab not expanded: {why}"));
+            }
+            return match std::fs::read(&e.data) {
+                Ok(b) => Resolved::Prefab {
+                    rel: e.rel.clone(),
+                    text: String::from_utf8_lossy(&b).into_owned(),
+                },
+                Err(err) => Resolved::Refused(format!("cannot read `{}`: {err}", e.rel)),
+            };
+        }
+        if let Some(id) = self.by_guid.get(guid) {
+            return match self.record(id) {
+                Some((AssetKind::Model, main, ready, name)) => {
+                    let main = main.unwrap_or_else(|| "model.glb".into());
+                    if ready || self.dry_run {
+                        Resolved::Model {
+                            id: id.clone(),
+                            main,
+                            name,
+                        }
+                    } else {
+                        Resolved::Refused(format!("model `{id}` is not engine-ready (see its record notes)"))
+                    }
+                }
+                Some((kind, ..)) => Resolved::Refused(format!("`{id}` is a {kind:?}, not a model")),
+                None => Resolved::Unknown,
+            };
+        }
+        match self.entry(guid) {
+            Some(e) => match self.report.refused.iter().find(|r| r.path == e.rel) {
+                Some(r) => Resolved::Refused(format!("`{}` was refused ({}): {}", e.rel, r.code, r.reason)),
+                None => Resolved::Refused(format!("`{}` was not imported as a model", e.rel)),
+            },
+            None => Resolved::Unknown,
+        }
+    }
+
+    fn material(&self, guid: &str) -> Option<MaterialInfo> {
+        let id = self.by_guid.get(guid)?;
+        let r = self.library.get(id).ok()?;
+        if r.kind != AssetKind::Material {
+            return None;
+        }
+        let bytes = std::fs::read(self.library.asset_dir(id).join("material.json")).ok()?;
+        let doc: Value = serde_json::from_slice(&bytes).ok()?;
+        let f = |k: &str, d: f64| doc[k].as_f64().unwrap_or(d) as f32;
+        let c = &doc["base_color_factor"];
+        let ci = |i: usize| c.get(i).and_then(Value::as_f64).unwrap_or(1.0) as f32;
+        Some(MaterialInfo {
+            id: id.clone(),
+            name: doc["name"].as_str().unwrap_or(&r.name).to_string(),
+            base_color: [ci(0), ci(1), ci(2), ci(3)],
+            metallic: f("metallic_factor", 0.0),
+            roughness: f("roughness_factor", 0.5),
+        })
+    }
+
+    fn asset_path(&self, guid: &str) -> Option<String> {
+        self.entry(guid).map(|e| e.rel.clone())
     }
 }
