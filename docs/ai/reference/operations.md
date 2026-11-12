@@ -36,7 +36,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
-| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
+| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
 | `library_list` | no | Lists owned library assets (id, kind, name, license, engine readiness), sorted by id, paged. |
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
@@ -734,7 +734,7 @@ Output:
 
 ## `library_import`
 
-Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
+Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
 
 Mutating: yes.
 
@@ -745,7 +745,7 @@ Input:
 | `declarations` | array of string |  | Declaration files (written by a person) to use besides `<source>.license.json`. |
 | `dry_run` | boolean |  | Report what would be imported and refused without writing anything. |
 | `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
-| `source` | string | yes | A .unitypackage file, a Unity project folder, or an owned file or folder. |
+| `source` | string | yes | A .unitypackage file, a Unity project folder, an Unreal project, plugin or content folder, or an owned file or folder. |
 
 Output:
 
@@ -756,7 +756,7 @@ Output:
 | `declarations` | array of DeclarationSummary | yes |  |
 | `dry_run` | boolean | yes |  |
 | `imported` | array of ImportedAsset | yes |  |
-| `importer` | string | yes | `unitypackage`, `unity_project` or `files`. |
+| `importer` | string | yes | `unitypackage`, `unity_project`, `unreal_project` or `files`. |
 | `refused` | array of NotImported | yes | Refused for license or engine-content reasons. |
 | `skipped` | array of NotImported | yes | Not imported for other reasons (unsupported type, binary serialization, ...). |
 | `source_name` | string | yes | File or folder name of the source. |

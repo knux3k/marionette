@@ -265,6 +265,21 @@ fn other_axis_systems_and_units_give_the_same_world() {
 }
 
 #[test]
+fn unreal_convention_fbx_lands_in_meters_y_up() {
+    // Unreal Engine's convention: +Z up, 1 unit = 1 cm (UnitScaleFactor 1). The fixture is the
+    // same crate written that way (tests/fixtures/unreal/make_fixtures.py, decision 0029).
+    let c = convert("../unreal/crate_unreal_cm.fbx");
+    assert!(c.summary.axes.contains("+Z"), "{}", c.summary.axes);
+    assert!((c.summary.meters_per_unit - 0.01).abs() < 1e-9);
+    let ours = triangles(&c.glb, None);
+    assert_same_shape(
+        &ours,
+        &triangles(&fixture("crate.glb"), None),
+        "Unreal-convention crate",
+    );
+}
+
+#[test]
 fn fbx_7500_from_a_second_writer_matches_blenders_reading() {
     // Assimp writes FBX 7.5 (64-bit node headers) with its own conventions.
     let c = convert("crate_assimp.fbx");
