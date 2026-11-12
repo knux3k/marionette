@@ -1,0 +1,19 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 760,
+  "input": "tests/play.inputs.json",
+  "assertions": [
+    { "event": { "kind": "won", "at_least": 1, "at_most": 1 } },
+    { "event": { "kind": "fell", "at_most": 0 } },
+    { "event": { "kind": "spring", "at_least": 1 } },
+    { "event": { "kind": "checkpoint", "at_least": 2, "at_most": 2 } },
+    { "event": { "kind": "seed", "at_least": 4 } },
+    { "event": { "kind": "jump", "entity": 10, "at_least": 7 } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 10, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
+    { "field": { "entity": 10, "path": "Transform.translation.y", "op": "gt", "value": 9 } },
+    { "field": { "entity": 4, "path": "UiText.text", "op": "ne", "value": "" } },
+    { "state_hash": "fa34022842334b3a2e9a907d13af4ea8eee0a713becccc367fd2e3f61064aed4" }
+  ]
+}

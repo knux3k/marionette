@@ -1,0 +1,54 @@
+{
+  "format": "marionette.input-map",
+  "version": 1,
+  "actions": {
+    "move_x": {
+      "bindings": [
+        {
+          "input": "key:KeyD",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyA",
+          "scale": -1
+        },
+        {
+          "input": "key:ArrowRight",
+          "scale": 1
+        },
+        {
+          "input": "key:ArrowLeft",
+          "scale": -1
+        },
+        {
+          "input": "axis:LeftStickX",
+          "scale": 1
+        }
+      ]
+    },
+    "move_y": {
+      "bindings": [
+        {
+          "input": "key:KeyW",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyS",
+          "scale": -1
+        },
+        {
+          "input": "key:ArrowUp",
+          "scale": 1
+        },
+        {
+          "input": "key:ArrowDown",
+          "scale": -1
+        },
+        {
+          "input": "axis:LeftStickY",
+          "scale": 1
+        }
+      ]
+    }
+  }
+}

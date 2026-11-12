@@ -7,6 +7,7 @@
 //! and produce them.
 
 pub mod anim;
+pub mod batch;
 pub mod docs;
 pub mod edit;
 pub mod engine;
@@ -107,7 +108,7 @@ pub struct Agent {
     root: PathBuf,
     read_only: bool,
     registry: Registry,
-    ops: Vec<Op>,
+    ops: std::sync::Arc<Vec<Op>>,
     pub(crate) sessions: BTreeMap<String, Session>,
     pub(crate) next_session: u64,
     gpu: Option<Gpu>,
@@ -129,10 +130,12 @@ impl Agent {
             anim::ops(),
             script::ops(),
             port::ops(),
+            batch::ops(),
         ]
         .into_iter()
         .flatten()
-        .collect();
+        .collect::<Vec<Op>>()
+        .into();
         Self {
             root: root.into(),
             read_only,
@@ -179,11 +182,10 @@ impl Agent {
             .fix("use observe_*, scene_validate, scene_run or test_run, or restart without --read-only")
             .into());
         }
-        // Temporarily take the handler out so it can borrow the agent mutably.
-        let ops = std::mem::take(&mut self.ops);
-        let result = (ops[index].handler)(self, input);
-        self.ops = ops;
-        result
+        // A shared handle to the table lets the handler borrow the agent mutably (and lets
+        // `batch_run` call other operations).
+        let ops = std::sync::Arc::clone(&self.ops);
+        (ops[index].handler)(self, input)
     }
 
     /// Resolves a path from an operation. Relative paths are relative to the project root and

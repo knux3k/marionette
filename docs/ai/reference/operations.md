@@ -18,6 +18,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `entity_delete` | yes | Remove an entity. Fails if other entities still refer to it. |
 | `component_set` | yes | Add or replace one component on an entity. |
 | `component_remove` | yes | Remove one component from an entity. |
+| `resource_set` | yes | Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`). |
+| `resource_remove` | yes | Remove one scene resource. |
 | `session_start` | yes | Load a scene into a live headless world (optionally pre-stepped). Returns the session id. |
 | `session_step` | yes | Advance a live session by `ticks` fixed ticks. Returns the state hash. |
 | `session_stop` | yes | Discard a live session. |
@@ -36,7 +38,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
-| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
+| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
 | `library_list` | no | Lists owned library assets (id, kind, name, license, engine readiness), sorted by id, paged. |
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
@@ -61,6 +63,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 
 ## `project_init`
 
@@ -325,6 +328,51 @@ Output:
 | `id` | integer | yes | The entity the edit was about. |
 | `target` | string | yes | The scene file or session that was changed. |
 
+## `resource_set`
+
+Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resource` | string | yes | Resource type name, e.g. `PhysicsSettings`. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `value` | any | yes | The full resource value, e.g. {"mode": "Dim3", "gravity": {"x": 0, "y": -9.81, "z": 0}}. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `replaced` | boolean | yes | True when the resource existed before the edit. |
+| `resource` | string | yes |  |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `resource_remove`
+
+Remove one scene resource.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resource` | string | yes |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `replaced` | boolean | yes | True when the resource existed before the edit. |
+| `resource` | string | yes |  |
+| `target` | string | yes | The scene file or session that was changed. |
+
 ## `session_start`
 
 Load a scene into a live headless world (optionally pre-stepped). Returns the session id.
@@ -499,6 +547,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `limit` | integer \| null |  | Page size (default 50, max 500). |
 | `offset` | integer |  |  |
 | `scene` | string \| null |  |  |
@@ -525,6 +574,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `limit` | integer \| null |  |  |
 | `offset` | integer |  |  |
 | `scene` | string \| null |  |  |
@@ -555,6 +605,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `scene` | string \| null |  |  |
 | `seed` | integer |  |  |
 | `session` | string \| null |  |  |
@@ -580,6 +631,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `camera` | integer \| null |  | Camera entity id (default: the lowest-id camera). |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `msaa` | integer \| null |  | MSAA samples, 1 or 4 (default 4). |
 | `out` | string \| null |  | Output PNG path (default `.marionette/screenshots/<name>-t<tick>.png`). |
 | `scene` | string \| null |  |  |
@@ -658,6 +710,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `direction` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `max_distance` | number \| null |  | Default 1000. |
 | `origin` | array of number | yes |  |
 | `scene` | string \| null |  |  |
@@ -682,6 +735,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `kind` | string \| null |  | Only this kind (e.g. `sound`). |
 | `limit` | integer \| null |  |  |
 | `offset` | integer |  |  |
@@ -744,7 +798,7 @@ Output:
 
 ## `library_import`
 
-Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
+Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
 
 Mutating: yes.
 
@@ -755,7 +809,7 @@ Input:
 | `declarations` | array of string |  | Declaration files (written by a person) to use besides `<source>.license.json`. |
 | `dry_run` | boolean |  | Report what would be imported and refused without writing anything. |
 | `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
-| `source` | string | yes | A .unitypackage file, a Unity project folder, or an owned file or folder. |
+| `source` | string | yes | A .unitypackage file, a Unity project folder, an Unreal project, plugin or content folder, or an owned file or folder. |
 
 Output:
 
@@ -766,7 +820,7 @@ Output:
 | `declarations` | array of DeclarationSummary | yes |  |
 | `dry_run` | boolean | yes |  |
 | `imported` | array of ImportedAsset | yes |  |
-| `importer` | string | yes | `unitypackage`, `unity_project` or `files`. |
+| `importer` | string | yes | `unitypackage`, `unity_project`, `unreal_project` or `files`. |
 | `refused` | array of NotImported | yes | Refused for license or engine-content reasons. |
 | `skipped` | array of NotImported | yes | Not imported for other reasons (unsupported type, binary serialization, ...). |
 | `source_name` | string | yes | File or folder name of the source. |
@@ -1196,6 +1250,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `nodes` | array \| null |  | Node names to report; all nodes when omitted. |
 | `scene` | string \| null |  |  |
 | `seed` | integer |  |  |
@@ -1346,4 +1401,24 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `batch_run`
+
+Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string \| null |  | A `*.ops.json` file (relative to the project root). |
+| `ops` | array \| null |  | Steps to run instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ran` | array of string | yes | Operation name of each step, in order. |
+| `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
 

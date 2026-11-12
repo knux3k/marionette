@@ -16,7 +16,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | done | - |
-| W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
+| W6 | Assets D: Unreal importer (glTF/FBX exports) | done (decision 0029) | - |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
@@ -96,6 +96,9 @@ come with W4, after the owner approves spending.
 
 ## W6: assets D, Unreal importer
 
+Status: done (decision 0029). Packages (`.uasset`) are diagnosed, not read; levels, Blueprints,
+audio and full material graphs are later work (STATE.md).
+
 - Scope: import from the Unreal Editor's glTF/FBX exports with the same license rules as W2.
 - Acceptance: as W2, for an Unreal export.
 
@@ -110,6 +113,10 @@ Follow-ups listed under line 4 in STATE.md.
 - Acceptance: the numbers, and a script change shows in a running session in under 1 second.
 
 ## W8: six proof scenes (line 9)
+
+Status: in progress (decision 0050, PROOF-SCENES.md). Games in `games/`; owns `games/`,
+`crates/marionette-cli/tests/proof_scenes.rs`, `crates/marionette-cli/tests/game_api.rs`,
+`crates/marionette-agent/src/batch.rs`.
 
 - Scope: an FPS, a racing game, a platformer, a top-down 3D game, a top-down 2D game and a 2D
   side-scroller, each built through operations only.

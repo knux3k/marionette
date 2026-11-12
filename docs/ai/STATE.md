@@ -14,8 +14,8 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
-| 9 | Six proof scenes | Not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); Unreal importer done (W6, decision 0029); pool and search (W3) and generation (W4) not started. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -160,6 +160,19 @@ Line 8, owned library and Unity import (W2, decision 0018):
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+Line 8, Unreal importer (W6, decision 0029):
+- `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
+  (project with exported FBX, PNG, TGA, T3D material instance and material graph, Starter
+  Content, mannequins, an Epic plugin, packages, a `.pak`, code, generated folders),
+  `unreal_assets_follow_the_license_rules`, `a_content_folder_from_a_vault_cache_is_an_unreal_source`;
+  `unreal_convention_fbx_lands_in_meters_y_up` in `tests/fbx.rs` (fixture
+  `tests/fixtures/unreal/crate_unreal_cm.fbx`, made by `make_fixtures.py` there); unit tests in
+  `src/unreal.rs`.
+- Not covered yet: reading `.uasset`/`.umap` (diagnosed only, by design), levels and actor
+  placement, Blueprints (port_scan reads their text), audio, material graphs beyond direct
+  connections, material functions, zip downloads (unzip first), separate roughness and
+  metallic textures (listed, not packed).
+
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
   (`unity_classes_roles_hooks_and_components`, `unity_api_uses_actions_gaps_and_hazards`,
@@ -179,6 +192,27 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - Next: map trigger hooks and raycasts when the porting tables are revisited; Unity prefab and
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
+
+Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
+- `crates/marionette-cli/tests/proof_scenes.rs`: `every_game_directory_is_listed`,
+  `recipes_rebuild_the_committed_scenes` (each `build.ops.json` replayed by `batch_run` gives
+  the committed scene bytes), `scenario_tests_pass_twice_with_identical_results`,
+  `each_game_is_played_with_scripted_input_and_pins_its_hash`.
+- Engine features added for the games: `crates/marionette-cli/tests/game_api.rs`
+  (`resources_are_set_and_removed_through_operations`,
+  `batches_stop_at_the_failing_step_and_do_not_nest`,
+  `scripts_cast_rays_that_skip_sensors_and_the_caster`,
+  `script_driven_characters_face_turn_and_jump_once`,
+  `emit_without_detail_assertions_on_script_state_and_event_counts`,
+  `observe_operations_replay_scripted_input`). Drift, playground, scripted and spawner hashes
+  unchanged.
+- Lantern Keeper: `marionette --project games/lantern-keeper op test_run '{}'` (play: wins
+  with all five lanterns and three lives; idle: caught three times, game over).
+- Ember Run (`games/ember-run`): play wins with 14 of 15 embers and two hits; pit loses all
+  lives. Cloudstep (`games/cloudstep`): play reaches the beacon in about 11 s with no falls;
+  plunge falls repeatedly. Same `test_run` command with their `--project`.
+- Also tested in `game_api.rs`: `characters_pass_through_sensors_trigger_them_and_can_be_teleported`.
+- Not yet: 90 fps measured on a mid-range desktop GPU per game; pooled or generated assets.
 
 ## Animation (decision 0028)
 
@@ -259,6 +293,12 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
+- Unreal importer on real files: nothing from a real Unreal project has been imported. T3D
+  material text is hand-written from knowledge of the editor's export format; the package
+  class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
+  is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
+  check: a dry run over a project the owner has, with their permission.
+
 ## Session log
 
 | Date | What changed | Commits |
@@ -280,4 +320,7 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
+| 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
 | 2026-11-12 | WJ: job TypeScript, crate `marionette-jobs-ts` (TS subset to WebAssembly, wasmtime runtime on `marionette-jobs`, safety levels, `JobLibrary` hot reload), operations `jobs_check`/`jobs_run`/`jobs_types`, `examples/jobs/particles.job.ts`, benchmark, decision 0030, `docs/ai/JOBS-TS.md`. Drift hash unchanged. | branch `claude/project-thread-p3he01` |

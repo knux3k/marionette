@@ -29,6 +29,9 @@
     stopClip(clip, o = {}) {
       h.anim(this.id, JSON.stringify({ op: "stop", clip: clip === undefined || clip === null ? undefined : String(clip), fade: o.fade }));
     }
+    get name() {
+      return h.name(this.id) ?? null;
+    }
     destroy(seconds) {
       engine.destroy(this, seconds);
     }
@@ -76,7 +79,9 @@
     action: (name) => h.action(name),
     pressed: (name) => h.pressed(name),
     justPressed: (name) => h.just_pressed(name),
-    emit: (kind, detail) => h.emit(String(kind), detail === undefined ? undefined : JSON.stringify(detail)),
+    // A missing detail must not be passed as `undefined` (the native side takes an optional
+    // string and refuses an explicit undefined).
+    emit: (kind, detail) => (detail === undefined ? h.emit(String(kind)) : h.emit(String(kind), JSON.stringify(detail))),
     log: (...parts) => h.log(parts.map((p) => (typeof p === "string" ? p : JSON.stringify(p))).join(" ")),
     entity: (id) => (h.exists(id) ? new Entity(id) : null),
     find: (name) => {
@@ -85,6 +90,12 @@
     },
     query: (name) => h.query(name).map((id) => new Entity(id)),
     resource: (name) => parse(h.resource(name)),
+    raycast: (origin, direction, maxDistance, exclude) => {
+      const v = (a) => [a.x, a.y, a.z ?? 0].map((c) => (typeof c === "number" ? c : 0));
+      const hit = parse(h.raycast(v(origin), v(direction), maxDistance === undefined ? 1000 : maxDistance, exclude === undefined || exclude === null ? undefined : idOf(exclude)));
+      if (hit) hit.entity = new Entity(hit.entity);
+      return hit ?? null;
+    },
     spawn: (components, name) => new Entity(h.spawn(json(components), name === undefined ? undefined : String(name))),
     clone: (source, overrides, name) =>
       new Entity(h.clone(idOf(source), json(overrides), name === undefined ? undefined : String(name))),

@@ -89,10 +89,22 @@ fn object(s: &Value, indent: &str) -> String {
 }
 
 const ENGINE_API: &str = r#"
+/** A point or direction in meters (2D uses x and y). */
+type Vec3 = { x: number; y: number; z: number };
+/** What `engine.raycast` hit. */
+interface RayHit {
+  entity: Entity;
+  /** Meters along the ray. */
+  distance: number;
+  point: Vec3;
+  normal: Vec3;
+}
 /** The entity a hook runs for, or one found with `engine.entity` / `engine.query`. */
 interface Entity {
   /** Stable scene id. */
   readonly id: number;
+  /** Scene name (`entity_create` name, or the name given to `engine.spawn`), or null. */
+  readonly name: string | null;
   /** Per-entity script state. Saved after every turn (component `ScriptState`), so it survives
    *  snapshots and is part of the state hash. Plain JSON values only. */
   state: Record<string, any>;
@@ -161,6 +173,11 @@ declare const engine: {
   /** Every entity with the component, in id order. */
   query(name: keyof Components): Entity[];
   resource<K extends keyof Resources>(name: K): Resources[K] | undefined;
+  /** First solid collider hit by a ray from `origin` along `direction` (any length) within
+ *  `maxDistance` meters (default 1000), skipping sensors and `exclude` (usually `self`).
+ *  Sees the physics world as the last physics step left it. Null without a hit or without
+ *  physics. 2D ignores z. */
+  raycast(origin: Vec3, direction: Vec3, maxDistance?: number, exclude?: Entity | number): RayHit | null;
   /** Adds an entity now, with a new id that is never reused (Unity `Instantiate`, Unreal
    *  `SpawnActor`). Throws `script.bad_value` and spawns nothing if a component does not
    *  fit. Its script's `start` and `update` first run on the next tick; physics gives it a

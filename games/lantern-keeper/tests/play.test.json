@@ -1,0 +1,16 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 420,
+  "input": "tests/play.inputs.json",
+  "assertions": [
+    { "event": { "kind": "lantern_lit", "at_least": 5, "at_most": 5 } },
+    { "event": { "kind": "gate_open" } },
+    { "event": { "kind": "won" } },
+    { "event": { "kind": "caught", "at_most": 0 } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
+    { "field": { "entity": 3, "path": "ScriptState.data.lives", "op": "eq", "value": 3 } },
+    { "count": { "with": ["Sprite"], "equals": 109 } },
+    { "state_hash": "0fab931fad098f3fbdc6c8dabd858821baf666545fd32d2ac75440b45117d097" }
+  ]
+}
