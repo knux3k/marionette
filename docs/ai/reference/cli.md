@@ -15,11 +15,11 @@ Commands:
   bench       Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
   stability   Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
   scene       Scene file tools
-  ops         List every operation with its description and JSON Schemas
+  ops         List operations with their descriptions and JSON Schemas. `--brief` gives one line each
   op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
   provider    AI providers: list them, show this project's choices and spending, switch one
   generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
-  mcp         Serve every operation as an MCP tool over stdio
+  mcp         Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
   docs        Write the generated reference docs (operations, components, CLI help)
   help        Print this message or the help of the given subcommand(s)
 
@@ -338,11 +338,14 @@ Options:
 ## `marionette ops`
 
 ```text
-List every operation with its description and JSON Schemas
+List operations with their descriptions and JSON Schemas. `--brief` gives one line each
 
 Usage: ops [OPTIONS]
 
 Options:
+      --brief
+          Only name, mutating flag and summary (no schemas): a few KB instead of about 300 KB
+
       --json
           Print a single JSON object on stdout instead of human-readable text
 
@@ -350,6 +353,9 @@ Options:
           Project root; relative paths in operations resolve against it
           
           [default: .]
+
+      --tools <TOOLS>
+          Only these groups or operations (as for `mcp --tools`)
 
       --read-only
           Refuse every operation that changes files or sessions
@@ -454,13 +460,19 @@ Options:
 ## `marionette mcp`
 
 ```text
-Serve every operation as an MCP tool over stdio
+Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
 
 Usage: mcp [OPTIONS]
 
 Options:
       --json
           Print a single JSON object on stdout instead of human-readable text
+
+      --tools <TOOLS>
+          Comma-separated operation groups or names to list: `core` (edit, run, observe, test), a group such as `pool` or `anim`, an operation name, or `all` (default)
+
+      --lean
+          Leave output schemas out of the tool listing (smaller context for the client)
 
       --project <PROJECT>
           Project root; relative paths in operations resolve against it

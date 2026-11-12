@@ -2,8 +2,8 @@
 
 This file and `AGENTS.md` hold the same rules.
 
-**Open `docs/ai/START-HERE.md` first.** It gives the read order: rules, current state with proof
-commands, workstreams, architecture, recipes and environment. `docs/DESIGN.md` defines what the
+**Open `docs/ai/START-HERE.md` first.** It names the small always-read set (rules, the four
+focuses, current state) and what to read per task. `docs/DESIGN.md` defines what the
 engine is.
 
 ## Always
@@ -25,4 +25,6 @@ engine is.
   (`docs/ai/RULES.md`, decision 0016).
 - Ask the owner before pushing, publishing, spending, deleting outside the repository, or
   opening windows or sound on a user's machine.
-- End every session by updating `docs/ai/STATE.md`.
+- Weigh every change against the four focuses in `docs/ai/FOCUSES.md`: modularity (including
+  custom code), limited context and token use, performance, graphics.
+- End every session by updating `docs/ai/STATE.md` and adding a row to `docs/ai/SESSION-LOG.md`.

@@ -80,7 +80,7 @@ Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
    look at `examples/reference/<name>.png`, and check that `git status` shows no other changed
    reference.
 5. Add the name to `every_example_is_valid_and_canonical` in `crates/marionette-cli/tests/cli.rs`.
-6. Record the reference hash in STATE.md.
+6. Record the reference hash in PROOFS.md.
 
 ## Add a game script
 
