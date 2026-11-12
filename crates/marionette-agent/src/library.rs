@@ -1,4 +1,5 @@
-//! Owned library operations: import (Unity projects, `.unitypackage`, plain owned files),
+//! Owned library operations: import (Unity projects, `.unitypackage`, Unreal projects, plain
+//! owned files),
 //! list and read records, check pasted license text, and the pool admission gate.
 //! Rules: `docs/ai/ASSETS-AND-LICENSES.md`; design: decision 0018.
 
@@ -21,7 +22,7 @@ pub(crate) fn ops() -> Vec<Op> {
         ),
         op(
             "library_import",
-            "Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.",
+            "Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.",
             true,
             import,
         ),
@@ -86,7 +87,7 @@ fn info(agent: &mut Agent, input: InfoInput) -> Result<InfoOutput, Errors> {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ImportInput {
-    /// A .unitypackage file, a Unity project folder, or an owned file or folder.
+    /// A .unitypackage file, a Unity project folder, an Unreal project, plugin or content folder, or an owned file or folder.
     source: String,
     /// Declaration files (written by a person) to use besides `<source>.license.json`.
     #[serde(default)]
