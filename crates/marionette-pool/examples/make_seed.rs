@@ -10,7 +10,7 @@ fn main() {
             for r in reports {
                 println!("{} {}", r.status, r.id);
             }
-            let index = serde_json::to_string_pretty(&pool.index()).expect("json") + "\n";
+            let index = pool.index_text();
             marionette_pool::write_file(&pool.root().join("index.json"), index.as_bytes()).expect("index");
         }
         Err(e) => {
