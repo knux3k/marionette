@@ -170,3 +170,8 @@ pub fn script_typings(agent: &Agent) -> String {
 pub fn porting_map() -> String {
     marionette_port::map::reference()
 }
+
+/// `docs/ai/reference/jobs.d.ts`: the job TypeScript prelude (same text as `jobs_types`).
+pub fn job_typings() -> String {
+    marionette_jobs_ts::PRELUDE_DTS.to_string()
+}

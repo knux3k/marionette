@@ -45,6 +45,9 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
 | `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
+| `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
+| `jobs_run` | no | Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time. |
+| `jobs_types` | yes | Write `jobs.d.ts` (the job prelude: `type i32 = number`) into the project, for editors and `tsc`. |
 | `provider_list` | no | Lists every AI provider: kinds offered (language, image, model3d), key environment variable and whether it is set, network need, default models, and whether its API format has been verified live. |
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
 | `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
@@ -984,6 +987,76 @@ Output:
 | `state_hash` | string | yes |  |
 | `threads` | integer | yes |  |
 | `ticks` | integer | yes |  |
+
+## `jobs_check`
+
+Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes | The job file, relative to the project. |
+| `unchecked` | boolean \| null |  | Compile without safety checks (no index checks, no time limit). Default false. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `compile_ms` | number | yes |  |
+| `diagnostics` | array of any | yes | Every problem found (empty when `ok`). |
+| `functions` | array of FunctionOut | yes |  |
+| `ok` | boolean | yes |  |
+| `path` | string | yes |  |
+| `wasm_bytes` | integer | yes |  |
+
+## `jobs_run`
+
+Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `args` | array of RunArg | yes | Arguments in parameter order, e.g. `[{"f32": [1, 2]}, {"number": 0.5}]`. |
+| `chunk` | integer \| null |  | Elements per chunk (default: the whole length in one chunk). |
+| `function` | string | yes |  |
+| `path` | string | yes |  |
+| `threads` | integer \| null |  | Worker threads (default 1). Results never depend on it. |
+| `unchecked` | boolean \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `arrays` | object | yes | The changeable arrays after the run, by parameter name. |
+| `chunks` | integer | yes |  |
+| `results` | array of number | yes | One return value per chunk, in chunk order (empty for `void` functions). |
+| `run_ms` | number | yes |  |
+| `sum` | number | yes | The per-chunk results added in chunk order. |
+
+## `jobs_types`
+
+Write `jobs.d.ts` (the job prelude: `type i32 = number`) into the project, for editors and `tsc`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string \| null |  | Where to write, relative to the project (default `jobs.d.ts`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `path` | string | yes |  |
 
 ## `provider_list`
 
