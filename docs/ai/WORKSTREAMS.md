@@ -16,7 +16,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | done | - |
-| W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
+| W6 | Assets D: Unreal importer (glTF/FBX exports) | done (decision 0029) | - |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
@@ -94,6 +94,9 @@ come with W4, after the owner approves spending.
   provider configured and no network.
 
 ## W6: assets D, Unreal importer
+
+Status: done (decision 0029). Packages (`.uasset`) are diagnosed, not read; levels, Blueprints,
+audio and full material graphs are later work (STATE.md).
 
 - Scope: import from the Unreal Editor's glTF/FBX exports with the same license rules as W2.
 - Acceptance: as W2, for an Unreal export.
