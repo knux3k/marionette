@@ -66,7 +66,8 @@ state hash on every machine).
 | `OnCollisionEnter`, `OnTriggerEnter` (2D too) | `NotifyHit`, `NotifyActorBeginOverlap`, `OnComponentHit/BeginOverlap.AddDynamic` | `export function onCollisionEnter(self: Entity, other: Entity)` |
 | `OnCollisionExit`, `OnTriggerExit` | `NotifyActorEndOverlap`, `OnComponentEndOverlap.AddDynamic` | `export function onCollisionExit(self: Entity, other: Entity)` |
 | `OnCollisionStay`, `OnTriggerStay` | - | a flag in `self.state` set on enter, cleared on exit, used in `update` |
-| `OnDestroy`, `OnDisable` | `EndPlay`, `Destroyed` | gap |
+| `OnDestroy` | `EndPlay`, `Destroyed` | `export function onDestroy(self: Entity)`, called when `engine.destroy` removes the entity |
+| `OnDisable` | - | gap |
 
 Triggers: give the trigger a `Collider` with `sensor: true`; its overlaps arrive as collision
 hooks. The other side is an `Entity`, not a Collision or hit result.
@@ -87,9 +88,16 @@ hooks. The other side is an `Entity`, not a Collision or hit result.
 - **References.** Fields holding a GameObject or Actor pointer become entity ids in
   `self.state`; look them up with `engine.entity(id)` or `engine.find(name)`. Tags become a
   marker component or a name check.
-- **Timers and coroutines** (`StartCoroutine`, `Invoke`, `SetTimer`, Blueprint `Delay`): keep a
-  due tick in `self.state` (`engine.tick + Math.round(seconds / engine.dt)`) and act in
-  `update` when it arrives; a coroutine becomes a step number plus a due tick.
+- **Timers** (`Invoke`, `InvokeRepeating`, `SetTimer`, `SetLifeSpan`): `engine.after(seconds,
+  fn, arg?)`, `engine.every(seconds, fn, arg?, firstSeconds?)`, `engine.cancel(handle | fn)`,
+  `engine.pending(...)`. `fn` must be an exported function of the same script; it is called as
+  `fn(self, arg)` before `update`. Timers are data (component `ScriptTimers`), so they survive
+  snapshots (decision 0021).
+- **Coroutines** (`StartCoroutine` + `yield return new WaitForSeconds(t)`, Blueprint `Delay`):
+  split the coroutine at each wait into exported step functions; each step ends with
+  `engine.after(t, nextStep, arg)`. Locals shared by steps go in `self.state` or `arg`;
+  `StopCoroutine` is `engine.cancel(nextStep)`. Generators are not supported (a suspended
+  generator cannot be saved in a snapshot).
 - **Randomness.** `Random.Range`, `FMath::RandRange` -> `engine.rand()` (seeded). Unity's int
   `Range` excludes max; Unreal's includes it. `System.Random`, `FRandomStream`, GUIDs are hazards.
 - **Math.** `+ - * /` and `Math.sqrt` are deterministic. `sin`, `cos`, `atan2`, `pow`, `exp`
@@ -101,8 +109,14 @@ hooks. The other side is an `Entity`, not a Collision or hit result.
 - **Physics from scripts.** Moving a `Kinematic` body by setting its `Transform` works. Pushing a
   dynamic body (`AddForce`, `AddImpulse`, setting velocity) is a gap: use a kinematic body or the
   `CharacterController`.
-- **Spawning** (`Instantiate`, `SpawnActor`, `Destroy`) is a gap: pre-place a pool of entities and
-  move them in and out, keeping an `active` flag in `self.state`.
+- **Spawning** (`Instantiate`, `SpawnActor`): `engine.spawn(components, name?)` or
+  `engine.clone(template, overrides?, name?)`. There are no prefab assets: keep the prefab as a
+  components object in the script, or as a template entity in the scene (one without a body or
+  script, placed out of view). New entities get a new id (ids are never reused); their script
+  starts on the next tick; physics gives them a body in the same tick.
+- **Destroying** (`Destroy(obj, t)`, `K2_DestroyActor`): `engine.destroy(entity, seconds?)`;
+  the entity is removed at the end of the script stage after its `onDestroy`.
+  `Destroy(component)` has no equivalent yet.
 - **No hierarchy.** Parenting (`SetParent`, `SetupAttachment`) is a gap: use separate entities,
   `Follow` or `LookAt`, or copy positions in `update`.
 
@@ -143,6 +157,5 @@ The tables are `crates/marionette-port/data/unity.json` and
 `api`, and `roots` (engine names whose unmapped calls are reported as `unknown`). An `api` name
 is a call chain with segments joined by `.` (C++ `::` and `->` are written as `.`); the longest
 match wins, and a one-segment name matches only a call, a generic, an attribute, the root of a
-longer chain, or a lowercase member. When the script API gains a feature (spawning, timers,
-trigger hooks), flip the matching entries from `gap` or `rewrite` to `script`, then run
+longer chain, or a lowercase member. When the script API gains a feature, flip the matching entries from `gap` or `rewrite` to `script`, then run
 `cargo run -q -p marionette-cli -- docs` and `cargo test -p marionette-port`.

@@ -156,20 +156,21 @@
     },
     {
       "name": "EndPlay",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn hook yet."
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
     },
     {
       "name": "Destroyed",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn hook yet."
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
     },
     {
       "name": "BeginDestroy",
-      "marionette": "",
-      "status": "gap"
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Garbage-collection hook; put cleanup in onDestroy."
     },
     {
       "name": "SetupPlayerInputComponent",
@@ -228,15 +229,15 @@
     },
     {
       "name": "ReceiveEndPlay",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn hook yet."
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
     },
     {
       "name": "ReceiveDestroyed",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn hook yet."
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
     }
   ],
   "components": [
@@ -474,8 +475,9 @@
     },
     {
       "name": "FTimerHandle",
-      "marionette": "a tick number in self.state",
-      "status": "rewrite"
+      "marionette": "the number returned by engine.after / engine.every",
+      "status": "script",
+      "note": "Keep it in self.state to cancel later."
     },
     {
       "name": "AActor",
@@ -521,9 +523,9 @@
     },
     {
       "name": "TSubclassOf",
-      "marionette": "",
-      "status": "gap",
-      "note": "Spawning classes from scripts is not available yet."
+      "marionette": "a template entity name for engine.clone, or a components object for engine.spawn",
+      "status": "rewrite",
+      "note": "Entities have no classes: pick the template by name (engine.find) and clone it."
     },
     {
       "name": "UCurveFloat",
@@ -595,34 +597,36 @@
     },
     {
       "pattern": "GetTimerManager.SetTimer",
-      "marionette": "self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)",
-      "status": "rewrite",
-      "note": "No timers yet: store the due tick in self.state and check it in update. Looping timers add the period again when they fire."
+      "marionette": "engine.after(seconds, fn) or engine.every(seconds, fn) when looping",
+      "status": "script",
+      "note": "fn is an exported function of the same script, called as fn(self, arg); FirstDelay is the fourth argument of engine.every."
     },
     {
       "pattern": "GetTimerManager.ClearTimer",
-      "marionette": "clear the tick in self.state",
-      "status": "rewrite"
+      "marionette": "engine.cancel(handle)",
+      "status": "script"
     },
     {
       "pattern": "GetTimerManager.IsTimerActive",
-      "marionette": "check the tick in self.state",
-      "status": "rewrite"
+      "marionette": "engine.pending(handle) > 0",
+      "status": "script"
     },
     {
       "pattern": "GetTimerManager.SetTimerForNextTick",
-      "marionette": "a flag in self.state handled next update",
-      "status": "rewrite"
+      "marionette": "engine.afterTicks(1, fn)",
+      "status": "script"
     },
     {
       "pattern": "UKismetSystemLibrary.Delay",
-      "marionette": "tick counter in self.state",
-      "status": "rewrite"
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "rewrite",
+      "note": "Split the function at the Delay: the rest moves into an exported nextStep(self, arg)."
     },
     {
       "pattern": "FLatentActionInfo",
-      "marionette": "tick counter in self.state",
-      "status": "rewrite"
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "rewrite",
+      "note": "Latent actions become timer steps (see Delay)."
     },
     {
       "pattern": "UE_LOG",
@@ -1026,15 +1030,14 @@
     },
     {
       "pattern": "GetWorld.SpawnActor",
-      "marionette": "",
-      "status": "gap",
-      "note": "No spawning from scripts yet; pre-place a pool of entities, or add them with entity_create."
+      "marionette": "engine.clone(templateEntity, { Transform: t }) or engine.spawn({ ...components })",
+      "status": "script",
+      "note": "The new entity gets a new id; its script starts next tick; physics bodies are added in the same tick."
     },
     {
       "pattern": "SpawnActor",
-      "marionette": "",
-      "status": "gap",
-      "note": "No spawning from scripts yet."
+      "marionette": "engine.clone(templateEntity, overrides) or engine.spawn(components)",
+      "status": "script"
     },
     {
       "pattern": "UGameplayStatics.SpawnEmitterAtLocation",
@@ -1043,14 +1046,14 @@
     },
     {
       "pattern": "Destroy",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn from scripts yet; move away and mark inactive in self.state."
+      "marionette": "engine.destroy(entity)",
+      "status": "script",
+      "note": "Removed at the end of the script stage, after onDestroy."
     },
     {
       "pattern": "SetLifeSpan",
-      "marionette": "",
-      "status": "gap"
+      "marionette": "engine.destroy(self, seconds)",
+      "status": "script"
     },
     {
       "pattern": "SetActorHiddenInGame",
@@ -1382,9 +1385,9 @@
     },
     {
       "pattern": "Delay",
-      "marionette": "tick counter in self.state",
+      "marionette": "engine.after(seconds, nextStep)",
       "status": "rewrite",
-      "note": "Blueprint Delay node: store the due tick in self.state and continue in update when it arrives."
+      "note": "Blueprint Delay node: the nodes after it move into an exported nextStep(self, arg)."
     },
     {
       "pattern": "PrintString",
@@ -1393,14 +1396,14 @@
     },
     {
       "pattern": "K2_SetTimer",
-      "marionette": "self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)",
-      "status": "rewrite",
-      "note": "Blueprint Set Timer by Function Name."
+      "marionette": "engine.after(seconds, \"FunctionName\") or engine.every when looping",
+      "status": "script",
+      "note": "Blueprint Set Timer by Function Name; the name is an exported function of the script."
     },
     {
       "pattern": "K2_SetTimerDelegate",
-      "marionette": "tick number in self.state",
-      "status": "rewrite"
+      "marionette": "engine.after(seconds, fn) or engine.every(seconds, fn)",
+      "status": "script"
     },
     {
       "pattern": "K2_GetActorLocation",
@@ -1429,15 +1432,14 @@
     },
     {
       "pattern": "K2_DestroyActor",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn from scripts yet."
+      "marionette": "engine.destroy(self)",
+      "status": "script"
     },
     {
       "pattern": "BeginDeferredActorSpawnFromClass",
-      "marionette": "",
-      "status": "gap",
-      "note": "No spawning from scripts yet."
+      "marionette": "engine.spawn(components) then set more components",
+      "status": "script",
+      "note": "Spawning is already deferred: the script starts next tick."
     },
     {
       "pattern": "RandomFloatInRange",
@@ -1529,7 +1531,7 @@
       "pattern": "GetClass",
       "marionette": "",
       "status": "gap",
-      "note": "Entities have no classes; spawning by class is a gap."
+      "note": "Entities have no classes; spawn by cloning a template entity instead."
     },
     {
       "pattern": "Super.BeginPlay",

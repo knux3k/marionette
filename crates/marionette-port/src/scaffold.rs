@@ -18,7 +18,7 @@ pub fn script_name(c: &Class) -> String {
 
 /// Hooks in the order they are written, with the source methods that feed each, in the
 /// order their bodies are placed.
-const ORDER: [(&str, &[&str]); 4] = [
+const ORDER: [(&str, &[&str]); 5] = [
     (
         "start",
         &[
@@ -45,6 +45,7 @@ const ORDER: [(&str, &[&str]); 4] = [
     ),
     ("onCollisionEnter", &[]),
     ("onCollisionExit", &[]),
+    ("onDestroy", &[]),
 ];
 
 fn default_for(ts: &str, kind: &str) -> String {
@@ -320,7 +321,7 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
         }
         if hook == "update" {
             for (name, (pattern, h)) in &c.bound {
-                if h.is_empty() {
+                if h.is_empty() && !crate::is_timer_binder(pattern) {
                     let _ = writeln!(
                         out,
                         "  // {name}(self) was bound with {pattern}; call it here when its action or due tick fires."
@@ -367,8 +368,11 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
                 m.name,
                 if h.note.is_empty() { &h.marionette } else { &h.note }
             );
-        } else if m.ret == "IEnumerator" {
-            out.push_str("// [rewrite] Coroutine: keep a step number and a due tick in self.state and advance them in update.\n");
+        } else if m.ret == "IEnumerator" || m.ret.starts_with("IEnumerator<") {
+            out.push_str(
+                "// [rewrite] Coroutine: split it at each `yield return` into exported steps; each step ends with\n\
+                 // engine.after(seconds, nextStep, arg) (WaitForSeconds) and shared locals go in self.state or arg.\n",
+            );
         } else if bound.is_some() {
             let _ = writeln!(out, "// [{}] {note}", status.as_str());
         }
@@ -388,7 +392,14 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
                 }
             })
             .collect();
-        let _ = writeln!(out, "function {ident}(self: Entity{params}): void {{");
+        // Timer callbacks must be exported: engine.after/every call exported functions by name.
+        let export =
+            if m.ret.starts_with("IEnumerator") || bound.as_deref().is_some_and(crate::is_timer_binder) {
+                "export "
+            } else {
+                ""
+            };
+        let _ = writeln!(out, "{export}function {ident}(self: Entity{params}): void {{");
         body(&mut out, a, ci, mi, &by_line);
         out.push_str("}\n\n");
     }
