@@ -58,6 +58,20 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. Add the name to `every_example_is_valid_and_canonical` in `crates/marionette-cli/tests/cli.rs`.
 6. Record the reference hash in STATE.md.
 
+## Add a game script
+
+1. Write `<name>.ts` next to the scene (or in a subfolder): an ES module exporting
+   `update(self: Entity): void` and optionally `start`, `onCollisionEnter`, `onCollisionExit`,
+   `onTriggerEnter`, `onTriggerExit`. Example: `examples/scripts/bouncer.ts`.
+2. Attach it: `component_set` with `Script` `{ "path": "<name>.ts" }` (relative to the scene).
+3. Keep state in `self.state` or components, never in module-level variables (they reset on
+   reload and restore). Use `engine.rand()`, never `Math.random` (it does not exist).
+4. Optional type check: `marionette op script_types '{}'` writes `marionette.d.ts`, then
+   `tsc --noEmit --strict --target es2023 --lib es2023 --module esnext marionette.d.ts <name>.ts`.
+5. In a live session, `script_reload` swaps in the edited file; load errors come back as
+   `script.*` diagnostics with line and column, runtime throws as `script_error` events.
+6. Add a test that runs the scene twice with the same seed and compares the state hash.
+
 ## Add a decision record
 
 1. Next number in `docs/decisions/` (four digits), file `NNNN-short-title.md`.

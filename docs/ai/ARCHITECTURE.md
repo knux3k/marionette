@@ -11,10 +11,11 @@
 | `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
 | `crates/marionette-audio` | Sound triggers, headless sound log, kira player | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
+| `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
-Planned crates (not created yet): marionette-script (line 4), marionette-providers (line 7),
+Planned crates (not created yet): marionette-providers (line 7),
 marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipeline (line 8).
 
 ## One tick
@@ -24,11 +25,14 @@ marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipelin
 
 1. `Stage::Input`: `apply_input` (`crates/marionette-input/src/lib.rs`) takes this tick's queued
    events, updates `DeviceState`, recomputes `ActionState` from the action map, records changes.
-2. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
-3. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): kinematic targets,
+2. `Stage::Script`: `run_scripts` (`crates/marionette-script/src/lib.rs`): for each entity
+   with a `Script`, in id order, the module's hooks (`start` once, contact hooks for last
+   tick's collisions, `update`). Decision 0019.
+3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
+4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
-4. `Stage::Effects`: `play_sounds` (`crates/marionette-audio/src/lib.rs`): sound events.
-5. `Stage::End`: `advance_clock` increments `SimClock.tick`.
+5. `Stage::Effects`: `play_sounds` (`crates/marionette-audio/src/lib.rs`): sound events.
+6. `Stage::End`: `advance_clock` increments `SimClock.tick`.
 
 `dt` comes from the `FixedStep` resource (default 1/60). Nothing reads the wall clock.
 
@@ -45,13 +49,13 @@ marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipelin
 - Saving: `extract` reads every registered type back through `TypedReflectSerializer`;
   `Scene::to_text` writes canonical JSON (sorted keys, entities by id, shortest floats, LF).
 - Engine-wide registry: `marionette_agent::engine::registry()` = built-ins + input, physics,
-  audio types. Generated reference: `docs/ai/reference/components.md`.
+  audio, script types. Generated reference: `docs/ai/reference/components.md`.
 
 ## Operations: one table for CLI and MCP
 
 - `crates/marionette-agent/src/lib.rs`: `op(name, description, mutating, fn)` turns a typed
   function into a table entry with schemas from `schemars`. Modules: `project.rs`, `edit.rs`,
-  `session.rs`, `observe.rs`, `scenario.rs`.
+  `session.rs`, `observe.rs`, `scenario.rs`, `library.rs`, `script.rs`.
 - CLI: `marionette op <name> '<json>'` and shortcuts in `crates/marionette-cli/src/main.rs`.
 - MCP: `crates/marionette-agent/src/mcp.rs` (rmcp, stdio), one tool per operation.
 - Read-only mode refuses mutating operations (`agent.read_only`). Generated reference:
@@ -90,6 +94,9 @@ Forbidden in simulation code (systems and anything they call):
   `+ - * /` and `sqrt` are fine; physics 2D converts angles with `atan2` only at load);
 - unseeded randomness (only `SimRng`, seeded from `--seed` / `seed`);
 - reading files during a tick (load in `Module::init`).
+
+Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
+math, `**` rewritten to `Math.pow` (decision 0019).
 
 Rapier runs with `enhanced-determinism`. Test: same scene, seed, ticks and input give the same
 hash (`crates/marionette-core/tests/acceptance.rs`, `crates/marionette-cli/tests/agent_e2e.rs`).

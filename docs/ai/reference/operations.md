@@ -41,6 +41,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
+| `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
+| `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 
 ## `project_init`
 
@@ -845,4 +847,45 @@ Output:
 | `compared_with_library` | boolean | yes | Whether file contents were compared against an owned library. |
 | `files_checked` | integer | yes |  |
 | `refusals` | array of PoolRefusal | yes |  |
+
+## `script_reload`
+
+Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `session` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ms` | number | yes | Wall-clock time of the reload in milliseconds (read, strip, compile, swap). |
+| `scripts` | array of string | yes | Script files now running (relative to the scene). |
+| `session` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `tick` | integer | yes |  |
+
+## `script_types`
+
+Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string \| null |  | Where to write, relative to the project (default `marionette.d.ts`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `path` | string | yes |  |
 

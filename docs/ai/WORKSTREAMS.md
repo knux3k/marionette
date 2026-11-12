@@ -17,7 +17,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | now | W1, W2, W3, W7 |
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
-| W7 | Scripting spike, TypeScript vs Luau (line 4) | now | any |
+| W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
@@ -91,6 +91,9 @@ and audio are not covered and are listed as later work in STATE.md.
 - Acceptance: as W2, for an Unreal export.
 
 ## W7: scripting spike (line 4)
+
+Status: done (decision 0019): TypeScript on QuickJS-ng, crate `crates/marionette-script`.
+Follow-ups listed under line 4 in STATE.md.
 
 - Scope: one-week spike, TypeScript against Luau, measured on startup, call cost and reload
   time; the winner gets typed bindings generated from the schema.
