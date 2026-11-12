@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "spring_ref",
+  "output": "image",
+  "file": "spring_ref.png",
+  "sha256": "ee8bb3dd707d93b83224798ad260a2df216fca2b46e912c69a4fd33d01c6041d",
+  "recipe": "spring_ref.recipe.json",
+  "recipe_sha256": "fc219396745972cd10e5d1305fa9c602be46f8ade64e69de1dc7c97722e3e5ba",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a big round bouncy mushroom springboard with a red cap, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "a2bab982ff8dd08a174696fabda45f632da3561cc2e2c64f6ffd0c52faf5a7a1",
+    "raw_sha256": "5b5779eeb5b732e4a706ba4cf3df30c4439fe01b220d2f3cd27e82c52968e499",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

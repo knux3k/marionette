@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "ward_wall_ref",
+  "output": "image",
+  "file": "ward_wall_ref.png",
+  "sha256": "e214e083a1732756d4d54defb5de8391a22f98e93e06b8a586885e98b232632a",
+  "recipe": "ward_wall_ref.recipe.json",
+  "recipe_sha256": "19e34834421a383daf40f8ffa768da788c43a8f49116b961cc5fec24b4b2fea9",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a low section of ruined dark stone wall with mossy cracks, long and straight, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "0199a64a8815d4079c4e6e80929c861ecaf50973c23b4be66e292b1d3a8bcb88",
+    "raw_sha256": "5f1d24916321212fa074a957e64d337094f9daeb8e2640fa80177bbd0055c33c",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

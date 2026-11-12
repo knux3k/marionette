@@ -1,11 +1,11 @@
 {
   "format": "marionette.generated_asset/1",
   "name": "keeper",
-  "output": "image",
+  "output": "texture",
   "file": "keeper.png",
-  "sha256": "831a1b8b3ea3d99b879f24f066b29af65804248dd09de0794ae4678f70d23231",
+  "sha256": "8264f2adee86eb0ada07053e092d91b8ad2c74fe18f577278f5736e673f32c78",
   "recipe": "keeper.recipe.json",
-  "recipe_sha256": "e06e40450dcdd58c5b2dde67c347b18a0a60bf7e4f8afd352e663b437e033ec9",
+  "recipe_sha256": "7d7ae7407e0193956539060c3b118e990cb6fb315b71c183c4c3c4f775b1749e",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
@@ -21,10 +21,11 @@
     "cost_usd": 0.05
   },
   "postprocess": {
-    "resized": false,
+    "background_removed": true,
+    "resized": true,
     "size": [
-      1024,
-      1024
+      256,
+      256
     ],
     "source_size": [
       1024,

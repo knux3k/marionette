@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pylon_ref",
+  "output": "image",
+  "file": "pylon_ref.png",
+  "sha256": "c4e7ebc016a3b5c3a39846568eed2e5ab6487fc095b4e8d658c886ec8371eb55",
+  "recipe": "pylon_ref.recipe.json",
+  "recipe_sha256": "1e93141fd97e4375b643e437f5f437b18b56078e1bd540096c0928798dbb628f",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a concrete floodlight pylon with a lamp head at the top, industrial, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "9d882d25f7e2fe9e531c773324c6a75e84c5c02cc6ddc102f978b82401e2d99d",
+    "raw_sha256": "73bada65cfc84a92983fd80c57749e8c9689900895e52c5ea88313f6ac6a42f7",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

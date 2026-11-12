@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "beacon_ref",
+  "output": "image",
+  "file": "beacon_ref.png",
+  "sha256": "04968e71413770f63b4d67383f021f76947530aa8f7414083829dd4f93076b8a",
+  "recipe": "beacon_ref.recipe.json",
+  "recipe_sha256": "c1b6221565d668b150a8639a10c921edadfd423da0a5a5a059296516bee843f4",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a tall stone beacon tower with a brazier on top, sky-temple style, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "4531ab56a4b93a28e5f41c64a3b818b14d77389e30967f0b6883f5aaa2a0968e",
+    "raw_sha256": "c80a72fd8370736d0cca464ff457f9fba10a5fe46f2136f0f2d992eb7a01ae9d",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

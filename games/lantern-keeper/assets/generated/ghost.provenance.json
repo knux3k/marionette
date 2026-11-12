@@ -1,11 +1,11 @@
 {
   "format": "marionette.generated_asset/1",
   "name": "ghost",
-  "output": "image",
+  "output": "texture",
   "file": "ghost.png",
-  "sha256": "b41aa297eb7ce2d619c97d4dcafa5aee51b64b8bc69c82f5d45be7349ab26513",
+  "sha256": "aced33cc1ab372480411c52eabc1c57f1e858615f48ec9addb4671b61428516e",
   "recipe": "ghost.recipe.json",
-  "recipe_sha256": "4631626bc9591986ddf5728259367c5791e657829a2913ab4111ae0513310dbc",
+  "recipe_sha256": "6ef9d98370619f923e0ce565c91b7a29a0294872ddd070aac3a855510481fafc",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
@@ -21,10 +21,11 @@
     "cost_usd": 0.05
   },
   "postprocess": {
-    "resized": false,
+    "background_removed": true,
+    "resized": true,
     "size": [
-      1024,
-      1024
+      256,
+      256
     ],
     "source_size": [
       1024,

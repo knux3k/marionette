@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "marker_tower_ref",
+  "output": "image",
+  "file": "marker_tower_ref.png",
+  "sha256": "175afa2a1a4789f67c86f5ce68222a5690f5f340bedb8a31c9cc74bbabd60189",
+  "recipe": "marker_tower_ref.recipe.json",
+  "recipe_sha256": "673b1f5a6707566bf8182a4be601835ba0e3fb2c9a8cc8f6fa406aca88533c2b",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a tall wooden trackside marker tower with a lamp on top and checkered flag panel, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "0bf482e6b7cd518d89314be97ec4a2a32cb9394dc9cb8b51a69fd1ffbfd2290f",
+    "raw_sha256": "6ddf73fc28ea91c2487b074d4b4638ab233f7caab7fec79031d5d43c495be997",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

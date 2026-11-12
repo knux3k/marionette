@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "island_ref",
+  "output": "image",
+  "file": "island_ref.png",
+  "sha256": "2d53a07648ec6d6661a1b41fdadc34089eb0d89e38b4e659318f9f42077100eb",
+  "recipe": "island_ref.recipe.json",
+  "recipe_sha256": "5e58715df600a6ef41769018b6e1b51224f4a97f2b1ed42be7a7cb40f49ce64a",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a floating grassy sky island with a rocky underside tapering to a point, flat walkable top, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "ee2c159df4862aa329a2e9eed10a0d95c2e45fff1eaba78048159d6ad346c0ff",
+    "raw_sha256": "d94769e1903d4c2fb01ac1624f60ad51b0daaedc2ffcd4207d45f3a42c20b73b",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

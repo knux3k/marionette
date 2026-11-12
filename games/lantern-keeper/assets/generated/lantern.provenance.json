@@ -1,11 +1,11 @@
 {
   "format": "marionette.generated_asset/1",
   "name": "lantern",
-  "output": "image",
+  "output": "texture",
   "file": "lantern.png",
-  "sha256": "419a8cc602b19ef1472f8cd9ba8e17fabbbfd5515cd0818e9175923ce5068223",
+  "sha256": "b8c29f48deeb1f920778c4ff3c9703bfb75dd59111cf1eeb5b6141dfa9bfa77e",
   "recipe": "lantern.recipe.json",
-  "recipe_sha256": "ad2ba881fe51d2317e94e415471eb3245bafdac2ca27e5524eb528ec290d1f88",
+  "recipe_sha256": "a327318d713b978bcd5cbb318368edb73e67b843cfc924616f4da9f1bb30d042",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
@@ -21,10 +21,11 @@
     "cost_usd": 0.05
   },
   "postprocess": {
-    "resized": false,
+    "background_removed": true,
+    "resized": true,
     "size": [
-      1024,
-      1024
+      256,
+      256
     ],
     "source_size": [
       1024,
