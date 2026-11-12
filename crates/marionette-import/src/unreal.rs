@@ -120,7 +120,11 @@ pub fn scan(root: &Path) -> Scan {
     let mut stack = vec![(root.to_path_buf(), String::new())];
     while let Some((dir, rel)) = stack.pop() {
         if let Some(desc) = descriptor(&dir, "uplugin") {
-            let name = stem(&desc.to_string_lossy()).to_string();
+            // From the file name only: a full path would leak machine folders into records.
+            let name = desc
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
             let prefix = if rel.is_empty() {
                 String::new()
             } else {
