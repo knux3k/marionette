@@ -120,3 +120,38 @@ fn schema_covers_every_registered_type() {
     // Deterministic output.
     assert_eq!(s, schema::schema(&default_registry()));
 }
+
+#[test]
+fn diagnostic_positions_are_exact() {
+    let bad = EXAMPLE.replacen("\"gain\": 1.5", "\"gian\": 1.5", 1);
+    let registry = default_registry();
+    let err = scene::validate(&scene::parse(&bad).unwrap(), &registry, Some(&bad))
+        .err()
+        .unwrap();
+    let d = err
+        .0
+        .iter()
+        .find(|d| d.code == codes::SCENE_UNKNOWN_FIELD)
+        .unwrap();
+    let (line, col) = (d.line.unwrap(), d.column.unwrap());
+    let text_line = bad.lines().nth(line - 1).unwrap();
+    assert_eq!(&text_line[col - 1..col + 5], "\"gian\"");
+}
+
+#[test]
+fn render_data_components_are_registered() {
+    let registry = default_registry();
+    for name in [
+        "Transform",
+        "LookAt",
+        "Camera",
+        "Model",
+        "Material",
+        "Sprite",
+        "SpriteRegion",
+        "DirectionalLight",
+        "AmbientLight",
+    ] {
+        assert!(registry.get(name).is_some(), "{name} not registered");
+    }
+}

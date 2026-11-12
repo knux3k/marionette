@@ -10,6 +10,7 @@
 use crate::registry::Registry;
 use crate::rng::SimRng;
 use crate::scene::SceneId;
+use crate::spatial;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use std::collections::BTreeMap;
@@ -70,6 +71,16 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<RandomImpulse>();
     registry.register_component::<Follow>();
     registry.register_resource::<FixedStep>();
+    // Data read by renderers (see `spatial`).
+    registry.register_component::<spatial::Transform>();
+    registry.register_component::<spatial::LookAt>();
+    registry.register_component::<spatial::Camera>();
+    registry.register_component::<spatial::Model>();
+    registry.register_component::<spatial::Material>();
+    registry.register_component::<spatial::Sprite>();
+    registry.register_component::<spatial::SpriteRegion>();
+    registry.register_component::<spatial::DirectionalLight>();
+    registry.register_resource::<spatial::AmbientLight>();
 }
 
 /// Adds the built-in systems to `schedule`, in a fixed order.

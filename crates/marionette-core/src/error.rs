@@ -88,6 +88,10 @@ impl Diagnostic {
         self.column = column;
         self
     }
+    /// Sets line and column from a `(line, column)` pair, if known.
+    pub fn at_pos(self, pos: Option<(usize, usize)>) -> Self {
+        self.at(pos.map(|p| p.0), pos.map(|p| p.1))
+    }
     pub fn entity(mut self, id: u64) -> Self {
         self.entity = Some(id);
         self

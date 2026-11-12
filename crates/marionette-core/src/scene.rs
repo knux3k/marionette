@@ -17,6 +17,7 @@
 
 use crate::builtin::SceneRef;
 use crate::error::{Diagnostic, Errors, Result, codes};
+use crate::json_span::{self, Spans, pointer};
 use crate::registry::{Kind, Registry, TypeEntry};
 use bevy_ecs::prelude::*;
 use bevy_reflect::{PartialReflect, Reflect, ReflectRef, TypeInfo};
@@ -85,6 +86,7 @@ pub fn parse(text: &str) -> Result<Scene> {
             .at(Some(e.line()), Some(e.column()))
             .fix("fix the JSON syntax at this position")
     })?;
+    let spans = json_span::spans(text);
     let mut errs = Vec::new();
     let Value::Object(root) = doc else {
         return Err(
@@ -97,7 +99,7 @@ pub fn parse(text: &str) -> Result<Scene> {
         Some(Value::String(f)) if f == FORMAT => {}
         _ => errs.push(
             Diagnostic::error(codes::SCENE_FORMAT, "missing or wrong `format`")
-                .at(locate_key(text, "format"), None)
+                .at_pos(spans.get("/format"))
                 .fix(format!("add \"format\": \"{FORMAT}\" at the top level")),
         ),
     }
@@ -111,7 +113,7 @@ pub fn parse(text: &str) -> Result<Scene> {
                     other.map_or("(missing)".into(), |v| v.to_string())
                 ),
             )
-            .at(locate_key(text, "version"), None)
+            .at_pos(spans.get("/version"))
             .fix(format!("set \"version\": {VERSION}")),
         ),
     }
@@ -119,7 +121,7 @@ pub fn parse(text: &str) -> Result<Scene> {
         if !matches!(key.as_str(), "format" | "version" | "resources" | "entities") {
             errs.push(
                 Diagnostic::error(codes::SCENE_SHAPE, format!("unknown top-level key `{key}`"))
-                    .at(locate_key(text, key), None)
+                    .at_pos(spans.get(&pointer([key])))
                     .fix("remove it; allowed keys are format, version, resources, entities"),
             );
         }
@@ -133,7 +135,7 @@ pub fn parse(text: &str) -> Result<Scene> {
         }
         Some(_) => errs.push(
             Diagnostic::error(codes::SCENE_SHAPE, "`resources` must be an object")
-                .at(locate_key(text, "resources"), None),
+                .at_pos(spans.get("/resources")),
         ),
     }
     match root.get("entities") {
@@ -143,6 +145,7 @@ pub fn parse(text: &str) -> Result<Scene> {
                     Ok(e) => scene.entities.push(e),
                     Err(msg) => errs.push(
                         Diagnostic::error(codes::SCENE_SHAPE, format!("entities[{index}]: {msg}"))
+                            .at_pos(spans.get(&format!("/entities/{index}")))
                             .fix("each entity is {\"id\": <non-zero integer>, \"name\"?: <string>, \"components\": {...}}"),
                     ),
                 }
@@ -194,18 +197,21 @@ pub struct ValidScene<'r> {
     entities: Vec<(u64, Option<String>, Vec<Typed<'r>>)>,
 }
 
-/// Checks a parsed scene against the registry. `text` (if given) is used to find line
-/// numbers. Returns every problem found, not just the first.
+/// Checks a parsed scene against the registry. `text` (if given, the text `scene` was
+/// parsed from) is used for exact line and column numbers. Returns every problem found, not just the first.
 pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -> Result<ValidScene<'r>> {
     let mut errs = Vec::new();
-    let line_of = |id: Option<u64>, needle: &str| text.and_then(|t| locate(t, id, needle));
+    let spans = text.map(json_span::spans);
+    let spans = spans.as_ref();
+    let pos = |p: &str| spans.and_then(|s| s.get(p));
 
     let mut ids = BTreeSet::new();
-    for e in &scene.entities {
+    for (i, e) in scene.entities.iter().enumerate() {
+        let id_pos = pos(&format!("/entities/{i}/id"));
         if e.id == 0 {
             errs.push(
                 Diagnostic::error(codes::SCENE_INVALID_ID, "entity id 0 is reserved")
-                    .at(line_of(Some(0), "id").map(|p| p.0), None)
+                    .at_pos(id_pos)
                     .fix("use a positive integer id"),
             );
         } else if !ids.insert(e.id) {
@@ -214,6 +220,7 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
                     codes::SCENE_DUPLICATE_ID,
                     format!("entity id {} is used more than once", e.id),
                 )
+                .at_pos(id_pos)
                 .entity(e.id)
                 .fix(format!(
                     "give one of them an unused id, e.g. {}",
@@ -231,7 +238,8 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
             name,
             value,
             None,
-            line_of(None, name),
+            spans,
+            &pointer(["resources", name]),
             &mut errs,
         ) {
             Some(v) => resources.push(v),
@@ -240,16 +248,18 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
     }
 
     let mut entities = Vec::new();
-    for e in &scene.entities {
+    for (i, e) in scene.entities.iter().enumerate() {
         let mut comps = Vec::new();
         for (name, value) in &e.components {
+            let ptr = pointer(["entities", &i.to_string(), "components", name]);
             let Some((entry, concrete)) = typed(
                 registry,
                 Kind::Component,
                 name,
                 value,
                 Some(e.id),
-                line_of(Some(e.id), name),
+                spans,
+                &ptr,
                 &mut errs,
             ) else {
                 continue;
@@ -263,10 +273,7 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
                             codes::SCENE_DANGLING_REF,
                             format!("`{name}` refers to entity {target}, which does not exist"),
                         )
-                        .at(
-                            line_of(Some(e.id), name).map(|p| p.0),
-                            line_of(Some(e.id), name).map(|p| p.1),
-                        )
+                        .at_pos(pos(&ptr))
                         .entity(e.id)
                         .component(name.clone())
                         .fix(format!(
@@ -305,12 +312,13 @@ fn typed<'r>(
     name: &str,
     value: &Value,
     entity: Option<u64>,
-    line: Option<(usize, usize)>,
+    spans: Option<&Spans>,
+    ptr: &str,
     errs: &mut Vec<Diagnostic>,
 ) -> Option<Typed<'r>> {
-    let (line, col) = line.map_or((None, None), |(l, c)| (Some(l), Some(c)));
+    let pos = |p: &str| spans.and_then(|s| s.get(p));
     let base = |code, msg: String| {
-        let mut d = Diagnostic::error(code, msg).at(line, col).component(name);
+        let mut d = Diagnostic::error(code, msg).at_pos(pos(ptr)).component(name);
         if let Some(id) = entity {
             d = d.entity(id);
         }
@@ -351,6 +359,7 @@ fn typed<'r>(
                         codes::SCENE_UNKNOWN_FIELD,
                         format!("`{name}` has no field `{key}`"),
                     )
+                    .at_pos(pos(&format!("{ptr}{}", pointer([key]))))
                     .field(key.clone())
                     .fix(fix),
                 );
@@ -438,42 +447,6 @@ fn closest<'a>(name: &str, candidates: &[&'a str]) -> Option<&'a str> {
         .filter(|(d, _)| *d <= 3)
         .min()
         .map(|(_, c)| c)
-}
-
-/// Best-effort line/column of `"needle"` inside the entity with `id` (or anywhere if
-/// `id` is `None`). Works on pretty-printed files; returns `None` if not found.
-fn locate(text: &str, id: Option<u64>, needle: &str) -> Option<(usize, usize)> {
-    let lines: Vec<&str> = text.lines().collect();
-    let start = match id {
-        None => 0,
-        Some(id) => lines.iter().position(|l| {
-            let t = l.trim_start();
-            t.strip_prefix("\"id\"")
-                .map(|r| {
-                    r.trim_start()
-                        .trim_start_matches(':')
-                        .trim()
-                        .trim_end_matches(',')
-                        == id.to_string()
-                })
-                .unwrap_or(false)
-        })?,
-    };
-    // Search the whole entity object: back to its opening brace, then forward.
-    let from = if id.is_some() {
-        (0..=start)
-            .rev()
-            .find(|&i| lines[i].trim() == "{" || lines[i].trim() == "},{")
-            .unwrap_or(start)
-    } else {
-        0
-    };
-    let quoted = format!("\"{needle}\"");
-    (from..lines.len()).find_map(|i| lines[i].find(&quoted).map(|c| (i + 1, c + 1)))
-}
-
-fn locate_key(text: &str, key: &str) -> Option<usize> {
-    locate(text, None, key).map(|(l, _)| l)
 }
 
 /// Spawns a validated scene into `world`.

@@ -5,11 +5,13 @@
 
 pub mod builtin;
 pub mod error;
+pub mod json_span;
 pub mod registry;
 pub mod rng;
 pub mod scene;
 pub mod schema;
 pub mod sim;
+pub mod spatial;
 
 pub use error::{Diagnostic, Errors, Result, Severity};
 pub use registry::{Kind, Registry};
