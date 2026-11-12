@@ -71,6 +71,21 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. In a live session, `script_reload` swaps in the edited file; load errors come back as
    `script.*` diagnostics with line and column, runtime throws as `script_error` events.
 6. Add a test that runs the scene twice with the same seed and compares the state hash.
+## Add an AI provider
+
+1. Add `crates/marionette-providers/src/<name>.rs` with a unit struct implementing `Provider`:
+   a `static ProviderInfo` (name, kinds, `key_env`, `network`, a default model for every kind
+   offered, `verified: false` until a live call has checked the format), `estimate_usd` (an
+   upper bound; unknown models at the most expensive known price) and `run`.
+2. Network plug-ins build `HttpRequest` values (keys only through `secret_header`), send them
+   with `net::send` and parse with `net::json` / `net::str_at`; job APIs use `net::poll` with
+   `ctx.max_polls` and `ctx.wait`. Never read the environment or the clock inside `run`.
+3. Add it to `providers::all()` in `crates/marionette-providers/src/lib.rs` (the order is the
+   order `provider_list` shows).
+4. Test it in `crates/marionette-providers/tests/providers.rs` with the `Scripted` transport:
+   request shape, success, job failure, bad answers, and that the key never appears in errors
+   or debug output. Update the name list in `crates/marionette-cli/tests/providers_e2e.rs`.
+5. Run `cargo run -q -p marionette-cli -- docs`; record the formats and prices in a decision.
 
 ## Add a decision record
 

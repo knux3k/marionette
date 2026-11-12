@@ -41,6 +41,10 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
+| `provider_list` | no | Lists every AI provider: kinds offered (language, image, model3d), key environment variable and whether it is set, network need, default models, and whether its API format has been verified live. |
+| `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
+| `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
+| `provider_generate` | yes | Generates text (language), a PNG (image) or a GLB (model3d) with the configured provider. Paid providers are checked against the spend cap first and every paid call is logged in .marionette/spend.jsonl. |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 
@@ -847,6 +851,100 @@ Output:
 | `compared_with_library` | boolean | yes | Whether file contents were compared against an owned library. |
 | `files_checked` | integer | yes |  |
 | `refusals` | array of PoolRefusal | yes |  |
+
+## `provider_list`
+
+Lists every AI provider: kinds offered (language, image, model3d), key environment variable and whether it is set, network need, default models, and whether its API format has been verified live.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `providers` | array of ProviderEntry | yes |  |
+
+## `provider_status`
+
+Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `cap` | SpendCap | yes |  |
+| `config_file` | boolean | yes | `providers.json` exists (otherwise every kind uses mock). |
+| `kinds` | array of KindStatus | yes |  |
+| `spent_usd` | number | yes | Total of the project's spend ledger, US dollars. |
+
+## `provider_use`
+
+Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | Kind | yes |  |
+| `model` | string \| null |  | Model name; the provider's default when absent. |
+| `provider` | string | yes | Provider name from `provider_list`. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes |  |
+| `kind` | Kind | yes |  |
+| `model` | string | yes |  |
+| `previous` | Choice | yes | The previous provider and model for this kind. |
+| `provider` | string | yes |  |
+| `readiness` | Readiness | yes |  |
+
+## `provider_generate`
+
+Generates text (language), a PNG (image) or a GLB (model3d) with the configured provider. Paid providers are checked against the spend cap first and every paid call is logged in .marionette/spend.jsonl.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `height` | integer \| null |  |  |
+| `image_url` | string \| null |  | Model3d only: reference image URL. |
+| `kind` | Kind | yes |  |
+| `max_tokens` | integer \| null |  | Language only: reply length limit in tokens (default 1024). |
+| `out` | string \| null |  | Image and model3d: output file (PNG or GLB), relative to the project. Required for those kinds. |
+| `prompt` | string \| null |  | What to generate. Optional for model3d when `image_url` is given. |
+| `system` | string \| null |  | Language only: system instructions. |
+| `width` | integer \| null |  | Image only: pixels (default 512 each). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `cost_usd` | number | yes |  |
+| `file` | string \| null |  | Image and model3d: the file written. |
+| `kind` | Kind | yes |  |
+| `model` | string | yes |  |
+| `provider` | string | yes |  |
+| `sha256` | string | yes | SHA-256 of the text (UTF-8) or of the file. |
+| `spent_usd` | number | yes | Ledger total after this call. |
+| `text` | string \| null |  | Language: the reply. |
+| `usage` | Usage \| null |  |  |
 
 ## `script_reload`
 
