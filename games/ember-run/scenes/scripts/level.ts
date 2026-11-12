@@ -1,5 +1,5 @@
 // Ember Run: the level director (proof scene, decision 0050). Follows the runner with the
-// camera, scrolls the far hills slower (parallax), slides the lift back and forth, drops rain
+// camera, drifts the rooftop backdrop and scrolls the far hills slower (parallax), slides the lift back and forth, drops rain
 // (falling sensors that pass through the ground) over the two wet stretches with a repeating
 // timer, and keeps the HUD current.
 
@@ -45,6 +45,14 @@ export function update(self: Entity): void {
   const ct = cam.get("Transform")!;
   ct.translation.x = Math.min(76, Math.max(4, rx + 3));
   cam.set("Transform", ct);
+
+  // The rooftop backdrop drifts slowly: it stays within its slack at both ends of the level.
+  const sky = engine.find("sky");
+  if (sky) {
+    const st = sky.get("Transform")!;
+    st.translation.x = ct.translation.x * 0.92 + 3.2;
+    sky.set("Transform", st);
+  }
 
   for (const h of self.state.hills) {
     const e = engine.entity(h.id)!;

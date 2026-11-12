@@ -37,6 +37,9 @@ type Mover = { x: number; y: number; dx: number; dy: number; t: number; id: numb
 
 const world = (x: number, y: number) => ({ x: x - (W - 1) / 2, y: (H - 1) / 2 - y });
 const color = (r: number, g: number, b: number, a = 1) => ({ r, g, b, a });
+const HEDGE = "../assets/generated/hedge.png";
+const LANTERN = "../assets/generated/lantern.png";
+const GHOST = "../assets/generated/ghost.png";
 const identity = { x: 0, y: 0, z: 0, w: 1 };
 const one = { x: 1, y: 1, z: 1 };
 
@@ -44,16 +47,34 @@ function tileAt(x: number, y: number): string {
   return y < 0 || y >= H || x < 0 || x >= W ? "#" : MAP[y][x];
 }
 
-function sprite(x: number, y: number, image: string, c: ReturnType<typeof color>, size: number, layer: number) {
-  return {
+type Region = { x: number; y: number; width: number; height: number };
+
+// The generated sprites sit in a 256 x 256 canvas; a region crops each to its subject, and
+// `size` is then the subject's size in tiles.
+const LANTERN_REGION: Region = { x: 87, y: 23, width: 84, height: 209 };
+const GHOST_REGION: Region = { x: 49, y: 32, width: 150, height: 190 };
+const LANTERN_SIZE = { x: 0.36, y: 0.9 };
+
+function sprite(
+  x: number,
+  y: number,
+  image: string,
+  c: ReturnType<typeof color>,
+  size: number | { x: number; y: number },
+  layer: number,
+  region?: Region,
+) {
+  const e: any = {
     Transform: { translation: { ...world(x, y), z: 0 }, rotation: identity, scale: one },
-    Sprite: { image, color: c, size: { x: size, y: size }, layer },
+    Sprite: { image, color: c, size: typeof size === "number" ? { x: size, y: size } : size, layer },
   };
+  if (region) e.SpriteRegion = region;
+  return e;
 }
 
 export function start(self: Entity): void {
   const s = self.state;
-  s.lanterns = [] as { x: number; y: number; id: number; lit: boolean }[];
+  s.lanterns = [] as { x: number; y: number; id: number; lit: boolean; glow?: number }[];
   s.ghosts = [] as Mover[];
   s.lit = 0;
   s.lives = LIVES;
@@ -62,9 +83,9 @@ export function start(self: Entity): void {
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const c = MAP[y][x];
-      if (c === "#") engine.spawn(sprite(x, y, "builtin:white", color(0.05, 0.07, 0.16), 1, 1), "wall");
+      if (c === "#") engine.spawn(sprite(x, y, HEDGE, color(0.45, 0.55, 0.5), 1, 1), "wall");
       if (c === "L") {
-        const e = engine.spawn(sprite(x, y, "builtin:circle", color(0.35, 0.3, 0.2), 0.5, 2), "lantern");
+        const e = engine.spawn(sprite(x, y, LANTERN, color(0.4, 0.4, 0.45), LANTERN_SIZE, 2, LANTERN_REGION), "lantern");
         s.lanterns.push({ x, y, id: e.id, lit: false });
       }
       if (c === "E") s.gate = { x, y, id: engine.spawn(sprite(x, y, "builtin:white", color(0.5, 0.1, 0.1), 0.9, 2), "gate").id };
@@ -85,7 +106,7 @@ export function start(self: Entity): void {
 
 export function releaseGhost(self: Entity, i: number): void {
   const home = self.state.ghostHomes[i];
-  const e = engine.spawn(sprite(home.x, home.y, "builtin:circle", color(0.75, 0.85, 1.0, 0.85), 0.8, 3), "ghost");
+  const e = engine.spawn(sprite(home.x, home.y, GHOST, color(1, 1, 1, 0.85), { x: 0.7, y: 0.88 }, 3, GHOST_REGION), "ghost");
   self.state.ghosts.push({ x: home.x, y: home.y, dx: 0, dy: 0, t: 0, id: e.id });
   engine.emit("ghost_released", { ghost: e.id });
 }
@@ -96,10 +117,16 @@ export function flicker(self: Entity): void {
     if (!l.lit) continue;
     const k = 0.8 + engine.rand() * 0.2;
     engine.entity(l.id)!.set("Sprite", {
-      image: "builtin:circle",
-      color: color(1.0 * k, 0.75 * k, 0.25 * k),
-      size: { x: 0.7, y: 0.7 },
+      image: LANTERN,
+      color: color(1.0 * k, 0.85 * k, 0.55 * k),
+      size: LANTERN_SIZE,
       layer: 2,
+    });
+    engine.entity(l.glow)!.set("Sprite", {
+      image: "builtin:circle",
+      color: color(1.0, 0.35, 0.03, 0.3 * k),
+      size: { x: 1, y: 1 },
+      layer: 1,
     });
   }
 }
@@ -185,6 +212,8 @@ export function update(self: Entity): void {
       if (!l.lit && l.x === p.x && l.y === p.y) {
         l.lit = true;
         s.lit += 1;
+        // A warm glow on the floor under the lit lantern.
+        l.glow = engine.spawn(sprite(l.x, l.y, "builtin:circle", color(1.0, 0.35, 0.03, 0.3), 1, 1), "glow").id;
         engine.emit("lantern_lit", { lantern: l.id, lit: s.lit });
         if (s.lit === s.lanterns.length) {
           engine.entity(s.gate.id)!.set("Sprite", {

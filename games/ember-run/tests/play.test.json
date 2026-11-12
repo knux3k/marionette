@@ -13,6 +13,6 @@
     { "event": { "kind": "script_error", "at_most": 0 } },
     { "field": { "entity": 30, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
     { "field": { "entity": 30, "path": "Transform.translation.x", "op": "gt", "value": 77 } },
-    { "state_hash": "7f78e375d553fe3e2452cca19320858d5fe297e27efed32fc2206ee277c75e2a" }
+    { "state_hash": "0036e1384c01ba63a1dda6bd5847c6d9be94fbff57d49dae6ce85af9f0f8671f" }
   ]
 }
