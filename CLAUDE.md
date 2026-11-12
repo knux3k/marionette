@@ -41,11 +41,38 @@ benchmarks, and run `cargo clean` when a session ends.
 - `crates/marionette-render`: wgpu renderer (PBR models, batched sprites), glTF/PNG loading,
   offscreen capture, image comparison, the window. Reads the world through `extract(&World)`
   and never writes simulation state.
-- `crates/marionette-cli`: the `marionette` binary. Thin: parse args, call core/render, print.
+- `crates/marionette-agent`: the operation set (project, edit, session, observe, test) and
+  the MCP server. The CLI and MCP both call `Agent::call`; there is no second implementation.
+- `crates/marionette-cli`: the `marionette` binary. Thin: parse args, call operations, print.
 - `examples/`: scene files (canonical: `marionette scene fmt --check`), `assets/` (only CC0
   or self-made, each listed with its source in `assets/LICENSE.md`) and `reference/` images.
 - `docs/decisions/`: one short record per decision (`NNNN-title.md`: context, decision, why,
   consequences). Add one whenever you pick between real alternatives.
+
+## The working loop (for agents using the engine)
+
+Every engine action is an operation in `marionette-agent`, reachable two ways that run the same
+code: `marionette op <name> '<json>' --json` (list them with `marionette ops`) and the MCP server
+`marionette mcp` (one tool per operation). In a game project:
+
+1. Read the project's `PROTOCOL.md` first and follow it (what to ask before building, what
+   needs approval, who to hand work to). `project_init` puts one in every new project; the
+   template is `docs/PROTOCOL.md`.
+2. Validate: `project_validate`.
+3. Edit through operations only (`scene_create`, `entity_create`, `entity_update`,
+   `entity_delete`, `component_set`, `component_remove`). Edits are validated before anything is
+   written; a refused edit changes nothing and returns diagnostics with a JSON pointer.
+4. Run: `scene_run` (one-off hash) or `session_start` / `session_step` (world kept between
+   calls). Session edits change only the live world; `session_save` writes it to a file
+   (docs/decisions/0009).
+5. Observe: `observe_tree`, `observe_query`, `observe_entity`, `observe_screenshot` (returns a
+   PNG path), `observe_logs`, `observe_stats`. Lists are paged.
+6. Test: scenarios in `tests/*.test.json` (scene, seed, ticks, assertions, optional reference
+   image), run with `test_run`. Add one for every behavior.
+
+When adding an operation: write typed input/output structs (`JsonSchema`), register it in its
+module's `ops()`, mark it mutating if it changes files or sessions, return `Errors` (never
+panic), and extend `crates/marionette-cli/tests/agent_e2e.rs`.
 
 ## Design principles (short form)
 

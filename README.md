@@ -27,6 +27,45 @@ Commands (all accept `--json`):
 | `marionette run <scene>` | Opens a window (Escape closes; `--ticks N` closes after N ticks) |
 | `marionette screenshot <scene> --ticks N --seed S --camera ID --size WxH --out f.png` | Renders one PNG with no window |
 | `marionette bench <scene> --frames N --size WxH` | Measures offscreen frame time |
+| `marionette ops` | Lists every operation with its JSON Schemas |
+| `marionette op <name> '<json>'` | Runs one operation (`--project DIR`, `--read-only`) |
+| `marionette mcp` | Serves every operation as an MCP tool over stdio |
+
+Operations: `project_init`, `project_validate`, `project_schema`, `scene_create`,
+`scene_validate`, `scene_format`, `scene_run`, `entity_create`, `entity_update`,
+`entity_delete`, `component_set`, `component_remove`, `session_start`, `session_step`,
+`session_stop`, `session_list`, `session_save`, `observe_tree`, `observe_query`,
+`observe_entity`, `observe_screenshot`, `observe_logs`, `observe_stats`, `test_run`.
+
+Start a game project:
+
+```bash
+marionette op project_init '{"path": "mygame"}' --json
+```
+
+## Connecting an agent over MCP
+
+Claude Code: add a `.mcp.json` file in the game project's folder (or run
+`claude mcp add marionette -- marionette --project . mcp`):
+
+```json
+{
+  "mcpServers": {
+    "marionette": {
+      "command": "marionette",
+      "args": ["--project", ".", "mcp"]
+    }
+  }
+}
+```
+
+Use `"args": ["--project", ".", "--read-only", "mcp"]` for an agent that may look but not change
+anything.
+
+Any other MCP client: start the process `marionette --project <game folder> mcp` and speak MCP
+over its stdin/stdout (newline-delimited JSON-RPC 2.0). Tool results carry `structuredContent`;
+failures have `isError: true` and `{"ok": false, "diagnostics": [...]}`. Agents without MCP can
+call the same operations with `marionette op <name> '<json>' --json`.
 | `marionette scene fmt <scene> [--check]` | Rewrites a scene in canonical form |
 
 ## For agents
