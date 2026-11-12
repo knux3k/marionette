@@ -20,6 +20,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
+| WA | Skeletal animation (skins, clips, GPU skinning, blend shapes) | done, follow-ups open | any |
 | WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | part 1 done, scene/script use next | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
@@ -147,6 +148,16 @@ Status: done (decision 0020). Guide: PORTING.md.
   for simple loops; zero-copy arrays in shared WebAssembly memory.
 - Acceptance for the next step: a scene whose per-tick hot loop is a job file, same state hash
   on 1 and N threads, documented in JOBS-TS.md.
+
+## WA: skeletal animation
+
+- Done: decision 0028.
+- Owns: `crates/marionette-anim`, `crates/marionette-assets/src/rig.rs`,
+  `crates/marionette-render/src/skinning.rs`, `crates/marionette-render/src/shaders/skinned.wgsl`,
+  `crates/marionette-agent/src/anim.rs`, `crates/marionette-cli/tests/animation.rs`,
+  `examples/animation.scene.json`, `examples/assets/puppet.glb`, `examples/scripts/greeter.ts`.
+- Follow-ups: root motion, additive layers and bone masks, animation events at key times, IK,
+  FBX blend shapes in the converter, a real rigged CC0 character in the proof scenes (W8).
 
 ## W9: later (line 10)
 

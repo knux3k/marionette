@@ -16,6 +16,16 @@ Rust type: `marionette_physics::components::AngularVelocity`.
 | `y` | number | yes |  |
 | `z` | number | yes |  |
 
+### `Animator`
+
+Plays skeletal animation clips of the entity's `Model` (a glTF file with animations), blended by layer weight. Change it through the `anim_play`, `anim_blend` and `anim_stop` operations or by editing the layers directly. An empty list shows the rest pose.
+
+Rust type: `marionette_anim::Animator`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `layers` | array of object {clip, fade, looping, speed, target_weight, time, weight} | yes |  |
+
 ### `AudioListener`
 
 Where sounds are heard from (usually on the camera). Pan follows the listener's right (+X) axis; gain falls off as `1 / (1 + distance)`.
