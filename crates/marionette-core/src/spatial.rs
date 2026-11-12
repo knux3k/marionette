@@ -168,3 +168,14 @@ pub struct AmbientLight {
     pub color: Color,
     pub intensity: f32,
 }
+
+/// Animated node matrices of a `Model`: one model-space, column-major matrix per glTF node,
+/// plus morph target weights per node. Written by the animation module every tick and read
+/// by the renderer. Derived data: not saved in scenes and not part of the state hash (it
+/// follows from the `Animator` component, which is).
+#[derive(Component, Debug, Clone, Default, PartialEq)]
+pub struct Pose {
+    pub nodes: Vec<[f32; 16]>,
+    /// Morph target (blend shape) weights per node; empty for nodes without morph targets.
+    pub morph_weights: Vec<Vec<f32>>,
+}

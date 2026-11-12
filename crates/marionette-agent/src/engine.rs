@@ -1,6 +1,7 @@
-//! The engine as the agent runs it: core plus the input, physics and audio modules.
+//! The engine as the agent runs it: core plus the input, physics, audio and animation modules.
 
 use crate::{Agent, write_atomic};
+use marionette_anim::AnimModule;
 use marionette_audio::AudioModule;
 use marionette_core::module::{Modules, registry_with};
 use marionette_core::{Errors, Registry, Sim};
@@ -17,6 +18,7 @@ pub fn modules() -> Modules {
                 Box::new(InputModule),
                 Box::new(PhysicsModule),
                 Box::new(AudioModule),
+                Box::new(AnimModule),
             ])
         })
         .clone()
