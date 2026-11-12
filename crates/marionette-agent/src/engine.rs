@@ -1,4 +1,4 @@
-//! The engine as the agent runs it: core plus the input, physics and audio modules.
+//! The engine as the agent runs it: core plus the input, physics, audio and script modules.
 
 use crate::{Agent, write_atomic};
 use marionette_audio::AudioModule;
@@ -6,6 +6,7 @@ use marionette_core::module::{Modules, registry_with};
 use marionette_core::{Errors, Registry, Sim};
 use marionette_input::{InputEvent, InputModule};
 use marionette_physics::PhysicsModule;
+use marionette_script::ScriptModule;
 use std::sync::{Arc, OnceLock};
 
 /// The modules every simulation runs with, in a fixed order.
@@ -17,6 +18,7 @@ pub fn modules() -> Modules {
                 Box::new(InputModule),
                 Box::new(PhysicsModule),
                 Box::new(AudioModule),
+                Box::new(ScriptModule::new(registry)),
             ])
         })
         .clone()

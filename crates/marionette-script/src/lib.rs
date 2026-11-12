@@ -1,0 +1,710 @@
+//! Marionette game scripts (plan line 4, decision 0022).
+//!
+//! Game logic is TypeScript. An entity with a [`Script`] component names a `.ts` file
+//! (relative to the scene). The file is an ES module that exports
+//! `update(self: Entity): void`; it runs once per tick for every entity that uses it, in
+//! [`Stage::Script`], in entity-id order. Types are removed with oxc (no type checking at
+//! run time) and the JavaScript runs in QuickJS-ng, an interpreter with no JIT.
+//!
+//! Determinism: the clock (`Date`, `performance`), `Math.random`, `WeakRef` and
+//! `FinalizationRegistry` are removed; `Math.sin`, `Math.pow` and every other
+//! transcendental function are replaced by the pure-Rust `libm` versions so results do not
+//! depend on the platform's C library; `**` is rewritten to `Math.pow`. Randomness comes from
+//! `engine.rand()` (the simulation's seeded RNG). Object and `Map` iteration order is fixed by
+//! the language (insertion order).
+//!
+//! State: the script host is rebuilt from the files whenever the world is (re)loaded or
+//! restored, so module-level variables do not survive snapshots. Keep per-entity state in
+//! `self.state` (saved as the [`ScriptState`] component, part of the state hash) or in
+//! components.
+//!
+//! Errors are data: a script that fails to load fails the scene load with a `script.*`
+//! diagnostic (file, line, column); an exception during a tick becomes a `script_error`
+//! event and the tick goes on.
+
+pub mod strip;
+pub mod typings;
+
+use bevy_ecs::prelude::*;
+use bevy_reflect::Reflect;
+use marionette_core::actions::ActionState;
+use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
+use marionette_core::module::{EventLog, Module, SceneDir, Stage};
+use marionette_core::rng::SimRng;
+use marionette_core::scene::{SceneId, SceneName};
+use marionette_core::{Diagnostic, Errors, Kind, Registry};
+use rquickjs::function::Opt;
+use rquickjs::{Context, Ctx, Exception, Function, Module as JsModule, Object, Persistent, Runtime, Value};
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, OnceLock};
+
+/// Stable error codes of this crate.
+pub mod codes {
+    /// A script file cannot be read.
+    pub const READ: &str = "script.read";
+    /// A script has a syntax error (types are removed before running).
+    pub const SYNTAX: &str = "script.syntax";
+    /// A script throws while loading, or its module cannot be evaluated.
+    pub const LOAD: &str = "script.load";
+    /// A script does not export an `update` function.
+    pub const NO_UPDATE: &str = "script.no_update";
+    /// The JavaScript engine could not be created.
+    pub const ENGINE: &str = "script.engine";
+}
+
+/// Runs a TypeScript file every tick. `path` is relative to the scene file. The module must
+/// export `function update(self: Entity): void` (see the generated `marionette.d.ts`).
+#[derive(Component, Reflect, Debug, Clone, PartialEq)]
+pub struct Script {
+    pub path: String,
+}
+
+/// A script's per-entity state (`self.state`), as JSON text. Written by the engine after
+/// each `update`; part of the state hash and of snapshots.
+#[derive(Component, Reflect, Debug, Clone, PartialEq)]
+pub struct ScriptState {
+    pub data: String,
+}
+
+/// The script module. `registry` builds the engine-wide type registry (scripts read and
+/// write any registered component by name).
+pub struct ScriptModule {
+    registry: fn() -> Registry,
+    cache: OnceLock<Arc<Registry>>,
+}
+
+impl ScriptModule {
+    pub fn new(registry: fn() -> Registry) -> Self {
+        Self {
+            registry,
+            cache: OnceLock::new(),
+        }
+    }
+    fn registry(&self) -> Arc<Registry> {
+        self.cache.get_or_init(|| Arc::new((self.registry)())).clone()
+    }
+}
+
+impl Module for ScriptModule {
+    fn name(&self) -> &'static str {
+        "script"
+    }
+    fn register(&self, r: &mut Registry) {
+        r.register_component::<Script>();
+        r.register_component::<ScriptState>();
+    }
+    fn add_systems(&self, schedule: &mut Schedule) {
+        schedule.add_systems(run_scripts.in_set(Stage::Script));
+    }
+    fn init(&self, world: &mut World) -> marionette_core::Result<()> {
+        let host = ScriptHost::build(world, self.registry())?;
+        match host {
+            Some(h) => world.insert_resource(h),
+            None => {
+                world.remove_resource::<ScriptHost>();
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Re-reads every script file of `world` and replaces the running scripts (hot reload).
+/// Components, `ScriptState`, the tick and the RNG are untouched. On error the old scripts
+/// keep running. Returns the script paths now loaded.
+pub fn reload(world: &mut World) -> marionette_core::Result<Vec<String>> {
+    let Some(registry) = world.get_resource::<ScriptHost>().map(|h| h.registry.clone()) else {
+        // No scripts were loaded before; nothing in this world can have changed meaning.
+        return Ok(Vec::new());
+    };
+    match ScriptHost::build(world, registry)? {
+        Some(h) => {
+            let paths = h.scripts.keys().cloned().collect();
+            world.insert_resource(h);
+            Ok(paths)
+        }
+        None => {
+            world.remove_resource::<ScriptHost>();
+            Ok(Vec::new())
+        }
+    }
+}
+
+/// The world a script call may touch. Set only while `run_scripts` calls into JavaScript.
+struct Bridge {
+    world: *mut World,
+    registry: Arc<Registry>,
+    ids: BTreeMap<u64, Entity>,
+    /// Scene names to ids; the lowest id wins when a name repeats.
+    names: BTreeMap<String, u64>,
+    current: u64,
+}
+
+// SAFETY: the pointer is only dereferenced on the thread running `run_scripts`, while that
+// function holds `&mut World` and does not use it until every script call has returned.
+unsafe impl Send for Bridge {}
+
+type Shared = Arc<Mutex<Option<Bridge>>>;
+
+/// Loaded scripts of one world. Field order matters: saved functions are dropped before
+/// the context and the runtime.
+#[derive(Resource)]
+pub struct ScriptHost {
+    scripts: BTreeMap<String, Persistent<Object<'static>>>,
+    run: Persistent<Function<'static>>,
+    bridge: Shared,
+    registry: Arc<Registry>,
+    ctx: Context,
+    _rt: Runtime,
+}
+
+// SAFETY: built with rquickjs' `parallel` feature, so `Runtime` and `Context` are Send + Sync
+// and every use of the saved values goes through `Context::with`, which locks the runtime.
+// `Persistent` is not marked Send/Sync by rquickjs only because it cannot know that; the
+// saved values here are restored only inside `with` and dropped with the host, before the
+// context and runtime (field order).
+unsafe impl Send for ScriptHost {}
+unsafe impl Sync for ScriptHost {}
+
+fn engine_error(e: impl std::fmt::Display) -> Errors {
+    Diagnostic::error(codes::ENGINE, format!("cannot create the script engine: {e}")).into()
+}
+
+/// The pending exception as text (message and stack).
+fn exception_text(ctx: &Ctx<'_>, e: rquickjs::Error) -> String {
+    if !matches!(e, rquickjs::Error::Exception) {
+        return e.to_string();
+    }
+    let v: Value = ctx.catch();
+    if let Some(ex) = v.as_exception() {
+        let msg = ex.message().unwrap_or_default();
+        let stack = ex.stack().unwrap_or_default();
+        return if stack.is_empty() {
+            msg
+        } else {
+            format!("{msg}\n{}", stack.trim_end())
+        };
+    }
+    ctx.json_stringify(v)
+        .ok()
+        .flatten()
+        .and_then(|s| s.to_string().ok())
+        .unwrap_or_else(|| "unknown exception".into())
+}
+
+impl ScriptHost {
+    /// Builds a host for every distinct `Script.path` in `world`; `None` if there are none.
+    fn build(world: &mut World, registry: Arc<Registry>) -> marionette_core::Result<Option<Self>> {
+        let mut q = world.query::<&Script>();
+        let paths: std::collections::BTreeSet<String> = q.iter(world).map(|s| s.path.clone()).collect();
+        if paths.is_empty() {
+            return Ok(None);
+        }
+        let dir = world
+            .get_resource::<SceneDir>()
+            .map(|d| d.0.clone())
+            .unwrap_or_default();
+        let mut sources = Vec::new();
+        for p in &paths {
+            let text = std::fs::read_to_string(dir.join(p)).map_err(|e| {
+                Errors::from(
+                    Diagnostic::error(codes::READ, format!("cannot read script `{p}`: {e}"))
+                        .component("Script")
+                        .fix("check `Script.path`; it is relative to the scene file"),
+                )
+            })?;
+            let js = strip::strip(&text, p).map_err(|e| {
+                Errors::from(
+                    Diagnostic::error(codes::SYNTAX, e.message)
+                        .file(p.clone())
+                        .at(e.line, e.column),
+                )
+            })?;
+            sources.push((p.clone(), js));
+        }
+
+        let rt = Runtime::new().map_err(engine_error)?;
+        // Scripts get 64 MB and a deep-enough stack; runaway scripts fail instead of hanging memory.
+        rt.set_memory_limit(64 << 20);
+        let ctx = Context::full(&rt).map_err(engine_error)?;
+        let bridge: Shared = Arc::new(Mutex::new(None));
+        ctx.with(|ctx| install(&ctx, &bridge)).map_err(engine_error)?;
+        let (scripts, run) = ctx.with(|ctx| -> marionette_core::Result<_> {
+            ctx.eval::<(), _>(include_str!("prelude.js"))
+                .map_err(|e| engine_error(exception_text(&ctx, e)))?;
+            let run: Function = ctx.globals().get("__run").map_err(engine_error)?;
+            let mut scripts = BTreeMap::new();
+            for (path, js) in sources {
+                let load_err =
+                    |msg: String| -> Errors { Diagnostic::error(codes::LOAD, msg).file(path.clone()).into() };
+                let declared = JsModule::declare(ctx.clone(), path.clone(), js)
+                    .map_err(|e| load_err(exception_text(&ctx, e)))?;
+                let (module, promise) = declared.eval().map_err(|e| load_err(exception_text(&ctx, e)))?;
+                promise
+                    .finish::<()>()
+                    .map_err(|e| load_err(exception_text(&ctx, e)))?;
+                let ns: Object = module
+                    .namespace()
+                    .map_err(|e| load_err(exception_text(&ctx, e)))?;
+                let update: Option<Function> = ns.get("update").ok();
+                if update.is_none() {
+                    return Err(
+                        Diagnostic::error(codes::NO_UPDATE, "the script does not export `update`")
+                            .file(path.clone())
+                            .fix("add `export function update(self: Entity): void { ... }`")
+                            .into(),
+                    );
+                }
+                scripts.insert(path.clone(), Persistent::save(&ctx, ns));
+            }
+            Ok((scripts, Persistent::save(&ctx, run)))
+        })?;
+        Ok(Some(Self {
+            scripts,
+            run,
+            bridge,
+            registry,
+            ctx,
+            _rt: rt,
+        }))
+    }
+}
+
+/// Runs `f` with the world of the current script call.
+fn with_world<R>(bridge: &Shared, f: impl FnOnce(&mut World, &mut Bridge) -> R) -> R {
+    let mut guard = bridge.lock().expect("script bridge lock");
+    let b = guard
+        .as_mut()
+        .expect("engine functions are only callable during update()");
+    // SAFETY: see `Bridge`.
+    let world = unsafe { &mut *b.world };
+    f(world, b)
+}
+
+fn throw(ctx: &Ctx<'_>, msg: String) -> rquickjs::Error {
+    Exception::throw_message(ctx, &msg)
+}
+
+/// Native functions behind the prelude, the deterministic math, and the removed globals.
+fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
+    let g = ctx.globals();
+    for name in ["Date", "WeakRef", "FinalizationRegistry", "performance"] {
+        g.remove(name)?;
+    }
+    let math: Object = g.get("Math")?;
+    math.remove("random")?;
+    macro_rules! math1 {
+        ($($name:literal => $f:path),* $(,)?) => {
+            $( math.set($name, Function::new(ctx.clone(), |x: f64| $f(x))?)?; )*
+        };
+    }
+    math1! {
+        "sin" => libm::sin, "cos" => libm::cos, "tan" => libm::tan,
+        "asin" => libm::asin, "acos" => libm::acos, "atan" => libm::atan,
+        "sinh" => libm::sinh, "cosh" => libm::cosh, "tanh" => libm::tanh,
+        "asinh" => libm::asinh, "acosh" => libm::acosh, "atanh" => libm::atanh,
+        "exp" => libm::exp, "expm1" => libm::expm1, "log" => libm::log, "log1p" => libm::log1p,
+        "log2" => libm::log2, "log10" => libm::log10, "cbrt" => libm::cbrt,
+    }
+    math.set(
+        "atan2",
+        Function::new(ctx.clone(), |y: f64, x: f64| libm::atan2(y, x))?,
+    )?;
+    math.set("pow", Function::new(ctx.clone(), |x: f64, y: f64| js_pow(x, y))?)?;
+    math.set(
+        "hypot",
+        Function::new(ctx.clone(), |args: rquickjs::function::Rest<f64>| {
+            args.0.iter().fold(0.0, |acc: f64, &v| libm::hypot(acc, v))
+        })?,
+    )?;
+
+    let h = Object::new(ctx.clone())?;
+    let b = bridge.clone();
+    h.set(
+        "get",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, name: String| -> rquickjs::Result<Option<String>> {
+                with_world(&b, |world, br| {
+                    let entry = component(&ctx, &br.registry, &name)?;
+                    let Some(&e) = br.ids.get(&(id as u64)) else {
+                        return Ok(None);
+                    };
+                    Ok(entry
+                        .get(world, Some(e))
+                        .map(|v| br.registry.to_json(v.as_partial_reflect()).to_string()))
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "set",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, name: String, json: String| -> rquickjs::Result<()> {
+                with_world(&b, |world, br| {
+                    let entry = component(&ctx, &br.registry, &name)?;
+                    let Some(&e) = br.ids.get(&(id as u64)) else {
+                        return Err(throw(
+                            &ctx,
+                            format!("script.no_entity: entity {id} does not exist"),
+                        ));
+                    };
+                    let value: serde_json::Value = serde_json::from_str(&json)
+                        .map_err(|err| throw(&ctx, format!("script.bad_value: {err}")))?;
+                    let boxed = br.registry.from_json(entry, &value).map_err(|err| {
+                        throw(
+                            &ctx,
+                            format!("script.bad_value: `{name}` does not accept {value}: {err}"),
+                        )
+                    })?;
+                    entry.insert(world, Some(e), boxed);
+                    Ok(())
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "has",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, name: String| -> rquickjs::Result<bool> {
+                with_world(&b, |world, br| {
+                    let entry = component(&ctx, &br.registry, &name)?;
+                    Ok(br
+                        .ids
+                        .get(&(id as u64))
+                        .is_some_and(|&e| entry.get(world, Some(e)).is_some()))
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "exists",
+        Function::new(ctx.clone(), move |id: f64| {
+            with_world(&b, |_, br| br.ids.contains_key(&(id as u64)))
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "find",
+        Function::new(ctx.clone(), move |name: String| {
+            with_world(&b, |_, br| br.names.get(&name).map(|id| *id as f64))
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "query",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, name: String| -> rquickjs::Result<Vec<f64>> {
+                with_world(&b, |world, br| {
+                    let entry = component(&ctx, &br.registry, &name)?;
+                    Ok(br
+                        .ids
+                        .iter()
+                        .filter(|(_, e)| entry.get(world, Some(**e)).is_some())
+                        .map(|(id, _)| *id as f64)
+                        .collect())
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "resource",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, name: String| -> rquickjs::Result<Option<String>> {
+                with_world(&b, |world, br| {
+                    let entry = br
+                        .registry
+                        .get(&name)
+                        .filter(|e| e.kind == Kind::Resource)
+                        .ok_or_else(|| {
+                            throw(
+                                &ctx,
+                                format!("script.unknown_resource: `{name}` is not a resource"),
+                            )
+                        })?;
+                    Ok(entry
+                        .get(world, None)
+                        .map(|v| br.registry.to_json(v.as_partial_reflect()).to_string()))
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "tick",
+        Function::new(ctx.clone(), move || {
+            with_world(&b, |w, _| {
+                w.get_resource::<SimClock>().map_or(0, |c| c.tick) as f64
+            })
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "dt",
+        Function::new(ctx.clone(), move || {
+            with_world(&b, |w, _| {
+                w.get_resource::<FixedStep>().map_or(DEFAULT_DT, |s| s.dt) as f64
+            })
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "rand",
+        Function::new(ctx.clone(), move || {
+            with_world(&b, |w, _| {
+                w.get_resource_mut::<SimRng>()
+                    .map_or(0.0, |mut r| r.next_f32() as f64)
+            })
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "action",
+        Function::new(ctx.clone(), move |name: String| {
+            action(&b, &name, |a, n| a.value(n) as f64)
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "pressed",
+        Function::new(ctx.clone(), move |name: String| {
+            action(&b, &name, |a, n| a.pressed(n))
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "just_pressed",
+        Function::new(ctx.clone(), move |name: String| {
+            action(&b, &name, |a, n| a.just_pressed(n))
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "emit",
+        Function::new(ctx.clone(), move |kind: String, detail: Opt<String>| {
+            event(
+                &b,
+                &kind,
+                detail
+                    .0
+                    .and_then(|d| serde_json::from_str(&d).ok())
+                    .unwrap_or_default(),
+            )
+        })?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "log",
+        Function::new(ctx.clone(), move |message: String| {
+            event(&b, "script_log", serde_json::json!({ "message": message }))
+        })?,
+    )?;
+    g.set("__host", h)?;
+    Ok(())
+}
+
+fn action<R: Default>(bridge: &Shared, name: &str, f: impl FnOnce(&ActionState, &str) -> R) -> R {
+    with_world(bridge, |w, _| {
+        w.get_resource::<ActionState>()
+            .map(|a| f(a, name))
+            .unwrap_or_default()
+    })
+}
+
+fn event(bridge: &Shared, kind: &str, detail: serde_json::Value) {
+    with_world(bridge, |w, br| {
+        let tick = w.get_resource::<SimClock>().map_or(0, |c| c.tick);
+        if let Some(mut log) = w.get_resource_mut::<EventLog>() {
+            log.push(tick, kind, Some(br.current), None, detail);
+        }
+    })
+}
+
+fn component<'r>(
+    ctx: &Ctx<'_>,
+    registry: &'r Registry,
+    name: &str,
+) -> rquickjs::Result<&'r marionette_core::registry::TypeEntry> {
+    registry
+        .get(name)
+        .filter(|e| e.kind == Kind::Component)
+        .ok_or_else(|| {
+            throw(
+                ctx,
+                format!("script.unknown_component: `{name}` is not a component"),
+            )
+        })
+}
+
+/// `Math.pow` with the special cases JavaScript defines and C's `pow` does not.
+fn js_pow(x: f64, y: f64) -> f64 {
+    if y.is_nan() || ((x == 1.0 || x == -1.0) && y.is_infinite()) {
+        return f64::NAN;
+    }
+    libm::pow(x, y)
+}
+
+/// Contacts of one entity from the previous tick, other entity ids in event order.
+#[derive(Default, Clone)]
+struct Contacts {
+    collision_enter: Vec<f64>,
+    collision_exit: Vec<f64>,
+    trigger_enter: Vec<f64>,
+    trigger_exit: Vec<f64>,
+}
+
+impl<'js> rquickjs::IntoJs<'js> for Contacts {
+    fn into_js(self, ctx: &Ctx<'js>) -> rquickjs::Result<Value<'js>> {
+        let o = Object::new(ctx.clone())?;
+        o.set("collisionEnter", self.collision_enter)?;
+        o.set("collisionExit", self.collision_exit)?;
+        o.set("triggerEnter", self.trigger_enter)?;
+        o.set("triggerExit", self.trigger_exit)?;
+        Ok(o.into_value())
+    }
+}
+
+fn contacts(
+    world: &World,
+    ids: &BTreeMap<u64, Entity>,
+    registry: &Registry,
+    tick: u64,
+) -> BTreeMap<u64, Contacts> {
+    let mut out: BTreeMap<u64, Contacts> = BTreeMap::new();
+    if tick == 0 {
+        return out;
+    }
+    let mut events = Vec::new();
+    for ev in world.resource::<EventLog>().events.iter().rev() {
+        if ev.tick < tick - 1 {
+            break;
+        }
+        let enter = match ev.kind.as_str() {
+            "collision_started" => true,
+            "collision_stopped" => false,
+            _ => continue,
+        };
+        if let (true, Some(a), Some(b)) = (ev.tick == tick - 1, ev.entity, ev.other) {
+            events.push((enter, a, b));
+        }
+    }
+    events.reverse();
+    let sensor = |id: u64| -> bool {
+        let (Some(entry), Some(&e)) = (registry.get("Collider"), ids.get(&id)) else {
+            return false;
+        };
+        entry.get(world, Some(e)).is_some_and(|v| {
+            registry.to_json(v.as_partial_reflect())["sensor"] == serde_json::Value::Bool(true)
+        })
+    };
+    for (enter, a, b) in events {
+        let trigger = sensor(a) || sensor(b);
+        for (me, other) in [(a, b), (b, a)] {
+            let c = out.entry(me).or_default();
+            let list = match (trigger, enter) {
+                (false, true) => &mut c.collision_enter,
+                (false, false) => &mut c.collision_exit,
+                (true, true) => &mut c.trigger_enter,
+                (true, false) => &mut c.trigger_exit,
+            };
+            list.push(other as f64);
+        }
+    }
+    out
+}
+
+/// One entity's finished turn: id, entity, state before, state after or error, script path.
+type Turn = (u64, Entity, Option<String>, Result<String, String>, String);
+
+/// The `Stage::Script` system: calls every script's `update` for its entities, by id.
+fn run_scripts(world: &mut World) {
+    let Some(host) = world.remove_resource::<ScriptHost>() else {
+        return;
+    };
+    let mut q = world.query::<(
+        Entity,
+        &SceneId,
+        Option<&SceneName>,
+        Option<&Script>,
+        Option<&ScriptState>,
+    )>();
+    let mut ids = BTreeMap::new();
+    let mut names = BTreeMap::new();
+    let mut work = Vec::new();
+    for (e, id, name, script, state) in q.iter(world) {
+        ids.insert(id.0, e);
+        if let Some(n) = name {
+            names
+                .entry(n.0.clone())
+                .and_modify(|v: &mut u64| *v = (*v).min(id.0))
+                .or_insert(id.0);
+        }
+        if let Some(s) = script {
+            work.push((id.0, e, s.path.clone(), state.map(|s| s.data.clone())));
+        }
+    }
+    work.sort_by_key(|w| w.0);
+    let tick = world.get_resource::<SimClock>().map_or(0, |c| c.tick);
+    // Physics runs after scripts, so contacts reported last tick are delivered now. A
+    // contact involving a sensor collider goes to the trigger hooks instead (Unity's split).
+    let contacts = contacts(world, &ids, &host.registry, tick);
+    *host.bridge.lock().expect("script bridge lock") = Some(Bridge {
+        world: world as *mut World,
+        registry: host.registry.clone(),
+        ids,
+        names,
+        current: 0,
+    });
+    // Results are applied after all calls, so no `&mut World` is used while scripts run.
+    let mut results: Vec<Turn> = Vec::new();
+    host.ctx.with(|ctx| {
+        let run = host.run.clone().restore(&ctx).expect("prelude function");
+        for (id, e, path, state) in work {
+            let Some(module) = host.scripts.get(&path) else {
+                continue;
+            };
+            let module = module.clone().restore(&ctx).expect("script module");
+            let c = contacts.get(&id).cloned().unwrap_or_default();
+            if let Some(b) = host.bridge.lock().expect("script bridge lock").as_mut() {
+                b.current = id;
+            }
+            // No `ScriptState` yet means `start` has not run for this entity.
+            let is_new = state.is_none();
+            let state_in = state.clone().unwrap_or_else(|| "{}".into());
+            let r = run
+                .call::<_, String>((module, id as f64, state_in, is_new, c))
+                .map_err(|err| exception_text(&ctx, err));
+            while ctx.execute_pending_job() {}
+            results.push((id, e, state, r, path));
+        }
+    });
+    *host.bridge.lock().expect("script bridge lock") = None;
+    for (id, e, before, r, path) in results {
+        match r {
+            Ok(after) => {
+                // Always written the first time, so its presence records that `start` ran.
+                let changed = before.as_ref() != Some(&after);
+                if changed {
+                    world.entity_mut(e).insert(ScriptState { data: after });
+                }
+            }
+            Err(message) => {
+                world.resource_mut::<EventLog>().push(
+                    tick,
+                    "script_error",
+                    Some(id),
+                    None,
+                    serde_json::json!({ "script": path, "message": message }),
+                );
+            }
+        }
+    }
+    world.insert_resource(host);
+}

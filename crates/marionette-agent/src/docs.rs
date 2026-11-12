@@ -160,3 +160,8 @@ pub fn components(agent: &Agent) -> String {
     }
     out
 }
+
+/// `docs/ai/reference/marionette.d.ts`: the script declarations (same text as `script_types`).
+pub fn script_typings(agent: &Agent) -> String {
+    marionette_script::typings::typings(agent.registry())
+}

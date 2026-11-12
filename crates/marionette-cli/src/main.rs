@@ -328,6 +328,7 @@ fn generated(agent: &Agent) -> Vec<(&'static str, String)> {
         ("operations.md", marionette_agent::docs::operations(agent)),
         ("components.md", marionette_agent::docs::components(agent)),
         ("cli.md", cli.replace("marionette.exe", "marionette")),
+        ("marionette.d.ts", marionette_agent::docs::script_typings(agent)),
     ]
 }
 

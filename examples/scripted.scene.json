@@ -1,0 +1,79 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Position": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 1,
+      "name": "anchor"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": -2.0,
+          "y": 3.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/bouncer.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 10,
+      "name": "ball-1"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 0.5,
+          "y": 5.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/bouncer.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 11,
+      "name": "ball-2"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 2.5,
+          "y": 1.5,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/bouncer.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 12,
+      "name": "ball-3"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}

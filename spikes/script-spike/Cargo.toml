@@ -1,0 +1,24 @@
+[package]
+name = "script-spike"
+description = "Line 4 spike: TypeScript (QuickJS + oxc type stripping) against Luau (mlua). Not a workspace member; see docs/decisions/0022-scripting-language.md."
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace]
+
+[features]
+default = []
+luau = ["dep:mlua"]
+ts = ["dep:rquickjs", "dep:oxc"]
+
+[dependencies]
+mlua = { version = "0.12", features = ["luau", "serde"], optional = true }
+rquickjs = { version = "0.14", optional = true }
+oxc = { version = "0.158", features = ["transformer", "codegen", "semantic"], optional = true }
+sha2 = "0.11"
+serde_json = "1"
+
+[profile.release]
+debug = false
