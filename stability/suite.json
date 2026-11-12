@@ -177,6 +177,46 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "proof-cloudstep",
+      "description": "Proof game cloudstep: played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/cloudstep/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-cloudstep-render",
+      "description": "Proof game cloudstep played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/cloudstep/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-ember-run",
+      "description": "Proof game ember-run: played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/ember-run/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-ember-run-render",
+      "description": "Proof game ember-run played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/ember-run/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "agent-session",
       "description": "AI-driven building: a live session stepped, observed, edited, snapshotted and restored through operations (CLI and MCP run the same code).",
       "kind": "agent",
