@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library and Unity importer done (W2); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -144,8 +144,18 @@ Line 8, owned library and Unity import (W2, decision 0018):
   tests in `src/tar.rs`, `src/license.rs`, `src/unity.rs`.
 - `crates/marionette-cli/tests/library_e2e.rs`: `library_operations_import_list_and_gate`,
   `operations_never_write_license_declarations`.
-- Not covered yet: FBX/OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+- FBX to glTF (decision 0027): `crates/marionette-import/tests/fbx.rs`
+  (`static_meshes_match_blenders_own_gltf`, `embedded_textures_are_used`,
+  `other_axis_systems_and_units_give_the_same_world`,
+  `fbx_7500_from_a_second_writer_matches_blenders_reading`,
+  `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
+  `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `unity_project_fbx_is_converted_with_its_texture`,
+  `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
+  conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
+- Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
+  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
+  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
@@ -193,11 +203,13 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 - Reference-image tolerance on AMD, Intel, Apple GPUs and on Mesa lavapipe.
 - OGG decoding (enabled in kira; no OGG file has been decoded).
 - Live gamepad input (format supported, no backend).
-- Unity importer against real Unity files: all fixtures are synthetic (built in the tests). No
-  real project or Asset Store `.unitypackage` has been imported (reading the owner's Unity
-  projects needs the owner's permission). The URP Unlit and HDRP Lit shader GUIDs in
-  `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
-  layout used by `package_location_reason` are from memory, not checked against a Unity install.
+- Unity importer on real files: checked read-only (dry run plus the readers, nothing written)
+  on one Unity project and five `.unitypackage` files (about 5,700 files, 214 materials, 800
+  textures). Engine content was refused as expected (TextMesh Pro resources, XR Interaction
+  Toolkit samples), every material parsed, the URP Lit and URP Unlit shader GUIDs matched real
+  materials, and two JPEGs saved as `.png` led to content sniffing. Still unchecked: the HDRP
+  Lit GUID, the Asset Store cache folder layout (no cache on the test machine), a real import
+  with a person-written declaration, and binary-serialized materials.
 - The pasted-license phrase list catches common wording only; it never grants permission.
 - Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
   and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
@@ -209,6 +221,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   pin depends on the locked `png` encoder version.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
   Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
+- FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
+  FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
+  curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
 ## Session log
 
@@ -222,8 +237,10 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | W2 follow-up: read-only check against real Unity files; textures typed by content, not extension. | this commit |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
+| 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
