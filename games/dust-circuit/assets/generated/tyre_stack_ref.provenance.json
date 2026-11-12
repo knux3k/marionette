@@ -3,21 +3,21 @@
   "name": "tyre_stack_ref",
   "output": "image",
   "file": "tyre_stack_ref.png",
-  "sha256": "d41191150f8a1b0243a8713973ffbbbd71f8d961f642ffdb6cb17f39d7721866",
+  "sha256": "9fbfea960db25c791e57b2517695fe03034b7975d548cc10a0347bc7fb3d4c6e",
   "recipe": "tyre_stack_ref.recipe.json",
-  "recipe_sha256": "c308cc8a1f58216e6d576e5a0dd2ae0c00c463db942ce732b7ea1132f965d539",
+  "recipe_sha256": "0058f3f81a8fbbf0f8c611130efd330c76c766d8c98da5ea9d3c8309a42e7be0",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
     "provider_verified": false,
     "kind": "image",
-    "prompt": "a stack of four black racing tyres strapped together, trackside barrier, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "prompt": "one single vertical column of exactly four black racing tyres lying flat on top of each other, strapped together, one trackside barrier stack only, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
     "size": [
       1024,
       1024
     ],
-    "cache_key": "ef4d916b850345376b46231a6a1a81c91923d8592b494c50944e2e3c10de303f",
-    "raw_sha256": "a3ed7a40844bb128441263d3a6df90a8424f809e119ed7f063957ce0676428ed",
+    "cache_key": "a3ae4f41c4d2a6558f0bb94366f42722c5106211621896eaf649b0fe22411665",
+    "raw_sha256": "4c043fc561a4cad26b3d0578eabe1c11b4510ce7df0791551fb2b2bbf8305293",
     "cost_usd": 0.05
   },
   "postprocess": {
