@@ -35,3 +35,23 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
+
+  perf:
+    name: performance budgets (release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Software Vulkan, ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev
+      - name: Timing budgets (decision 0021; docs/ai/PERFORMANCE.md)
+        run: cargo test --release --locked -p marionette-cli --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        env:
+          MARIONETTE_REQUIRE_GPU: "1"
+          MARIONETTE_BUDGET_SCALE: "2"
+          WGPU_BACKEND: vulkan
+      - name: Factory benchmark numbers (for the log)
+        run: |
+          cargo run --release --locked -q -p marionette-cli -- op perf_factory_scene '{"out":"target/factory4.scene.json","scale":4}'
+          cargo run --release --locked -q -p marionette-cli -- op perf_sim '{"scene":"target/factory4.scene.json","ticks":1200}'

@@ -22,6 +22,8 @@ pub struct FrameData {
     pub ambient: Vec3,
     /// UI elements, sorted by layer then entity id (drawn last, in screen pixels).
     pub ui: Vec<UiDraw>,
+    /// Copies drawn from modules' arrays (see `BulkDrawHooks`), in hook order.
+    pub bulk: Vec<marionette_core::spatial::BulkDraw>,
 }
 
 /// What a UI node looks like.
@@ -103,7 +105,9 @@ impl CameraData {
 #[derive(Debug, Clone)]
 pub struct MeshDraw {
     pub entity: u64,
-    pub asset: String,
+    /// Model asset path. Shared between draws of the same asset (one allocation per asset
+    /// per frame, not per entity).
+    pub asset: std::sync::Arc<str>,
     pub world: Mat4,
     pub material: Option<Material>,
 }
@@ -135,14 +139,12 @@ fn rgba(c: Color) -> [f32; 4] {
     [c.r, c.g, c.b, c.a]
 }
 
-/// World matrix of an entity from `Position`/`Transform`/`LookAt`.
-fn world_matrix(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> Mat4 {
-    let t = world.get::<Transform>(e).copied().unwrap_or_default();
-    let translation = world
-        .get::<Position>(e)
-        .map_or(v3(t.translation), |p| Vec3::new(p.x, p.y, p.z));
+/// World matrix from `Position`/`Transform`/`LookAt`.
+fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
+    let t = t.copied().unwrap_or_default();
+    let translation = p.map_or(v3(t.translation), |p| Vec3::new(p.x, p.y, p.z));
     let mut rotation = Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize();
-    if let Some(look) = world.get::<LookAt>(e) {
+    if let Some(look) = look {
         let target = v3(look.target);
         if (target - translation).length_squared() > 1e-12 {
             let up = v3(look.up).normalize_or(Vec3::Y);
@@ -153,75 +155,116 @@ fn world_matrix(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> 
     Mat4::from_scale_rotation_translation(v3(t.scale), rotation, translation)
 }
 
-/// Extracts the frame from the world.
+/// Extracts the frame from the world at its latest tick.
 pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
+    extract_at(world, 1.0)
+}
+
+/// Extracts the frame `alpha` (0..1) of the way from the latest tick toward the next one
+/// (passed to bulk draw hooks for smooth motion between ticks).
+///
+/// One query per kind of drawable (each visits only the archetypes that have it), then a
+/// sort by stable id, so the cost is proportional to what is drawn, and the order does not
+/// depend on storage layout.
+pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
+    use marionette_core::ui::{UiImage, UiNode, UiRect, UiText};
     let mut frame = FrameData::default();
     if let Some(a) = world.get_resource::<AmbientLight>() {
         frame.ambient = Vec3::new(a.color.r, a.color.g, a.color.b) * a.intensity;
     }
-    let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId)>() else {
-        return frame;
-    };
-    let mut entities: Vec<(u64, bevy_ecs::entity::Entity)> = q.iter(world).map(|(e, id)| (id.0, e)).collect();
-    entities.sort_by_key(|(id, _)| *id);
+    type Place<'a> = (Option<&'a Transform>, Option<&'a Position>, Option<&'a LookAt>);
 
-    for (id, e) in entities {
-        let mat = world_matrix(world, e);
-        if let Some(camera) = world.get::<Camera>(e) {
+    if let Some(mut q) = world.try_query::<(&SceneId, &Camera, Place)>() {
+        for (id, camera, (t, p, l)) in q.iter(world) {
             frame.cameras.push(CameraData {
-                entity: id,
+                entity: id.0,
                 camera: *camera,
-                world: mat,
+                world: world_matrix(t, p, l),
             });
         }
-        if let Some(model) = world.get::<Model>(e) {
+        frame.cameras.sort_by_key(|c| c.entity);
+    }
+    if let Some(mut q) = world.try_query::<(&SceneId, &Model, Option<&Material>, Place)>() {
+        // Share one allocation per distinct asset path.
+        let mut names: std::collections::BTreeMap<&str, std::sync::Arc<str>> = Default::default();
+        frame.meshes.reserve(q.iter(world).len());
+        for (id, model, material, (t, p, l)) in q.iter(world) {
+            let asset = names
+                .entry(model.asset.as_str())
+                .or_insert_with(|| model.asset.as_str().into())
+                .clone();
             frame.meshes.push(MeshDraw {
-                entity: id,
-                asset: model.asset.clone(),
-                world: mat,
-                material: world.get::<Material>(e).copied(),
+                entity: id.0,
+                asset,
+                world: world_matrix(t, p, l),
+                material: material.copied(),
             });
         }
-        if let Some(sprite) = world.get::<Sprite>(e) {
+        frame.meshes.sort_unstable_by_key(|m| m.entity);
+    }
+    if let Some(mut q) = world.try_query::<(&SceneId, &Sprite, Option<&SpriteRegion>, Place)>() {
+        for (id, sprite, region, (t, p, l)) in q.iter(world) {
             frame.sprites.push(SpriteDraw {
-                entity: id,
+                entity: id.0,
                 image: sprite.image.clone(),
-                world: mat,
+                world: world_matrix(t, p, l),
                 size: Vec2::new(sprite.size.x, sprite.size.y),
                 color: rgba(sprite.color),
                 layer: sprite.layer,
-                region: world.get::<SpriteRegion>(e).copied(),
+                region: region.copied(),
             });
         }
-        if let Some(node) = world.get::<marionette_core::ui::UiNode>(e) {
-            use marionette_core::ui::{UiImage, UiRect, UiText};
-            let look = if let Some(r) = world.get::<UiRect>(e) {
+    }
+    if let Some(mut q) = world.try_query::<(
+        &SceneId,
+        &UiNode,
+        Option<&UiRect>,
+        Option<&UiText>,
+        Option<&UiImage>,
+    )>() {
+        for (id, node, r, t, i) in q.iter(world) {
+            let look = if let Some(r) = r {
                 Some(UiLook::Rect { color: rgba(r.color) })
-            } else if let Some(t) = world.get::<UiText>(e) {
+            } else if let Some(t) = t {
                 Some(UiLook::Text {
                     text: t.text.clone(),
                     size: t.size,
                     color: rgba(t.color),
                 })
             } else {
-                world.get::<UiImage>(e).map(|i| UiLook::Image {
+                i.map(|i| UiLook::Image {
                     image: i.image.clone(),
                     color: rgba(i.color),
                 })
             };
             if let Some(look) = look {
                 frame.ui.push(UiDraw {
-                    entity: id,
+                    entity: id.0,
                     node: *node,
                     look,
                 });
             }
         }
-        if let Some(light) = world.get::<DirectionalLight>(e) {
-            frame.lights.push(LightData {
-                direction: v3(light.direction).normalize_or(Vec3::NEG_Y),
-                radiance: Vec3::new(light.color.r, light.color.g, light.color.b) * light.illuminance,
-            });
+    }
+    if let Some(mut q) = world.try_query::<(&SceneId, &DirectionalLight)>() {
+        let mut lights: Vec<(u64, LightData)> = q
+            .iter(world)
+            .map(|(id, light)| {
+                (
+                    id.0,
+                    LightData {
+                        direction: v3(light.direction).normalize_or(Vec3::NEG_Y),
+                        radiance: Vec3::new(light.color.r, light.color.g, light.color.b) * light.illuminance,
+                    },
+                )
+            })
+            .collect();
+        lights.sort_by_key(|(id, _)| *id);
+        frame.lights = lights.into_iter().map(|(_, l)| l).collect();
+    }
+    if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
+        for hook in &hooks.0 {
+            hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);
         }
     }
     // Stable draw order for sprites: layer, then entity id.

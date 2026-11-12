@@ -38,6 +38,9 @@ pub struct TypeEntry {
     insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
     /// Reads the value. `entity` is `None` for resources.
     get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
+    /// Makes the type known to a world before any value exists (components only), so
+    /// queries that mention it optionally work on every world.
+    init: fn(&mut World),
 }
 
 impl TypeEntry {
@@ -84,6 +87,9 @@ impl Registry {
     {
         self.add::<T>(
             Kind::Component,
+            |world| {
+                world.register_component::<T>();
+            },
             |world, entity, value| {
                 let entity = entity.expect("component insert needs an entity");
                 world.entity_mut(entity).insert(downcast::<T>(value));
@@ -101,6 +107,7 @@ impl Registry {
     {
         self.add::<T>(
             Kind::Resource,
+            |_| {},
             |world, _, value| world.insert_resource(downcast::<T>(value)),
             |world, _| world.get_resource::<T>().map(|r| r as &dyn Reflect),
         );
@@ -109,6 +116,7 @@ impl Registry {
     fn add<T>(
         &mut self,
         kind: Kind,
+        init: fn(&mut World),
         insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
         get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
     ) where
@@ -142,8 +150,17 @@ impl Registry {
                 from_reflect: boxed_from_reflect::<T>,
                 insert,
                 get,
+                init,
             },
         );
+    }
+
+    /// Registers every component type with `world` (no values are created), so systems
+    /// and renderers can build queries over optional components that no entity has yet.
+    pub fn init_world(&self, world: &mut World) {
+        for e in self.entries.values() {
+            (e.init)(world);
+        }
     }
 
     /// Looks a type up by scene name.

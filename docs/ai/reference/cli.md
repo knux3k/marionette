@@ -230,10 +230,23 @@ Options:
           Refuse every operation that changes files or sessions
 
       --size <SIZE>
-          [default: 1920x1080]
+          Image size per eye (default 1920x1080, or 2160x2160 with --headset)
 
       --msaa <MSAA>
           [default: 4]
+
+      --eyes <EYES>
+          Views per frame: 2 renders a stereo pair (each eye at --size), as a headset does
+          
+          [default: 1]
+
+      --headset
+          Emulate a headset: 2 eyes at 2160x2160 each (unless --size), 64 mm apart, and the head turning +-25 degrees every 2 seconds, so culling and batching see motion
+
+      --warmup <WARMUP>
+          Untimed ticks (each with a frame) before measuring
+          
+          [default: 30]
 
   -h, --help
           Print help
