@@ -75,6 +75,21 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `mcp_read_only_refuses_mutations_with_structured_error`,
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
+Stability suite (decision 0027, `docs/ai/STABILITY.md`):
+- `cargo run --release -q -p marionette-cli -- stability` passes all ten modes (core-headless,
+  physics-3d, physics-2d, scripted, render-3d, render-3d-play, render-2d, render-2d-play,
+  render-ui, agent-session); `--long --seeds 1` passes all ten in about 36 s with the old long
+  lengths (Linux container, lavapipe, release).
+- Tests: `crates/marionette-cli/tests/stability.rs` (`fast_suite_passes_for_every_mode`,
+  `drift_mode_reaches_the_pinned_drift_hash`, `injected_panic_is_reported_with_tick_and_backtrace`,
+  `injected_hang_is_detected`, `nondeterminism_is_caught_and_the_crash_report_replays`,
+  `budget_miss_is_caught`, `the_cli_writes_crash_reports_and_exits_1`, `memory_growth_is_caught`,
+  `every_scene_has_a_stability_mode`, `bad_suites_and_modes_are_refused_as_data`).
+- CI: job `stability` in `.github/workflows/ci.yml` (fast, release, budgets x2);
+  `.github/workflows/stability-soak.yml` (nightly long soak, 3 seeds).
+- Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670
+  bytes per event); the nightly soak fails on it until the event log is bounded.
+
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
 
@@ -157,6 +172,10 @@ Line 8, owned library and Unity import (W2, decision 0018):
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
 
+- Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
+  runs have no memory check (resident size is read on Linux only); the long lengths were raised
+  after the local run (1 hour of game time per sim mode) and have only been run for `scripted`.
+
 ## Session log
 
 | Date | What changed | Commits |
@@ -171,3 +190,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
+| 2026-11-12 | Stability suite (decision 0027): `stability_run` operation, `marionette stability`, `stability/suite.json` with ten modes, crash reports, rule and test that every scene has a mode, CI job and nightly soak, `docs/ai/STABILITY.md`. Drift hash unchanged. | branch `claude/project-thread-wqvnyq` |

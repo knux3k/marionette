@@ -1,0 +1,103 @@
+{
+  "format": "marionette.stability-suite",
+  "version": 1,
+  "seed": 1,
+  "modes": [
+    {
+      "name": "core-headless",
+      "description": "Core simulation only, no modules in use (headless server or batch run).",
+      "kind": "sim",
+      "scene": "examples/drift.scene.json",
+      "fast_ticks": 1000,
+      "long_ticks": 1000000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "physics-3d",
+      "description": "3D game: character controller, dynamic bodies, jumps, sounds, random player input.",
+      "kind": "sim",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "physics-2d",
+      "description": "2D game: 2D physics, character controller, random player input.",
+      "kind": "sim",
+      "scene": "examples/playground2d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "scripted",
+      "description": "Game logic in TypeScript scripts (hooks, engine API, seeded randomness).",
+      "kind": "sim",
+      "scene": "examples/scripted.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "render-3d",
+      "description": "3D rendering: PBR models, lights, offscreen frame every tick.",
+      "kind": "render",
+      "scene": "examples/showcase.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-3d-play",
+      "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
+      "kind": "render",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-2d",
+      "description": "2D rendering: batched sprites.",
+      "kind": "render",
+      "scene": "examples/sprites.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-2d-play",
+      "description": "2D game played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "examples/playground2d.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-ui",
+      "description": "UI-heavy screen: panels, text and buttons in screen space.",
+      "kind": "render",
+      "scene": "examples/ui.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "agent-session",
+      "description": "AI-driven building: a live session stepped, observed, edited, snapshotted and restored through operations (CLI and MCP run the same code).",
+      "kind": "agent",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 108000,
+      "tick_budget_ms": 4.0
+    }
+  ],
+  "exempt": {}
+}

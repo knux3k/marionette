@@ -25,3 +25,5 @@
 11. Errors are data: stable codes, never change what an existing code means.
 12. Reports to the owner are under 10 lines, in plain words.
 13. Every session ends by updating STATE.md (START-HERE.md, "Every session ends by").
+14. Every game mode, example scene and proof scene has a stability mode in
+    `stability/suite.json` (STABILITY.md, decision 0027); add it in the same change.

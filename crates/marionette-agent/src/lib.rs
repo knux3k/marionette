@@ -17,6 +17,7 @@ pub mod providers;
 pub mod scenario;
 pub mod script;
 pub mod session;
+pub mod stability;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -121,6 +122,7 @@ impl Agent {
             library::ops(),
             providers::ops(),
             script::ops(),
+            stability::ops(),
         ]
         .into_iter()
         .flatten()

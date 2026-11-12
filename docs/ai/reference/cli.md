@@ -13,6 +13,7 @@ Commands:
   run         Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
   screenshot  Simulate N ticks, then render one image with no window and save it as PNG
   bench       Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
+  stability   Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
   scene       Scene file tools
   ops         List every operation with its description and JSON Schemas
   op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
@@ -234,6 +235,58 @@ Options:
 
       --msaa <MSAA>
           [default: 4]
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette stability`
+
+```text
+Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
+
+Usage: stability [OPTIONS]
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --suite <SUITE>
+          Suite file
+          
+          [default: stability/suite.json]
+
+      --mode <MODES>
+          Only this mode (repeatable)
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --long
+          Long soak: long_ticks per mode and 3 seeds (default: fast, for every push)
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --seed <SEED>
+          First seed (default: the suite's seed)
+
+      --seeds <SEEDS>
+          Seeds per mode
+
+      --ticks <TICKS>
+          Ticks per mode, overriding the suite
+
+      --enforce-timing
+          Check time budgets even in a debug build
+
+      --out <OUT>
+          Report directory
+          
+          [default: target/stability]
 
   -h, --help
           Print help

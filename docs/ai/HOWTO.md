@@ -35,6 +35,15 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. Extend `crates/marionette-cli/tests/agent_e2e.rs` (CLI and, if relevant, MCP).
 6. Run `cargo run -q -p marionette-cli -- docs` and commit `docs/ai/reference/`.
 
+## Add a game mode, example or proof scene
+
+1. Add the scene (and its action map and input file) under `examples/` or the proof folder.
+2. Add a mode to `stability/suite.json`: name, description, kind (`sim`, `render` or `agent`),
+   scene, `random_input` if it has an action map, `fast_ticks`, `long_ticks`, budgets.
+3. Run `cargo run --release -q -p marionette-cli -- stability --mode <name>` and
+   `--long --seeds 1`; fix every failure (STABILITY.md, "Fixing a failure").
+4. `cargo test -p marionette-cli --test stability` checks every scene has a mode.
+
 ## Add a crate
 
 1. Create `crates/marionette-<name>/` with `Cargo.toml` using `version.workspace`,

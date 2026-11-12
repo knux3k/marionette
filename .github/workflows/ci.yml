@@ -35,3 +35,36 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
+
+  # Stability suite (decision 0027, docs/ai/STABILITY.md), fast length, release build so time
+  # budgets are checked. The same suite also runs in debug inside `cargo test` (no timing).
+  stability:
+    name: stability ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - name: System libraries on Linux (ALSA for audio, software Vulkan for GPU tests)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers
+      - name: Stability suite (fast)
+        run: cargo run --release --locked -q -p marionette-cli -- stability --out target/stability
+        env:
+          MARIONETTE_BUDGET_SCALE: "2"
+          MARIONETTE_REQUIRE_GPU: "1"
+          WGPU_BACKEND: ${{ runner.os == 'Windows' && 'dx12' || 'vulkan' }}
+          WGPU_ADAPTER_NAME: ${{ runner.os == 'Windows' && 'basic render' || '' }}
+      - name: Keep the stability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-fast-${{ matrix.os }}
+          path: target/stability
+          if-no-files-found: ignore

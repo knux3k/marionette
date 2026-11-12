@@ -24,3 +24,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0018 | Owned library, license declarations and the Unity importer | accepted |
 | 0019 | Swappable AI providers, offline by default, spending gated twice | accepted |
 | 0022 | Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau) | accepted |
+| 0027 | Stability suite per game mode: seeded soak runs, crash reports, every scene registered | accepted |
