@@ -18,6 +18,7 @@ pub mod net;
 pub mod search;
 pub mod seed;
 pub mod sources;
+pub mod verify;
 pub mod zip;
 
 use marionette_core::{Diagnostic, Errors};
@@ -45,6 +46,7 @@ pub mod codes {
     /// No acceptable proof that the asset is CC0.
     pub const NO_PROOF: &str = "pool.no_proof";
     /// A provider-generated asset without a person's CC0 dedication.
+    pub const INVALID: &str = "pool.invalid";
     pub const GENERATED: &str = "pool.generated";
     /// A license text shipped with the asset is not CC0.
     pub const NOT_CC0: &str = marionette_import::codes::POOL_NOT_CC0;
@@ -373,6 +375,11 @@ impl Pool {
             })
             .collect();
         serde_json::json!({ "format": "marionette.cc0_pool_index/1", "license": "CC0-1.0", "assets": items })
+    }
+
+    /// `index.json` as `pool_index` writes it: pretty JSON and a final newline.
+    pub fn index_text(&self) -> String {
+        serde_json::to_string_pretty(&self.index()).expect("json") + "\n"
     }
 }
 

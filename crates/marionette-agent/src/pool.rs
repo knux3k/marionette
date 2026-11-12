@@ -60,6 +60,12 @@ pub(crate) fn ops() -> Vec<Op> {
             fetch,
         ),
         op(
+            "pool_verify",
+            "Checks the whole pool without changing it: every record CC0 with proof, every file present with its SHA-256, no unlisted files, no license declarations or provenance records, online assets from a known library's domain, index.json current. Fails with one diagnostic per problem. The assets repository's CI runs it.",
+            false,
+            verify,
+        ),
+        op(
             "pool_index",
             "Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository.",
             true,
@@ -604,11 +610,33 @@ struct IndexOutput {
     assets: usize,
 }
 
+fn verify(agent: &mut Agent, input: PoolOnly) -> Result<marionette_pool::verify::VerifyReport, Errors> {
+    let p = pool(agent, input.pool.as_deref())?;
+    let report = marionette_pool::verify::verify(&p);
+    if report.problems.is_empty() {
+        return Ok(report);
+    }
+    Err(Errors(
+        report
+            .problems
+            .iter()
+            .map(|pr| {
+                let at = if pr.asset.is_empty() {
+                    "pool".to_string()
+                } else {
+                    format!("assets/{}", pr.asset)
+                };
+                Diagnostic::error(codes::INVALID, format!("{at}: {} ({})", pr.message, pr.code))
+                    .fix("re-add the asset with pool_add or pool_ingest, or run pool_index")
+            })
+            .collect(),
+    ))
+}
+
 fn index(agent: &mut Agent, input: PoolOnly) -> Result<IndexOutput, Errors> {
     let p = pool(agent, input.pool.as_deref())?;
-    let idx = p.index();
-    let n = idx["assets"].as_array().map_or(0, Vec::len);
-    let text = serde_json::to_string_pretty(&idx).expect("json") + "\n";
+    let n = p.records().len();
+    let text = p.index_text();
     marionette_pool::write_file(&p.root().join("index.json"), text.as_bytes())?;
     Ok(IndexOutput {
         path: p.root().join("index.json").to_string_lossy().into_owned(),

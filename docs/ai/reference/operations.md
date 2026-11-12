@@ -71,6 +71,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `pool_add` | yes | Adds an asset made for the project (origin `made`, with `method`) or a library archive a person downloaded (origin `online`, with `library` and `page`) to the CC0 pool. Every rule runs: owned-asset gate, generated-asset gate, license files must say CC0, proof of origin, files must load. `dry_run` checks without writing. |
 | `pool_ingest` | yes | Downloads an asset from an online CC0 library and adds it to the pool with its source and proof: Poly Haven or ambientCG by `source_id` (from asset_search), Kenney or Quaternius by archive `url` on the library's site. Downloads are checked (size, and MD5 where published). Needs network (the system curl). |
 | `pool_fetch` | yes | Copies a pooled CC0 asset into the project (default folder `assets/pool/<id>/`) and returns the path of its main file. |
+| `pool_verify` | no | Checks the whole pool without changing it: every record CC0 with proof, every file present with its SHA-256, no unlisted files, no license declarations or provenance records, online assets from a known library's domain, index.json current. Fails with one diagnostic per problem. The assets repository's CI runs it. |
 | `pool_index` | yes | Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
@@ -1655,6 +1656,26 @@ Output:
 | `id` | string | yes |  |
 | `license` | string | yes |  |
 | `main` | string \| null |  | Project-relative path of the main file, if any. |
+
+## `pool_verify`
+
+Checks the whole pool without changing it: every record CC0 with proof, every file present with its SHA-256, no unlisted files, no license declarations or provenance records, online assets from a known library's domain, index.json current. Fails with one diagnostic per problem. The assets repository's CI runs it.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pool` | string \| null |  | The pool folder (a checkout of the assets repository); defaults to MARIONETTE_POOL, then cc0_pool in the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
+| `files` | integer | yes |  |
+| `problems` | array of Problem | yes |  |
 
 ## `pool_index`
 

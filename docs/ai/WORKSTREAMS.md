@@ -24,7 +24,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | part 1 done, scene/script use next | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
-| W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
+| W0 | Owner: create the engine and assets repositories on GitHub | done | - |
 
 After W0: push (with the owner's approval), run CI, verify the drift hash on Linux, update the
 UNVERIFIED list in STATE.md.
@@ -60,8 +60,8 @@ Unity prefabs, scenes, animation clips and audio are not covered and are listed 
 
 ## W3: assets B, CC0 pool and library search
 
-Status: done (decision 0041). Publishing to the assets repository waits for the owner to create
-it; online adapters are tested against scripted answers.
+Status: done (decision 0041). The public pool is `knux3k/marionette-assets` (seeded from
+`pool/`, checked by `pool_verify` in its CI); online adapters are tested against scripted answers.
 
 - Scope: the CC0 pool (lives in the assets repository; CC0 only, source recorded), search of
   the project files, owned library and pool in that order, then free CC0 libraries online (Poly

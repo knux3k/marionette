@@ -172,4 +172,22 @@ fn pool_operations_search_fetch_add_and_refuse() {
     let (ok, v) = op(&project, "pool_index", &json!({ "pool": pool }));
     assert!(ok, "{v:#}");
     assert_eq!(v["result"]["assets"], 6);
+
+    // The whole pool verifies; a changed file and an unlisted file are both reported.
+    let (ok, v) = op(&project, "pool_verify", &json!({ "pool": pool }));
+    assert!(ok, "{v:#}");
+    assert_eq!(v["result"]["assets"], 6);
+    std::fs::write(pool_dir.join("assets/blip/notes.txt"), "x").unwrap();
+    std::fs::write(pool_dir.join("assets/red-bricks/texture.png"), LEAF).unwrap();
+    let (ok, v) = op(&project, "pool_verify", &json!({ "pool": pool }));
+    assert!(!ok);
+    let messages: Vec<&str> = v["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["message"].as_str().unwrap())
+        .collect();
+    assert_eq!(messages.len(), 2, "{messages:?}");
+    assert!(messages.iter().any(|m| m.contains("file_unlisted")));
+    assert!(messages.iter().any(|m| m.contains("file_changed")));
 }

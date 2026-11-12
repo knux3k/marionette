@@ -19,8 +19,9 @@ Kenney and Quaternius.
 - **Layout.** A pool is a folder: `pool.json` (format `marionette.cc0_pool/1`), one
   `assets/<id>/` per asset with its files and `asset.json` (format `marionette.pool_asset/1`:
   kind, name, tags, files with SHA-256, main file, engine readiness, source, license), and a
-  generated `index.json`. The engine repository's `pool/` is the seed; the assets repository
-  will hold the same layout. Location: operation input `pool`, then `MARIONETTE_POOL`, then
+  generated `index.json`. The engine repository's `pool/` is the seed; the public pool is the
+  assets repository `knux3k/marionette-assets`, which holds the same layout at its root (see
+  "Where the pool lives" below). Location: operation input `pool`, then `MARIONETTE_POOL`, then
   `cc0_pool` in the user config file. A pool inside an owned library is refused.
 - **Provenance and proof.** `source.origin` is `made` (made for the project: `method` required,
   `generator` when code in the engine repository makes it; dedicated to the public domain under
@@ -87,3 +88,18 @@ Kenney and Quaternius.
 - Not covered: Poly Haven HDRIs, ambientCG non-material types, sounds from online libraries,
   ZIP64 archives, publishing to the assets repository (it does not exist yet), a live run of
   the online adapters from this build (the cloud build machine's network blocks those sites).
+
+## Where the pool lives (added 2026-11-12)
+
+The public pool is the repository `knux3k/marionette-assets`, the pool layout at its root plus a
+README, the CC0 legal text and contributing rules. It started as a copy of the engine's `pool/`
+seed. Assets are added only through `pool_add` or `pool_ingest` against a checkout of it
+(`"pool": "<checkout>"`, or `MARIONETTE_POOL`, or `cc0_pool` in the user config), followed by
+`pool_index`; nobody edits records by hand. The engine keeps `pool/` as the seed, rebuilt by its
+generator and checked by tests.
+
+`pool_verify` checks a pool without changing it: records readable and CC0 with proof, every
+listed file present with its SHA-256, no unlisted files, no owned-asset declarations or
+generated-asset provenance records, online assets on a known library's domains, `index.json`
+current. It fails with one diagnostic per problem. The assets repository's CI builds the engine's
+CLI and runs it on every push and pull request, so a hand edit or a stray file cannot land.
