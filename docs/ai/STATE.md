@@ -129,6 +129,23 @@ Line 8, owned library and Unity import (W2, decision 0018):
   false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
+- `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
+  (`unity_classes_roles_hooks_and_components`, `unity_api_uses_actions_gaps_and_hazards`,
+  `unreal_classes_definitions_and_bindings`, `blueprint_text_is_read`,
+  `reports_and_skeletons_are_deterministic`, `skeletons_keep_every_original_line_and_annotate_calls`,
+  `skeletons_type_check_with_tsc` (skips without `tsc`), `missing_and_empty_sources_are_errors`);
+  unit tests in `src/lex.rs`, `src/map.rs` (tables valid, no duplicates, every hazard has a note),
+  `src/convert.rs` (axis behaviour of Unity and Unreal Euler angles).
+- `crates/marionette-cli/tests/port_e2e.rs`: `scan_map_and_convert`,
+  `scaffold_writes_skeletons_and_refuses_to_overwrite`.
+- Operations `port_scan`, `port_map`, `port_scaffold`, `port_convert`; generated
+  `docs/ai/reference/porting-map.md`. Drift hash unchanged.
+- Next: when the script runtime adds spawning/despawn, `onDestroy`, timers or raycasts, flip
+  the matching table entries (PORTING.md, "Extending the tables"). Unity prefab and scene YAML
+  to Marionette scenes (entities, components, converted transforms) would remove most of step 3
+  of the porting recipe.
+
 ## Performance (workstream WP)
 
 Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
@@ -164,6 +181,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
+  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
+  those engines, not checked against their current documentation.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
   Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 
@@ -181,4 +201,5 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
+| 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
