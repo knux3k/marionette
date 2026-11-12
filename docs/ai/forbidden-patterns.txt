@@ -1,0 +1,13 @@
+# Generic patterns that must not appear in any tracked file (checked by
+# crates/marionette-cli/tests/repo_hygiene.rs, case-insensitive substring match).
+# Do not add real names here: the rule is "no identifying details", and this file
+# is itself tracked. Email addresses are detected separately by shape.
+:\users\
+:/users/
+/c/users/
+/home/
+/mnt/c/
+claude.ai/artifact
+claude.ai/code
+claude.ai/chat
+users.noreply.github.com
