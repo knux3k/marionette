@@ -47,6 +47,7 @@ the games needed (listed below).
 | `Entity.name` in scripts | Telling pickups, hazards and checkpoints apart in a trigger hook. |
 | `engine.send(target, kind, detail)` and the `onMessage(self, message)` hook; waiting messages live in the `ScriptInbox` component | Enemies report breaches and projectiles report kills to a director, and a spawner gives a new projectile its heading. Kept as a component, so messages are in the state hash and in snapshots. Delivered at the start of the target's next turn, after contact hooks and before timers: the same tick if the target runs later in id order, otherwise the next tick. |
 | `RoundCuboid { half_extents, border }` collider shape (3D and 2D) | Dust Circuit's cars are box-shaped characters. With a sharp `Cuboid` the character controller snagged on the flat ground and moved about a third of the distance it should; a ball moved freely but does not fit a car. Rounding the edges keeps the box's outer size (the border is cut from the inside) and slides cleanly. A new variant, so existing scenes and hashes are unchanged. |
+| Mouse movement as `axis:MouseX` / `axis:MouseY` (window: pixels / 100 per tick, clamped to -1..1, for the one tick after the movement, then 0) | A first-person game needs mouse look; only mouse buttons reached the game. A per-tick value fits the action model (scripts scale it by their own sensitivity) and records and replays like any other input. Live behaviour on a desktop is untested in the cloud. |
 
 ## Why
 

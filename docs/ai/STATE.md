@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); Unreal importer done (W6, decision 0029); pool and search (W3) and generation (W4) not started. |
-| 9 | Six proof scenes | In progress (W8, decision 0050): 5 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): all 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`); stability-suite entries and generated assets still to come. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -312,3 +312,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
 | 2026-11-12 | W8: `games/crystal-ward` (top-down 3D); script messages (`engine.send`, `onMessage`, `ScriptInbox`); porting map points Raycast, SendMessage and CharacterController.Move at the script API. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/dust-circuit` (racing, AI rival); `RoundCuboid` collider shape for box-shaped characters. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: `games/signal-yard` (first-person shooter, played and recorded through MCP sessions); mouse axes `axis:MouseX`/`axis:MouseY` from the window. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |

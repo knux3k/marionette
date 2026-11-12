@@ -1,0 +1,1203 @@
+{
+  "entities": [
+    {
+      "components": {
+        "AudioListener": {
+          "volume": 2.0
+        },
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.03,
+            "g": 0.012,
+            "r": 0.01
+          },
+          "projection": {
+            "Perspective": {
+              "far": 200.0,
+              "fov_y_degrees": 70.0,
+              "near": 0.05
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.6,
+            "z": 12.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 0.7,
+            "r": 0.6
+          },
+          "direction": {
+            "x": 0.4,
+            "y": -1.0,
+            "z": -0.3
+          },
+          "illuminance": 0.9
+        }
+      },
+      "id": 2,
+      "name": "moon"
+    },
+    {
+      "components": {
+        "Script": {
+          "path": "scripts/yard.ts"
+        }
+      },
+      "id": 3,
+      "name": "yard"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "TopLeft",
+          "layer": 1,
+          "offset": {
+            "x": 12.0,
+            "y": 10.0
+          },
+          "size": {
+            "x": 700.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.8,
+            "g": 1.0,
+            "r": 0.7
+          },
+          "size": 16.0,
+          "text": "HP 5  WAVE 0/3  DRONES 0  SCORE 0"
+        }
+      },
+      "id": 4,
+      "name": "hud"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": -80.0
+          },
+          "size": {
+            "x": 600.0,
+            "y": 28.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.8,
+            "g": 1.0,
+            "r": 0.7
+          },
+          "size": 28.0,
+          "text": ""
+        }
+      },
+      "id": 5,
+      "name": "banner"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "size": {
+            "x": 16.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 1.0,
+            "r": 0.9
+          },
+          "size": 16.0,
+          "text": "+"
+        }
+      },
+      "id": 6,
+      "name": "crosshair"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.05,
+            "g": 0.045,
+            "r": 0.04
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 44.0,
+            "y": 1.0,
+            "z": 44.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": -0.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 7,
+      "name": "ground"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.07,
+            "r": 0.08
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 42.0,
+            "y": 4.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.0,
+            "z": -20.5
+          }
+        }
+      },
+      "id": 8,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.07,
+            "r": 0.08
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 42.0,
+            "y": 4.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.0,
+            "z": 20.5
+          }
+        }
+      },
+      "id": 9,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.07,
+            "r": 0.08
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 4.0,
+            "z": 40.0
+          },
+          "translation": {
+            "x": -20.5,
+            "y": 2.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.07,
+            "r": 0.08
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 4.0,
+            "z": 40.0
+          },
+          "translation": {
+            "x": 20.5,
+            "y": 2.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 11,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.984808,
+            "x": 0.0,
+            "y": 0.173648,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 1.6,
+            "z": 1.6
+          },
+          "translation": {
+            "x": -6.0,
+            "y": 0.8,
+            "z": 4.0
+          }
+        }
+      },
+      "id": 12,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.991445,
+            "x": 0.0,
+            "y": -0.130526,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.4,
+            "y": 1.4,
+            "z": 1.4
+          },
+          "translation": {
+            "x": 5.0,
+            "y": 0.7,
+            "z": 6.0
+          }
+        }
+      },
+      "id": 13,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.0,
+            "y": 2.0,
+            "z": 2.0
+          },
+          "translation": {
+            "x": -11.0,
+            "y": 1.0,
+            "z": -4.0
+          }
+        }
+      },
+      "id": 14,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.953717,
+            "x": 0.0,
+            "y": 0.300706,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 1.6,
+            "z": 1.6
+          },
+          "translation": {
+            "x": 10.0,
+            "y": 0.8,
+            "z": -6.0
+          }
+        }
+      },
+      "id": 15,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.996195,
+            "x": 0.0,
+            "y": 0.087156,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 1.2,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.6,
+            "z": -2.0
+          }
+        }
+      },
+      "id": 16,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.976296,
+            "x": 0.0,
+            "y": -0.21644,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 1.6,
+            "z": 1.6
+          },
+          "translation": {
+            "x": -4.0,
+            "y": 0.8,
+            "z": -12.0
+          }
+        }
+      },
+      "id": 17,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.15,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.4,
+            "y": 1.4,
+            "z": 1.4
+          },
+          "translation": {
+            "x": 13.0,
+            "y": 0.7,
+            "z": 8.0
+          }
+        }
+      },
+      "id": 18,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 6.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -14.0,
+            "y": 3.0,
+            "z": -14.0
+          }
+        }
+      },
+      "id": 19,
+      "name": "pylon"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 6.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 14.0,
+            "y": 3.0,
+            "z": -14.0
+          }
+        }
+      },
+      "id": 20,
+      "name": "pylon"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 6.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -14.0,
+            "y": 3.0,
+            "z": 10.0
+          }
+        }
+      },
+      "id": 21,
+      "name": "pylon"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 6.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 14.0,
+            "y": 3.0,
+            "z": 14.0
+          }
+        }
+      },
+      "id": 22,
+      "name": "pylon"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.3,
+            "g": 0.25,
+            "r": 0.2
+          },
+          "metallic": 0.0,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 4.0,
+            "z": -17.0
+          }
+        }
+      },
+      "id": 23,
+      "name": "relay"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.15,
+            "r": 1.0
+          },
+          "metallic": 0.0,
+          "roughness": 0.2
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 8.4,
+            "z": -17.0
+          }
+        }
+      },
+      "id": 24,
+      "name": "beacon"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 16.0,
+          "jump": "jump",
+          "jump_speed": 5.5,
+          "mass": 80.0,
+          "move_forward": "move_forward",
+          "move_x": "move_x",
+          "speed": 5.5
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.5,
+              "radius": 0.4
+            }
+          }
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Script": {
+          "path": "scripts/player.ts"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 12.0
+          }
+        }
+      },
+      "id": 30,
+      "name": "player"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.18,
+            "g": 0.16,
+            "r": 0.15
+          },
+          "metallic": 0.8,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.045,
+            "y": 0.06,
+            "z": 0.3
+          },
+          "translation": {
+            "x": 0.16,
+            "y": 1.46,
+            "z": 11.5
+          }
+        }
+      },
+      "id": 31,
+      "name": "gun"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 0.6,
+        "g": 0.45,
+        "r": 0.35
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "main.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": -9.81,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}

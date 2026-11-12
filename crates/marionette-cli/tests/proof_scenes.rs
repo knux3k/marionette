@@ -14,12 +14,13 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// The proof games. A new game is added here and in `docs/ai/PROOF-SCENES.md`.
-const GAMES: [&str; 5] = [
+const GAMES: [&str; 6] = [
     "lantern-keeper",
     "ember-run",
     "cloudstep",
     "crystal-ward",
     "dust-circuit",
+    "signal-yard",
 ];
 
 fn games_dir() -> PathBuf {

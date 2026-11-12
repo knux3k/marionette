@@ -14,7 +14,7 @@ that play the game with scripted input. Decision 0050. Proof test:
 | Cloudstep | 3D platformer | `games/cloudstep/` | done: reaches the beacon in about 11 s with scripted input, no falls; walking straight ahead falls again and again |
 | Crystal Ward | top-down 3D | `games/crystal-ward/` | done: survives five waves with scripted input (crystal at 5 of 10); idle loses in wave 3 |
 | Dust Circuit | racing | `games/dust-circuit/` | done: three laps against an AI rival; the scripted drive (analog steering) wins in about 24.6 s with no wall contact; idle loses to the rival |
-| (planned) | first-person shooter | - | not started |
+| Signal Yard | first-person shooter | `games/signal-yard/` | done: an agent played it through the MCP server (closed loop, aim speed capped) and its recording clears three drone waves in about 24.6 s, taking 3 hits; idle loses to wave 1 |
 
 ## Recipe for a new proof game
 
@@ -39,7 +39,8 @@ detail threw; scenario paths into `ScriptState.data`; event counts in assertions
 observe operations; sensors report every body type and do not block characters; scripts
 teleport bodies through `Transform`; script messages (`engine.send`); the `RoundCuboid`
 collider (a sharp `Cuboid` character snags on flat ground and covers about a third of its
-distance; Dust Circuit's cars use rounded boxes).
+distance; Dust Circuit's cars use rounded boxes); mouse look (`axis:MouseX` / `axis:MouseY` from the
+window).
 
 Open (not fixed here; each names the cheapest fix seen):
 
@@ -61,3 +62,6 @@ Open (not fixed here; each names the cheapest fix seen):
 | G14 | A character with a sharp `Cuboid` collider drags on flat ground (Rapier's character controller keeps hitting the ground face). `RoundCuboid` fixes it, but nothing warns about the plain box. | Dust Circuit | `scene_validate` warns when a `CharacterController` entity has a `Cuboid` collider. |
 | G15 | Curves are built from many straight boxes (48 wall segments in Dust Circuit); there is no curved or spline mesh, and the track surface is the ground. | Dust Circuit | A swept-profile mesh along a path (walls, roads, rails) built from a recipe operation. |
 | G16 | A car is one box: without parenting (G4) wheels and a cabin would each need a script copying the body's pose, one tick late. | Dust Circuit | Part of G4; or a generated car model (G6). |
+| G17 | The window does not lock or hide the cursor, and live gamepads are not read at all (`pad:` and stick `axis:` inputs only come from input files). Mouse look works but the cursor can leave the window. | Signal Yard | Cursor lock while a scene binds `axis:MouseX`/`axis:MouseY`; a gamepad backend (gilrs) feeding the same input names. |
+| G18 | No point or spot lights and no emissive materials: tracers, orbs and the relay beacon are only bright colors, and a night scene cannot be lit locally. | Signal Yard | `PointLight` component and an `emissive` color on `Material`. |
+| G19 | No hit feedback beyond what scripts fake: no decals, particles or screen flash. | Signal Yard | A small particle burst component (count, speed, lifetime, color) and a UI flash helper. |
