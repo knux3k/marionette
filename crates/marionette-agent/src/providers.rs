@@ -296,6 +296,7 @@ fn generate(agent: &mut Agent, input: GenerateInput) -> Result<GenerateOutput, E
         }
     };
     let (cfg, _) = ProvidersConfig::load(agent.root())?;
+    let cfg = providers::endpoints::apply_models(cfg, &env_var);
     let ledger = agent.root().join(spend::LEDGER_PATH);
     let wait = |_: u32| std::thread::sleep(std::time::Duration::from_secs(3));
     let transport = transport();

@@ -726,3 +726,52 @@ fn qwen_finds_the_keys_region_after_a_401() {
         "only the successful call"
     );
 }
+
+#[test]
+fn qwen_uses_a_personal_plan_address_with_the_synchronous_api() {
+    let dir = temp_dir("qwen-plan");
+    let ledger = dir.join("spend.jsonl");
+    let cfg = config(Kind::Image, "qwen", Some("qwen-image-3.0-pro"));
+    let key = vars(&[
+        ("DASHSCOPE_API_KEY", FAKE_KEY),
+        (
+            "MARIONETTE_QWEN_ENDPOINT",
+            "https://token-plan.example-region.maas.aliyuncs.com/compatible-mode/v1",
+        ),
+    ]);
+    let t = Scripted::new(vec![
+        HttpResponse::json(
+            200,
+            &json!({ "output": { "choices": [ { "message": { "role": "assistant",
+                "content": [ { "image": "https://files.example/plan.png" } ] } } ] },
+                "usage": { "image_count": 1 } }),
+        ),
+        HttpResponse {
+            status: 200,
+            body: png_bytes(),
+        },
+    ]);
+    run(&cfg, &key, &t, &ledger, cap(1.0), &image("a crate", 64, 64)).unwrap();
+    let sent = t.sent();
+    assert_eq!(
+        sent[0].url,
+        "https://token-plan.example-region.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+    );
+    let body: serde_json::Value = serde_json::from_slice(sent[0].body.as_ref().unwrap()).unwrap();
+    assert_eq!(body["model"], "qwen-image-3.0-pro");
+    assert_eq!(body["input"]["messages"][0]["content"][0]["text"], "a crate");
+    assert_eq!(body["parameters"]["size"], "64*64");
+    assert_eq!(sent[1].url, "https://files.example/plan.png");
+    assert_eq!(sent.len(), 2, "no region search and no polling on a plan address");
+
+    // A refused key on the plan address is an error at once, nothing charged.
+    let t = Scripted::new(vec![HttpResponse::json(
+        401,
+        &json!({ "code": "InvalidApiKey", "message": "Invalid API-key provided." }),
+    )]);
+    let e = run(&cfg, &key, &t, &ledger, cap(1.0), &image("x", 64, 64)).unwrap_err();
+    assert_eq!(code(&e), codes::HTTP);
+    assert!(!format!("{e:?}").contains(FAKE_KEY));
+    assert_eq!(t.sent().len(), 1);
+    assert_eq!(spend::entries(&ledger).unwrap().len(), 1);
+}

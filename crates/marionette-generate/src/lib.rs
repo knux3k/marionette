@@ -453,6 +453,7 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
     let all = recipe::load_dir(&dir, target.dir)?;
     let selected = select(all, target.names, target.dir)?;
     let (base, _) = ProvidersConfig::load(target.root)?;
+    let base = providers::endpoints::apply_models(base, env.var);
     let entries = spend::entries(&target.ledger()).unwrap_or_default();
     let spent = entries.iter().fold(0.0, |acc, e| acc + e.cost_usd);
     // Planned estimates per cap scope: a provider with its own cap, or the shared total ("").
@@ -612,6 +613,7 @@ pub fn run(target: &Target, env: &Env, offline: bool) -> Result<RunReport, Error
     let all = recipe::load_dir(&dir, target.dir)?;
     let selected = select(all, target.names, target.dir)?;
     let (base, _) = ProvidersConfig::load(target.root)?;
+    let base = providers::endpoints::apply_models(base, env.var);
     let ledger = target.ledger();
 
     // Whole-run budget first, so a run never spends half and then stops at the cap.

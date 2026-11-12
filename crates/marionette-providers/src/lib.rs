@@ -16,6 +16,7 @@
 
 pub mod claude;
 pub mod config;
+pub mod endpoints;
 pub mod glb;
 pub mod http;
 pub mod keys;
@@ -252,6 +253,8 @@ pub struct Ctx<'a> {
     pub model: &'a str,
     /// The API key, if the provider needs one. Never logged or returned.
     pub key: Option<&'a str>,
+    /// The person's own address for this provider, if they set one (decision 0046).
+    pub endpoint: Option<&'a str>,
     pub transport: &'a dyn Transport,
     /// Most status checks a job-based provider makes before giving up.
     pub max_polls: u32,
@@ -414,9 +417,11 @@ pub fn generate(config: &ProvidersConfig, env: &Env, request: &Request) -> Resul
     } else {
         spend::total(env.ledger).unwrap_or(0.0)
     };
+    let endpoint = endpoints::personal(env.var, info.name).url;
     let ctx = Ctx {
         model: &model,
         key: key.as_deref(),
+        endpoint: endpoint.as_deref(),
         transport: env.transport,
         max_polls: env.max_polls,
         wait: env.wait,
