@@ -169,3 +169,17 @@ fn every_path_in_ai_docs_exists() {
         missing.join("\n")
     );
 }
+
+#[test]
+fn generated_reference_docs_are_current() {
+    let out = Command::new(env!("CARGO_BIN_EXE_marionette"))
+        .current_dir(repo())
+        .args(["docs", "--check", "--json"])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "run `marionette docs` and commit: {}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+}

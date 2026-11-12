@@ -6,6 +6,7 @@
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
 
+pub mod docs;
 pub mod edit;
 pub mod engine;
 pub mod mcp;
