@@ -86,12 +86,11 @@ fn right_axis(q: [f32; 4]) -> [f32; 3] {
     ]
 }
 
+/// A listener: (position, rotation quaternion) and master gain.
+pub type Listener = (([f32; 3], [f32; 4]), f32);
+
 /// Gain and pan of a source heard by a listener.
-pub fn spatialize(
-    listener: Option<(([f32; 3], [f32; 4]), f32)>,
-    source: [f32; 3],
-    volume: f32,
-) -> (f32, f32) {
+pub fn spatialize(listener: Option<Listener>, source: [f32; 3], volume: f32) -> (f32, f32) {
     let Some(((lp, lq), lv)) = listener else {
         return (volume, 0.0);
     };

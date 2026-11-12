@@ -1,0 +1,311 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.08,
+            "g": 0.04,
+            "r": 0.03
+          },
+          "projection": {
+            "Orthographic": {
+              "far": 100.0,
+              "height": 10.0,
+              "near": 0.1
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 10.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 0.3,
+            "g": 0.22,
+            "r": 0.2
+          },
+          "image": "builtin:checker",
+          "layer": 0,
+          "size": {
+            "x": 18.0,
+            "y": 10.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 2,
+      "name": "background"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 0,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "size": {
+            "x": 360.0,
+            "y": 220.0
+          }
+        },
+        "UiRect": {
+          "color": {
+            "a": 0.85,
+            "b": 0.1,
+            "g": 0.06,
+            "r": 0.05
+          }
+        }
+      },
+      "id": 10,
+      "name": "panel"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": -70.0
+          },
+          "size": {
+            "x": 240.0,
+            "y": 24.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "size": 24.0,
+          "text": "MARIONETTE"
+        }
+      },
+      "id": 11,
+      "name": "title"
+    },
+    {
+      "components": {
+        "UiButton": {
+          "action": "start"
+        },
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "size": {
+            "x": 200.0,
+            "y": 40.0
+          }
+        },
+        "UiRect": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.45,
+            "r": 0.2
+          }
+        }
+      },
+      "id": 12,
+      "name": "start-button"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 2,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "size": {
+            "x": 80.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "size": 16.0,
+          "text": "Start"
+        }
+      },
+      "id": 13,
+      "name": "start-label"
+    },
+    {
+      "components": {
+        "UiButton": {
+          "action": "quit"
+        },
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": 56.0
+          },
+          "size": {
+            "x": 200.0,
+            "y": 40.0
+          }
+        },
+        "UiRect": {
+          "color": {
+            "a": 1.0,
+            "b": 0.12,
+            "g": 0.12,
+            "r": 0.35
+          }
+        }
+      },
+      "id": 14,
+      "name": "quit-button"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 2,
+          "offset": {
+            "x": 0.0,
+            "y": 56.0
+          },
+          "size": {
+            "x": 64.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "size": 16.0,
+          "text": "Quit"
+        }
+      },
+      "id": 15,
+      "name": "quit-label"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "TopLeft",
+          "layer": 1,
+          "offset": {
+            "x": 12.0,
+            "y": 12.0
+          },
+          "size": {
+            "x": 200.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 0.95,
+            "r": 0.9
+          },
+          "size": 16.0,
+          "text": "Score: 120 / Time 0:42"
+        }
+      },
+      "id": 20,
+      "name": "score"
+    },
+    {
+      "components": {
+        "UiImage": {
+          "color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.75,
+            "r": 0.95
+          },
+          "image": "builtin:circle"
+        },
+        "UiNode": {
+          "anchor": "TopRight",
+          "layer": 1,
+          "offset": {
+            "x": -12.0,
+            "y": 12.0
+          },
+          "size": {
+            "x": 48.0,
+            "y": 48.0
+          }
+        }
+      },
+      "id": 21,
+      "name": "icon"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}

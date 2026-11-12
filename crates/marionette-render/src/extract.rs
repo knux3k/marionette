@@ -20,6 +20,43 @@ pub struct FrameData {
     pub lights: Vec<LightData>,
     /// Ambient light color times intensity (linear).
     pub ambient: Vec3,
+    /// UI elements, sorted by layer then entity id (drawn last, in screen pixels).
+    pub ui: Vec<UiDraw>,
+}
+
+/// What a UI node looks like.
+#[derive(Debug, Clone)]
+pub enum UiLook {
+    Rect {
+        color: [f32; 4],
+    },
+    Text {
+        text: String,
+        size: f32,
+        color: [f32; 4],
+    },
+    Image {
+        image: String,
+        color: [f32; 4],
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct UiDraw {
+    pub entity: u64,
+    pub node: marionette_core::ui::UiNode,
+    pub look: UiLook,
+}
+
+impl UiLook {
+    /// The texture this look samples.
+    pub fn image(&self) -> &str {
+        match self {
+            UiLook::Rect { .. } => "builtin:white",
+            UiLook::Text { .. } => "builtin:font",
+            UiLook::Image { image, .. } => image,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -156,6 +193,30 @@ pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
                 region: world.get::<SpriteRegion>(e).copied(),
             });
         }
+        if let Some(node) = world.get::<marionette_core::ui::UiNode>(e) {
+            use marionette_core::ui::{UiImage, UiRect, UiText};
+            let look = if let Some(r) = world.get::<UiRect>(e) {
+                Some(UiLook::Rect { color: rgba(r.color) })
+            } else if let Some(t) = world.get::<UiText>(e) {
+                Some(UiLook::Text {
+                    text: t.text.clone(),
+                    size: t.size,
+                    color: rgba(t.color),
+                })
+            } else {
+                world.get::<UiImage>(e).map(|i| UiLook::Image {
+                    image: i.image.clone(),
+                    color: rgba(i.color),
+                })
+            };
+            if let Some(look) = look {
+                frame.ui.push(UiDraw {
+                    entity: id,
+                    node: *node,
+                    look,
+                });
+            }
+        }
         if let Some(light) = world.get::<DirectionalLight>(e) {
             frame.lights.push(LightData {
                 direction: v3(light.direction).normalize_or(Vec3::NEG_Y),
@@ -165,6 +226,7 @@ pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
     }
     // Stable draw order for sprites: layer, then entity id.
     frame.sprites.sort_by_key(|s| (s.layer, s.entity));
+    frame.ui.sort_by_key(|u| (u.node.layer, u.entity));
     frame
 }
 

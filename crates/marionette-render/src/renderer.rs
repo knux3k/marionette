@@ -129,6 +129,12 @@ pub struct Renderer {
     sprite_textures: BTreeMap<String, Result<GpuTexture, String>>,
     sprite_vertices: Option<wgpu::Buffer>,
     sprite_indices: Option<wgpu::Buffer>,
+    ui_pipeline: wgpu::RenderPipeline,
+    ui_view_buffer: wgpu::Buffer,
+    ui_view_group: wgpu::BindGroup,
+    nearest_sampler: wgpu::Sampler,
+    ui_vertices: Option<wgpu::Buffer>,
+    ui_indices: Option<wgpu::Buffer>,
 }
 
 fn uniform_entry(
@@ -244,6 +250,12 @@ impl Renderer {
             })
         };
         let view_group = group("view", &view_layout, buffer_resource(&view_buffer, view_size));
+        let ui_view_buffer = buffer("ui view", view_size);
+        let ui_view_group = group(
+            "ui view",
+            &view_layout,
+            buffer_resource(&ui_view_buffer, view_size),
+        );
         let lights_group = group(
             "lights",
             &lights_layout,
@@ -322,35 +334,46 @@ impl Renderer {
             immediate_size: 0,
         });
         let sprite_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
-        let sprite_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sprite"),
-            layout: Some(&sprite_layout),
-            vertex: wgpu::VertexState {
-                module: &sprite_shader,
-                entry_point: Some("vs_main"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: size_of::<SpriteVertex>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &sprite_attrs,
-                })],
+        let sprite_pipeline_for = |label, depth: wgpu::DepthStencilState| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&sprite_layout),
+                vertex: wgpu::VertexState {
+                    module: &sprite_shader,
+                    entry_point: Some("vs_main"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<SpriteVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &sprite_attrs,
+                    })],
+                },
+                primitive: wgpu::PrimitiveState::default(), // sprites are visible from both sides
+                depth_stencil: Some(depth),
+                multisample,
+                fragment: Some(wgpu::FragmentState {
+                    module: &sprite_shader,
+                    entry_point: Some("fs_main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: color_format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let sprite_pipeline = sprite_pipeline_for("sprite", depth_stencil(false));
+        // UI: same shader, drawn over everything (no depth test).
+        let ui_pipeline = sprite_pipeline_for(
+            "ui",
+            wgpu::DepthStencilState {
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                ..depth_stencil(false)
             },
-            primitive: wgpu::PrimitiveState::default(), // sprites are visible from both sides
-            depth_stencil: Some(depth_stencil(false)),
-            multisample,
-            fragment: Some(wgpu::FragmentState {
-                module: &sprite_shader,
-                entry_point: Some("fs_main"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        );
 
         let sampler = |label, filter, address| {
             device.create_sampler(&wgpu::SamplerDescriptor {
@@ -366,6 +389,12 @@ impl Renderer {
         let material_sampler = sampler("material", wgpu::FilterMode::Linear, wgpu::AddressMode::Repeat);
         // Linear + clamp; atlas regions are inset by half a texel so neighbours never bleed in.
         let sprite_sampler = sampler("sprite", wgpu::FilterMode::Linear, wgpu::AddressMode::ClampToEdge);
+        // Nearest for the bitmap font, so text stays crisp at whole-number scales.
+        let nearest_sampler = sampler(
+            "nearest",
+            wgpu::FilterMode::Nearest,
+            wgpu::AddressMode::ClampToEdge,
+        );
 
         let defaults = [
             create_texture_view(device, queue, &Image::solid([255; 4], true)),
@@ -406,7 +435,47 @@ impl Renderer {
             sprite_textures: BTreeMap::new(),
             sprite_vertices: None,
             sprite_indices: None,
+            ui_pipeline,
+            ui_view_buffer,
+            ui_view_group,
+            nearest_sampler,
+            ui_vertices: None,
+            ui_indices: None,
         }
+    }
+
+    /// Loads an image (once) as a sprite/UI texture.
+    fn ensure_texture(&mut self, image: &str) -> Option<&String> {
+        if !self.sprite_textures.contains_key(image) {
+            let sampler = if image == "builtin:font" {
+                &self.nearest_sampler
+            } else {
+                &self.sprite_sampler
+            };
+            let loaded = assets::load_image(image, &self.base_dir).map(|img| {
+                let view = create_texture_view(&self.device, &self.queue, &img);
+                GpuTexture {
+                    bind_group: self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("sprite texture"),
+                        layout: &self.sprite_tex_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::TextureView(&view),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Sampler(sampler),
+                            },
+                        ],
+                    }),
+                    width: img.width,
+                    height: img.height,
+                }
+            });
+            self.sprite_textures.insert(image.to_string(), loaded);
+        }
+        self.sprite_textures[image].as_ref().err()
     }
 
     /// Loads (once) every asset the frame needs. Returns a diagnostic per asset that failed.
@@ -429,35 +498,21 @@ impl Renderer {
             }
         }
         for sprite in &frame.sprites {
-            if !self.sprite_textures.contains_key(&sprite.image) {
-                let loaded = assets::load_image(&sprite.image, &self.base_dir).map(|img| {
-                    let view = create_texture_view(&self.device, &self.queue, &img);
-                    GpuTexture {
-                        bind_group: self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("sprite texture"),
-                            layout: &self.sprite_tex_layout,
-                            entries: &[
-                                wgpu::BindGroupEntry {
-                                    binding: 0,
-                                    resource: wgpu::BindingResource::TextureView(&view),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 1,
-                                    resource: wgpu::BindingResource::Sampler(&self.sprite_sampler),
-                                },
-                            ],
-                        }),
-                        width: img.width,
-                        height: img.height,
-                    }
-                });
-                self.sprite_textures.insert(sprite.image.clone(), loaded);
-            }
-            if let Some(Err(msg)) = self.sprite_textures.get(&sprite.image) {
+            if let Some(msg) = self.ensure_texture(&sprite.image) {
                 errors.push(
                     Diagnostic::error(codes::ASSET, msg.clone())
                         .entity(sprite.entity)
                         .component("Sprite")
+                        .fix("check the PNG path (relative to the scene file) or use a builtin: image"),
+                );
+            }
+        }
+        for ui in &frame.ui {
+            if let Some(msg) = self.ensure_texture(ui.look.image()) {
+                errors.push(
+                    Diagnostic::error(codes::ASSET, msg.clone())
+                        .entity(ui.entity)
+                        .component("UiImage")
                         .fix("check the PNG path (relative to the scene file) or use a builtin: image"),
                 );
             }
@@ -684,6 +739,98 @@ impl Renderer {
             );
         }
 
+        // UI: quads in screen pixels (y down), batched by texture like sprites.
+        let (sw, sh) = (target.width as f32, target.height as f32);
+        let ui_proj = glam::camera::rh::proj::directx::orthographic(0.0, sw, sh, 0.0, -1.0, 1.0);
+        let uvu = ViewUniform {
+            view_proj: mat(ui_proj),
+            eye: [0.0, 0.0, 0.0, 1.0],
+        };
+        self.queue
+            .write_buffer(&self.ui_view_buffer, 0, bytemuck::bytes_of(&uvu));
+        let mut uv: Vec<SpriteVertex> = Vec::new();
+        let mut ui_idx: Vec<u32> = Vec::new();
+        let mut ui_batches: Vec<(&str, std::ops::Range<u32>)> = Vec::new();
+        for u in &frame.ui {
+            let image = u.look.image();
+            let Some(Ok(tex)) = self.sprite_textures.get(image) else {
+                continue;
+            };
+            let (x, y, w, h) = marionette_core::ui::layout(&u.node, sw, sh);
+            let start = ui_idx.len() as u32;
+            let mut quad =
+                |x0: f32, y0: f32, x1: f32, y1: f32, uv0: [f32; 2], uv1: [f32; 2], color: [f32; 4]| {
+                    let base = uv.len() as u32;
+                    for (px, py, tu, tv) in [
+                        (x0, y0, uv0[0], uv0[1]),
+                        (x1, y0, uv1[0], uv0[1]),
+                        (x1, y1, uv1[0], uv1[1]),
+                        (x0, y1, uv0[0], uv1[1]),
+                    ] {
+                        uv.push(SpriteVertex {
+                            position: [px, py, 0.0],
+                            uv: [tu, tv],
+                            color,
+                        });
+                    }
+                    ui_idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+                };
+            match &u.look {
+                crate::extract::UiLook::Rect { color } | crate::extract::UiLook::Image { color, .. } => {
+                    quad(x, y, x + w, y + h, [0.0, 0.0], [1.0, 1.0], *color)
+                }
+                crate::extract::UiLook::Text { text, size, color } => {
+                    use assets::font::{CELL_H, CELL_W, cell};
+                    let k = size / CELL_H as f32;
+                    let (tw, th) = (tex.width as f32, tex.height as f32);
+                    let (mut cx, mut cy) = (x, y);
+                    for ch in text.chars() {
+                        if ch == '\n' {
+                            cx = x;
+                            cy += CELL_H as f32 * k;
+                            continue;
+                        }
+                        if ch != ' ' {
+                            let (gx, gy) = cell(ch);
+                            let uv0 = [gx as f32 / tw, gy as f32 / th];
+                            let uv1 = [(gx + CELL_W) as f32 / tw, (gy + CELL_H) as f32 / th];
+                            quad(
+                                cx,
+                                cy,
+                                cx + CELL_W as f32 * k,
+                                cy + CELL_H as f32 * k,
+                                uv0,
+                                uv1,
+                                *color,
+                            );
+                        }
+                        cx += CELL_W as f32 * k;
+                    }
+                }
+            }
+            let end = ui_idx.len() as u32;
+            match ui_batches.last_mut() {
+                Some((img, range)) if *img == image => range.end = end,
+                _ => ui_batches.push((image, start..end)),
+            }
+        }
+        if !uv.is_empty() {
+            write_growable(
+                &self.device,
+                &self.queue,
+                &mut self.ui_vertices,
+                &uv,
+                wgpu::BufferUsages::VERTEX,
+            );
+            write_growable(
+                &self.device,
+                &self.queue,
+                &mut self.ui_indices,
+                &ui_idx,
+                wgpu::BufferUsages::INDEX,
+            );
+        }
+
         let c = view.clear;
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("main"),
@@ -737,6 +884,18 @@ impl Renderer {
             pass.set_vertex_buffer(0, vb.slice(..));
             pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
             for (image, range) in batches {
+                if let Some(Ok(tex)) = self.sprite_textures.get(image) {
+                    pass.set_bind_group(1, &tex.bind_group, &[]);
+                    pass.draw_indexed(range, 0, 0..1);
+                }
+            }
+        }
+        if let (Some(vb), Some(ib), false) = (&self.ui_vertices, &self.ui_indices, ui_batches.is_empty()) {
+            pass.set_pipeline(&self.ui_pipeline);
+            pass.set_bind_group(0, &self.ui_view_group, &[]);
+            pass.set_vertex_buffer(0, vb.slice(..));
+            pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+            for (image, range) in ui_batches {
                 if let Some(Ok(tex)) = self.sprite_textures.get(image) {
                     pass.set_bind_group(1, &tex.bind_group, &[]);
                     pass.draw_indexed(range, 0, 0..1);

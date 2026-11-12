@@ -73,7 +73,7 @@ pub mod d3 {
                         .transform_point3(marionette_assets::glam::Vec3::from(*p));
                     points.push(Vector::new(q.x * k[0], q.y * k[1], q.z * k[2]));
                 }
-                for t in part.mesh.indices.chunks_exact(3) {
+                for t in part.mesh.indices.as_chunks::<3>().0 {
                     tris.push([base + t[0], base + t[1], base + t[2]]);
                 }
             }

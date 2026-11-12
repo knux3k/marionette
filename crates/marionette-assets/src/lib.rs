@@ -3,6 +3,8 @@
 //! convex colliders from the same meshes.
 
 pub use glam;
+
+pub mod font;
 use glam::{Mat4, Vec2, Vec3};
 use std::path::Path;
 
@@ -316,7 +318,7 @@ fn gltf_image(d: &gltf::image::Data, srgb: bool) -> Image {
 pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {
-            format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas")
+            format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas, font")
         });
     }
     let path = base_dir.join(name);
@@ -396,6 +398,7 @@ pub fn builtin_image(name: &str) -> Option<Image> {
                 [60, 60, 70, 255]
             }
         }),
+        "font" => font::atlas(),
         // 4x2 atlas of 32x32 cells: row 0 = colored discs, row 1 = framed tiles.
         "atlas" => make(128, 64, &|x, y| {
             const COLORS: [[u8; 3]; 4] = [[230, 80, 70], [90, 190, 90], [80, 140, 230], [240, 200, 60]];
