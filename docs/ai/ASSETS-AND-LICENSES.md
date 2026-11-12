@@ -33,6 +33,9 @@ the engine.
     limits use to one engine.
 11. The declaration MUST be recorded on each asset imported from the pack it covers.
 12. The import report MUST list every refused asset with the reason.
+12a. A file another asset depends on (a texture an FBX names, a buffer or image a glTF names)
+    MUST NOT be bundled into that asset unless it passes these rules under the same declaration
+    as the asset; otherwise it is left out and the reason is in the asset's notes.
 13. Imported assets are private to the user and MUST be blocked from the pool.
 
 ## Declaration file format

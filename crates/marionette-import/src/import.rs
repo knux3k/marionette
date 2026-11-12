@@ -2,6 +2,7 @@
 //! report everything else with a reason (ASSETS-AND-LICENSES.md rules 6 to 13).
 
 use crate::codes;
+use crate::fbx;
 use crate::library::{AssetKind, AssetRecord, FileRecord, Library, RECORD_FORMAT, SourceRecord, slug};
 use crate::license::{self, LicenseRecord, LoadedDeclaration, YesNo};
 use crate::sha256_hex;
@@ -286,7 +287,22 @@ fn texture(entry: &SourceEntry, bytes: Vec<u8>) -> Pending {
         }
     }
     let original_sha = sha256_hex(&bytes);
-    let (files, main, ready) = match ext.as_str() {
+    // Decide by content: files saved with the wrong extension (a JPEG named .png) are common.
+    let content = if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]) {
+        "png"
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        "jpeg"
+    } else {
+        ext.as_str()
+    };
+    let same = content == ext || (content == "jpeg" && ext == "jpg");
+    if !same {
+        notes.push(format!(
+            "file named .{ext} holds {content} data; read as {content}"
+        ));
+    }
+    let ext = if same { ext.clone() } else { content.to_string() };
+    let (files, main, ready) = match content {
         "png" => match marionette_assets::decode_png(&bytes) {
             Ok(_) => (
                 vec![("texture.png".to_string(), bytes)],
@@ -373,6 +389,9 @@ fn model(
     entry: &SourceEntry,
     bytes: Vec<u8>,
     by_rel: &BTreeMap<String, &SourceEntry>,
+    gate: &Gate,
+    decl: usize,
+    limits: Limits,
 ) -> Result<Pending, Errors> {
     let ext = ext_of(&entry.rel);
     let original_sha = sha256_hex(&bytes);
@@ -427,6 +446,11 @@ fn model(
                         notes.push(format!("referenced file `{uri}` is not in the source"));
                         continue;
                     };
+                    if let Some(why) = gate.dependency_refusal(&dep.rel, decl) {
+                        ready = false;
+                        notes.push(format!("referenced file `{uri}` not bundled: {why}"));
+                        continue;
+                    }
                     let file = dep.rel.rsplit('/').next().unwrap_or("file").to_string();
                     let mut name = format!("deps/{file}");
                     if deps.iter().any(|(n, _)| n.eq_ignore_ascii_case(&name)) {
@@ -443,9 +467,56 @@ fn model(
             p.engine_ready = ready;
             p.validate_gltf = ready;
         }
+        "fbx" => {
+            let tree_limits = fbx::tree::TreeLimits {
+                max_array_bytes: limits.max_entry.min(512 << 20) as usize,
+                ..Default::default()
+            };
+            let mut resolve = |req: &fbx::TextureRequest| fbx_texture(entry, req, by_rel, gate, decl);
+            match fbx::convert(&bytes, tree_limits, &mut resolve) {
+                Ok(c) => {
+                    let s = &c.summary;
+                    notes.push(format!(
+                        "converted from FBX {} ({}) to glTF: {} nodes, {} meshes, {} triangles, {} materials, {} textures, {} skins ({} joints), {} morph targets, {} animations; source axes {} at {} m per unit; original kept as source.fbx",
+                        s.fbx_version,
+                        if s.binary { "binary" } else { "ASCII" },
+                        s.nodes,
+                        s.meshes,
+                        s.triangles,
+                        s.materials,
+                        s.images,
+                        s.skins,
+                        s.joints,
+                        s.morph_targets,
+                        s.animations,
+                        s.axes,
+                        s.meters_per_unit,
+                    ));
+                    notes.extend(c.notes);
+                    if s.skins > 0 || s.animations > 0 {
+                        notes.push(
+                            "skins and animations are in model.glb; the renderer draws the bind pose until skinning is built"
+                                .into(),
+                        );
+                    }
+                    p.files.push(("model.glb".into(), c.glb));
+                    p.files.push(("source.fbx".into(), bytes));
+                    p.main = Some("model.glb".into());
+                    p.engine_ready = true;
+                    p.validate_gltf = true;
+                }
+                Err(e) => {
+                    notes.push(format!(
+                        "FBX could not be converted to glTF: {e}; kept as source.fbx"
+                    ));
+                    p.files.push(("source.fbx".into(), bytes));
+                    p.main = Some("source.fbx".into());
+                }
+            }
+        }
         _ => {
             notes.push(format!(
-                "{ext} is kept as source.{ext}; it needs conversion to glTF before the engine can use it (converter not built yet, decision 0018)"
+                "{ext} is kept as source.{ext}; it needs conversion to glTF before the engine can use it (no converter for this format yet; FBX is converted, decision 0027)"
             ));
             p.files.push((format!("source.{ext}"), bytes));
             p.main = Some(format!("source.{ext}"));
@@ -453,6 +524,194 @@ fn model(
     }
     p.notes = notes;
     Ok(p)
+}
+
+/// Finds the image an FBX file references: embedded media first, then the file in the source
+/// (the written relative path, beside the model, a `Textures` folder beside it or above it, then
+/// a unique file of that name anywhere in the source). A file from the source is used only if it
+/// passes the license gate under the model's own declaration.
+fn fbx_texture(
+    model: &SourceEntry,
+    req: &fbx::TextureRequest,
+    by_rel: &BTreeMap<String, &SourceEntry>,
+    gate: &Gate,
+    decl: usize,
+) -> Result<fbx::ResolvedImage, String> {
+    if let Some(bytes) = &req.embedded {
+        return image_for_gltf(bytes, &req.file_name()).map(|(bytes, mime)| fbx::ResolvedImage {
+            bytes,
+            mime,
+            origin: "embedded in the FBX file".into(),
+        });
+    }
+    let name = req.file_name();
+    if name.is_empty() {
+        return Err("the texture names no file".into());
+    }
+    let dir = model.rel.rsplit_once('/').map_or("", |(d, _)| d).to_string();
+    let mut candidates: Vec<String> = Vec::new();
+    let relative = req.relative.replace('\\', "/");
+    if !relative.is_empty()
+        && let Some(r) = resolve_uri(&model.rel, &relative)
+    {
+        candidates.push(r);
+    }
+    let mut d = dir.clone();
+    loop {
+        let join = |a: &str, b: &str| {
+            if a.is_empty() {
+                b.to_string()
+            } else {
+                format!("{a}/{b}")
+            }
+        };
+        candidates.push(join(&d, &name));
+        candidates.push(join(&d, &format!("Textures/{name}")));
+        match d.rsplit_once('/') {
+            Some((up, _)) => d = up.to_string(),
+            None if !d.is_empty() => d.clear(),
+            None => break,
+        }
+    }
+    let mut found = candidates
+        .iter()
+        .find_map(|c| by_rel.get(&c.to_ascii_lowercase()).copied());
+    if found.is_none() {
+        let lower = name.to_ascii_lowercase();
+        let same: Vec<&SourceEntry> = by_rel
+            .values()
+            .copied()
+            .filter(|e| e.rel.rsplit('/').next().unwrap_or("").to_ascii_lowercase() == lower)
+            .collect();
+        match same.as_slice() {
+            [one] => found = Some(one),
+            [] => {}
+            many => {
+                return Err(format!(
+                    "{} files in the source are named `{name}` and none is beside the model",
+                    many.len()
+                ));
+            }
+        }
+    }
+    let Some(e) = found else {
+        return Err("not embedded and not found in the source".into());
+    };
+    if let Some(why) = gate.dependency_refusal(&e.rel, decl) {
+        return Err(why);
+    }
+    let bytes = std::fs::read(&e.data).map_err(|err| format!("cannot read `{}`: {err}", e.rel))?;
+    image_for_gltf(&bytes, &e.rel).map(|(bytes, mime)| fbx::ResolvedImage {
+        bytes,
+        mime,
+        origin: format!("bundled from `{}`", e.rel),
+    })
+}
+
+/// PNG is kept as it is; JPEG and TGA are converted to PNG; other formats are refused.
+fn image_for_gltf(bytes: &[u8], shown: &str) -> Result<(Vec<u8>, &'static str), String> {
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        marionette_assets::decode_png(bytes).map_err(|e| format!("PNG cannot be decoded: {e}"))?;
+        return Ok((bytes.to_vec(), "image/png"));
+    }
+    let format = if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        image::ImageFormat::Jpeg
+    } else if ext_of(shown) == "tga" {
+        image::ImageFormat::Tga
+    } else {
+        return Err(format!(
+            "image format of `{shown}` is not supported in glTF (PNG, JPEG and TGA are)"
+        ));
+    };
+    let img = image::load_from_memory_with_format(bytes, format)
+        .map_err(|e| format!("image cannot be decoded: {e}"))?
+        .to_rgba8();
+    Ok((
+        marionette_assets::encode_png(img.width(), img.height(), img.as_raw()),
+        "image/png",
+    ))
+}
+
+/// The license rules for one source (ASSETS-AND-LICENSES.md rules 7 to 10), as a pure decision.
+struct Gate<'a> {
+    importer: &'static str,
+    package_reason: Option<String>,
+    decls: &'a [LoadedDeclaration],
+}
+
+impl Gate<'_> {
+    /// The index of the declaration that allows the asset at `rel`, or the refusal code and
+    /// reason.
+    fn decide(&self, rel: &str) -> Result<usize, (&'static str, String)> {
+        if let Some(r) = license::engine_content_reason(rel).filter(|_| self.importer != "files") {
+            return Err((
+                codes::REFUSED_ENGINE_CONTENT,
+                format!("engine content, refused with no override: {r}"),
+            ));
+        }
+        if let Some(r) = &self.package_reason {
+            return Err((
+                codes::REFUSED_ENGINE_CONTENT,
+                format!("engine content, refused with no override: {r}"),
+            ));
+        }
+        let decls = self.decls;
+        let best = decls
+            .iter()
+            .enumerate()
+            .filter_map(|(i, d)| d.coverage(rel).map(|c| (c, i)))
+            .max_by_key(|(c, i)| (*c, std::cmp::Reverse(*i)))
+            .map(|(_, i)| i);
+        let Some(i) = best else {
+            return Err((
+                codes::REFUSED_LICENSE_UNKNOWN,
+                "license unknown: no declaration covers this asset; a person must write one (an AI agent may not)".into(),
+            ));
+        };
+        let d = &decls[i].declaration;
+        if let Some(p) = d.publisher.as_deref().filter(|p| license::is_engine_publisher(p)) {
+            return Err((
+                codes::REFUSED_ENGINE_CONTENT,
+                format!("engine content, refused with no override: published by `{p}`"),
+            ));
+        }
+        if d.other_engines_allowed == YesNo::No {
+            return Err((
+                codes::REFUSED_OTHER_ENGINES_NO,
+                format!(
+                    "declaration `{}` says use in other engines is not allowed",
+                    decls[i].file_name
+                ),
+            ));
+        }
+        if let Some(text) = &d.license_text {
+            let limits = license::engine_limits(text);
+            if !limits.is_empty() {
+                let phrases: Vec<String> = limits.iter().map(|l| format!("\"{}\"", l.phrase)).collect();
+                return Err((
+                    codes::REFUSED_ENGINE_LOCKED_LICENSE,
+                    format!(
+                        "the pasted license text limits use to one engine: {}",
+                        phrases.join(", ")
+                    ),
+                ));
+            }
+        }
+        Ok(i)
+    }
+
+    /// Why a file another asset depends on may not be bundled into it, if it may not: it must
+    /// pass the gate under the same declaration as the asset that uses it.
+    fn dependency_refusal(&self, dep_rel: &str, owner_decl: usize) -> Option<String> {
+        match self.decide(dep_rel) {
+            Ok(i) if i == owner_decl => None,
+            Ok(i) => Some(format!(
+                "`{dep_rel}` is covered by a different license declaration (`{}`); it is imported as its own asset",
+                self.decls[i].file_name
+            )),
+            Err((code, reason)) => Some(format!("`{dep_rel}` is refused ({code}): {reason}")),
+        }
+    }
 }
 
 /// Runs an import into `library`.
@@ -534,80 +793,26 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
         ctx.refuse(&b.rel, b.code, b.reason);
     }
 
-    let package_reason = (importer == "unitypackage")
+    let package_reason: Option<String> = (importer == "unitypackage")
         .then(|| license::package_location_reason(source))
         .flatten();
     let by_rel: BTreeMap<String, &SourceEntry> =
         entries.iter().map(|e| (e.rel.to_ascii_lowercase(), e)).collect();
 
+    let gate = Gate {
+        importer,
+        package_reason,
+        decls: &decls,
+    };
     // License gate for every entry; returns the declaration that allows it.
-    let gate = |ctx: &mut Ctx, e: &SourceEntry| -> Option<usize> {
-        if let Some(r) = license::engine_content_reason(&e.rel).filter(|_| importer != "files") {
-            ctx.refuse(
-                &e.rel,
-                codes::REFUSED_ENGINE_CONTENT,
-                format!("engine content, refused with no override: {r}"),
-            );
-            return None;
-        }
-        if let Some(r) = &package_reason {
-            ctx.refuse(
-                &e.rel,
-                codes::REFUSED_ENGINE_CONTENT,
-                format!("engine content, refused with no override: {r}"),
-            );
-            return None;
-        }
-        let best = decls
-            .iter()
-            .enumerate()
-            .filter_map(|(i, d)| d.coverage(&e.rel).map(|c| (c, i)))
-            .max_by_key(|(c, i)| (*c, std::cmp::Reverse(*i)))
-            .map(|(_, i)| i);
-        let Some(i) = best else {
-            ctx.refuse(
-                &e.rel,
-                codes::REFUSED_LICENSE_UNKNOWN,
-                "license unknown: no declaration covers this asset; a person must write one (an AI agent may not)",
-            );
-            return None;
-        };
-        let d = &decls[i].declaration;
-        if let Some(p) = d.publisher.as_deref().filter(|p| license::is_engine_publisher(p)) {
-            ctx.refuse(
-                &e.rel,
-                codes::REFUSED_ENGINE_CONTENT,
-                format!("engine content, refused with no override: published by `{p}`"),
-            );
-            return None;
-        }
-        if d.other_engines_allowed == YesNo::No {
-            ctx.refuse(
-                &e.rel,
-                codes::REFUSED_OTHER_ENGINES_NO,
-                format!(
-                    "declaration `{}` says use in other engines is not allowed",
-                    decls[i].file_name
-                ),
-            );
-            return None;
-        }
-        if let Some(text) = &d.license_text {
-            let limits = license::engine_limits(text);
-            if !limits.is_empty() {
-                let phrases: Vec<String> = limits.iter().map(|l| format!("\"{}\"", l.phrase)).collect();
-                ctx.refuse(
-                    &e.rel,
-                    codes::REFUSED_ENGINE_LOCKED_LICENSE,
-                    format!(
-                        "the pasted license text limits use to one engine: {}",
-                        phrases.join(", ")
-                    ),
-                );
-                return None;
+    let gate_report = |ctx: &mut Ctx, e: &SourceEntry| -> Option<usize> {
+        match gate.decide(&e.rel) {
+            Ok(i) => Some(i),
+            Err((code, reason)) => {
+                ctx.refuse(&e.rel, code, reason);
+                None
             }
         }
-        Some(i)
     };
 
     let mut materials: Vec<(&SourceEntry, usize)> = Vec::new();
@@ -621,17 +826,19 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
                 "glTF buffer; imported together with the model that uses it",
             ),
             Class::Material => {
-                if let Some(i) = gate(&mut ctx, e) {
+                if let Some(i) = gate_report(&mut ctx, e) {
                     materials.push((e, i));
                 }
             }
             class @ (Class::Texture | Class::Model) => {
-                let Some(i) = gate(&mut ctx, e) else { continue };
+                let Some(i) = gate_report(&mut ctx, e) else {
+                    continue;
+                };
                 let bytes = read(&e.data, &e.rel)?;
                 let p = if matches!(class, Class::Texture) {
                     texture(e, bytes)
                 } else {
-                    model(e, bytes, &by_rel)?
+                    model(e, bytes, &by_rel, &gate, i, opts.limits)?
                 };
                 let id = ctx.put(p, &decls[i])?;
                 if let Some(g) = e.guid() {
