@@ -38,10 +38,10 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `OnEnable` | `start` | script | No enable/disable; runs once with start. |
 | `OnGUI` | `UiNode + UiText / UiRect / UiButton components` | rewrite | Immediate-mode GUI becomes UI entities; update their UiText from the script. |
 | `OnMouseDown` | `UiButton (screen UI) or engine.justPressed + observe raycast` | rewrite |  |
-| `OnTriggerEnter` | `onCollisionEnter` | script | Give the trigger a Collider with sensor: true; its overlaps arrive as onCollisionEnter. No separate trigger hook yet. |
-| `OnTriggerEnter2D` | `onCollisionEnter` | script | Collider with sensor: true; overlaps arrive as onCollisionEnter. |
-| `OnTriggerExit` | `onCollisionExit` | script | Collider with sensor: true. |
-| `OnTriggerExit2D` | `onCollisionExit` | script | Collider with sensor: true. |
+| `OnTriggerEnter` | `onTriggerEnter` | script | Fires for contacts where either collider is a sensor (Collider.sensor: true). |
+| `OnTriggerEnter2D` | `onTriggerEnter` | script | Collider.sensor: true. |
+| `OnTriggerExit` | `onTriggerExit` | script | Collider.sensor: true. |
+| `OnTriggerExit2D` | `onTriggerExit` | script | Collider.sensor: true. |
 | `OnTriggerStay` | `update` | rewrite | Flag in self.state between enter and exit. |
 | `OnTriggerStay2D` | `update` | rewrite | Flag in self.state between enter and exit. |
 | `OnValidate` |  | gap | Editor-only; scene validation is `marionette op scene_validate`. |
@@ -207,7 +207,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `MovePosition` | `set Transform.translation of a Kinematic RigidBody` | script |  |
 | `MoveRotation` | `set Transform.rotation of a Kinematic RigidBody` | script |  |
 | `NavMeshAgent.SetDestination` |  | gap |  |
-| `Physics.OverlapSphere` |  | gap | Use a sensor Collider and onCollisionEnter/Exit. |
+| `Physics.OverlapSphere` |  | gap | Use a sensor Collider and onTriggerEnter/Exit. |
 | `Physics.Raycast` |  | gap | Raycasts exist as the observe_raycast operation but not inside scripts yet. |
 | `Physics.SphereCast` |  | gap |  |
 | `Physics.gravity` | `RigidBody.gravity_scale / CharacterController.gravity` | ready |  |
@@ -338,15 +338,15 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Landed` | `update, when CharacterState.grounded turns true` | rewrite |  |
 | `NativeConstruct` | `start` | rewrite |  |
 | `NativeTick` | `update` | rewrite |  |
-| `NotifyActorBeginOverlap` | `onCollisionEnter` | script | Make the overlapping collider a sensor (Collider.sensor: true). |
-| `NotifyActorEndOverlap` | `onCollisionExit` | script | Collider.sensor: true. |
+| `NotifyActorBeginOverlap` | `onTriggerEnter` | script | The overlapping collider is a sensor (Collider.sensor: true). |
+| `NotifyActorEndOverlap` | `onTriggerExit` | script | Collider.sensor: true. |
 | `NotifyHit` | `onCollisionEnter` | script | Receives the other Entity; no hit result. |
 | `OnConstruction` | `the entity's components in the scene file` | rewrite | Construction scripts become data written through operations. |
 | `OnJumped` | `AudioSource trigger OnJump, or justPressed(jump) && grounded in update` | rewrite |  |
 | `PossessedBy` |  | gap |  |
 | `PostInitializeComponents` | `start` | script |  |
-| `ReceiveActorBeginOverlap` | `onCollisionEnter` | script | Blueprint overlap event; Collider.sensor: true. |
-| `ReceiveActorEndOverlap` | `onCollisionExit` | script | Collider.sensor: true. |
+| `ReceiveActorBeginOverlap` | `onTriggerEnter` | script | Blueprint overlap event; Collider.sensor: true. |
+| `ReceiveActorEndOverlap` | `onTriggerExit` | script | Collider.sensor: true. |
 | `ReceiveBeginPlay` | `start` | script | Blueprint Event BeginPlay. |
 | `ReceiveDestroyed` |  | gap | No despawn hook yet. |
 | `ReceiveEndPlay` |  | gap | No despawn hook yet. |
@@ -546,14 +546,14 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `MoveToActor` | `Follow component` | rewrite |  |
 | `MoveToLocation` |  | gap |  |
 | `NewObject` | `a plain TypeScript object` | rewrite |  |
-| `OnActorBeginOverlap.AddDynamic` | `export function onCollisionEnter(self, other)` | script |  |
-| `OnActorEndOverlap.AddDynamic` | `export function onCollisionExit(self, other)` | script |  |
+| `OnActorBeginOverlap.AddDynamic` | `export function onTriggerEnter(self, other)` | script | Delegates become exported hooks; the overlapping collider needs sensor: true. |
+| `OnActorEndOverlap.AddDynamic` | `export function onTriggerExit(self, other)` | script |  |
 | `OnActorHit.AddDynamic` | `export function onCollisionEnter(self, other)` | script |  |
 | `OnClicked.AddDynamic` | `UiButton { action } + engine.justPressed(action)` | rewrite |  |
-| `OnComponentBeginOverlap.AddDynamic` | `export function onCollisionEnter(self, other)` | script | Delegates become exported hooks; the overlapping collider needs sensor: true. |
-| `OnComponentEndOverlap.AddDynamic` | `export function onCollisionExit(self, other)` | script |  |
+| `OnComponentBeginOverlap.AddDynamic` | `export function onTriggerEnter(self, other)` | script | Delegates become exported hooks; the overlapping collider needs sensor: true. |
+| `OnComponentEndOverlap.AddDynamic` | `export function onTriggerExit(self, other)` | script |  |
 | `OnComponentHit.AddDynamic` | `export function onCollisionEnter(self, other)` | script |  |
-| `OverlapMultiByChannel` |  | gap | Use a sensor Collider and onCollisionEnter/Exit. |
+| `OverlapMultiByChannel` |  | gap | Use a sensor Collider and onTriggerEnter/Exit. |
 | `ParallelFor` |  | hazard | Simulation is single-threaded; run the loop in order. |
 | `PlayAnimMontage` |  | gap |  |
 | `PlayAnimation` |  | gap |  |

@@ -48,7 +48,7 @@ fn unity_classes_roles_hooks_and_components() {
     assert_eq!(hook("Awake").as_deref(), Some("start"));
     assert_eq!(hook("Start").as_deref(), Some("start"));
     assert_eq!(hook("Update").as_deref(), Some("update"));
-    assert_eq!(hook("OnTriggerEnter").as_deref(), Some("onCollisionEnter"));
+    assert_eq!(hook("OnTriggerEnter").as_deref(), Some("onTriggerEnter"));
     assert_eq!(hook("OnDestroy"), None);
     assert!(p.methods.iter().find(|m| m.name == "Blink").unwrap().coroutine);
     // Invoke("Respawn") and StartCoroutine(Blink()) bind their methods.
@@ -145,7 +145,7 @@ fn unreal_classes_definitions_and_bindings() {
         m("Tick").file.ends_with(".cpp") && m("Tick").has_body,
         "the .cpp definition replaces the header declaration"
     );
-    assert_eq!(m("OnPickupOverlap").hook.as_deref(), Some("onCollisionEnter"));
+    assert_eq!(m("OnPickupOverlap").hook.as_deref(), Some("onTriggerEnter"));
     assert_eq!(
         m("OnPickupOverlap").bound_by.as_deref(),
         Some("OnComponentBeginOverlap.AddDynamic")
@@ -210,7 +210,7 @@ fn blueprint_text_is_read() {
         hooks,
         [
             ("ReceiveBeginPlay", Some("start")),
-            ("ReceiveActorBeginOverlap", Some("onCollisionEnter"))
+            ("ReceiveActorBeginOverlap", Some("onTriggerEnter"))
         ]
     );
     assert_eq!(uses(&r, "Delay").map(|u| u.0), Some(Status::Rewrite));
@@ -247,7 +247,7 @@ fn skeletons_keep_every_original_line_and_annotate_calls() {
     assert!(ts.contains("\"Script\": { \"path\": \"../scripts/ported/PlayerController.ts\" }"));
     assert!(ts.contains("export function start(self: Entity): void {"));
     assert!(ts.contains("export function update(self: Entity): void {"));
-    assert!(ts.contains("export function onCollisionEnter(self: Entity, other: Entity): void {"));
+    assert!(ts.contains("export function onTriggerEnter(self: Entity, other: Entity): void {"));
     assert!(ts.contains("self.state.speed = self.state.speed ?? 5;"));
     assert!(ts.contains("-> Input.GetAxis \"Horizontal\": engine.action(\"Horizontal\") [script]"));
     assert!(ts.contains("-> GetComponent<Rigidbody>: self.get(\"RigidBody\") [script]"));
@@ -262,8 +262,7 @@ fn skeletons_keep_every_original_line_and_annotate_calls() {
     }
 }
 
-/// Generated skeletons type-check with `tsc --strict` against a stand-in for the script API
-/// typings. Skipped when `tsc` is not installed.
+/// Generated skeletons type-check with `tsc --strict` against the generated script typings. Skipped when `tsc` is not installed.
 #[test]
 fn skeletons_type_check_with_tsc() {
     let Ok(out) = std::process::Command::new("tsc").arg("--version").output() else {
@@ -277,7 +276,9 @@ fn skeletons_type_check_with_tsc() {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("port-tsc");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(fixture("script-api-stub.d.ts"), dir.join("api.d.ts")).unwrap();
+    // The generated script typings (decision 0022), as committed in the reference docs.
+    let typings = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/ai/reference/marionette.d.ts");
+    std::fs::copy(typings, dir.join("api.d.ts")).unwrap();
     let mut files = vec!["api.d.ts".to_string()];
     for name in ["unity", "unreal"] {
         let (a, _) = report(name);

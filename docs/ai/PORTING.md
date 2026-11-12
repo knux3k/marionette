@@ -3,7 +3,7 @@
 Recipe for an agent asked to bring a Unity (C#) or Unreal (C++ or Blueprint) game, or part of
 one, into Marionette. The design is decision 0020; the concept tables are
 [reference/porting-map.md](reference/porting-map.md) (generated from
-`crates/marionette-port/data/`). Scripts are TypeScript (decision 0019): an ES module named by a
+`crates/marionette-port/data/`). Scripts are TypeScript (decision 0022): an ES module named by a
 `Script { path }` component, exporting hooks that take `self: Entity`.
 
 ## The model in one paragraph
@@ -63,12 +63,14 @@ state hash on every machine).
 | --- | --- | --- |
 | `Awake`, `OnEnable`, `Start` | constructor defaults, `BeginPlay` | `export function start(self: Entity)`: field defaults first, then Awake code, then Start code |
 | `FixedUpdate`, `Update`, `LateUpdate` | `Tick(DeltaTime)` | `export function update(self: Entity)`, once per fixed tick; FixedUpdate code first |
-| `OnCollisionEnter`, `OnTriggerEnter` (2D too) | `NotifyHit`, `NotifyActorBeginOverlap`, `OnComponentHit/BeginOverlap.AddDynamic` | `export function onCollisionEnter(self: Entity, other: Entity)` |
-| `OnCollisionExit`, `OnTriggerExit` | `NotifyActorEndOverlap`, `OnComponentEndOverlap.AddDynamic` | `export function onCollisionExit(self: Entity, other: Entity)` |
+| `OnCollisionEnter` (2D too) | `NotifyHit`, `OnComponentHit.AddDynamic` | `export function onCollisionEnter(self: Entity, other: Entity)` |
+| `OnCollisionExit` | - | `export function onCollisionExit(self: Entity, other: Entity)` |
+| `OnTriggerEnter` (2D too) | `NotifyActorBeginOverlap`, `OnComponentBeginOverlap.AddDynamic` | `export function onTriggerEnter(self: Entity, other: Entity)` |
+| `OnTriggerExit` | `NotifyActorEndOverlap`, `OnComponentEndOverlap.AddDynamic` | `export function onTriggerExit(self: Entity, other: Entity)` |
 | `OnCollisionStay`, `OnTriggerStay` | - | a flag in `self.state` set on enter, cleared on exit, used in `update` |
 | `OnDestroy`, `OnDisable` | `EndPlay`, `Destroyed` | gap |
 
-Triggers: give the trigger a `Collider` with `sensor: true`; its overlaps arrive as collision
+Triggers: give the trigger a `Collider` with `sensor: true`; its overlaps arrive as trigger
 hooks. The other side is an `Entity`, not a Collision or hit result.
 
 ## Rules that matter most
@@ -144,5 +146,5 @@ The tables are `crates/marionette-port/data/unity.json` and
 is a call chain with segments joined by `.` (C++ `::` and `->` are written as `.`); the longest
 match wins, and a one-segment name matches only a call, a generic, an attribute, the root of a
 longer chain, or a lowercase member. When the script API gains a feature (spawning, timers,
-trigger hooks), flip the matching entries from `gap` or `rewrite` to `script`, then run
+raycasts), flip the matching entries from `gap` or `rewrite` to `script`, then run
 `cargo run -q -p marionette-cli -- docs` and `cargo test -p marionette-port`.

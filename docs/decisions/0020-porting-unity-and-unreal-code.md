@@ -6,8 +6,8 @@ Date: 2026-11-12. Status: accepted.
 
 The project owner wants Unity (C# MonoBehaviour) and Unreal (C++ and Blueprint) gameplay code to
 convert into Marionette as easily as possible. Asset import already exists (decision 0018);
-this record is about code. Scripts are TypeScript (decision 0019): an ES module named by a
-`Script { path }` component, hooks `start`, `update`, `onCollisionEnter`, `onCollisionExit`
+this record is about code. Scripts are TypeScript (decision 0022): an ES module named by a
+`Script { path }` component, hooks `start`, `update`, `onCollisionEnter`, `onCollisionExit`, `onTriggerEnter`, `onTriggerExit`
 taking `self: Entity`, and `engine.*` globals.
 
 ## Decision
@@ -36,14 +36,14 @@ taking `self: Entity`, and `engine.*` globals.
   class, followed through scanned classes (`Enemy : Character : MonoBehaviour`). Delegate,
   input, listener, timer and coroutine bindings (`AddDynamic(this, &AFoo::OnOverlap)`,
   `BindAxis`, `Invoke("Respawn")`, `StartCoroutine(Blink())`) mark their handler methods, so
-  overlap handlers land in `onCollisionEnter` and input handlers are called from `update`.
+  overlap handlers land in `onTriggerEnter` and input handlers are called from `update`.
   Blueprints are read from graph text copied out of the editor (`.t3d`), since `.uasset` is
   binary and version-specific.
 - **Skeletons** (`port_scaffold`): one `.ts` per behaviour, actor, actor component or
   Blueprint; Unity Awake before Start and FixedUpdate before Update inside the merged hook;
   fields as `self.state.x = self.state.x ?? default`; non-hook methods as functions taking
   `self`; `PORT-NOTES.md` with scripts, components, actions, hazards and gaps. Skeletons compile
-  under `tsc --strict` (tested against a stand-in for the script typings) and never overwrite
+  under `tsc --strict` (tested against the generated `docs/ai/reference/marionette.d.ts`) and never overwrite
   files without `overwrite: true`.
 - **Coordinates** (`port_convert`): Unity (x, y, z) -> (x, y, -z) and quaternion
   (-x, -y, z, w); Unreal (x, y, z) cm -> (y, z, -x) / 100 m, quaternion (-y, -z, x, w), scale
@@ -54,12 +54,12 @@ taking `self: Entity`, and `engine.*` globals.
   convert differently there.
 - **Influence on the scripting choice.** Porting ease was sent to the scripting spike: C# and
   C++ classes, static types, enums, generics and camelCase methods map onto TypeScript far more
-  directly than onto Luau. TypeScript was chosen there (decision 0019) also for determinism.
+  directly than onto Luau. TypeScript was chosen there (decision 0022) also for determinism.
 
 ## Consequences
 
-- Entries marked `script` depend on the script runtime (decision 0019). When it gains spawning,
-  despawn and `onDestroy`, trigger hooks, timers or raycasts, flip the matching `gap`/`rewrite`
+- Entries marked `script` depend on the script runtime (decision 0022). When it gains spawning,
+  despawn and `onDestroy`, timers or raycasts, flip the matching `gap`/`rewrite`
   entries and regenerate the reference.
 - The scanner reads structure, not semantics: macros that hide declarations, partial classes
   split oddly, or code generators can be missed. Unknown engine calls are reported as `unknown`

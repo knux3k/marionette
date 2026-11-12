@@ -6,8 +6,9 @@
 - Rust stable, 1.95 or newer (`rust-version` in `Cargo.toml`); Windows uses the MSVC toolchain
   (needs the Visual Studio C++ build tools).
 - No other system libraries are needed on Windows. On Linux, windowed mode needs the usual X11
-  or Wayland development packages for winit, and audio playback needs ALSA development files for
-  cpal; headless builds and tests need neither at run time.
+  or Wayland development packages for winit, and building needs the ALSA development files for
+  cpal (`libasound2-dev` and `pkg-config` on Debian/Ubuntu: its build script runs even for
+  headless builds); headless tests need no X11 or Wayland at run time.
 
 ## Commands
 

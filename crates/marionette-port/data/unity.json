@@ -100,27 +100,27 @@
     },
     {
       "name": "OnTriggerEnter",
-      "marionette": "onCollisionEnter",
+      "marionette": "onTriggerEnter",
       "status": "script",
-      "note": "Give the trigger a Collider with sensor: true; its overlaps arrive as onCollisionEnter. No separate trigger hook yet."
+      "note": "Fires for contacts where either collider is a sensor (Collider.sensor: true)."
     },
     {
       "name": "OnTriggerEnter2D",
-      "marionette": "onCollisionEnter",
+      "marionette": "onTriggerEnter",
       "status": "script",
-      "note": "Collider with sensor: true; overlaps arrive as onCollisionEnter."
+      "note": "Collider.sensor: true."
     },
     {
       "name": "OnTriggerExit",
-      "marionette": "onCollisionExit",
+      "marionette": "onTriggerExit",
       "status": "script",
-      "note": "Collider with sensor: true."
+      "note": "Collider.sensor: true."
     },
     {
       "name": "OnTriggerExit2D",
-      "marionette": "onCollisionExit",
+      "marionette": "onTriggerExit",
       "status": "script",
-      "note": "Collider with sensor: true."
+      "note": "Collider.sensor: true."
     },
     {
       "name": "OnCollisionStay",
@@ -1121,7 +1121,7 @@
       "pattern": "Physics.OverlapSphere",
       "marionette": "",
       "status": "gap",
-      "note": "Use a sensor Collider and onCollisionEnter/Exit."
+      "note": "Use a sensor Collider and onTriggerEnter/Exit."
     },
     {
       "pattern": "Physics.SphereCast",

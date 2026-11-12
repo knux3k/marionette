@@ -1,7 +1,7 @@
 //! TypeScript script skeletons for ported classes (decision 0020).
 //!
-//! One `.ts` file per gameplay class, written for the script API of decision 0019: exported
-//! `start`, `update`, `onCollisionEnter` and `onCollisionExit` hooks taking `self: Entity`.
+//! One `.ts` file per gameplay class, written for the script API of decision 0022: exported
+//! `start`, `update`, `onCollisionEnter`, `onCollisionExit`, `onTriggerEnter` and `onTriggerExit` hooks taking `self: Entity`.
 //! Fields become `self.state` entries with their defaults. Every original method body is
 //! kept as comments inside the hook it belongs to, and each line that uses an engine API is
 //! followed by a `->` line naming the Marionette equivalent. The skeleton compiles as is; an
@@ -18,7 +18,7 @@ pub fn script_name(c: &Class) -> String {
 
 /// Hooks in the order they are written, with the source methods that feed each, in the
 /// order their bodies are placed.
-const ORDER: [(&str, &[&str]); 4] = [
+const ORDER: [(&str, &[&str]); 6] = [
     (
         "start",
         &[
@@ -45,6 +45,8 @@ const ORDER: [(&str, &[&str]); 4] = [
     ),
     ("onCollisionEnter", &[]),
     ("onCollisionExit", &[]),
+    ("onTriggerEnter", &[]),
+    ("onTriggerExit", &[]),
 ];
 
 fn default_for(ts: &str, kind: &str) -> String {
@@ -283,7 +285,7 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
         if !needed {
             continue;
         }
-        let sig = if hook.starts_with("onCollision") {
+        let sig = if hook.starts_with("on") {
             "self: Entity, other: Entity"
         } else {
             "self: Entity"
