@@ -1110,21 +1110,21 @@
     },
     {
       "pattern": "CharacterController.Move",
-      "marionette": "CharacterController component driven by actions",
+      "marionette": "CharacterController driven by actions, or by a CharacterInput component a script sets",
       "status": "rewrite",
-      "note": "Movement comes from input actions; script-computed Move() is a gap."
+      "note": "Set CharacterInput.move_x/move_forward/jump each tick; turn by setting Transform.rotation."
     },
     {
       "pattern": "Physics.Raycast",
-      "marionette": "",
-      "status": "gap",
-      "note": "Raycasts exist as the observe_raycast operation but not inside scripts yet."
+      "marionette": "engine.raycast(origin, direction, maxDistance, exclude)",
+      "status": "script",
+      "note": "Returns the first hit or null; sensors are skipped."
     },
     {
       "pattern": "Physics2D.Raycast",
-      "marionette": "",
-      "status": "gap",
-      "note": "Not inside scripts yet (observe_raycast operation only)."
+      "marionette": "engine.raycast(origin, direction, maxDistance, exclude)",
+      "status": "script",
+      "note": "In 2D the z of origin and direction is ignored."
     },
     {
       "pattern": "Physics.OverlapSphere",
@@ -1330,8 +1330,9 @@
     },
     {
       "pattern": "SendMessage",
-      "marionette": "engine.emit(kind, detail), or call the other entity's data",
-      "status": "rewrite"
+      "marionette": "engine.send(entity, kind, detail) and an onMessage hook",
+      "status": "rewrite",
+      "note": "Delivered on the receiver's next turn, not synchronously."
     },
     {
       "pattern": "BroadcastMessage",

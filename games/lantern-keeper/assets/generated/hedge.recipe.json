@@ -1,0 +1,13 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "hedge",
+  "output": "texture",
+  "prompt": "dense dark night hedge seen from directly above, even light, seamless",
+  "texture": {
+    "resize": [
+      512,
+      512
+    ],
+    "tileable": true
+  }
+}

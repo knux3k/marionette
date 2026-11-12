@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
+use winit::event::{DeviceEvent, DeviceId, ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key, NamedKey, PhysicalKey};
 use winit::window::{Window, WindowId};
@@ -59,6 +59,16 @@ pub fn key_name(key: PhysicalKey) -> Option<String> {
     }
 }
 
+/// Pixels of mouse movement per unit of the `axis:MouseX` / `axis:MouseY` value.
+pub const MOUSE_PIXELS_PER_UNIT: f32 = 100.0;
+
+/// Mouse movement in pixels as the values of `axis:MouseX` (right is +) and `axis:MouseY`
+/// (down is +) for one tick: pixels / [`MOUSE_PIXELS_PER_UNIT`], clamped to -1..1.
+pub fn mouse_axes(pixels: (f32, f32)) -> (f32, f32) {
+    let f = |p: f32| (p / MOUSE_PIXELS_PER_UNIT).clamp(-1.0, 1.0);
+    (f(pixels.0), f(pixels.1))
+}
+
 /// Input name of a mouse button: `mouse:Left`, `mouse:Right`, `mouse:Middle`.
 pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
     match button {
@@ -96,6 +106,9 @@ struct App<'h> {
     sim: Sim,
     hooks: &'h mut dyn WindowHooks,
     cursor: (f32, f32),
+    /// Mouse movement in pixels since it was last fed to the simulation (only while focused).
+    mouse: (f32, f32),
+    focused: bool,
     opts: WindowOptions,
     running: Option<Running>,
     error: Option<Errors>,
@@ -112,6 +125,8 @@ pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) 
         sim,
         hooks,
         cursor: (0.0, 0.0),
+        mouse: (0.0, 0.0),
+        focused: true,
         opts,
         running: None,
         error: None,
@@ -219,13 +234,27 @@ impl App<'_> {
             self.accumulator = (self.accumulator + (now - last).as_secs_f64()).min(dt * 8.0);
         }
         self.last = Some(now);
+        let mut moved = false;
         while self.accumulator >= dt {
             if self.opts.max_ticks.is_some_and(|m| self.sim.tick() >= m) {
                 event_loop.exit();
                 return;
             }
+            // Mouse movement since the last tick drives the mouse axes for one tick.
+            if self.mouse != (0.0, 0.0) {
+                let (x, y) = mouse_axes(self.mouse);
+                self.hooks.device(&mut self.sim, "axis:MouseX", x);
+                self.hooks.device(&mut self.sim, "axis:MouseY", y);
+                self.mouse = (0.0, 0.0);
+                moved = true;
+            }
             self.sim.step();
             self.accumulator -= dt;
+            if moved {
+                self.hooks.device(&mut self.sim, "axis:MouseX", 0.0);
+                self.hooks.device(&mut self.sim, "axis:MouseY", 0.0);
+                moved = false;
+            }
         }
         self.hooks.after_ticks(&mut self.sim);
 
@@ -313,6 +342,10 @@ impl ApplicationHandler for App<'_> {
                     self.hooks.device(&mut self.sim, &name, value);
                 }
             }
+            WindowEvent::Focused(focused) => {
+                self.focused = focused;
+                self.mouse = (0.0, 0.0);
+            }
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor = (position.x as f32, position.y as f32);
             }
@@ -337,6 +370,15 @@ impl ApplicationHandler for App<'_> {
             }
             WindowEvent::RedrawRequested => self.frame(event_loop),
             _ => {}
+        }
+    }
+
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device: DeviceId, event: DeviceEvent) {
+        if let DeviceEvent::MouseMotion { delta } = event
+            && self.focused
+        {
+            self.mouse.0 += delta.0 as f32;
+            self.mouse.1 += delta.1 as f32;
         }
     }
 
@@ -370,6 +412,7 @@ mod tests {
             Some("key:ArrowLeft")
         );
         assert_eq!(mouse_name(MouseButton::Left), Some("mouse:Left"));
+        assert_eq!(mouse_axes((50.0, -250.0)), (0.5, -1.0));
         assert_eq!(mouse_name(MouseButton::Back), None);
     }
 

@@ -125,9 +125,16 @@ interface Entity {
   destroy(seconds?: number): void;
 }
 
+/** A message from `engine.send`. `from` is the sender's id (it may be gone by now). */
+interface Message {
+  from: number;
+  kind: string;
+  detail: any;
+}
 /** What a script module exports. Only `update` is required. Hooks for one entity run in
  *  this order each tick: `start` (first tick only), `onCollisionEnter`, `onCollisionExit`,
- *  `onTriggerEnter`, `onTriggerExit`, due timers, `update`. Entities run in id order.
+ *  `onTriggerEnter`, `onTriggerExit`, `onMessage` (once per waiting message, in the order
+ *  sent), due timers, `update`. Entities run in id order.
  *  After every entity's turn, entities marked by `engine.destroy` get `onDestroy` (id
  *  order) and are removed. */
 interface ScriptHooks {
@@ -142,6 +149,8 @@ interface ScriptHooks {
   /** Like `onCollisionEnter`, for contacts where either collider is a sensor (`Collider.sensor`). */
   onTriggerEnter?(self: Entity, other: Entity): void;
   onTriggerExit?(self: Entity, other: Entity): void;
+  /** A message sent with `engine.send` to this entity. */
+  onMessage?(self: Entity, message: Message): void;
   /** Just before the entity is removed by `engine.destroy` (Unity `OnDestroy`, Unreal
    *  `EndPlay`). It may change, spawn or destroy other entities. */
   onDestroy?(self: Entity): void;
@@ -209,6 +218,11 @@ declare const engine: {
   /** How many of this entity's timers are pending (all, one handle, or those calling `fn`);
    *  Unity `IsInvoking`. */
   pending(which?: number | TimerCallback): number;
+  /** Sends a message to another scripted entity (or this one). It is kept in the target's
+   *  `ScriptInbox` component and delivered to its `onMessage` at the start of the target's
+   *  next turn: this tick if the target's id is higher than the sender's, otherwise next
+   *  tick. `detail` must be plain JSON. Throws if the target has no `Script`. */
+  send(target: Entity | number, kind: string, detail?: unknown): void;
 };
 
 declare const console: { log(...parts: unknown[]): void; warn(...parts: unknown[]): void; error(...parts: unknown[]): void };

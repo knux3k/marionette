@@ -225,6 +225,66 @@
       "fast_ticks": 600,
       "long_ticks": 108000,
       "tick_budget_ms": 4.0
+    },
+    {
+      "name": "proof-crystal-ward",
+      "description": "Proof game 4 (top-down 3D: waves of spawned enemies, projectiles, messages): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/crystal-ward/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-crystal-ward-render",
+      "description": "Proof game 4 played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/crystal-ward/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-dust-circuit",
+      "description": "Proof game 5 (racing: script-driven cars, AI rival, checkpoints): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/dust-circuit/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-dust-circuit-render",
+      "description": "Proof game 5 played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/dust-circuit/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-signal-yard",
+      "description": "Proof game 6 (first-person shooter: ray-cast shots, drones, projectiles, mouse look): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/signal-yard/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-signal-yard-render",
+      "description": "Proof game 6 played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/signal-yard/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
     }
   ],
   "exempt": {}

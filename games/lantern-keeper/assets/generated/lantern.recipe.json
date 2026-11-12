@@ -1,0 +1,7 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "lantern",
+  "output": "image",
+  "prompt": "an unlit iron paper lantern on a short post, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "notes": "Sprite: key out the magenta background when it is wired in."
+}

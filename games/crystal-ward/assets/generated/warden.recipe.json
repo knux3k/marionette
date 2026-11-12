@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "warden",
+  "output": "model",
+  "from": "warden_ref",
+  "model": {
+    "height_m": 1.8,
+    "max_triangles": 20000
+  }
+}

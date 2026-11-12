@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "rival_car",
+  "output": "model",
+  "from": "rival_car_ref",
+  "model": {
+    "height_m": 1.0,
+    "max_triangles": 20000
+  }
+}
