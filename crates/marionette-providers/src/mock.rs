@@ -85,11 +85,17 @@ impl Provider for Mock {
                 }
             }
             Request::Model(m) => {
-                let text = format!(
+                let mut text = format!(
                     "{}\n{}",
                     m.prompt.as_deref().unwrap_or(""),
                     m.image_url.as_deref().unwrap_or("")
                 );
+                // Only present when a local image is given, so text and URL requests keep
+                // their pinned output.
+                if let Some(png) = &m.image_png {
+                    text.push_str("\nimage:");
+                    text.push_str(&sha256_hex(png));
+                }
                 let d = digest(model, Kind::Model3d, &text);
                 // Half extents 0.25 to 1.0 m in 1/256 steps; color channels from bytes.
                 let half = [0, 1, 2].map(|i| 0.25 + (d[i] as f32) * (0.75 / 255.0));

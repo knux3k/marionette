@@ -17,6 +17,7 @@ Commands:
   ops         List every operation with its description and JSON Schemas
   op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
   provider    AI providers: list them, show this project's choices and spending, switch one
+  generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
   mcp         Serve every operation as an MCP tool over stdio
   docs        Write the generated reference docs (operations, components, CLI help)
   help        Print this message or the help of the given subcommand(s)
@@ -348,6 +349,37 @@ Commands:
   status  Provider and model per kind, readiness, spending and cap (operation `provider_status`)
   use     Switch one kind to a provider: `marionette provider use image qwen` (operation `provider_use`)
   help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette generate`
+
+```text
+Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
+
+Usage: generate [OPTIONS] <COMMAND>
+
+Commands:
+  plan     What a run would do: cache hits, calls, cost, refusals (operation `generate_plan`)
+  run      Build recipes into assets with provenance (operation `generate_run`)
+  list     Recipes and the state of their outputs (operation `generate_list`)
+  approve  Approve a generated image so a paid 3D model may be made from it. A person must type the image's name at an interactive terminal; there is no operation for this
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
       --json

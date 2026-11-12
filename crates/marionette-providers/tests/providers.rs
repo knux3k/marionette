@@ -7,7 +7,7 @@ use marionette_core::Errors;
 use marionette_providers::http::{HttpRequest, HttpResponse, Method, Transport};
 use marionette_providers::{
     self as providers, CapSource, Choice, Env, ImageRequest, Kind, ModelRequest, NoNetwork, Output,
-    ProvidersConfig, Request, SpendCap, TextRequest, claude, codes, qwen, spend, tripo,
+    ProviderCaps, ProvidersConfig, Request, SpendCap, TextRequest, claude, codes, qwen, spend, tripo,
 };
 use serde_json::json;
 use std::cell::RefCell;
@@ -93,6 +93,7 @@ fn run(
         transport,
         ledger,
         cap,
+        provider_caps: &ProviderCaps::default(),
         max_polls: 5,
         wait: &no_wait,
     };
@@ -123,6 +124,7 @@ fn model(prompt: &str) -> Request {
     Request::Model(ModelRequest {
         prompt: Some(prompt.into()),
         image_url: None,
+        ..Default::default()
     })
 }
 
@@ -527,6 +529,7 @@ fn tripo_text_and_image_jobs() {
     let req = Request::Model(ModelRequest {
         prompt: None,
         image_url: Some("https://files.example/ref.JPG?x=1".into()),
+        ..Default::default()
     });
     run(
         &config(Kind::Model3d, "tripo", Some("v9")),
@@ -625,4 +628,52 @@ fn every_offered_kind_has_a_default_model_and_keys_are_env_names() {
     let c = providers::find("claude").unwrap();
     let r = text("hi");
     assert!(c.estimate_usd("claude-unknown", &r) >= c.estimate_usd(claude::DEFAULT_MODEL, &r));
+}
+
+#[test]
+fn a_provider_can_have_its_own_cap_or_none() {
+    let dir = temp_dir("pcap");
+    let cfg_dir = dir.join("marionette");
+    std::fs::create_dir_all(&cfg_dir).unwrap();
+    std::fs::write(
+        cfg_dir.join("config.json"),
+        r#"{"provider_caps_usd": {"tripo": 10, "qwen": "unlimited"}}"#,
+    )
+    .unwrap();
+    let d = dir.to_str().unwrap();
+    let env = vars(&[("XDG_CONFIG_HOME", d), ("APPDATA", d)]);
+    let caps = spend::resolve_provider_caps(&env).unwrap();
+    assert_eq!(caps.0["tripo"].limit, providers::Limit::Usd(10.0));
+    assert_eq!(caps.0["qwen"].limit, providers::Limit::Unlimited);
+    assert!(!caps.0.contains_key("claude"));
+    // The environment wins over the file.
+    let env2 = vars(&[
+        ("XDG_CONFIG_HOME", d),
+        ("APPDATA", d),
+        ("MARIONETTE_SPEND_CAP_TRIPO_USD", "2"),
+    ]);
+    let caps2 = spend::resolve_provider_caps(&env2).unwrap();
+    assert_eq!(caps2.0["tripo"].limit, providers::Limit::Usd(2.0));
+    assert_eq!(caps2.0["tripo"].source, CapSource::Environment);
+    let bad = vars(&[("MARIONETTE_SPEND_CAP_QWEN_USD", "lots")]);
+    assert_eq!(
+        code(&spend::resolve_provider_caps(&bad).unwrap_err()),
+        codes::SPEND_CAP
+    );
+
+    // Checks: unlimited passes with a zero total cap; tripo counts only its own spending.
+    let entry = |p: &str, c: f64| spend::Entry {
+        provider: p.into(),
+        model: "m".into(),
+        kind: Kind::Image,
+        cost_usd: c,
+        estimate_usd: c,
+    };
+    let ledger = vec![entry("qwen", 50.0), entry("tripo", 9.5), entry("claude", 0.5)];
+    assert!(spend::check_for(&SpendCap::ZERO, &caps, "qwen", &ledger, 0.0, 1.0).is_ok());
+    assert!(spend::check_for(&SpendCap::ZERO, &caps, "tripo", &ledger, 0.0, 0.4).is_ok());
+    assert!(spend::check_for(&SpendCap::ZERO, &caps, "tripo", &ledger, 0.2, 0.4).is_err());
+    // Claude has no own cap: the total cap, over spending of uncapped providers only.
+    assert!(spend::check_for(&cap(1.0), &caps, "claude", &ledger, 0.0, 0.5).is_ok());
+    assert!(spend::check_for(&cap(1.0), &caps, "claude", &ledger, 0.0, 0.6).is_err());
 }

@@ -77,6 +77,14 @@ gate the pool MUST call). Operations: `library_import`, `library_list`, `library
 14. Spending API credits MUST have the user's approval and a spend cap.
 15. A generated image MUST be approved before credit is spent on a 3D model made from it.
 
+## Generated assets
+
+15a. Every generated asset MUST have a recipe and a provenance record beside it (provider,
+    model, prompt, reference image, cache key, cost, license status `generated`).
+15b. Generated assets MUST NOT be offered to the CC0 pool (decision 0045).
+15c. Only a person approves an image for paid 3D generation; tools MUST NOT write
+    `*.approval.json` files. Guide: GENERATION.md.
+
 ## Assets in the engine repository
 
 16. Assets committed to the engine repository MUST be CC0 or made for the project, each listed
