@@ -7,8 +7,9 @@
 //! - Network plug-ins build [`http::HttpRequest`] values and parse [`http::HttpResponse`]
 //!   values; the bytes move through a [`http::Transport`]. This build ships no network
 //!   transport ([`http::NoNetwork`]), so nothing here can spend money yet (decision 0019).
-//! - Keys come from environment variables only ([`ProviderInfo::key_env`]); the config file
-//!   refuses any field it does not know, so a key cannot be stored in it.
+//! - Keys come from environment variables ([`ProviderInfo::key_env`]) or a person's keys file
+//!   outside the project ([`keys`]); `providers.json` refuses any field it does not know, so a
+//!   key cannot be stored in it.
 //! - Every paid call is checked against a spend cap that only a person sets ([`spend`]).
 //!
 //! Providers run outside the simulation; nothing here is called during a tick.
@@ -17,6 +18,7 @@ pub mod claude;
 pub mod config;
 mod glb;
 pub mod http;
+pub mod keys;
 pub mod mock;
 pub mod qwen;
 pub mod spend;
@@ -29,7 +31,7 @@ use std::path::Path;
 
 pub use config::{Choice, ProvidersConfig};
 pub use http::{HttpRequest, HttpResponse, NoNetwork, Transport};
-pub use spend::{CapSource, SpendCap};
+pub use spend::{CapSource, Limit, ProviderCap, ProviderCaps, SpendCap};
 
 /// Stable error codes added by this crate.
 pub mod codes {
@@ -59,6 +61,8 @@ pub mod codes {
     pub const REFUSED: &str = "provider.refused";
     /// The spend ledger cannot be read or written; no paid call is made.
     pub const LEDGER: &str = "provider.ledger";
+    /// The keys file is inside the project folder; it is not read.
+    pub const KEYS_FILE_IN_PROJECT: &str = "provider.keys_file_in_project";
 }
 
 /// What a provider generates.
@@ -102,12 +106,15 @@ pub struct ImageRequest {
     pub height: u32,
 }
 
-/// A 3D model request: from a text prompt, or from a reference image URL (or both). The
-/// result is always GLB.
-#[derive(Debug, Clone, PartialEq)]
+/// A 3D model request: from a text prompt, a reference image URL or local reference image
+/// bytes (PNG). The result is always GLB.
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ModelRequest {
     pub prompt: Option<String>,
     pub image_url: Option<String>,
+    /// A local reference image (PNG bytes). Network providers upload it first; it wins over
+    /// `image_url` when both are given.
+    pub image_png: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -162,10 +169,18 @@ impl Request {
             }
             Request::Model(m) => {
                 let empty = |s: &Option<String>| s.as_deref().is_none_or(|s| s.trim().is_empty());
-                if empty(&m.prompt) && empty(&m.image_url) {
+                if empty(&m.prompt) && empty(&m.image_url) && m.image_png.is_none() {
                     return bad(
-                        "a 3D request needs a prompt or an image_url".into(),
+                        "a 3D request needs a prompt, an image_url or a reference image".into(),
                         "give a prompt, an image_url, or both",
+                    );
+                }
+                if let Some(png) = &m.image_png
+                    && !png.starts_with(b"\x89PNG\r\n\x1a\n")
+                {
+                    return bad(
+                        "the reference image is not a PNG".into(),
+                        "pass PNG bytes as the reference image",
                     );
                 }
             }
@@ -334,7 +349,10 @@ pub struct Env<'a> {
     pub transport: &'a dyn Transport,
     /// The spend ledger (`<project>/.marionette/spend.jsonl`).
     pub ledger: &'a Path,
+    /// The total cap (for providers without their own).
     pub cap: SpendCap,
+    /// Caps a person set for single providers.
+    pub provider_caps: &'a ProviderCaps,
     pub max_polls: u32,
     pub wait: &'a dyn Fn(u32),
 }
@@ -382,7 +400,7 @@ pub fn generate(config: &ProvidersConfig, env: &Env, request: &Request) -> Resul
             format!("provider `{}` needs the network and this build has no network transport", info.name),
         )
         .fix(format!(
-            "use `mock` for {} for now; network calls are enabled in a later build, after the project owner approves spending (decision 0019)",
+            "use `mock` for {} for now; network calls need a build with `--features net`, made only after the project owner approves live calls (decisions 0019 and 0045)",
             kind.as_str()
         ))
         .into());
@@ -390,9 +408,9 @@ pub fn generate(config: &ProvidersConfig, env: &Env, request: &Request) -> Resul
     let estimate = provider.estimate_usd(&model, request);
     // Paid calls need a readable ledger; free calls only report its total when they can.
     let spent_before = if estimate > 0.0 {
-        let spent = spend::total(env.ledger)?;
-        spend::check(&env.cap, spent, estimate)?;
-        spent
+        let entries = spend::entries(env.ledger)?;
+        spend::check_for(&env.cap, env.provider_caps, info.name, &entries, 0.0, estimate)?;
+        entries.iter().fold(0.0, |acc, e| acc + e.cost_usd)
     } else {
         spend::total(env.ledger).unwrap_or(0.0)
     };

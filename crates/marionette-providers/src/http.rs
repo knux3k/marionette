@@ -1,7 +1,8 @@
 //! HTTP as plain data. Network plug-ins build [`HttpRequest`] values and parse
 //! [`HttpResponse`] values; a [`Transport`] moves the bytes. Tests use a scripted transport, so
-//! every plug-in is exercised with no network. This build has no real transport
-//! ([`NoNetwork`]); see decision 0019.
+//! every plug-in is exercised with no network. A default build has no real transport
+//! ([`NoNetwork`]); the `net` cargo feature adds [`Network`] (decisions 0019 and 0045).
+//! [`default_transport`] picks the one this build has.
 
 use std::fmt;
 
@@ -126,5 +127,67 @@ impl Transport for NoNetwork {
     }
     fn send(&self, _: &HttpRequest) -> Result<HttpResponse, String> {
         Err("this build has no network transport".into())
+    }
+}
+
+/// Largest answer body read into memory (a generated GLB can be tens of megabytes).
+pub const MAX_BODY_BYTES: u64 = 256 * 1024 * 1024;
+
+/// The real network transport (cargo feature `net`): HTTPS through `ureq` with rustls and the
+/// web PKI roots. Non-2xx answers are returned as data, not errors, so plug-ins can report
+/// the service's message. Follows redirects (download links often redirect).
+#[cfg(feature = "net")]
+pub struct Network {
+    agent: ureq::Agent,
+}
+
+#[cfg(feature = "net")]
+impl Network {
+    pub fn new(timeout: std::time::Duration) -> Self {
+        let config = ureq::Agent::config_builder()
+            .http_status_as_error(false)
+            .timeout_global(Some(timeout))
+            .user_agent("marionette-engine")
+            .build();
+        Self { agent: config.into() }
+    }
+}
+
+#[cfg(feature = "net")]
+impl Transport for Network {
+    fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
+        let mut builder = ureq::http::Request::builder()
+            .method(match request.method {
+                Method::Get => "GET",
+                Method::Post => "POST",
+            })
+            .uri(&request.url);
+        for h in &request.headers {
+            builder = builder.header(&h.name, &h.value);
+        }
+        let req = builder
+            .body(request.body.clone().unwrap_or_default())
+            .map_err(|e| format!("bad request: {e}"))?;
+        let mut resp = self.agent.run(req).map_err(|e| e.to_string())?;
+        let status = resp.status().as_u16();
+        let body = resp
+            .body_mut()
+            .with_config()
+            .limit(MAX_BODY_BYTES)
+            .read_to_vec()
+            .map_err(|e| e.to_string())?;
+        Ok(HttpResponse { status, body })
+    }
+}
+
+/// The transport this build has: [`Network`] with the `net` feature, else [`NoNetwork`].
+pub fn default_transport() -> Box<dyn Transport> {
+    #[cfg(feature = "net")]
+    {
+        Box::new(Network::new(std::time::Duration::from_secs(300)))
+    }
+    #[cfg(not(feature = "net"))]
+    {
+        Box::new(NoNetwork)
     }
 }

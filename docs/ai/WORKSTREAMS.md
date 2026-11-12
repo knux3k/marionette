@@ -71,6 +71,11 @@ Unity prefabs, scenes, animation clips and audio are not covered and are listed 
 
 ## W4: assets C, generation
 
+Status: pipeline done offline (decision 0045, guide GENERATION.md): recipes, cache,
+provenance, approval, post-processing, network transport behind `net`, per-provider caps,
+keys files. Next: first approved live calls for the proof scenes, then `verified: true`;
+Tripo auto-rig and rig checks; decimation.
+
 - Scope: recipes (a generated asset is a recipe plus a cached output keyed by content hash),
   Qwen for images only, Tripo for 3D models, rigging (Tripo auto-rig first for humanoids and
   common animals, agent-scripted Blender otherwise), numeric rig checks, post-processing,
