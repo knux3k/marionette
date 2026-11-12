@@ -1,0 +1,80 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Position": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 1,
+      "name": "anchor"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 2.5,
+          "y": 1.0,
+          "z": -1.0
+        },
+        "RandomImpulse": {
+          "strength": 0.5
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 2,
+      "name": "wanderer"
+    },
+    {
+      "components": {
+        "Follow": {
+          "gain": 1.5,
+          "target": 2
+        },
+        "Position": {
+          "x": -3.0,
+          "y": 0.0,
+          "z": 4.0
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 3,
+      "name": "follower"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 0.0,
+          "y": 5.0,
+          "z": 0.0
+        },
+        "RandomImpulse": {
+          "strength": 0.05
+        },
+        "Velocity": {
+          "x": 0.1,
+          "y": -0.2,
+          "z": 0.3
+        }
+      },
+      "id": 4,
+      "name": "drifter"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}
