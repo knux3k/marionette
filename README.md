@@ -30,12 +30,19 @@ Commands (all accept `--json`):
 | `marionette ops` | Lists every operation with its JSON Schemas |
 | `marionette op <name> '<json>'` | Runs one operation (`--project DIR`, `--read-only`) |
 | `marionette mcp` | Serves every operation as an MCP tool over stdio |
+| `marionette provider use <kind> <provider>` | Switches the AI provider for `language`, `image` or `model3d` (`provider list`, `provider status`) |
 
 Operations: `project_init`, `project_validate`, `project_schema`, `scene_create`,
 `scene_validate`, `scene_format`, `scene_run`, `entity_create`, `entity_update`,
 `entity_delete`, `component_set`, `component_remove`, `session_start`, `session_step`,
 `session_stop`, `session_list`, `session_save`, `observe_tree`, `observe_query`,
-`observe_entity`, `observe_screenshot`, `observe_logs`, `observe_stats`, `test_run`.
+`observe_entity`, `observe_screenshot`, `observe_logs`, `observe_stats`, `test_run`,
+`library_*`, `license_check_text`, `pool_admission_check`, `provider_list`, `provider_status`,
+`provider_use`, `provider_generate`. Full list: `docs/ai/reference/operations.md`.
+
+AI providers default to an offline mock. Real providers read keys from environment variables
+(`ANTHROPIC_API_KEY`, `DASHSCOPE_API_KEY`, `TRIPO_API_KEY`) and are limited by a spend cap the
+owner sets (`MARIONETTE_SPEND_CAP_USD`); see decision 0019.
 
 Start a game project:
 

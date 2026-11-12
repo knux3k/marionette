@@ -1693,6 +1693,7 @@ dependencies = [
  "marionette-import",
  "marionette-input",
  "marionette-physics",
+ "marionette-providers",
  "marionette-render",
  "rmcp",
  "schemars",
@@ -1785,6 +1786,18 @@ dependencies = [
  "rapier3d",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "marionette-providers"
+version = "0.1.0"
+dependencies = [
+ "marionette-assets",
+ "marionette-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

@@ -22,3 +22,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0016 | No identifying details in the repository | accepted, permanent |
 | 0017 | The window hands input and frames to its caller through hooks | accepted |
 | 0018 | Owned library, license declarations and the Unity importer | accepted |
+| 0019 | Swappable AI providers, offline by default, spending gated twice | accepted |
