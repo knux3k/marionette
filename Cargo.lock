@@ -1939,6 +1939,7 @@ dependencies = [
  "marionette-input",
  "marionette-jobs",
  "marionette-physics",
+ "marionette-pool",
  "marionette-port",
  "marionette-providers",
  "marionette-render",
@@ -2093,6 +2094,24 @@ dependencies = [
  "rapier3d",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "marionette-pool"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "image",
+ "marionette-assets",
+ "marionette-core",
+ "marionette-generate",
+ "marionette-host",
+ "marionette-import",
+ "marionette-providers",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

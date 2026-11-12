@@ -24,7 +24,7 @@ pub mod alloc;
 mod child;
 mod run;
 
-pub use child::{contained, spawn};
+pub use child::{contained, output, spawn};
 pub use run::{RUN_ROOT_ENV, TempDir, run_dir, runs_root, shutdown, sweep_stale, sweep_stale_in, temp_dir};
 
 use std::path::PathBuf;

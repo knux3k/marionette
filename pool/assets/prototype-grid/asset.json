@@ -1,0 +1,38 @@
+{
+  "format": "marionette.pool_asset/1",
+  "id": "prototype-grid",
+  "kind": "texture",
+  "name": "Prototype grid",
+  "tags": [
+    "floor",
+    "grid",
+    "measure",
+    "prototype",
+    "wall"
+  ],
+  "license": {
+    "spdx": "CC0-1.0",
+    "proof": [
+      {
+        "kind": "made_for_project",
+        "detail": "made for the Marionette project and dedicated to the public domain under CC0 1.0 by the Marionette Contributors",
+        "at": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    ]
+  },
+  "source": {
+    "origin": "made",
+    "author": "Marionette Contributors",
+    "method": "computed in code: 256 px, 4 x 4 checkered tiles, dark lines every 64 px and light lines every 16 px",
+    "generator": "crates/marionette-pool/src/seed.rs"
+  },
+  "files": [
+    {
+      "path": "texture.png",
+      "sha256": "e55c5cf68373cf24bd94a54498af7fa020e985d03da7dac6a72db64a14cef813",
+      "bytes": 1251
+    }
+  ],
+  "main": "texture.png",
+  "engine_ready": true
+}

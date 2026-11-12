@@ -51,7 +51,8 @@ Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
 
 1. Add `marionette-host.workspace = true` to the crate's dependencies.
 2. Child process: build a `std::process::Command`, then `marionette_host::spawn(cmd)` (never
-   `cmd.spawn()`, `output()` or `status()`; wait on the returned `Child` yourself). It dies
+   `cmd.spawn()`, `output()` or `status()`; wait on the returned `Child` yourself, or use
+   `marionette_host::output(cmd)` to run it to completion). It dies
    with the engine on Windows and Linux, even on a kill.
 3. Temporary files: `let dir = marionette_host::temp_dir("what-for")?;` and write under
    `dir.path()`. The folder is removed when `dir` drops, and by the next engine start if the

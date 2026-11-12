@@ -19,7 +19,7 @@ Not reclaimed, so the engine must manage them:
 
 | Thing | Rule | Mechanism |
 | --- | --- | --- |
-| Child processes | Start every one with `marionette_host::spawn`, never `Command::spawn`. | Windows: the engine process is in a kill-on-close job object (`marionette_host::init`), inherited by all descendants. Linux: `PR_SET_PDEATHSIG = SIGKILL`, set on a spawner thread that lives as long as the process. |
+| Child processes | Start every one with `marionette_host::spawn` (or `marionette_host::output` to run to completion), never `Command::spawn`, `output` or `status`. | Windows: the engine process is in a kill-on-close job object (`marionette_host::init`), inherited by all descendants. Linux: `PR_SET_PDEATHSIG = SIGKILL`, set on a spawner thread that lives as long as the process. |
 | Files outside the project | Write them under `marionette_host::temp_dir(tag)` (or `run_dir()`), never straight into the system temp folder. | Per-process run folder `<temp>/marionette/runs/<pid>-<n>/` held by an OS file lock; `init` sweeps folders whose lock is free; `shutdown` removes this process's folder on a clean exit. `MARIONETTE_RUN_ROOT` moves the root (tests). |
 | Named OS objects (named shared memory, named pipes, semaphores, lock files outside the run folder, fixed TCP ports) | Do not create them. If one is ever needed, write a decision record first and make the next start clean it up. | None exist today. |
 | Detached processes (meant to outlive the engine, e.g. opening a browser) | Not allowed without a decision record. | - |

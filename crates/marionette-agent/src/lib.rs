@@ -16,6 +16,7 @@ pub mod library;
 pub mod mcp;
 pub mod observe;
 pub mod perf;
+pub mod pool;
 pub mod port;
 pub mod prefab;
 pub mod project;
@@ -133,6 +134,7 @@ impl Agent {
             anim::ops(),
             generate::ops(),
             script::ops(),
+            pool::ops(),
             port::ops(),
             prefab::ops(),
             batch::ops(),

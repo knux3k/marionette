@@ -1,0 +1,87 @@
+{
+  "assets": [
+    {
+      "engine_ready": true,
+      "id": "blip",
+      "kind": "sound",
+      "library": null,
+      "main": "sound.wav",
+      "name": "Blip",
+      "origin": "made",
+      "tags": [
+        "beep",
+        "blip",
+        "pickup",
+        "sfx",
+        "ui"
+      ]
+    },
+    {
+      "engine_ready": true,
+      "id": "gray-noise",
+      "kind": "texture",
+      "library": null,
+      "main": "texture.png",
+      "name": "Gray value noise",
+      "origin": "made",
+      "tags": [
+        "gray",
+        "grey",
+        "grunge",
+        "height",
+        "noise",
+        "tileable"
+      ]
+    },
+    {
+      "engine_ready": true,
+      "id": "prototype-grid",
+      "kind": "texture",
+      "library": null,
+      "main": "texture.png",
+      "name": "Prototype grid",
+      "origin": "made",
+      "tags": [
+        "floor",
+        "grid",
+        "measure",
+        "prototype",
+        "wall"
+      ]
+    },
+    {
+      "engine_ready": true,
+      "id": "red-bricks",
+      "kind": "texture",
+      "library": null,
+      "main": "texture.png",
+      "name": "Red bricks",
+      "origin": "made",
+      "tags": [
+        "brick",
+        "bricks",
+        "masonry",
+        "red",
+        "wall"
+      ]
+    },
+    {
+      "engine_ready": true,
+      "id": "wooden-crate",
+      "kind": "model",
+      "library": null,
+      "main": "model.glb",
+      "name": "Wooden crate",
+      "origin": "made",
+      "tags": [
+        "box",
+        "crate",
+        "cube",
+        "prop",
+        "wood"
+      ]
+    }
+  ],
+  "format": "marionette.cc0_pool_index/1",
+  "license": "CC0-1.0"
+}

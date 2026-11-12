@@ -19,6 +19,16 @@ pub fn spawn(cmd: Command) -> io::Result<Child> {
     imp::spawn(cmd)
 }
 
+/// Runs `cmd` to completion through [`spawn`] and collects its output, like
+/// `Command::output` (stdin closed, stdout and stderr captured).
+pub fn output(mut cmd: Command) -> io::Result<std::process::Output> {
+    use std::process::Stdio;
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    spawn(cmd)?.wait_with_output()
+}
+
 /// Whether descendants of this process die with it without per-child work (Windows job
 /// object holding this process). On Linux this is `false` and [`spawn`] does the work per
 /// child.
