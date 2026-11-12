@@ -329,6 +329,14 @@ pub fn scan(source: &Path) -> Result<Analysis, Errors> {
 }
 
 /// Analyzes in-memory sources (used by `scan` and by tests).
+/// Whether a binding call (`port_scan` method `bound_by`) sets a timer or starts a coroutine,
+/// whose callback becomes an exported function called by `engine.after` / `engine.every`.
+pub fn is_timer_binder(pattern: &str) -> bool {
+    ["SetTimer", "Invoke", "InvokeRepeating", "StartCoroutine"]
+        .iter()
+        .any(|b| pattern == *b || pattern.ends_with(&format!(".{b}")))
+}
+
 pub fn analyze(root: PathBuf, files: Vec<SourceFile>, skipped: Vec<Skipped>) -> Analysis {
     let mut raw: Vec<RawClass> = Vec::new();
     let mut defs: Vec<(String, source::RawMethod)> = Vec::new();
@@ -742,6 +750,16 @@ impl Analysis {
         }
         if let Some((pattern, hook)) = c.bound.get(method) {
             let hook = (!hook.is_empty()).then(|| hook.clone());
+            if hook.is_none() && is_timer_binder(pattern) {
+                return (
+                    None,
+                    Status::Script,
+                    format!(
+                        "Called by a timer ({pattern}): engine.after / engine.every call it as {method}(self, arg)."
+                    ),
+                    Some(pattern.clone()),
+                );
+            }
             let note = if hook.is_some() {
                 format!("Bound with {pattern}; the body goes into the hook.")
             } else {

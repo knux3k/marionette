@@ -32,9 +32,12 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
    events, updates `DeviceState`, recomputes `ActionState` from the action map, records changes.
 2. `Stage::Script`: `run_scripts` (`crates/marionette-script/src/lib.rs`): for each entity
    with a `Script`, in id order, the module's hooks (`start` once, contact hooks for last
-   tick's collisions, `update`). Decision 0022.
+   tick's collisions, due timers, `update`). Decision 0022. Then entities whose `DestroyAt`
+   tick has come get `onDestroy` and are removed (id order), and scripts first used by
+   entities spawned this tick are loaded. Decision 0021.
 3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
-4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): kinematic targets,
+4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): bodies for
+   spawned entities and removal of bodies of removed ones (`sync`), kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
 5. `Stage::Effects`: `play_sounds` (`crates/marionette-audio/src/lib.rs`): sound events;
    `animate` (`crates/marionette-anim/src/lib.rs`): advance `Animator` layers, write `Pose`
@@ -104,7 +107,9 @@ Forbidden in simulation code (systems and anything they call):
 - `sin`, `cos`, `powf`, `exp`, `atan2` and other platform math in per-tick code (plain
   `+ - * /` and `sqrt` are fine; physics 2D converts angles with `atan2` only at load);
 - unseeded randomness (only `SimRng`, seeded from `--seed` / `seed`);
-- reading files during a tick (load in `Module::init`).
+- reading files during a tick (load in `Module::init`). Two exceptions, each read once when
+  first needed: a script file first used by a spawned entity, and a mesh a spawned
+  entity's `Collider` needs (decision 0021).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
 math, `**` rewritten to `Math.pow` (decision 0022).

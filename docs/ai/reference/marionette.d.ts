@@ -22,11 +22,15 @@ interface Entity {
   blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
   /** Fades out one clip, or every clip when `clip` is omitted. */
   stopClip(clip?: string, options?: { fade?: number }): void;
+  /** Same as `engine.destroy(this, seconds)`. */
+  destroy(seconds?: number): void;
 }
 
 /** What a script module exports. Only `update` is required. Hooks for one entity run in
  *  this order each tick: `start` (first tick only), `onCollisionEnter`, `onCollisionExit`,
- *  `onTriggerEnter`, `onTriggerExit`, `update`. Entities run in id order. */
+ *  `onTriggerEnter`, `onTriggerExit`, due timers, `update`. Entities run in id order.
+ *  After every entity's turn, entities marked by `engine.destroy` get `onDestroy` (id
+ *  order) and are removed. */
 interface ScriptHooks {
   /** Once, on the first tick this entity runs (Unity `Start`, Unreal `BeginPlay`). */
   start?(self: Entity): void;
@@ -39,7 +43,14 @@ interface ScriptHooks {
   /** Like `onCollisionEnter`, for contacts where either collider is a sensor (`Collider.sensor`). */
   onTriggerEnter?(self: Entity, other: Entity): void;
   onTriggerExit?(self: Entity, other: Entity): void;
+  /** Just before the entity is removed by `engine.destroy` (Unity `OnDestroy`, Unreal
+   *  `EndPlay`). It may change, spawn or destroy other entities. */
+  onDestroy?(self: Entity): void;
 }
+
+/** A timer callback: an exported function of the same script. `arg` is the JSON value given
+ *  when the timer was set (null if none). */
+type TimerCallback = ((self: Entity, arg: any) => void) | string;
 
 declare const engine: {
   /** Ticks simulated so far. */
@@ -63,6 +74,37 @@ declare const engine: {
   /** Every entity with the component, in id order. */
   query(name: keyof Components): Entity[];
   resource<K extends keyof Resources>(name: K): Resources[K] | undefined;
+  /** Adds an entity now, with a new id that is never reused (Unity `Instantiate`, Unreal
+   *  `SpawnActor`). Throws `script.bad_value` and spawns nothing if a component does not
+   *  fit. Its script's `start` and `update` first run on the next tick; physics gives it a
+   *  body in this tick's physics step. */
+  spawn(components: Partial<Components>, name?: string): Entity;
+  /** Spawns a copy of `source` (every component except ScriptState, ScriptTimers and
+   *  DestroyAt), with `overrides` replacing whole components. The name defaults to the
+   *  source's name. A copy's script starts fresh. */
+  clone(source: Entity | number, overrides?: Partial<Components>, name?: string): Entity;
+  /** Removes the entity at the end of this tick's script stage, after its `onDestroy`
+   *  (Unity `Destroy(gameObject, seconds)`). With `seconds`, at the end of the script stage
+   *  that many seconds later. Recorded as component `DestroyAt`, so it survives snapshots;
+   *  the earliest removal wins. Emits a `destroyed` event. */
+  destroy(entity: Entity | number, seconds?: number): void;
+  /** Calls `fn(self, arg)` once, `seconds` from now, rounded to whole ticks (at least the
+   *  next tick); Unity `Invoke`, a coroutine's `WaitForSeconds`, Unreal `SetTimer`. Timers
+   *  belong to the entity whose hook is running, fire before its `update`, are saved as the
+   *  `ScriptTimers` component (snapshots and the state hash include them) and are dropped
+   *  when it is destroyed. Returns a handle for `cancel`. */
+  after(seconds: number, fn: TimerCallback, arg?: unknown): number;
+  /** Like `after`, counted in ticks (a whole number >= 1). */
+  afterTicks(ticks: number, fn: TimerCallback, arg?: unknown): number;
+  /** Calls `fn(self, arg)` every `seconds`, first after `firstSeconds` (default: `seconds`);
+   *  Unity `InvokeRepeating`, Unreal looping `SetTimer`. Returns a handle for `cancel`. */
+  every(seconds: number, fn: TimerCallback, arg?: unknown, firstSeconds?: number): number;
+  /** Cancels this entity's timers: one handle, every timer calling `fn`, or all (no
+   *  argument). Returns how many were cancelled. */
+  cancel(which?: number | TimerCallback): number;
+  /** How many of this entity's timers are pending (all, one handle, or those calling `fn`);
+   *  Unity `IsInvoking`. */
+  pending(which?: number | TimerCallback): number;
 };
 
 declare const console: { log(...parts: unknown[]): void; warn(...parts: unknown[]): void; error(...parts: unknown[]): void };
@@ -220,6 +262,11 @@ type Collider = {
       model: string;
     };
   };
+};
+
+/** Marks an entity for removal: at the end of the script stage of tick `tick` (or the first later one), the entity's script gets `onDestroy`, then the entity is removed. `engine.destroy` adds it; scene files may use it for a fixed lifetime. */
+type DestroyAt = {
+  tick: number;
 };
 
 /** Sunlight: parallel rays travelling along `direction`. */
@@ -431,6 +478,16 @@ type ScriptState = {
   data: string;
 };
 
+/** Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore. */
+type ScriptTimers = {
+  data: string;
+};
+
+/** The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity. */
+type SpawnIds = {
+  next: number;
+};
+
 /** A textured, camera-independent quad in the XY plane at the entity's translation. `image` is a PNG file relative to the scene file or a built-in image (`builtin:white`, `builtin:circle`, `builtin:checker`, `builtin:atlas`). Higher `layer` draws on top; equal layers draw in entity-id order. */
 type Sprite = {
   /** Multiplies the image color (including alpha). */
@@ -551,6 +608,7 @@ interface Components {
   CharacterController: CharacterController;
   CharacterState: CharacterState;
   Collider: Collider;
+  DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;
   FactoryBelt: FactoryBelt;
   FactoryMachine: FactoryMachine;
@@ -563,6 +621,7 @@ interface Components {
   RigidBody: RigidBody;
   Script: Script;
   ScriptState: ScriptState;
+  ScriptTimers: ScriptTimers;
   Sprite: Sprite;
   SpriteRegion: SpriteRegion;
   Transform: Transform;
@@ -583,4 +642,5 @@ interface Resources {
   FixedStep: FixedStep;
   InputConfig: InputConfig;
   PhysicsSettings: PhysicsSettings;
+  SpawnIds: SpawnIds;
 }
