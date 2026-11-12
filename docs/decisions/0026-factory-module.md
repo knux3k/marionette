@@ -1,4 +1,4 @@
-# 0024: Factory simulation module
+# 0026: Factory simulation module
 
 Date: 2026-11-12. Status: accepted.
 

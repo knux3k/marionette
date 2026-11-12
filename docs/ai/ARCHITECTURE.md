@@ -76,7 +76,7 @@ tick and RNG). File edits never touch sessions; session edits never touch files;
 1. PBR models, instanced: one draw call per (asset, part, material override) group, per-instance
    model matrix and material factors in a vertex buffer, normal matrix computed in the shader.
    Bind groups: 0 view (dynamic offset, one slot per view), 1 lights, 2 material textures.
-   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0023).
+   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025).
 2. Sprites, same view, alpha blended, depth-tested without depth writes.
 3. UI in screen pixels (separate view buffer), no depth test.
 
@@ -90,7 +90,7 @@ Forbidden in simulation code (systems and anything they call):
 - wall-clock time (`Instant`, `SystemTime`);
 - iterating `HashMap` / `HashSet` (use `BTreeMap` / `BTreeSet`, or sort);
 - multithreaded execution or thread timing, except through `marionette-jobs` following its
-  rules (decision 0022);
+  rules (decision 0024);
 - relying on ECS query order where order matters (sort by `SceneId`);
 - `sin`, `cos`, `powf`, `exp`, `atan2` and other platform math in per-tick code (plain
   `+ - * /` and `sqrt` are fine; physics 2D converts angles with `atan2` only at load);

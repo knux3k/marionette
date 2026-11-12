@@ -1,5 +1,5 @@
 //! Performance operations: generate benchmark scenes and time the simulation tick
-//! (decision 0021). Timings are measurements of this machine and never feed back into a
+//! (decision 0023). Timings are measurements of this machine and never feed back into a
 //! simulation; the state hash they report is the same for any thread count.
 
 use crate::{Agent, Op, op, write_atomic};

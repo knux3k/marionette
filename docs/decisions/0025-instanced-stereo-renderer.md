@@ -1,4 +1,4 @@
-# 0023: Instanced, multi-view renderer and bulk draws
+# 0025: Instanced, multi-view renderer and bulk draws
 
 Date: 2026-11-12. Status: accepted.
 

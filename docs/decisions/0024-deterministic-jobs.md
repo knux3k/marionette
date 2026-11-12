@@ -1,4 +1,4 @@
-# 0022: Deterministic data-parallel jobs
+# 0024: Deterministic data-parallel jobs
 
 Date: 2026-11-12. Status: accepted.
 

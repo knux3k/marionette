@@ -2,7 +2,7 @@
 //!
 //! Hot simulation loops (factory machines, belt slots, crowds, particles) run as compiled
 //! Rust over plain arrays instead of per-entity scripts, spread over CPU cores. The rules
-//! that keep this deterministic (decision 0022):
+//! that keep this deterministic (decision 0024):
 //!
 //! 1. **Work is split by the data, never by the thread count.** Chunk sizes and segment
 //!    boundaries come from the caller; the same input always gives the same chunks.

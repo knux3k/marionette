@@ -1,4 +1,4 @@
-# 0021: Performance budgets, checked by tests
+# 0023: Performance budgets, checked by tests
 
 Date: 2026-11-12. Status: accepted.
 

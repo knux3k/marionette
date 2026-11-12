@@ -62,7 +62,7 @@ struct InstanceData {
 }
 
 /// What one frame cost in GPU work, counted on the CPU. Deterministic for a given frame,
-/// so tests can hold it to a budget (decision 0021).
+/// so tests can hold it to a budget (decision 0023).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
 pub struct RenderStats {
     /// Views drawn (render passes).
