@@ -117,6 +117,16 @@
       return before - turn.timers.list.length;
     },
     pending: (which) => (turn ? turn.timers.list.filter((t) => matches(t, which)).length : 0),
+    send: (target, kind, detail) => {
+      if (!turn) throw new Error("script.no_turn: messages can only be sent while a hook runs");
+      const id = idOf(target);
+      if (!h.exists(id)) throw new Error(`script.no_entity: entity ${id} does not exist`);
+      if (!h.has(id, "Script")) throw new Error(`script.no_script: entity ${id} has no script to receive messages`);
+      const inbox = parse(h.get(id, "ScriptInbox"));
+      const list = inbox ? JSON.parse(inbox.data) : [];
+      list.push({ from: turn.id, kind: String(kind), detail: detail === undefined ? null : JSON.parse(JSON.stringify(detail)) });
+      h.set(id, "ScriptInbox", JSON.stringify({ data: JSON.stringify(list) }));
+    },
   });
 
   const define = (name, value) =>
@@ -146,7 +156,7 @@
   };
   // Returns [state text | null, timers text | null, error text | null].
   define("__run", (mod, id, stateText, isNew, c, timersText) => {
-    turn = { mod, used: timersText !== undefined && timersText !== null, timers: timersText ? JSON.parse(timersText) : { next: 1, list: [] } };
+    turn = { mod, id, used: timersText !== undefined && timersText !== null, timers: timersText ? JSON.parse(timersText) : { next: 1, list: [] } };
     let state = null;
     let error = null;
     try {
@@ -157,6 +167,12 @@
       each(mod.onCollisionExit, self, c.collisionExit);
       each(mod.onTriggerEnter, self, c.triggerEnter);
       each(mod.onTriggerExit, self, c.triggerExit);
+      // Messages: taken out of the inbox first, so a throwing handler does not see them again.
+      const inbox = parse(h.get(id, "ScriptInbox"));
+      if (inbox && inbox.data !== "[]") {
+        h.set(id, "ScriptInbox", JSON.stringify({ data: "[]" }));
+        if (typeof mod.onMessage === "function") for (const m of JSON.parse(inbox.data)) mod.onMessage(self, m);
+      }
       fire(mod, self);
       mod.update(self);
       state = JSON.stringify(self.state ?? {});
@@ -169,7 +185,7 @@
   });
   // `onDestroy` before the entity is removed. Timers set here are dropped with the entity.
   define("__destroy", (mod, id, stateText) => {
-    turn = { mod, used: false, timers: { next: 1, list: [] } };
+    turn = { mod, id, used: false, timers: { next: 1, list: [] } };
     let error = null;
     try {
       const self = new Entity(id);

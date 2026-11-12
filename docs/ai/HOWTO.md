@@ -54,6 +54,21 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 4. Add it to the crate map in ARCHITECTURE.md with its forbidden dependencies.
 5. Record why in a decision.
 
+## Start a child process or write a temporary file
+
+Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
+
+1. Add `marionette-host.workspace = true` to the crate's dependencies.
+2. Child process: build a `std::process::Command`, then `marionette_host::spawn(cmd)` (never
+   `cmd.spawn()`, `output()` or `status()`; wait on the returned `Child` yourself, or use
+   `marionette_host::output(cmd)` to run it to completion). It dies
+   with the engine on Windows and Linux, even on a kill.
+3. Temporary files: `let dir = marionette_host::temp_dir("what-for")?;` and write under
+   `dir.path()`. The folder is removed when `dir` drops, and by the next engine start if the
+   process dies first. Never write straight into `std::env::temp_dir()` outside tests.
+4. A new cache or log that lives as long as a session or the process needs a bound; add a
+   round of the work that fills it to `crates/marionette-agent/tests/leaks.rs`.
+
 ## Add an example scene with a reference image
 
 1. Write the scene as JSON under `examples/`, then canonicalize:
@@ -80,6 +95,16 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. In a live session, `script_reload` swaps in the edited file; load errors come back as
    `script.*` diagnostics with line and column, runtime throws as `script_error` events.
 6. Add a test that runs the scene twice with the same seed and compares the state hash.
+## Add a job (hot loop in TypeScript)
+
+1. Write `name.job.ts` with exported functions over `Float32Array`/`Float64Array`/`Int32Array`
+   parameters (rules: `docs/ai/JOBS-TS.md`).
+2. `marionette op jobs_check '{"path":"name.job.ts"}'` until `ok` is true; apply each `fix`.
+3. Try it on data: `marionette op jobs_run '{"path":"name.job.ts","function":"f","args":[...]}'`.
+4. From Rust: `JobProgram::load(path)?.run(&jobs, "f", len, chunk, &mut [Arg::F32(&mut a), ...])`,
+   or keep a `JobLibrary` for hot reload.
+5. Test it: same output with `Jobs::inline()` and `Jobs::with_threads(n)`.
+
 ## Add an AI provider
 
 1. Add `crates/marionette-providers/src/<name>.rs` with a unit struct implementing `Provider`:

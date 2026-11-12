@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "crawler",
+  "output": "model",
+  "from": "crawler_ref",
+  "model": {
+    "height_m": 0.8,
+    "max_triangles": 12000
+  }
+}

@@ -13,5 +13,5 @@ mod skinning;
 pub mod window;
 
 pub use extract::{FrameData, View, extract, extract_at};
-pub use gpu::{FrameTiming, Gpu, Offscreen};
+pub use gpu::{FrameTiming, Gpu, GpuObjects, Offscreen};
 pub use renderer::{MAX_VIEWS, RenderStats, Renderer};

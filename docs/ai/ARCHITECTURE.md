@@ -5,6 +5,7 @@
 | Crate | Responsibility | Depends on | Must NOT depend on |
 | --- | --- | --- | --- |
 | `crates/marionette-core` | ECS world (`bevy_ecs`), type registry, JSON Schema, scene format and validator, fixed-step `Sim`, seeded RNG, errors as data, module trait and stages, data components (spatial, UI, actions) | bevy_ecs, bevy_reflect, serde, serde_json, sha2 | any other marionette crate, wgpu, winit, rapier, kira, network |
+| `crates/marionette-host` | What the engine holds from the OS: `spawn` (children die with the engine), per-process run folder and stale sweep, `init`/`shutdown`, counting allocator (decision 0032) | libc (Unix), windows-sys (Windows) | any other crate |
 | `crates/marionette-assets` | CPU assets: glTF/GLB models, PNG, primitive shapes, built-in images and font | glam, gltf, png | wgpu, winit, any marionette crate |
 | `crates/marionette-render` | wgpu renderer (PBR, sprites, UI), offscreen capture, image diff, the window | core, assets, wgpu, winit, glam, bytemuck, pollster | physics, input, audio, agent |
 | `crates/marionette-input` | Action maps, input event queue, recording, `Stage::Input` system | core | render, winit, physics, audio |
@@ -17,6 +18,7 @@
 | `crates/marionette-generate` | Asset generation: recipes, request-keyed cache, provenance, image approval, PNG and GLB post-processing (decision 0045) | core, assets, providers, glam, gltf | render, input, physics, audio, script |
 | `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028) | core, assets | render, input, physics, audio, script |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
+| `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts` | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
@@ -113,7 +115,9 @@ Forbidden in simulation code (systems and anything they call):
   entity's `Collider` needs (decision 0021).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
-math, `**` rewritten to `Math.pow` (decision 0022).
+math, `**` rewritten to `Math.pow` (decision 0022). Job TypeScript files (`*.job.ts`) are
+deterministic by construction: WebAssembly arithmetic, canonical NaNs at stores, `libm` math,
+chunks from the data, results in chunk order (decision 0030, `docs/ai/JOBS-TS.md`).
 
 Rapier runs with `enhanced-determinism`. Test: same scene, seed, ticks and input give the same
 hash (`crates/marionette-core/tests/acceptance.rs`, `crates/marionette-cli/tests/agent_e2e.rs`).

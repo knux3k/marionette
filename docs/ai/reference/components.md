@@ -111,7 +111,7 @@ Rust type: `marionette_physics::components::Collider`.
 | `friction` | number | yes |  |
 | `restitution` | number | yes |  |
 | `sensor` | boolean | yes | Detects overlaps (collision events) without pushing. |
-| `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
+| `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {RoundCuboid: object {border, half_extents}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
 
 ### `DestroyAt`
 
@@ -248,6 +248,16 @@ Rust type: `marionette_script::Script`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `path` | string | yes |  |
+
+### `ScriptInbox`
+
+Messages waiting for an entity's script (`engine.send`), as JSON text: a list of `{from, kind, detail}`. Written by the engine; delivered to `onMessage` at the start of the entity's next turn (the same tick if it has not run yet). Part of the state hash and of snapshots.
+
+Rust type: `marionette_script::ScriptInbox`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | string | yes |  |
 
 ### `ScriptState`
 

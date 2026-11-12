@@ -56,4 +56,6 @@ GPU time on a real desktop GPU and headset is UNVERIFIED (`docs/ai/STATE.md`).
 - Fewer allocations in extract (the largest share of render CPU).
 - A simulation rate separate from the frame rate, with interpolation everywhere (factory items
   already interpolate).
-- Game-authored job bodies in a typed TypeScript subset compiled to WASM (separate workstream).
+- Game-authored job bodies: done as job TypeScript (decision 0030, `docs/ai/JOBS-TS.md`):
+  about 50x the script interpreter, about 4x the time of a Rust job body on one thread
+  (`cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`).

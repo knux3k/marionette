@@ -529,6 +529,33 @@ impl Renderer {
         self.sprite_textures[image].as_ref().err()
     }
 
+    /// Frees cached GPU models and textures that `frame` does not draw; returns how many
+    /// were freed. The cache only grows while the same assets are drawn, so call this after
+    /// switching scenes (decision 0032). Freed assets load again if a later frame needs them.
+    pub fn trim(&mut self, frame: &FrameData) -> usize {
+        let models: std::collections::BTreeSet<&str> = frame
+            .meshes
+            .iter()
+            .map(|d| &*d.asset)
+            .chain(frame.bulk.iter().map(|b| b.asset.as_str()))
+            .collect();
+        let images: std::collections::BTreeSet<&str> = frame
+            .sprites
+            .iter()
+            .map(|s| s.image.as_str())
+            .chain(frame.ui.iter().map(|u| u.look.image()))
+            .collect();
+        let before = self.cached_assets();
+        self.models.retain(|k, _| models.contains(k.as_str()));
+        self.sprite_textures.retain(|k, _| images.contains(k.as_str()));
+        before - self.cached_assets()
+    }
+
+    /// Models and textures held in the GPU cache (including failed loads).
+    pub fn cached_assets(&self) -> usize {
+        self.models.len() + self.sprite_textures.len()
+    }
+
     /// Loads (once) every asset the frame needs. Returns a diagnostic per asset that failed.
     pub fn prepare(&mut self, frame: &FrameData) -> Vec<Diagnostic> {
         let mut errors = Vec::new();

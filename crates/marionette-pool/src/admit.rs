@@ -142,28 +142,6 @@ pub struct AddReport {
     pub notes: Vec<String>,
 }
 
-fn temp_stage() -> PathBuf {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static N: AtomicU64 = AtomicU64::new(0);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_nanos())
-        .unwrap_or(0);
-    std::env::temp_dir().join(format!(
-        "marionette-pool-stage-{}-{}-{nanos}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ))
-}
-
-struct Stage(PathBuf);
-
-impl Drop for Stage {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
-
 fn owned_refusal(path: &Path, library: Option<&Library>) -> Result<(), Errors> {
     let v = marionette_import::pool::check(path, library);
     if let Some(r) = v.refusals.first() {
@@ -418,15 +396,17 @@ pub fn add(
     proof.extend(std::mem::take(&mut c.proof));
 
     // Stage, then the owned gate on the exact bytes.
-    let stage = Stage(temp_stage());
+    // In the process's run folder, so a crash leaves nothing behind (decision 0032).
+    let stage =
+        marionette_host::temp_dir("pool-stage").map_err(|e| bad(format!("cannot stage files: {e}")))?;
     for (p, b) in &files {
-        let dest = stage.0.join(p);
+        let dest = stage.path().join(p);
         if let Some(d) = dest.parent() {
             std::fs::create_dir_all(d).map_err(|e| bad(format!("cannot stage files: {e}")))?;
         }
         std::fs::write(&dest, b).map_err(|e| bad(format!("cannot stage files: {e}")))?;
     }
-    owned_refusal(&stage.0, library)?;
+    owned_refusal(stage.path(), library)?;
 
     // The main file must load.
     let mut notes = c.notes.clone();
@@ -437,7 +417,7 @@ pub fn add(
         return Err(bad(format!("main file `{m}` is not among the files")));
     }
     let engine_ready = match &main {
-        Some(m) => match check_main(c.kind, &stage.0.join(m), m) {
+        Some(m) => match check_main(c.kind, &stage.path().join(m), m) {
             Ok(()) => true,
             Err(why) if c.kind == PoolKind::Texture || c.kind == PoolKind::Model => {
                 return Err(err(

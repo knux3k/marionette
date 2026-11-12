@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
-| 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): all 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`); stability-suite entries and generated assets still to come. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -95,12 +95,13 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
 Stability suite (decision 0031, `docs/ai/STABILITY.md`):
-- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-one modes
+- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-seven modes
   (core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d,
   render-3d-play, render-2d, render-2d-play, render-ui, animation, vr-headset, factory-sim,
-  factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run (each also
-  `-render`),
-  agent-session); `--long --seeds 1` passed for every mode (Linux container, lavapipe, release;
+  factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run, proof-crystal-ward,
+  proof-dust-circuit, proof-signal-yard (each proof game also `-render`),
+  agent-session); `--long --seeds 1` passed for every mode up to proof-ember-run (the last
+  three proof games have the fast suite only so far) (Linux container, lavapipe, release;
   factory-vr frame p99 12.4 ms at 256x256 per eye on the software GPU, under the CI scale).
 - Tests: `crates/marionette-cli/tests/stability.rs` (`fast_suite_passes_for_every_mode`,
   `drift_mode_reaches_the_pinned_drift_hash`, `injected_panic_is_reported_with_tick_and_backtrace`,
@@ -111,6 +112,23 @@ Stability suite (decision 0031, `docs/ai/STABILITY.md`):
   `.github/workflows/stability-soak.yml` (nightly long soak, 3 seeds).
 - Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670
   bytes per event); the nightly soak fails on it until the event log is bounded.
+Memory and crash hygiene (decision 0032, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
+- `crates/marionette-agent/tests/leaks.rs` (`memory_stays_flat_under_repeated_work`: session
+  load/unload, a long run past the event-log bound, script hot reload, entity churn,
+  screenshots; heap growth under 64 KB per scenario, counted by `marionette_host::alloc`).
+- `gpu_objects_come_back_after_repeated_setups_and_trims` in
+  `crates/marionette-render/tests/render.rs`.
+- `crates/marionette-host/tests/crash.rs` (`children_die_when_the_engine_is_killed`,
+  `a_killed_process_leaves_a_run_folder_that_the_next_start_removes`,
+  `shutdown_removes_the_run_folder_and_temp_dirs_clean_up_on_drop`);
+  `crates/marionette-cli/tests/crash.rs` (`a_run_killed_mid_simulation_is_cleaned_up_by_the_next_start`,
+  `a_clean_exit_leaves_no_run_folder`).
+- `crates/marionette-script/tests/misbehaving.rs` (endless loop, out of memory, deep recursion,
+  engine call at load); `a_panicking_operation_is_an_error_and_the_agent_keeps_serving` in
+  `crates/marionette-agent/src/lib.rs`; `the_event_log_is_bounded_and_positions_stay_absolute`
+  in `crates/marionette-core/src/module.rs`.
+- CI job `leaks (valgrind)`: core, host and script tests under valgrind, no definite leaks
+  (checked locally on Linux).
 
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
@@ -297,6 +315,14 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   (transport against a server on the same machine).
 - Not covered yet: live calls (formats `verified: false`), Tripo auto-rig and rig checks,
   decimation, extra texture maps, a cache shared across projects.
+## Job TypeScript (workstream WJ)
+
+Proofs: `cargo test -p marionette-jobs-ts` (same hash on 1, 2, 3 and 8 threads; pinned hash
+`994155611f9d326a5f21b3676f2604afef1d4afb291c268990b8cc6644b73f0a` in `pinned_hash`;
+bit-identical to the Rust job body and to the QuickJS interpreter; errors with code, line,
+column and fix; index trap; time limit; hot reload); `cargo test -p marionette-cli --test
+jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`
+(decision 0030). Guide: `docs/ai/JOBS-TS.md`. Not yet usable from scenes or scripts (WJ next).
 
 ## UNVERIFIED
 
@@ -308,6 +334,8 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
+- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
+  passes clippy for a Windows target; first run is the CI run of its merge.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
@@ -315,6 +343,10 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   match; GPU tests skipped there.
 - `marionette-script` (rquickjs/QuickJS-ng and oxc) on Windows MSVC: see the CI run of the
   scripting merge; not built on the owner's desktop yet.
+- `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
+  Linux are expected from CI on the job TypeScript branch; not yet observed.
+- Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
+  container measured).
 - Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.
@@ -393,3 +425,9 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 | 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | Line 8 part (W3): `marionette-pool` crate (pool layout and per-asset proof, admission rules, owned gate, generated-asset dedication gate, Poly Haven and ambientCG adapters, archive ingest for Kenney and Quaternius, ordered asset search), eight pool operations, seed set in `pool/`, decision 0041. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | W4 follow-up: first live Qwen check on the owner's PC got HTTP 401 at the international address (nothing charged); the Qwen plug-in now finds the key's region (international, China, US). | branch `claude/project-thread-3n87gn` |
+| 2026-11-12 | WJ: job TypeScript, crate `marionette-jobs-ts` (TS subset to WebAssembly, wasmtime runtime on `marionette-jobs`, safety levels, `JobLibrary` hot reload), operations `jobs_check`/`jobs_run`/`jobs_types`, `examples/jobs/particles.job.ts`, benchmark, decision 0030, `docs/ai/JOBS-TS.md`. Drift hash unchanged. | branch `claude/project-thread-p3he01` |
+| 2026-11-12 | W8: `games/crystal-ward` (top-down 3D); script messages (`engine.send`, `onMessage`, `ScriptInbox`); porting map points Raycast, SendMessage and CharacterController.Move at the script API. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: `games/dust-circuit` (racing, AI rival); `RoundCuboid` collider shape for box-shaped characters. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: `games/signal-yard` (first-person shooter, played and recorded through MCP sessions); mouse axes `axis:MouseX`/`axis:MouseY` from the window. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: generation recipes for all six proof games (21 recipes in `games/*/assets/generated/`, Qwen images and Tripo models, nothing generated yet); stability modes for games 4 to 6; gaps G20 and G21. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | Memory and crash hygiene (decision 0032): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |

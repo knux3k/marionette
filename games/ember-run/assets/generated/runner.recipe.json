@@ -1,0 +1,7 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "runner",
+  "output": "image",
+  "prompt": "a tiny living spark creature mid-run, orange flame body with bright yellow core and small dark eyes, single game sprite, side view, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text, no shadow on the ground",
+  "notes": "Sprite: key out the magenta background when it is wired in."
+}

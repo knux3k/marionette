@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "hero",
+  "output": "model",
+  "from": "hero_ref",
+  "model": {
+    "height_m": 1.2,
+    "max_triangles": 15000
+  }
+}

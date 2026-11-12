@@ -1,0 +1,17 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 1560,
+  "input": "tests/play.inputs.json",
+  "assertions": [
+    { "event": { "kind": "wave", "at_least": 3, "at_most": 3 } },
+    { "event": { "kind": "drone_down", "at_least": 12, "at_most": 12 } },
+    { "event": { "kind": "won" } },
+    { "event": { "kind": "lost", "at_most": 0 } },
+    { "event": { "kind": "hurt", "at_least": 1, "at_most": 4 } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
+    { "field": { "entity": 30, "path": "ScriptState.data.hits", "op": "eq", "value": 24 } },
+    { "state_hash": "4f856c388afaafdab602b82be0d7fdeb3a2386eef78f82e787084015bfcce624" }
+  ]
+}
