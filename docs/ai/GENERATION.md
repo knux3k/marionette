@@ -41,7 +41,9 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
    `marionette generate approve <image name>` in a terminal; run again. For many images at
    once, `marionette generate approve --all` from the project root lists every reference image
    models wait on and approves them all after the person types `yes`. Agents cannot approve,
-   even when the owner says so in chat: the owner runs the command.
+   even when the owner says so in chat: the owner runs the command. An owner who wants no
+   approval step lists the model provider in their personal config,
+   `"waive_reference_approval": ["tripo"]` (decision 0047); judge the image yourself then.
 5. `generate_list`: state of every recipe (`built`, `stale`, `missing`).
 
 Use the outputs like any asset: a texture or image path in a `Sprite` or material, a model path
