@@ -65,6 +65,8 @@ pub mod codes {
     pub const DUPLICATE: &str = "agent.duplicate";
     /// An operation name is not `lower_snake_case`.
     pub const BAD_NAME: &str = "agent.bad_name";
+    /// The MCP server was started without this operation (`marionette mcp --tools`).
+    pub const NOT_ENABLED: &str = "agent.not_enabled";
 }
 
 type Handler = Box<dyn Fn(&mut Agent, Value) -> Result<Value, Errors> + Send + Sync>;

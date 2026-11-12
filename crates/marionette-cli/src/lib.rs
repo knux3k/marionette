@@ -148,8 +148,15 @@ enum Command {
         #[command(subcommand)]
         command: SceneCommand,
     },
-    /// List every operation with its description and JSON Schemas.
-    Ops,
+    /// List operations with their descriptions and JSON Schemas. `--brief` gives one line each.
+    Ops {
+        /// Only name, mutating flag and summary (no schemas): a few KB instead of about 300 KB.
+        #[arg(long)]
+        brief: bool,
+        /// Only these groups or operations (as for `mcp --tools`).
+        #[arg(long, value_delimiter = ',')]
+        tools: Vec<String>,
+    },
     /// Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`.
     Op {
         name: String,
@@ -167,8 +174,16 @@ enum Command {
         #[command(subcommand)]
         command: GenerateCommand,
     },
-    /// Serve every operation as an MCP tool over stdio.
-    Mcp,
+    /// Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise).
+    Mcp {
+        /// Comma-separated operation groups or names to list: `core` (edit, run, observe,
+        /// test), a group such as `pool` or `anim`, an operation name, or `all` (default).
+        #[arg(long, value_delimiter = ',')]
+        tools: Vec<String>,
+        /// Leave output schemas out of the tool listing (smaller context for the client).
+        #[arg(long)]
+        lean: bool,
+    },
     /// Write the generated reference docs (operations, components, CLI help).
     Docs {
         /// Output directory.
@@ -271,8 +286,9 @@ pub fn main_with(engine: Engine) -> ExitCode {
 fn run(cli: Cli, engine: Engine) -> ExitCode {
     let mut agent = Agent::with_engine(&cli.project, cli.read_only, engine.clone());
     let result = match cli.command {
-        Command::Mcp => {
-            return match marionette_agent::mcp::serve_stdio(agent) {
+        Command::Mcp { tools, lean } => {
+            let options = marionette_agent::mcp::McpOptions { tools, lean };
+            return match marionette_agent::mcp::serve_stdio(agent, &options) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("{e}");
@@ -281,7 +297,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             };
         }
         Command::Docs { out, check } => docs(&agent, &out, check),
-        Command::Ops => Ok(json!({ "ok": true, "operations": agent.operations().collect::<Vec<_>>() })),
+        Command::Ops { brief, tools } => ops(&agent, brief, &tools),
         Command::Op { name, input } => parse_input(input.as_deref())
             .and_then(|input| agent.call(&name, input))
             .map(|result| json!({ "ok": true, "operation": name, "result": result })),
@@ -455,6 +471,18 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
     print_result(cli.json, result)
 }
 
+/// JSON for stdout: indented for a person at a terminal, one compact line when piped (an
+/// agent or a script reads it; indentation only costs tokens there, decision 0061).
+fn json_text(value: &Value) -> String {
+    use std::io::IsTerminal;
+    if std::io::stdout().is_terminal() {
+        serde_json::to_string_pretty(value)
+    } else {
+        serde_json::to_string(value)
+    }
+    .expect("serializable")
+}
+
 fn print_result(json_out: bool, result: Result<Value, Errors>) -> ExitCode {
     match result {
         Ok(value) => {
@@ -462,7 +490,7 @@ fn print_result(json_out: bool, result: Result<Value, Errors>) -> ExitCode {
                 .iter()
                 .any(|k| value.get(k).is_some());
             if json_out || always_json {
-                println!("{}", serde_json::to_string_pretty(&value).expect("serializable"));
+                println!("{}", json_text(&value));
             } else {
                 println!("{}", human(&value));
             }
@@ -471,7 +499,7 @@ fn print_result(json_out: bool, result: Result<Value, Errors>) -> ExitCode {
         Err(errors) => {
             if json_out {
                 let out = json!({ "ok": false, "diagnostics": errors });
-                println!("{}", serde_json::to_string_pretty(&out).expect("serializable"));
+                println!("{}", json_text(&out));
             } else {
                 eprintln!("{errors}");
             }
@@ -556,6 +584,24 @@ fn approve_all(_: &str, _: bool) -> Result<Value, Errors> {
         "this build has no generation (cargo feature `generate`)",
     )
     .into())
+}
+
+/// `marionette ops`: the operation table, whole or brief, optionally only some groups.
+fn ops(agent: &Agent, brief: bool, tools: &[String]) -> Result<Value, Errors> {
+    let selected = marionette_agent::mcp::select_operations(agent, tools)
+        .map_err(|e| Errors::from(Diagnostic::error(marionette_agent::codes::BAD_INPUT, e)))?;
+    let list: Vec<Value> = agent
+        .operations()
+        .filter(|o| selected.contains(&o.name))
+        .map(|o| {
+            if brief {
+                json!({ "name": o.name, "mutating": o.mutating, "description": o.description })
+            } else {
+                json!(o)
+            }
+        })
+        .collect();
+    Ok(json!({ "ok": true, "operations": list }))
 }
 
 fn parse_input(input: Option<&str>) -> Result<Value, Errors> {

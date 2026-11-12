@@ -21,9 +21,12 @@
    commits with clear messages. Credit AI authorship with a plain `Co-Authored-By: Claude`
    trailer: no email address, no session or chat links.
 10. Determinism rules (ARCHITECTURE.md) are not optional: a change that alters an existing
-    state hash or reference image must say so in its commit and in STATE.md, with the reason.
+    state hash or reference image must say so in its commit and in PROOFS.md, with the reason.
 11. Errors are data: stable codes, never change what an existing code means.
 12. Reports to the owner are under 10 lines, in plain words.
-13. Every session ends by updating STATE.md (START-HERE.md, "Every session ends by").
+13. Every session ends by updating STATE.md and adding a SESSION-LOG.md row (START-HERE.md,
+    "Every session ends by").
 14. Every game mode, example scene and proof scene has a stability mode in
     `stability/suite.json` (STABILITY.md, decision 0031); add it in the same change.
+15. Weigh every change against the four focuses (FOCUSES.md): modularity, token use,
+    performance, graphics.

@@ -29,7 +29,7 @@ Commands (all accept `--json`):
 | `marionette bench <scene> --frames N --size WxH` | Measures offscreen frame time |
 | `marionette ops` | Lists every operation with its JSON Schemas |
 | `marionette op <name> '<json>'` | Runs one operation (`--project DIR`, `--read-only`) |
-| `marionette mcp` | Serves every operation as an MCP tool over stdio |
+| `marionette mcp [--tools core,pool,...] [--lean]` | Serves operations as MCP tools over stdio (all by default) |
 | `marionette provider use <kind> <provider>` | Switches the AI provider for `language`, `image` or `model3d` (`provider list`, `provider status`) |
 
 Operations: `project_init`, `project_validate`, `project_schema`, `scene_create`,
@@ -53,18 +53,23 @@ marionette op project_init '{"path": "mygame"}' --json
 ## Connecting an agent over MCP
 
 Claude Code: add a `.mcp.json` file in the game project's folder (or run
-`claude mcp add marionette -- marionette --project . mcp`):
+`claude mcp add marionette -- marionette --project . mcp --tools core --lean`):
 
 ```json
 {
   "mcpServers": {
     "marionette": {
       "command": "marionette",
-      "args": ["--project", ".", "mcp"]
+      "args": ["--project", ".", "mcp", "--tools", "core", "--lean"]
     }
   }
 }
 ```
+
+`--tools core` lists only the edit, run, observe and test operations (about a third of the
+table); add groups as the game needs them, for example `--tools core,anim,pool`, or leave the
+flag out for all of them. `--lean` leaves output schemas out of the listing. Together they cut
+the tool listing the client keeps in context to a small fraction (decision 0061).
 
 Use `"args": ["--project", ".", "--read-only", "mcp"]` for an agent that may look but not change
 anything.

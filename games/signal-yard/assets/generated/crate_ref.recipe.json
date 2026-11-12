@@ -2,5 +2,5 @@
   "format": "marionette.recipe/1",
   "name": "crate_ref",
   "output": "image",
-  "prompt": "a sturdy wooden shipping crate with metal corner brackets and stencilled marks without letters, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text"
+  "prompt": "a sturdy plain wooden shipping crate with metal corner brackets, bare unmarked planks with no letters, numbers, symbols or stencils, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text"
 }

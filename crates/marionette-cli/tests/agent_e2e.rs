@@ -240,6 +240,11 @@ struct Mcp {
 
 impl Mcp {
     fn start(root: &Path, read_only: bool) -> Self {
+        Self::start_with(root, read_only, &[])
+    }
+
+    /// `extra` goes after `mcp` (e.g. `--tools core --lean`).
+    fn start_with(root: &Path, read_only: bool, extra: &[&str]) -> Self {
         let mut cmd = Command::new(BIN);
         cmd.args(["--project", root.to_str().unwrap()]);
         if read_only {
@@ -247,6 +252,7 @@ impl Mcp {
         }
         let mut child = cmd
             .arg("mcp")
+            .args(extra)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -414,4 +420,99 @@ fn mcp_read_only_refuses_mutations_with_structured_error() {
         json!({ "scene": "scenes/main.scene.json", "seed": 1, "ticks": 10 }),
     );
     assert!(!err, "{v}");
+}
+
+/// Focus 2 (decision 0061): a client that only edits, runs and observes scenes can list just
+/// those tools, without output schemas, and the listing shrinks to a fraction.
+#[test]
+fn mcp_tool_groups_and_lean_listing_shrink_the_context() {
+    let root = init_project("mcp-lean");
+    let full = Mcp::start(&root, false).request("tools/list", json!({}));
+    let mut m = Mcp::start_with(&root, false, &["--tools", "core", "--lean"]);
+    let lean = m.request("tools/list", json!({}));
+    let names: Vec<&str> = lean["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect();
+    let core = [
+        "project",
+        "scene",
+        "entity",
+        "component",
+        "resource",
+        "session",
+        "observe",
+        "test",
+        "batch",
+    ];
+    assert!(
+        names.contains(&"entity_create") && names.contains(&"observe_query"),
+        "{names:?}"
+    );
+    assert!(
+        names.iter().all(|n| core.contains(&n.split('_').next().unwrap())),
+        "{names:?}"
+    );
+    assert!(
+        lean["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|t| t.get("outputSchema").is_none())
+    );
+    let (full_len, lean_len) = (full.to_string().len(), lean.to_string().len());
+    println!("tools/list bytes: all {full_len}, core lean {lean_len}");
+    assert!(
+        lean_len * 3 < full_len,
+        "core lean listing {lean_len} B vs all {full_len} B"
+    );
+
+    // Tools left out are refused, listed ones work.
+    let (err, v) = m.call("pool_list", json!({}));
+    assert!(err);
+    assert_eq!(v["diagnostics"][0]["code"], "agent.not_enabled");
+    let (err, v) = m.call(
+        "scene_run",
+        json!({ "scene": "scenes/main.scene.json", "seed": 1, "ticks": 10 }),
+    );
+    assert!(!err, "{v}");
+
+    // Unknown groups stop the server with a message naming the real ones.
+    let out = Command::new(BIN)
+        .args(["--project", root.to_str().unwrap(), "mcp", "--tools", "nosuch"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("observe"));
+}
+
+#[test]
+fn ops_brief_is_small_and_filters_by_group() {
+    let root = init_project("ops-brief");
+    let run = |args: &[&str]| {
+        let out = Command::new(BIN)
+            .args(["--project", root.to_str().unwrap(), "--json", "ops"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let (full, brief) = (run(&[]), run(&["--brief"]));
+    println!("ops bytes: full {}, brief {}", full.len(), brief.len());
+    assert!(brief.len() * 10 < full.len());
+    let pool: Value = serde_json::from_str(&run(&["--brief", "--tools", "pool"])).unwrap();
+    let names: Vec<&str> = pool["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o["name"].as_str().unwrap())
+        .collect();
+    assert!(
+        !names.is_empty() && names.iter().all(|n| n.starts_with("pool_")),
+        "{names:?}"
+    );
 }

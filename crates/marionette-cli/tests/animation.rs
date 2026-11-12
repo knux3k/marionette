@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 const SCENE: &str = "examples/animation.scene.json";
 
 /// State hash after 600 ticks, seed 1. A change here changes simulation results: say so in
-/// the commit and in docs/ai/STATE.md.
+/// the commit and in docs/ai/PROOFS.md.
 const HASH_600: &str = "f409e570ea3b9d3c1e92a01adc3070dbbd49b39d147b0dd97caa39297dba6d13";
 
 fn repo() -> PathBuf {
