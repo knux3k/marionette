@@ -13,6 +13,7 @@ pub mod generate;
 pub mod library;
 pub mod mcp;
 pub mod observe;
+pub mod perf;
 pub mod port;
 pub mod project;
 pub mod providers;
@@ -121,6 +122,7 @@ impl Agent {
             observe::ops(),
             scenario::ops(),
             library::ops(),
+            perf::ops(),
             providers::ops(),
             generate::ops(),
             script::ops(),

@@ -9,6 +9,7 @@
 //!   with the geometric transform baked into the vertices;
 //! - materials (diffuse color, opacity, emissive, shininess as roughness) and their diffuse,
 //!   normal and emissive textures, which the caller resolves (embedded media first);
+//! - blend shapes as morph targets, with their default and animated weights;
 //! - skins (clusters to joints, up to four weights per vertex, inverse bind matrices);
 //! - animation stacks (first layer; translation, rotation and scale sampled at the union of the
 //!   key times with linear or constant interpolation).
@@ -74,6 +75,8 @@ pub struct Summary {
     pub skins: usize,
     pub joints: usize,
     pub animations: usize,
+    /// Blend shapes converted to glTF morph targets (all meshes).
+    pub morph_targets: usize,
     /// Source axis system as `right/up/front`, e.g. `+X/+Y/+Z`.
     pub axes: String,
     /// Meters per source unit.
@@ -423,6 +426,10 @@ impl<'a> Scene<'a> {
         let mut skins: Vec<Value> = Vec::new();
         let mut triangles = 0;
         let mut joint_nodes: BTreeSet<usize> = BTreeSet::new();
+        // Blend shape channel -> (node, target index); node -> default weights.
+        let mut morph_of: HashMap<i64, (usize, usize)> = HashMap::new();
+        let mut morph_defaults: BTreeMap<usize, Vec<f32>> = BTreeMap::new();
+        let mut morph_targets = 0;
         for (i, &id) in models.iter().enumerate() {
             let geoms: Vec<i64> = self
                 .children_of(id, "Geometry")
@@ -493,9 +500,18 @@ impl<'a> Scene<'a> {
                     ));
                 }
             }
+            let morphs = self.morphs(geom, &mesh);
+            let mut targets = Vec::new();
+            for (k, m) in morphs.iter().enumerate() {
+                targets.push(json!({ "POSITION": out.vec3s(&m.deltas, true) }));
+                morph_of.insert(m.channel, (i, k));
+            }
             let mut prims = Vec::new();
             for (slot, idx) in &mesh.prims {
                 let mut p = json!({ "attributes": attrs, "indices": out.indices(idx) });
+                if !targets.is_empty() {
+                    p["targets"] = json!(targets);
+                }
                 match slot.and_then(|s| mats.get(s).copied().flatten()) {
                     Some(m) => p["material"] = json!(m),
                     None if !mats.is_empty() => {
@@ -508,7 +524,16 @@ impl<'a> Scene<'a> {
                 prims.push(p);
             }
             nodes[i]["mesh"] = json!(meshes.len());
-            meshes.push(json!({ "name": gobj.name, "primitives": prims }));
+            let mut m = json!({ "name": gobj.name, "primitives": prims });
+            if !morphs.is_empty() {
+                let defaults: Vec<f32> = morphs.iter().map(|m| m.default_weight).collect();
+                m["weights"] = json!(defaults);
+                m["extras"] =
+                    json!({ "targetNames": morphs.iter().map(|m| m.name.clone()).collect::<Vec<_>>() });
+                morph_targets += morphs.len();
+                morph_defaults.insert(i, defaults);
+            }
+            meshes.push(m);
         }
 
         // Animations.
@@ -517,7 +542,7 @@ impl<'a> Scene<'a> {
             if self.objects[&id].class != "AnimationStack" {
                 continue;
             }
-            if let Some(a) = self.animation(id, &node_of, &models, &mut out) {
+            if let Some(a) = self.animation(id, &node_of, &models, &morph_of, &morph_defaults, &mut out) {
                 animations.push(a);
             }
         }
@@ -533,6 +558,7 @@ impl<'a> Scene<'a> {
             skins: skins.len(),
             joints: joint_nodes.len(),
             animations: animations.len(),
+            morph_targets,
             axes: self.axes.clone(),
             meters_per_unit: self.scale,
         };
@@ -555,15 +581,6 @@ impl<'a> Scene<'a> {
             root["images"] = Value::Array(out.images.clone());
             root["textures"] = Value::Array(out.textures.clone());
             root["samplers"] = json!([{ "wrapS": 10497, "wrapT": 10497 }]);
-        }
-        if self
-            .objects
-            .values()
-            .any(|o| o.class == "Deformer" && o.sub == "BlendShape")
-        {
-            self.notes
-                .borrow_mut()
-                .add("blend shapes (morph targets) are not converted");
         }
         if self
             .objects
@@ -857,7 +874,10 @@ impl<'a> Scene<'a> {
         let nmat = (DMat3::from_mat4(full)).inverse().transpose();
         let flip = DMat3::from_mat4(full).determinant() < 0.0;
 
-        let mut out = MeshOut::default();
+        let mut out = MeshOut {
+            linear: DMat3::from_mat4(full),
+            ..Default::default()
+        };
         let mut dedupe: HashMap<(u32, [u32; 3], [u32; 2]), u32> = HashMap::new();
         let mut prims: BTreeMap<Option<usize>, Vec<u32>> = BTreeMap::new();
         let mut poly: Vec<u32> = Vec::new();
@@ -889,6 +909,7 @@ impl<'a> Scene<'a> {
             let idx = *dedupe.entry(key).or_insert_with(|| {
                 let w = full.transform_point3(p);
                 out.positions.push([w.x as f32, w.y as f32, w.z as f32]);
+                out.cps.push(cp as u32);
                 if let Some(n) = nf {
                     out.normals.push(n);
                 }
@@ -945,11 +966,77 @@ impl<'a> Scene<'a> {
         Ok(Some(out))
     }
 
+    /// Blend shape channels of a geometry as glTF morph targets (position offsets per output
+    /// vertex). A channel with in-between shapes uses its full-weight (last) shape.
+    fn morphs(&self, geom: i64, mesh: &MeshOut) -> Vec<Morph> {
+        let mut out = Vec::new();
+        for (bs, _) in self.children_of(geom, "Deformer") {
+            if self.objects[&bs].sub != "BlendShape" {
+                continue;
+            }
+            for (ch, _) in self.children_of(bs, "Deformer") {
+                if self.objects[&ch].sub != "BlendShapeChannel" {
+                    continue;
+                }
+                let shapes = self.children_of(ch, "Geometry");
+                if shapes.len() > 1 {
+                    self.notes.borrow_mut().add(
+                        "blend shape in-between shapes are not converted; the full-weight shape is used",
+                    );
+                }
+                let Some(&(shape, _)) = shapes.last() else {
+                    continue;
+                };
+                let node = self.objects[&shape].node;
+                let idx = node.array("Indexes").and_then(Prop::i64s).unwrap_or_default();
+                let offs = node.array("Vertices").and_then(Prop::f64s).unwrap_or_default();
+                let mut per_cp: HashMap<u32, DVec3> = HashMap::new();
+                for (k, &i) in idx.iter().enumerate() {
+                    let (Ok(i), Some(d)) = (u32::try_from(i), offs.get(k * 3..k * 3 + 3)) else {
+                        continue;
+                    };
+                    per_cp.insert(i, mesh.linear * DVec3::new(d[0], d[1], d[2]));
+                }
+                let deltas: Vec<[f32; 3]> = mesh
+                    .cps
+                    .iter()
+                    .map(|cp| per_cp.get(cp).map_or([0.0; 3], |d| f32s(d.to_array())))
+                    .collect();
+                if node.child("Normals").is_some() {
+                    self.notes
+                        .borrow_mut()
+                        .add("blend shape normal changes are not converted; base normals are kept");
+                }
+                let name = match self.objects[&ch].name.as_str() {
+                    "" => self.objects[&shape].name.clone(),
+                    n => n.to_string(),
+                };
+                out.push(Morph {
+                    name,
+                    channel: ch,
+                    // Written as a plain child node by most exporters, sometimes as a property.
+                    default_weight: (self.objects[&ch]
+                        .node
+                        .value("DeformPercent")
+                        .and_then(Prop::as_f64)
+                        .or_else(|| self.view(ch).num("DeformPercent"))
+                        .unwrap_or(0.0)
+                        / 100.0) as f32,
+                    deltas,
+                });
+            }
+        }
+        out
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn animation(
         &self,
         stack: i64,
         node_of: &HashMap<i64, usize>,
         models: &[i64],
+        morph_of: &HashMap<i64, (usize, usize)>,
+        morph_defaults: &BTreeMap<usize, Vec<f32>>,
         out: &mut Gltf,
     ) -> Option<Value> {
         let layers = self.children_of(stack, "AnimationLayer");
@@ -967,8 +1054,27 @@ impl<'a> Scene<'a> {
 
         // model -> property ("T","R","S") -> per-axis curves (or defaults).
         let mut channels: BTreeMap<usize, BTreeMap<char, [Channel; 3]>> = BTreeMap::new();
+        // node -> per-target blend shape weight curve (percent).
+        let mut weights: BTreeMap<usize, Vec<Option<Curve>>> = BTreeMap::new();
         for (cn, _) in self.children_of(layer, "AnimationCurveNode") {
             let defaults = self.view(cn);
+            for (ch, prop) in self.parents_of(cn, "Deformer") {
+                let Some(&(ni, k)) = morph_of.get(&ch).filter(|_| prop == Some("DeformPercent")) else {
+                    continue;
+                };
+                let n = morph_defaults.get(&ni).map_or(0, Vec::len);
+                let slot = weights
+                    .entry(ni)
+                    .or_insert_with(|| (0..n).map(|_| None).collect());
+                if let Some(c) = self
+                    .children_of(cn, "AnimationCurve")
+                    .first()
+                    .and_then(|(c, _)| Curve::read(self.objects[c].node))
+                    && let Some(s) = slot.get_mut(k)
+                {
+                    *s = Some(c);
+                }
+            }
             for (model, prop) in self.parents_of(cn, "Model") {
                 let Some(&ni) = node_of.get(&model) else { continue };
                 let kind = match prop.unwrap_or("") {
@@ -1003,10 +1109,15 @@ impl<'a> Scene<'a> {
                 channels.entry(ni).or_default().insert(kind, axes);
             }
         }
-        if channels.is_empty() {
+        if channels.is_empty() && weights.is_empty() {
             return None;
         }
         let mut all_times: BTreeSet<i64> = BTreeSet::new();
+        for curves in weights.values() {
+            for c in curves.iter().flatten() {
+                all_times.extend(c.times.iter().copied());
+            }
+        }
         for ch in channels.values() {
             for axes in ch.values() {
                 for a in axes {
@@ -1082,6 +1193,37 @@ impl<'a> Scene<'a> {
                 }));
                 samplers.push(json!({ "input": input, "output": output, "interpolation": "LINEAR" }));
             }
+        }
+        for (ni, curves) in &weights {
+            let times: BTreeSet<i64> = curves
+                .iter()
+                .flatten()
+                .flat_map(|c| c.times.iter().copied())
+                .collect();
+            if times.is_empty() {
+                continue;
+            }
+            let defaults = &morph_defaults[ni];
+            let mut data = Vec::with_capacity(times.len() * defaults.len());
+            for &t in &times {
+                for (k, d) in defaults.iter().enumerate() {
+                    data.push(match curves.get(k).and_then(Option::as_ref) {
+                        Some(c) => (c.eval(t) / 100.0) as f32,
+                        None => *d,
+                    });
+                }
+            }
+            let secs: Vec<f32> = times
+                .iter()
+                .map(|&t| ((t - base) as f64 / KTIME_PER_SECOND) as f32)
+                .collect();
+            let input = out.times(&secs);
+            let output = out.floats(&data, "SCALAR");
+            gl_channels.push(json!({
+                "sampler": samplers.len(),
+                "target": { "node": ni, "path": "weights" },
+            }));
+            samplers.push(json!({ "input": input, "output": output, "interpolation": "LINEAR" }));
         }
         if gl_channels.is_empty() {
             return None;
@@ -1212,12 +1354,24 @@ struct SkinData {
 
 #[derive(Default)]
 struct MeshOut {
+    /// Control point of each output vertex.
+    cps: Vec<u32>,
+    /// FBX geometry space to glTF space (linear part), for blend shape offsets.
+    linear: DMat3,
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
     joints: Vec<[u16; 4]>,
     weights: Vec<[f32; 4]>,
     prims: Vec<(Option<usize>, Vec<u32>)>,
+}
+
+struct Morph {
+    name: String,
+    /// The FBX blend shape channel (animated through `DeformPercent`).
+    channel: i64,
+    default_weight: f32,
+    deltas: Vec<[f32; 3]>,
 }
 
 #[derive(Default)]

@@ -41,6 +41,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
+| `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
+| `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
 | `provider_list` | no | Lists every AI provider: kinds offered (language, image, model3d), key environment variable and whether it is set, network need, default models, and whether its API format has been verified live. |
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
 | `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
@@ -855,6 +857,60 @@ Output:
 | `compared_with_library` | boolean | yes | Whether file contents were compared against an owned library. |
 | `files_checked` | integer | yes |  |
 | `refusals` | array of PoolRefusal | yes |  |
+
+## `perf_factory_scene`
+
+Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string | yes | Output scene file (relative to the project root). |
+| `scale` | integer |  | Size: 1 = 34 cells (238 machines, 204 belts, 4,352 slots). 1..=256. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `belts` | integer | yes |  |
+| `cells` | integer | yes |  |
+| `entities` | integer | yes |  |
+| `machines` | integer | yes |  |
+| `scene` | string | yes |  |
+| `slots` | integer | yes |  |
+
+## `perf_sim`
+
+Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `scene` | string | yes |  |
+| `seed` | integer |  |  |
+| `threads` | integer \| null |  | Worker threads for jobs (1 = inline). Default: one per core, or MARIONETTE_JOB_THREADS. |
+| `ticks` | integer |  | Timed ticks (default 600). |
+| `warmup` | integer |  | Untimed ticks first (default 60), so belts fill and caches settle. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `avg_ms` | number | yes |  |
+| `load_ms` | number | yes | Load time of the scene (parse, validate, build module state), milliseconds. |
+| `max_ms` | number | yes |  |
+| `p50_ms` | number | yes |  |
+| `p99_ms` | number | yes |  |
+| `scene` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `threads` | integer | yes |  |
+| `ticks` | integer | yes |  |
 
 ## `provider_list`
 

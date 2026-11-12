@@ -1,0 +1,11 @@
+[package]
+name = "marionette-jobs"
+description = "Marionette jobs: deterministic data-parallel loops over flat arrays (the engine's answer to burst-compiled jobs)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bevy_ecs.workspace = true
+rayon = "1.12"
