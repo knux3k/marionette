@@ -32,7 +32,10 @@ Kenney and Quaternius.
 - **Admission** (`src/admit.rs`, every addition, no override): (1) the owned gate on the
   original location and on the staged bytes, compared with the owned library when configured;
   (2) the generated gate: a `*.provenance.json` of format `marionette.generated_asset/1` (what
-  the generation workstream writes beside provider output) refuses the asset unless a
+  the generation workstream writes beside provider output), or a file on disk that
+  `marionette_generate::provenance::pool_status` reports as generated (its record beside it, or
+  a copy whose bytes match a record in the project's `assets/generated/` or `generated_dirs`,
+  decision 0045), refuses the asset unless a
   person-written `*.cc0.json` (format `marionette.cc0_dedication/1`, `dedicated_by`,
   `statement`) is present; tools refuse to write dedications, as they refuse declarations;
   (3) license files shipped with the asset must say CC0 or public domain and must not name

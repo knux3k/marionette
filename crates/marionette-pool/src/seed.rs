@@ -163,6 +163,7 @@ fn made(
         main: Some(file.into()),
         notes: Vec::new(),
         origin_path: None,
+        generated_dirs: Vec::new(),
     }
 }
 

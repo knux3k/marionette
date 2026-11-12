@@ -237,5 +237,6 @@ pub fn ingest(t: &dyn Transport, id: &str, resolution: &str) -> Result<Candidate
         files: out,
         notes,
         origin_path: None,
+        generated_dirs: Vec::new(),
     })
 }

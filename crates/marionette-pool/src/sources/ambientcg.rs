@@ -177,5 +177,6 @@ pub fn ingest(t: &dyn Transport, id: &str, resolution: &str) -> Result<Candidate
         main: Some("color.png".into()),
         notes,
         origin_path: None,
+        generated_dirs: Vec::new(),
     })
 }

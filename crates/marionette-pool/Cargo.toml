@@ -11,6 +11,7 @@ marionette-core.workspace = true
 marionette-assets = { path = "../marionette-assets" }
 marionette-import = { path = "../marionette-import" }
 marionette-providers = { path = "../marionette-providers" }
+marionette-generate = { path = "../marionette-generate" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

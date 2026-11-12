@@ -82,5 +82,6 @@ pub fn ingest(t: &dyn Transport, r: ArchiveRequest) -> Result<Candidate, String>
         main: r.main,
         notes: vec![format!("{kept} of {total} files of the archive kept")],
         origin_path: None,
+        generated_dirs: Vec::new(),
     })
 }

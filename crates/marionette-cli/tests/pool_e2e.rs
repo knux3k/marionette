@@ -143,6 +143,32 @@ fn pool_operations_search_fetch_add_and_refuse() {
     assert!(!ok);
     assert_eq!(v["diagnostics"][0]["code"], "pool.unknown_source");
 
+    // A copy of a generated asset (bytes match a provenance record in the project's
+    // assets/generated/) is refused even without its record (decision 0045).
+    let generated = project.join("assets/generated");
+    std::fs::create_dir_all(&generated).unwrap();
+    std::fs::write(generated.join("moss.png"), LEAF).unwrap();
+    // SHA-256 of LEAF.
+    let sha = "ac5d59c07e56ce5c075672d90e4c439fba9a4f8f200f9d1a8a43ccbde81ed9c5";
+    let record = json!({
+        "format": "marionette.generated_asset/1", "name": "moss", "output": "texture",
+        "file": "moss.png", "sha256": sha, "recipe": "moss.recipe.json", "recipe_sha256": "0",
+        "source": { "provider": "mock", "model": "mock", "provider_verified": false, "kind": "image",
+                    "cache_key": "0", "raw_sha256": sha, "cost_usd": 0.0 },
+        "postprocess": {}, "license": { "status": "generated", "terms": "test" },
+        "pool": "blocked", "pool_reason": "test"
+    });
+    std::fs::write(generated.join("moss.provenance.json"), record.to_string()).unwrap();
+    let (ok, v) = op(
+        &project,
+        "pool_add",
+        &json!({ "pool": pool, "path": made.to_str().unwrap(), "kind": "texture", "name": "Leaf copy",
+                 "origin": "made", "method": "copy" }),
+    );
+    assert!(!ok, "{v:#}");
+    assert_eq!(v["diagnostics"][0]["code"], "pool.generated");
+    std::fs::remove_dir_all(&generated).unwrap();
+
     let (ok, v) = op(&project, "pool_index", &json!({ "pool": pool }));
     assert!(ok, "{v:#}");
     assert_eq!(v["result"]["assets"], 6);

@@ -338,6 +338,10 @@ struct AddInput {
     /// Owned library to compare contents with; defaults to the configured one, if any.
     #[serde(default)]
     owned_library: Option<String>,
+    /// Extra folders of generated assets to compare contents with; the project's
+    /// `assets/generated/` is always checked (decision 0045).
+    #[serde(default)]
+    generated_dirs: Vec<String>,
 }
 
 fn pool_add(agent: &mut Agent, input: AddInput) -> Result<AddReport, Errors> {
@@ -394,10 +398,15 @@ fn pool_add(agent: &mut Agent, input: AddInput) -> Result<AddReport, Errors> {
             main: input.main.clone(),
             notes: Vec::new(),
             origin_path: None,
+            generated_dirs: Vec::new(),
         }
     };
     cand.id = input.id.clone();
     cand.origin_path = Some(path);
+    cand.generated_dirs = vec![agent.root().join(marionette_generate::recipe::DEFAULT_DIR)];
+    for d in &input.generated_dirs {
+        cand.generated_dirs.push(agent.resolve(d)?);
+    }
     cand.source.method = input.method.clone();
     cand.source.generator = input.generator.clone();
     if input.author.is_some() {

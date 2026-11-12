@@ -54,6 +54,7 @@ fn made(name: &str, files: Vec<(&str, Vec<u8>)>) -> Candidate {
         main: None,
         notes: Vec::new(),
         origin_path: None,
+        generated_dirs: Vec::new(),
     }
 }
 

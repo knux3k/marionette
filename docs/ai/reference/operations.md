@@ -1460,6 +1460,7 @@ Input:
 | --- | --- | --- | --- |
 | `author` | string \| null |  | Online: creator as credited by the library. |
 | `dry_run` | boolean |  |  |
+| `generated_dirs` | array of string |  | Extra folders of generated assets to compare contents with; the project's `assets/generated/` is always checked (decision 0045). |
 | `generator` | string \| null |  | Made: the program in the engine repository that makes it (repo-relative path). |
 | `id` | string \| null |  | Asset id; default `<name slug>-<content hash>`. |
 | `include` | array of string |  | For a .zip `path`: path prefixes inside the archive to keep (license files are always kept). |

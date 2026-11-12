@@ -123,6 +123,10 @@ pub struct Candidate {
     /// Where the files came from on disk, for the owned gate (it also checks the folder's
     /// ancestors for an owned library).
     pub origin_path: Option<PathBuf>,
+    /// Folders holding generated assets and their provenance records (the project's
+    /// `assets/generated/` by default); a file whose bytes match a record there is a copy of
+    /// a generated asset (decision 0045).
+    pub generated_dirs: Vec<PathBuf>,
 }
 
 /// What an addition did.
@@ -255,12 +259,35 @@ pub fn add(
         ));
     }
 
-    // Generated gate.
-    let generated = provenance
+    // Generated gate: a provenance record offered with the files, or (decision 0045) a file on
+    // disk that `marionette_generate` recognizes as generated output or a copy of it.
+    let mut generated: Option<(String, serde_json::Value)> = provenance
         .iter()
-        .find(|(_, v)| v["format"] == GENERATED_FORMAT || v.get("provider").is_some());
+        .find(|(_, v)| v["format"] == GENERATED_FORMAT || v.get("provider").is_some())
+        .cloned();
+    if generated.is_none()
+        && let Some(origin) = &c.origin_path
+    {
+        let dirs: Vec<&Path> = c.generated_dirs.iter().map(PathBuf::as_path).collect();
+        let mut on_disk = Vec::new();
+        list_files(origin, &mut on_disk);
+        on_disk.sort();
+        if let Some(f) = on_disk
+            .iter()
+            .find(|f| marionette_generate::provenance::pool_status(f, &dirs).generated)
+        {
+            let name = f
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            generated = Some((
+                format!("{name} (matches a generated asset's provenance record)"),
+                serde_json::json!({ "format": GENERATED_FORMAT }),
+            ));
+        }
+    }
     let mut proof: Vec<Proof> = Vec::new();
-    if let Some((p, v)) = generated {
+    if let Some((p, v)) = &generated {
         let dedication = dedications.iter().find(|(_, d, _)| {
             d["format"] == DEDICATION_FORMAT
                 && d["dedicated_by"].as_str().is_some_and(|s| !s.trim().is_empty())
@@ -608,6 +635,22 @@ pub fn strip_common_root(entries: Vec<(String, Vec<u8>)>) -> Vec<(String, Vec<u8
             .map(|(p, b)| (p[root.len() + 1..].to_string(), b))
             .collect(),
         _ => entries,
+    }
+}
+
+/// Every file under `p` (or `p` itself when it is a file), skipping symbolic links.
+fn list_files(p: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(meta) = std::fs::symlink_metadata(p) else {
+        return;
+    };
+    if meta.is_file() {
+        out.push(p.to_path_buf());
+    } else if meta.is_dir()
+        && let Ok(entries) = std::fs::read_dir(p)
+    {
+        for e in entries.flatten() {
+            list_files(&e.path(), out);
+        }
     }
 }
 

@@ -2093,6 +2093,7 @@ dependencies = [
  "image",
  "marionette-assets",
  "marionette-core",
+ "marionette-generate",
  "marionette-import",
  "marionette-providers",
  "schemars",
