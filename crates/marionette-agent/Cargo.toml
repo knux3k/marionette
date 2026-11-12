@@ -19,6 +19,7 @@ marionette-assets = { path = "../marionette-assets" }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-providers = { path = "../marionette-providers" }
+marionette-script = { path = "../marionette-script" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

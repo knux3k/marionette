@@ -1,7 +1,7 @@
 # Performance
 
 Target: a large VR factory game, stereo at 90 Hz (11.1 ms per frame), on a mid-range desktop
-GPU. Decisions: 0021 (budgets), 0022 (jobs), 0023 (renderer), 0024 (factory module).
+GPU. Decisions: 0023 (budgets), 0024 (jobs), 0025 (renderer), 0026 (factory module).
 
 ## Budgets
 

@@ -83,6 +83,7 @@ impl Sim {
         schedule.configure_sets(
             (
                 Stage::Input,
+                Stage::Script,
                 Stage::Logic,
                 Stage::Physics,
                 Stage::Effects,

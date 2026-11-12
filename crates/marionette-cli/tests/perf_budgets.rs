@@ -1,4 +1,4 @@
-//! Timing budgets (decision 0021). Wall-clock numbers depend on the machine, so these run
+//! Timing budgets (decision 0023). Wall-clock numbers depend on the machine, so these run
 //! only when asked, in a release build, one test at a time:
 //!
 //! `cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`
@@ -44,7 +44,7 @@ fn factory(agent: &mut Agent, dir: &Path, scale: u32) -> String {
 }
 
 /// Shared CI runners are slower and noisier than the reference desktop, so CI sets
-/// `MARIONETTE_BUDGET_SCALE=2` (decision 0021); on the reference desktop it is 1.
+/// `MARIONETTE_BUDGET_SCALE=2` (decision 0023); on the reference desktop it is 1.
 fn scale() -> f64 {
     std::env::var("MARIONETTE_BUDGET_SCALE")
         .ok()

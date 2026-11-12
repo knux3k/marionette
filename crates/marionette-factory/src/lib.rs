@@ -13,7 +13,7 @@
 //!
 //! Every number is an integer (time in thousandths of a tick), so results are exact on
 //! every platform, and the parallel phases only write their own slice
-//! (`marionette_jobs`, decision 0022), so the thread count never changes the state hash.
+//! (`marionette_jobs`, decision 0024), so the thread count never changes the state hash.
 //!
 //! [`FactoryState`] is a registered resource: it is saved in the scene, restored by
 //! snapshots and part of the state hash. Items on belts are drawn in bulk by a render hook

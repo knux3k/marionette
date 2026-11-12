@@ -1,4 +1,4 @@
-//! Performance proofs that are exact, so they run in every `cargo test` (decision 0021):
+//! Performance proofs that are exact, so they run in every `cargo test` (decision 0023):
 //! the factory benchmark scene simulates to a recorded state hash for any worker count, and
 //! instancing keeps draw calls flat however many objects a scene has. Timing budgets are in
 //! `perf_budgets.rs` (release builds only).
