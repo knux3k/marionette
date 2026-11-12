@@ -486,7 +486,7 @@ fn model(
                 Ok(c) => {
                     let s = &c.summary;
                     notes.push(format!(
-                        "converted from FBX {} ({}) to glTF: {} nodes, {} meshes, {} triangles, {} materials, {} textures, {} skins ({} joints), {} animations; source axes {} at {} m per unit; original kept as source.fbx",
+                        "converted from FBX {} ({}) to glTF: {} nodes, {} meshes, {} triangles, {} materials, {} textures, {} skins ({} joints), {} morph targets, {} animations; source axes {} at {} m per unit; original kept as source.fbx",
                         s.fbx_version,
                         if s.binary { "binary" } else { "ASCII" },
                         s.nodes,
@@ -496,6 +496,7 @@ fn model(
                         s.images,
                         s.skins,
                         s.joints,
+                        s.morph_targets,
                         s.animations,
                         s.axes,
                         s.meters_per_unit,

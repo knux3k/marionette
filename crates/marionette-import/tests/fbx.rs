@@ -87,6 +87,36 @@ fn triangles(glb: &[u8], time: Option<f32>) -> Vec<[Vec3; 3]> {
             }
         }
     }
+    // Morph target weights per node (mesh defaults, then animation samples).
+    let mut morph_w: Vec<Vec<f32>> = doc
+        .nodes()
+        .map(|n| {
+            n.mesh()
+                .and_then(|m| m.weights().map(<[f32]>::to_vec))
+                .unwrap_or_default()
+        })
+        .collect();
+    if let (Some(t), Some(anim)) = (time, doc.animations().next()) {
+        for ch in anim.channels() {
+            let r = ch.reader(buf);
+            let times: Vec<f32> = r.read_inputs().unwrap().collect();
+            if let gltf::animation::util::ReadOutputs::MorphTargetWeights(w) = r.read_outputs().unwrap() {
+                let w: Vec<f32> = w.into_f32().collect();
+                let node = ch.target().node().index();
+                let n = morph_w[node].len();
+                let k = times.partition_point(|&x| x <= t).clamp(1, times.len()) - 1;
+                let k2 = (k + 1).min(times.len() - 1);
+                let f = if k2 == k {
+                    0.0
+                } else {
+                    ((t - times[k]) / (times[k2] - times[k])).clamp(0.0, 1.0)
+                };
+                for (j, slot) in morph_w[node].iter_mut().enumerate() {
+                    *slot = w[k * n + j] + (w[k2 * n + j] - w[k * n + j]) * f;
+                }
+            }
+        }
+    }
     let mut world = vec![Mat4::IDENTITY; trs.len()];
     let scene = doc.default_scene().unwrap();
     let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
@@ -111,7 +141,15 @@ fn triangles(glb: &[u8], time: Option<f32>) -> Vec<[Vec3; 3]> {
         });
         for p in mesh.primitives() {
             let r = p.reader(buf);
-            let pos: Vec<Vec3> = r.read_positions().unwrap().map(Vec3::from).collect();
+            let mut pos: Vec<Vec3> = r.read_positions().unwrap().map(Vec3::from).collect();
+            for (k, (dp, _, _)) in r.read_morph_targets().enumerate() {
+                let w = morph_w[n.index()].get(k).copied().unwrap_or(0.0);
+                if let Some(dp) = dp {
+                    for (p, d) in pos.iter_mut().zip(dp) {
+                        *p += Vec3::from(d) * w;
+                    }
+                }
+            }
             let posed: Vec<Vec3> = match (&skin, time) {
                 (Some(joints), Some(_)) => {
                     let js: Vec<[u16; 4]> = r.read_joints(0).unwrap().into_u16().collect();
@@ -179,8 +217,9 @@ fn assert_same_shape(ours: &[[Vec3; 3]], reference: &[[Vec3; 3]], what: &str) {
 }
 
 fn json_of(glb: &[u8]) -> Value {
-    let g = gltf::Gltf::from_slice(glb).unwrap();
-    serde_json::to_value(g.document.into_json()).unwrap()
+    // The raw JSON chunk (the gltf crate drops `extras` without its feature).
+    let len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+    serde_json::from_slice(&glb[20..20 + len]).unwrap()
 }
 
 #[test]
@@ -318,6 +357,35 @@ fn skinned_animation_matches_blenders_own_gltf() {
     assert!(hausdorff(&mid, &rest) > 0.5);
 }
 
+#[test]
+fn blend_shapes_become_morph_targets_and_match_blender() {
+    let c = convert("morph.fbx");
+    assert_eq!(c.summary.morph_targets, 2);
+    assert_eq!(c.summary.animations, 1);
+    let j = json_of(&c.glb);
+    assert_eq!(j["meshes"][0]["extras"]["targetNames"], json!(["Raise", "Twist"]));
+    assert_eq!(j["meshes"][0]["weights"], json!([0.0, 0.25]));
+    let ours = &c.glb;
+    let reference = fixture("morph.glb");
+    // Static: default weights (Twist held at 0.25).
+    assert_same_shape(
+        &triangles(ours, None),
+        &triangles(&reference, None),
+        "default weights",
+    );
+    let start = 1.0 / 24.0;
+    for t in [0.0, 0.1, 5.0 / 24.0, 0.3, 10.0 / 24.0] {
+        assert_same_shape(
+            &triangles(ours, Some(t)),
+            &triangles(&reference, Some(t + start)),
+            &format!("weights at {t} s"),
+        );
+    }
+    let mid = triangles(ours, Some(5.0 / 24.0));
+    let rest = triangles(ours, Some(0.0));
+    assert!(hausdorff(&mid, &rest) > 0.4, "Raise lifts part of the grid");
+}
+
 /// Writes a node tree as ASCII FBX (test helper; the format of FBX 7.x ASCII files).
 fn to_ascii(doc: &tree::Document) -> String {
     use tree::Prop as P;
@@ -386,7 +454,7 @@ fn to_ascii(doc: &tree::Document) -> String {
 
 #[test]
 fn ascii_fbx_converts_like_binary() {
-    for name in ["crate.fbx", "bend.fbx", "crate_embedded.fbx"] {
+    for name in ["crate.fbx", "bend.fbx", "crate_embedded.fbx", "morph.fbx"] {
         let doc = tree::parse(&fixture(name), Default::default()).unwrap();
         let text = to_ascii(&doc);
         assert!(text.contains("FBXHeaderExtension"));
@@ -524,7 +592,7 @@ fn unity_project_fbx_is_converted_with_its_texture() {
     assert!(
         b.notes
             .iter()
-            .any(|n| n.contains("1 skins (3 joints), 1 animations"))
+            .any(|n| n.contains("1 skins (3 joints), 0 morph targets, 1 animations"))
     );
     // No declaration file was written by the import.
     let written: Vec<_> = walk(&base.join("owned"))
