@@ -478,7 +478,11 @@ pub fn analyze(root: PathBuf, files: Vec<SourceFile>, skipped: Vec<Skipped>) -> 
                 candidates.push(name.to_string());
             }
         }
-        let hook = if o.marionette.contains("onCollisionEnter") {
+        let hook = if o.marionette.contains("onTriggerEnter") {
+            "onTriggerEnter"
+        } else if o.marionette.contains("onTriggerExit") {
+            "onTriggerExit"
+        } else if o.marionette.contains("onCollisionEnter") {
             "onCollisionEnter"
         } else if o.marionette.contains("onCollisionExit") {
             "onCollisionExit"

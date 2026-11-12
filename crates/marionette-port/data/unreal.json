@@ -144,13 +144,13 @@
     },
     {
       "name": "NotifyActorBeginOverlap",
-      "marionette": "onCollisionEnter",
+      "marionette": "onTriggerEnter",
       "status": "script",
-      "note": "Make the overlapping collider a sensor (Collider.sensor: true)."
+      "note": "The overlapping collider is a sensor (Collider.sensor: true)."
     },
     {
       "name": "NotifyActorEndOverlap",
-      "marionette": "onCollisionExit",
+      "marionette": "onTriggerExit",
       "status": "script",
       "note": "Collider.sensor: true."
     },
@@ -217,13 +217,13 @@
     },
     {
       "name": "ReceiveActorBeginOverlap",
-      "marionette": "onCollisionEnter",
+      "marionette": "onTriggerEnter",
       "status": "script",
       "note": "Blueprint overlap event; Collider.sensor: true."
     },
     {
       "name": "ReceiveActorEndOverlap",
-      "marionette": "onCollisionExit",
+      "marionette": "onTriggerExit",
       "status": "script",
       "note": "Collider.sensor: true."
     },
@@ -1184,7 +1184,7 @@
       "pattern": "OverlapMultiByChannel",
       "marionette": "",
       "status": "gap",
-      "note": "Use a sensor Collider and onCollisionEnter/Exit."
+      "note": "Use a sensor Collider and onTriggerEnter/Exit."
     },
     {
       "pattern": "AddImpulse",
@@ -1232,13 +1232,13 @@
     },
     {
       "pattern": "OnComponentBeginOverlap.AddDynamic",
-      "marionette": "export function onCollisionEnter(self, other)",
+      "marionette": "export function onTriggerEnter(self, other)",
       "status": "script",
       "note": "Delegates become exported hooks; the overlapping collider needs sensor: true."
     },
     {
       "pattern": "OnComponentEndOverlap.AddDynamic",
-      "marionette": "export function onCollisionExit(self, other)",
+      "marionette": "export function onTriggerExit(self, other)",
       "status": "script"
     },
     {
@@ -1248,12 +1248,13 @@
     },
     {
       "pattern": "OnActorBeginOverlap.AddDynamic",
-      "marionette": "export function onCollisionEnter(self, other)",
-      "status": "script"
+      "marionette": "export function onTriggerEnter(self, other)",
+      "status": "script",
+      "note": "Delegates become exported hooks; the overlapping collider needs sensor: true."
     },
     {
       "pattern": "OnActorEndOverlap.AddDynamic",
-      "marionette": "export function onCollisionExit(self, other)",
+      "marionette": "export function onTriggerExit(self, other)",
       "status": "script"
     },
     {

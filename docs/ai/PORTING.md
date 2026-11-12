@@ -63,13 +63,15 @@ state hash on every machine).
 | --- | --- | --- |
 | `Awake`, `OnEnable`, `Start` | constructor defaults, `BeginPlay` | `export function start(self: Entity)`: field defaults first, then Awake code, then Start code |
 | `FixedUpdate`, `Update`, `LateUpdate` | `Tick(DeltaTime)` | `export function update(self: Entity)`, once per fixed tick; FixedUpdate code first |
-| `OnCollisionEnter`, `OnTriggerEnter` (2D too) | `NotifyHit`, `NotifyActorBeginOverlap`, `OnComponentHit/BeginOverlap.AddDynamic` | `export function onCollisionEnter(self: Entity, other: Entity)` |
-| `OnCollisionExit`, `OnTriggerExit` | `NotifyActorEndOverlap`, `OnComponentEndOverlap.AddDynamic` | `export function onCollisionExit(self: Entity, other: Entity)` |
+| `OnCollisionEnter` (2D too) | `NotifyHit`, `OnComponentHit.AddDynamic` | `export function onCollisionEnter(self: Entity, other: Entity)` |
+| `OnCollisionExit` | - | `export function onCollisionExit(self: Entity, other: Entity)` |
+| `OnTriggerEnter` (2D too) | `NotifyActorBeginOverlap`, `OnComponentBeginOverlap.AddDynamic` | `export function onTriggerEnter(self: Entity, other: Entity)` |
+| `OnTriggerExit` | `NotifyActorEndOverlap`, `OnComponentEndOverlap.AddDynamic` | `export function onTriggerExit(self: Entity, other: Entity)` |
 | `OnCollisionStay`, `OnTriggerStay` | - | a flag in `self.state` set on enter, cleared on exit, used in `update` |
 | `OnDestroy` | `EndPlay`, `Destroyed` | `export function onDestroy(self: Entity)`, called when `engine.destroy` removes the entity |
 | `OnDisable` | - | gap |
 
-Triggers: give the trigger a `Collider` with `sensor: true`; its overlaps arrive as collision
+Triggers: give the trigger a `Collider` with `sensor: true`; its overlaps arrive as trigger
 hooks. The other side is an `Entity`, not a Collision or hit result.
 
 ## Rules that matter most
@@ -157,5 +159,6 @@ The tables are `crates/marionette-port/data/unity.json` and
 `api`, and `roots` (engine names whose unmapped calls are reported as `unknown`). An `api` name
 is a call chain with segments joined by `.` (C++ `::` and `->` are written as `.`); the longest
 match wins, and a one-segment name matches only a call, a generic, an attribute, the root of a
-longer chain, or a lowercase member. When the script API gains a feature, flip the matching entries from `gap` or `rewrite` to `script`, then run
+longer chain, or a lowercase member. When the script API gains a feature (raycasts, for
+example), flip the matching entries from `gap` or `rewrite` to `script`, then run
 `cargo run -q -p marionette-cli -- docs` and `cargo test -p marionette-port`.
