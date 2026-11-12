@@ -1,5 +1,5 @@
 //! Times the factory step alone (no other systems) for 1..N worker threads.
-//! `cargo run --release -p marionette-factory --example step_cost -- <scene> [ticks]`
+//! `cargo run --release -p marionette-factory --example factory_step_cost -- <scene> [ticks]`
 
 use marionette_core::Sim;
 use marionette_factory::{FactoryModule, FactoryState, FactoryTables, step};
@@ -9,7 +9,7 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let path = args.get(1).expect("usage: step_cost <scene> [ticks]");
+    let path = args.get(1).expect("usage: factory_step_cost <scene> [ticks]");
     let ticks: usize = args.get(2).and_then(|t| t.parse().ok()).unwrap_or(600);
     let text = std::fs::read_to_string(path).expect("read scene");
     let sim = Sim::with_modules(
