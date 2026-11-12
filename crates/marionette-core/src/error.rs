@@ -53,6 +53,11 @@ pub struct Diagnostic {
     /// Field name involved, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
+    /// JSON Pointer (RFC 6901) to the value involved, e.g. `/entities/2/components/Follow`.
+    /// Present when the problem is in a document; stable even when no text exists yet
+    /// (for example an edit that was refused before it was written).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<String>,
     /// A concrete suggestion for fixing the problem.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fix: Option<String>,
@@ -70,6 +75,7 @@ impl Diagnostic {
             entity: None,
             component: None,
             field: None,
+            pointer: None,
             fix: None,
         }
     }
@@ -102,6 +108,10 @@ impl Diagnostic {
     }
     pub fn field(mut self, name: impl Into<String>) -> Self {
         self.field = Some(name.into());
+        self
+    }
+    pub fn pointer(mut self, pointer: impl Into<String>) -> Self {
+        self.pointer = Some(pointer.into());
         self
     }
     pub fn fix(mut self, fix: impl Into<String>) -> Self {

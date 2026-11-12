@@ -155,3 +155,21 @@ fn render_data_components_are_registered() {
         assert!(registry.get(name).is_some(), "{name} not registered");
     }
 }
+
+#[test]
+fn reload_keeps_tick_and_rng_and_keeps_running() {
+    let mut a = Sim::from_text(EXAMPLE, None, default_registry(), 9).unwrap();
+    let mut b = Sim::from_text(EXAMPLE, None, default_registry(), 9).unwrap();
+    a.run(10);
+    b.run(10);
+    let text = a.snapshot().to_text();
+    a.reload(&text).unwrap();
+    assert_eq!(a.tick(), 10);
+    a.run(10);
+    b.run(10);
+    assert_eq!(
+        a.state_hash(),
+        b.state_hash(),
+        "reloading the same state changes nothing"
+    );
+}

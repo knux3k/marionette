@@ -318,7 +318,10 @@ fn typed<'r>(
 ) -> Option<Typed<'r>> {
     let pos = |p: &str| spans.and_then(|s| s.get(p));
     let base = |code, msg: String| {
-        let mut d = Diagnostic::error(code, msg).at_pos(pos(ptr)).component(name);
+        let mut d = Diagnostic::error(code, msg)
+            .at_pos(pos(ptr))
+            .pointer(ptr)
+            .component(name);
         if let Some(id) = entity {
             d = d.entity(id);
         }
@@ -360,6 +363,7 @@ fn typed<'r>(
                         format!("`{name}` has no field `{key}`"),
                     )
                     .at_pos(pos(&format!("{ptr}{}", pointer([key]))))
+                    .pointer(format!("{ptr}{}", pointer([key])))
                     .field(key.clone())
                     .fix(fix),
                 );

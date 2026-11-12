@@ -25,14 +25,29 @@ impl Sim {
         scene::load(text, file, &registry, &mut world)?;
         world.insert_resource(SimRng::new(seed));
         world.insert_resource(SimClock::default());
-        let mut schedule = Schedule::default();
-        schedule.set_executor(SingleThreadedExecutor::new());
-        add_builtin_systems(&mut schedule);
         Ok(Self {
             world,
-            schedule,
+            schedule: new_schedule(),
             registry,
         })
+    }
+
+    /// Replaces the world's contents with `text` (a scene), keeping the tick counter and
+    /// the RNG state, so a live session can be edited and keep running deterministically.
+    /// On error the current world is left unchanged.
+    pub fn reload(&mut self, text: &str) -> Result<()> {
+        let mut world = World::new();
+        scene::load(text, None, &self.registry, &mut world)?;
+        world.insert_resource(*self.world.resource::<SimRng>());
+        world.insert_resource(*self.world.resource::<SimClock>());
+        self.world = world;
+        // Systems cache state per world, so a new world needs a fresh schedule.
+        self.schedule = new_schedule();
+        Ok(())
+    }
+
+    pub fn registry(&self) -> &Registry {
+        &self.registry
     }
 
     pub fn step(&mut self) {
@@ -70,4 +85,12 @@ impl Sim {
         );
         h.finalize().iter().map(|b| format!("{b:02x}")).collect()
     }
+}
+
+/// The simulation schedule: built-in systems in a fixed order, on one thread.
+fn new_schedule() -> Schedule {
+    let mut schedule = Schedule::default();
+    schedule.set_executor(SingleThreadedExecutor::new());
+    add_builtin_systems(&mut schedule);
+    schedule
 }
