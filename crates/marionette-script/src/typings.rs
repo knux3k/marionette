@@ -89,6 +89,16 @@ fn object(s: &Value, indent: &str) -> String {
 }
 
 const ENGINE_API: &str = r#"
+/** A point or direction in meters (2D uses x and y). */
+type Vec3 = { x: number; y: number; z: number };
+/** What `engine.raycast` hit. */
+interface RayHit {
+  entity: Entity;
+  /** Meters along the ray. */
+  distance: number;
+  point: Vec3;
+  normal: Vec3;
+}
 /** The entity a hook runs for, or one found with `engine.entity` / `engine.query`. */
 interface Entity {
   /** Stable scene id. */
@@ -101,6 +111,14 @@ interface Entity {
   /** Adds or replaces the component. Throws `script.bad_value` if the value does not fit. */
   set<K extends keyof Components>(name: K, value: Components[K]): void;
   has(name: keyof Components): boolean;
+  /** Plays a clip of this entity's animated `Model`, cross-fading other clips out over
+   *  `fade` seconds (default 0.2). Changes the `Animator` component, like `anim_play`.
+   *  Throws `anim.unknown_clip` for a clip the model does not have. */
+  playClip(clip: string, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Sets one clip's blend weight (e.g. walk 0.7 + run 0.3) without touching other clips. */
+  blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades out one clip, or every clip when `clip` is omitted. */
+  stopClip(clip?: string, options?: { fade?: number }): void;
   /** Same as `engine.destroy(this, seconds)`. */
   destroy(seconds?: number): void;
 }
@@ -153,6 +171,11 @@ declare const engine: {
   /** Every entity with the component, in id order. */
   query(name: keyof Components): Entity[];
   resource<K extends keyof Resources>(name: K): Resources[K] | undefined;
+  /** First solid collider hit by a ray from `origin` along `direction` (any length) within
+ *  `maxDistance` meters (default 1000), skipping sensors and `exclude` (usually `self`).
+ *  Sees the physics world as the last physics step left it. Null without a hit or without
+ *  physics. 2D ignores z. */
+  raycast(origin: Vec3, direction: Vec3, maxDistance?: number, exclude?: Entity | number): RayHit | null;
   /** Adds an entity now, with a new id that is never reused (Unity `Instantiate`, Unreal
    *  `SpawnActor`). Throws `script.bad_value` and spawns nothing if a component does not
    *  fit. Its script's `start` and `update` first run on the next tick; physics gives it a

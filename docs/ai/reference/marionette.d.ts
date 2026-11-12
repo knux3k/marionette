@@ -2,6 +2,16 @@
 // Marionette game scripts are TypeScript ES modules: export the hooks of `ScriptHooks`.
 // Determinism: no Date, no Math.random (use engine.rand), Math functions are platform-independent.
 
+/** A point or direction in meters (2D uses x and y). */
+type Vec3 = { x: number; y: number; z: number };
+/** What `engine.raycast` hit. */
+interface RayHit {
+  entity: Entity;
+  /** Meters along the ray. */
+  distance: number;
+  point: Vec3;
+  normal: Vec3;
+}
 /** The entity a hook runs for, or one found with `engine.entity` / `engine.query`. */
 interface Entity {
   /** Stable scene id. */
@@ -14,6 +24,14 @@ interface Entity {
   /** Adds or replaces the component. Throws `script.bad_value` if the value does not fit. */
   set<K extends keyof Components>(name: K, value: Components[K]): void;
   has(name: keyof Components): boolean;
+  /** Plays a clip of this entity's animated `Model`, cross-fading other clips out over
+   *  `fade` seconds (default 0.2). Changes the `Animator` component, like `anim_play`.
+   *  Throws `anim.unknown_clip` for a clip the model does not have. */
+  playClip(clip: string, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Sets one clip's blend weight (e.g. walk 0.7 + run 0.3) without touching other clips. */
+  blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades out one clip, or every clip when `clip` is omitted. */
+  stopClip(clip?: string, options?: { fade?: number }): void;
   /** Same as `engine.destroy(this, seconds)`. */
   destroy(seconds?: number): void;
 }
@@ -66,6 +84,11 @@ declare const engine: {
   /** Every entity with the component, in id order. */
   query(name: keyof Components): Entity[];
   resource<K extends keyof Resources>(name: K): Resources[K] | undefined;
+  /** First solid collider hit by a ray from `origin` along `direction` (any length) within
+ *  `maxDistance` meters (default 1000), skipping sensors and `exclude` (usually `self`).
+ *  Sees the physics world as the last physics step left it. Null without a hit or without
+ *  physics. 2D ignores z. */
+  raycast(origin: Vec3, direction: Vec3, maxDistance?: number, exclude?: Entity | number): RayHit | null;
   /** Adds an entity now, with a new id that is never reused (Unity `Instantiate`, Unreal
    *  `SpawnActor`). Throws `script.bad_value` and spawns nothing if a component does not
    *  fit. Its script's `start` and `update` first run on the next tick; physics gives it a
@@ -127,6 +150,26 @@ type AngularVelocity = {
   z: number;
 };
 
+/** Plays skeletal animation clips of the entity's `Model` (a glTF file with animations), blended by layer weight. Change it through the `anim_play`, `anim_blend` and `anim_stop` operations or by editing the layers directly. An empty list shows the rest pose. */
+type Animator = {
+  layers: Array<{
+    /** Clip name in the model file; `#0`, `#1`, ... pick unnamed clips by position. */
+    clip: string;
+    /** Seconds a full 0 to 1 weight change takes (0 = immediate). */
+    fade: number;
+    /** Wraps around at the end; otherwise holds the last frame (and logs `anim_finished`). */
+    looping: boolean;
+    /** Playback rate: 1 is normal speed, 0 holds, negative plays backwards. */
+    speed: number;
+    /** Weight this layer moves toward. A layer whose weight and target are both 0 is removed. */
+    target_weight: number;
+    /** Seconds into the clip. */
+    time: number;
+    /** Blend weight now (0..1). Layer poses are averaged by weight. */
+    weight: number;
+  }>;
+};
+
 /** Where sounds are heard from (usually on the camera). Pan follows the listener's right (+X) axis; gain falls off as `1 / (1 + distance)`. */
 type AudioListener = {
   /** Master gain. */
@@ -172,7 +215,7 @@ type Camera = {
   };
 };
 
-/** Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z, 2D in X. */
+/** Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X. */
 type CharacterController = {
   /** Downward acceleration in m/s². */
   gravity: number;
@@ -187,6 +230,13 @@ type CharacterController = {
   move_x: string;
   /** Horizontal speed in m/s at full input. */
   speed: number;
+};
+
+/** Drives a `CharacterController` from a script instead of input actions (AI characters, vehicles): when present, its values replace the controller's actions. Values are like action values (-1..1). `jump` asks for one jump: physics starts it if the character stands on ground and sets `jump` back to false either way. */
+type CharacterInput = {
+  jump: boolean;
+  move_forward: number;
+  move_x: number;
 };
 
 /** Runtime state of a character controller. Written by physics. */
@@ -573,10 +623,12 @@ type Velocity = {
 /** Every component, by the name used in scene files. */
 interface Components {
   AngularVelocity: AngularVelocity;
+  Animator: Animator;
   AudioListener: AudioListener;
   AudioSource: AudioSource;
   Camera: Camera;
   CharacterController: CharacterController;
+  CharacterInput: CharacterInput;
   CharacterState: CharacterState;
   Collider: Collider;
   DestroyAt: DestroyAt;

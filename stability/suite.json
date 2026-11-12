@@ -98,6 +98,15 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "animation",
+      "description": "Skeletal animation: glTF clips on the fixed tick, scripted clip blending, GPU skinning and blend shapes, rendered every tick.",
+      "kind": "render",
+      "scene": "examples/animation.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "vr-headset",
       "description": "VR: the 3D game played with random input and rendered to both eyes of an emulated headset every tick.",
       "kind": "render",
@@ -143,6 +152,26 @@
       ],
       "views": 2,
       "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-lantern-keeper",
+      "description": "Proof game 1 (top-down 2D, scripted): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/lantern-keeper/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-lantern-keeper-render",
+      "description": "Proof game 1 played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/lantern-keeper/scenes/main.scene.json",
+      "random_input": true,
       "fast_ticks": 120,
       "long_ticks": 54000,
       "frame_budget_ms": 11.1

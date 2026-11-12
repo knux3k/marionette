@@ -1,0 +1,17 @@
+[package]
+name = "marionette-anim"
+description = "Marionette skeletal animation: glTF clips played and cross-faded on the fixed tick, poses for GPU skinning."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-assets = { path = "../marionette-assets" }
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

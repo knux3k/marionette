@@ -5,7 +5,9 @@
 pub use glam;
 
 pub mod font;
+pub mod rig;
 use glam::{Mat4, Vec2, Vec3};
+pub use rig::{Rig, load_rig};
 use std::path::Path;
 
 /// RGBA8 image. `srgb` says how the color bytes are encoded (true for colors, false for
@@ -35,6 +37,19 @@ pub struct MeshData {
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u32>,
+    /// Up to four joints per vertex (indices into the part's skin). Empty when not skinned.
+    pub joints: Vec<[u16; 4]>,
+    /// Weights of `joints`, summing to 1. Empty when not skinned.
+    pub weights: Vec<[f32; 4]>,
+    /// Morph targets (blend shapes): per-vertex deltas added with the node's morph weights.
+    pub morph_targets: Vec<MorphTarget>,
+}
+
+/// One morph target: position and normal offsets per vertex (normals may be empty).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MorphTarget {
+    pub positions: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,7 +84,14 @@ impl Default for MaterialData {
 pub struct Part {
     pub mesh: MeshData,
     pub material: usize,
+    /// Rest-pose model-space transform of the part's node.
     pub transform: Mat4,
+    /// The glTF node this part hangs from (index into `ModelData::rig.nodes`); `None` for
+    /// built-in shapes. An animated pose replaces `transform` with that node's matrix.
+    pub node: Option<usize>,
+    /// Skin (index into `ModelData::rig.skins`) when the mesh is skinned. A skinned part
+    /// ignores its node transform: joints place every vertex.
+    pub skin: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -77,6 +99,8 @@ pub struct ModelData {
     pub parts: Vec<Part>,
     pub materials: Vec<MaterialData>,
     pub images: Vec<Image>,
+    /// Nodes, skins and animation clips.
+    pub rig: Rig,
 }
 
 impl ModelData {
@@ -86,9 +110,12 @@ impl ModelData {
                 mesh,
                 material: 0,
                 transform: Mat4::IDENTITY,
+                node: None,
+                skin: None,
             }],
             materials: vec![MaterialData::default()],
             images: Vec::new(),
+            rig: Rig::default(),
         }
     }
 }
@@ -155,6 +182,7 @@ fn plane() -> MeshData {
         normals: vec![[0.0, 1.0, 0.0]; 4],
         uvs: vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
         indices: vec![0, 1, 2, 0, 2, 3],
+        ..Default::default()
     }
 }
 
@@ -199,6 +227,7 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
 
     let mut model = ModelData {
         images,
+        rig: rig::rig_from(&doc, &buffers)?,
         ..Default::default()
     };
     for mat in doc.materials() {
@@ -247,15 +276,42 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                     Some(t) => t.into_f32().collect(),
                     None => vec![[0.0, 0.0]; positions.len()],
                 };
+                let skin = node.skin().map(|s| s.index());
+                let (mut joints, mut weights) = (Vec::new(), Vec::new());
+                if skin.is_some()
+                    && let (Some(j), Some(w)) = (reader.read_joints(0), reader.read_weights(0))
+                {
+                    joints = j.into_u16().collect();
+                    weights = w.into_f32().map(normalize_weights).collect();
+                }
+                let skin =
+                    skin.filter(|_| joints.len() == positions.len() && weights.len() == positions.len());
+                if skin.is_none() {
+                    joints.clear();
+                    weights.clear();
+                }
+                let n = positions.len();
+                let morph_targets = reader
+                    .read_morph_targets()
+                    .map(|(p, nrm, _)| MorphTarget {
+                        positions: p.map_or_else(|| vec![[0.0; 3]; n], Iterator::collect),
+                        normals: nrm.map_or_else(Vec::new, Iterator::collect),
+                    })
+                    .collect();
                 model.parts.push(Part {
                     mesh: MeshData {
                         positions,
                         normals,
                         uvs,
                         indices,
+                        joints,
+                        weights,
+                        morph_targets,
                     },
                     material: prim.material().index().unwrap_or(default_material),
                     transform: world,
+                    node: Some(node.index()),
+                    skin,
                 });
             }
         }
@@ -265,6 +321,16 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
         return Err(format!("glTF {} has no triangle meshes", path.display()));
     }
     Ok(model)
+}
+
+/// Scales skin weights to sum to 1 (files are allowed to be slightly off).
+fn normalize_weights(w: [f32; 4]) -> [f32; 4] {
+    let sum = w[0] + w[1] + w[2] + w[3];
+    if sum > 0.0 {
+        w.map(|x| x / sum)
+    } else {
+        [1.0, 0.0, 0.0, 0.0]
+    }
 }
 
 /// Per-vertex normals averaged from faces (used when a glTF mesh has none).

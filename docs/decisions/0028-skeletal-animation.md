@@ -1,0 +1,75 @@
+# 0028: Skeletal animation: clips on the fixed tick, GPU skinning and blend shapes
+
+Date: 2026-11-12. Status: accepted.
+
+## Decision
+
+Rigged glTF models animate. Crate `crates/marionette-anim` (module `anim`), loaders in
+`crates/marionette-assets/src/rig.rs`, GPU side in `crates/marionette-render/src/skinning.rs`
+and `crates/marionette-render/src/shaders/skinned.wgsl`.
+
+- **Data.** `load_rig` reads every glTF node (rest translation, rotation, scale, parent), skins
+  (joint nodes, inverse bind matrices), clips (channels for translation, rotation, scale and
+  morph weights; step, linear and cubic-spline keys) and default morph weights, without
+  decoding images. `load_gltf` also keeps per-vertex joints and weights (normalized to sum 1),
+  morph targets, each part's node and skin.
+- **State.** Component `Animator { layers }`; each layer is a clip name (`#0` for unnamed
+  clips), time, speed, looping, weight, target weight and fade seconds. It is the only
+  animation state: saved in scenes, part of the state hash, carried by snapshots.
+- **Tick.** In `Stage::Effects` (after scripts, logic and physics) every animated entity, in
+  scene-id order, advances its layers by the fixed step, moves weights toward their targets
+  (`dt / fade` per tick), drops layers that faded out, logs `anim_finished` when a one-shot
+  clip ends, samples and blends the clips and writes a `Pose` component (model-space matrix
+  and morph weights per node). `Pose` is derived data: not saved, not hashed, rebuilt in
+  `Module::init` so a restored session renders posed before its first tick.
+- **Determinism.** Sampling and blending use only `+ - * /` and `sqrt` on `f32`: rotations are
+  normalized-linear interpolated (`nlerp`, short way round) instead of `slerp`, blended by
+  weighted sum on one hemisphere, then normalized; matrices are composed by hand-written
+  scalar code (`rig::trs`, `rig::mul`) rather than SIMD library code. Channels are sorted by
+  (node, property). Files are read only in `Module::init`: the rig of every glTF `Model` in
+  the scene is loaded there, so scripts and operations can start animations on any model the
+  scene already has.
+- **Rendering.** Skinned and morphed parts go through a second pipeline that shares the PBR
+  fragment shader and the instanced layout of decision 0025: one instanced draw per (model,
+  part, material source). Per instance: world matrix, material factors, and (first palette
+  entry, first morph weight, target count, vertex count). Per frame: one storage buffer of
+  joint matrices (pose times inverse bind matrix) and one of morph weights; per part, one
+  storage buffer of morph deltas. Unskinned parts follow their node's animated matrix in the
+  static path (props on bones). Draw calls stay flat with the number of characters (a test
+  renders 64 walkers in 4 draws).
+- **Control.** Operations `anim_clips`, `anim_play` (cross-fade), `anim_blend` (set one
+  weight), `anim_stop`, `anim_pose` (world position and rotation of bones); scripts call
+  `self.playClip`, `self.blendClip`, `self.stopClip`. Both go through `Animator::play`,
+  `blend` and `stop`, so a script and an operation give the same layers (tested).
+
+## Alternatives considered
+
+- **Pose computed in the renderer only.** Cheaper headless, but bone positions would not be
+  available to gameplay, agents (`anim_pose`) or tests, and every view would redo the work.
+  Rejected.
+- **Pose in the state hash.** Bigger hash input every tick for data that follows from the
+  `Animator`. Rejected; the `Animator` is hashed instead.
+- **`slerp` and glam (SIMD) math in the tick.** Uses `acos`/`sin` (platform libm) and
+  SIMD-dependent association order. Rejected for the simulation; the renderer still uses
+  glam, where bit-exactness across platforms is not required (decision 0006).
+- **CPU skinning.** Simpler, but costs CPU per vertex per frame and a vertex upload per
+  character. Rejected: the GPU path keeps one draw per part for any crowd size.
+- **Morph weights in per-instance vertex attributes.** Caps the number of targets (face rigs
+  have 50 or more). Rejected for a storage buffer indexed per instance.
+
+## Limits
+
+- Joint matrices transform normals directly (fine for rigid and uniformly scaled joints; a
+  non-uniformly scaled joint shades slightly off).
+- No root motion, additive layers, masks (per-bone weights), animation events at key times or
+  inverse kinematics yet.
+- Storage buffers in the vertex stage: every desktop backend has them; WebGL2 does not.
+- A model first added after load (for example spawned by a script from a file the scene did not
+  reference) has no rig until the next load, reload or restore.
+
+## Proofs
+
+`crates/marionette-cli/tests/animation.rs`, `crates/marionette-anim/tests/puppet.rs`, unit tests
+in `crates/marionette-anim/src/lib.rs`, `crates/marionette-anim/src/sample.rs` and `crates/marionette-assets/src/rig.rs`.
+Test character: `examples/assets/puppet.glb`, generated by
+`crates/marionette-anim/examples/make_puppet.rs` (CC0, byte-identical every run).

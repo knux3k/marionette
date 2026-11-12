@@ -42,9 +42,10 @@ apart, decision 0025). A mode with `setup` runs operations first, for example
 ## Current suite (`stability/suite.json`)
 
 core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d, render-3d-play,
-render-2d, render-2d-play, render-ui, vr-headset (stereo), factory-sim (4x stress factory on the
-job system), factory-vr (factory in stereo), agent-session. Fast length: 120 to 1,000 ticks
-each, a few seconds in a debug build for all fourteen. Long length: 1 hour of game time per sim
+render-2d, render-2d-play, render-ui, animation (skinning), vr-headset (stereo), factory-sim (4x stress factory on the
+job system), factory-vr (factory in stereo), proof-lantern-keeper and its render mode (proof
+game 1), agent-session. Fast length: 120 to 1,000 ticks
+each, a few seconds in a debug build for all seventeen. Long length: 1 hour of game time per sim
 mode (216,000 ticks; drift 1,000,000), 15 minutes per render mode (54,000 frames), 30 minutes
 of agent session.
 

@@ -95,7 +95,8 @@ pub struct AngularVelocity {
 }
 
 /// Walks a kinematic body with input actions: slides along walls, climbs small slopes,
-/// stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z, 2D in X.
+/// stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the
+/// entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X.
 #[derive(Component, Reflect, Debug, Clone, PartialEq)]
 pub struct CharacterController {
     /// Horizontal speed in m/s at full input.
@@ -111,6 +112,17 @@ pub struct CharacterController {
     /// Action for back (-1) / forward (+1, toward -Z). Ignored in 2D.
     pub move_forward: String,
     pub jump: String,
+}
+
+/// Drives a `CharacterController` from a script instead of input actions (AI characters,
+/// vehicles): when present, its values replace the controller's actions. Values are like
+/// action values (-1..1). `jump` asks for one jump: physics starts it if the character
+/// stands on ground and sets `jump` back to false either way.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct CharacterInput {
+    pub move_x: f32,
+    pub move_forward: f32,
+    pub jump: bool,
 }
 
 /// Runtime state of a character controller. Written by physics.

@@ -1,0 +1,13 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 900,
+  "assertions": [
+    { "event": { "kind": "ghost_released", "at_least": 2, "at_most": 2 } },
+    { "event": { "kind": "caught", "at_least": 3, "at_most": 3 } },
+    { "event": { "kind": "lost" } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "lost" } },
+    { "field": { "entity": 4, "path": "Transform.translation.x", "op": "eq", "value": -7 } },
+    { "state_hash": "8082adc940b27eed44e56dc15da9ddca2ad6328812cf7f3e53a4cb2bac067ea8" }
+  ]
+}
