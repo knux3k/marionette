@@ -17,6 +17,7 @@ pub mod mcp;
 pub mod observe;
 pub mod perf;
 pub mod port;
+pub mod prefab;
 pub mod project;
 pub mod providers;
 pub mod scenario;
@@ -130,6 +131,7 @@ impl Agent {
             generate::ops(),
             script::ops(),
             port::ops(),
+            prefab::ops(),
             batch::ops(),
         ]
         .into_iter()
