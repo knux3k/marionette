@@ -286,7 +286,22 @@ fn texture(entry: &SourceEntry, bytes: Vec<u8>) -> Pending {
         }
     }
     let original_sha = sha256_hex(&bytes);
-    let (files, main, ready) = match ext.as_str() {
+    // Decide by content: files saved with the wrong extension (a JPEG named .png) are common.
+    let content = if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]) {
+        "png"
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        "jpeg"
+    } else {
+        ext.as_str()
+    };
+    let same = content == ext || (content == "jpeg" && ext == "jpg");
+    if !same {
+        notes.push(format!(
+            "file named .{ext} holds {content} data; read as {content}"
+        ));
+    }
+    let ext = if same { ext.clone() } else { content.to_string() };
+    let (files, main, ready) = match content {
         "png" => match marionette_assets::decode_png(&bytes) {
             Ok(_) => (
                 vec![("texture.png".to_string(), bytes)],

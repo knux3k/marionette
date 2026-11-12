@@ -626,3 +626,26 @@ fn dry_run_writes_nothing_and_bad_archives_are_errors() {
         codes::IMPORT_BAD_DECLARATION
     );
 }
+
+#[test]
+fn texture_type_is_read_from_content_not_extension() {
+    let (base, lib) = setup("sniff");
+    let img = image::RgbImage::from_pixel(4, 4, image::Rgb([10, 200, 30]));
+    let mut jpeg = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new(&mut jpeg)
+        .encode_image(&img)
+        .unwrap();
+    write(&base.join("p/misnamed.png"), &jpeg);
+    declare(&base.join("p.license.json"), "yes", json!({}));
+    let r = run(&lib, &base.join("p"), &[]);
+    let a = &r.imported[0];
+    assert!(a.engine_ready, "{a:#?}");
+    assert!(
+        a.notes.iter().any(|n| n.contains("holds jpeg data")),
+        "{:?}",
+        a.notes
+    );
+    let dir = lib.asset_dir(&a.id);
+    assert!(dir.join("source.jpeg").is_file());
+    assert!(marionette_assets::decode_png(&std::fs::read(dir.join("texture.png")).unwrap()).is_ok());
+}
