@@ -1,0 +1,1553 @@
+{
+  "engine": "unity",
+  "language": "C#",
+  "bases": [
+    {
+      "name": "MonoBehaviour",
+      "role": "behaviour",
+      "marionette": "A TypeScript script on the entity (`Script { path }` component).",
+      "status": "script"
+    },
+    {
+      "name": "NetworkBehaviour",
+      "role": "behaviour",
+      "marionette": "A TypeScript script; networking has no equivalent.",
+      "status": "gap"
+    },
+    {
+      "name": "ScriptableObject",
+      "role": "data",
+      "marionette": "A JSON data file loaded by the scene, or constants in the script.",
+      "status": "rewrite",
+      "note": "Marionette has no asset-object type yet; keep the values as script constants or entity components."
+    },
+    {
+      "name": "StateMachineBehaviour",
+      "role": "other",
+      "marionette": "No animator state machines.",
+      "status": "gap"
+    },
+    {
+      "name": "Editor",
+      "role": "editor",
+      "marionette": "Editor code is not ported: Marionette is edited through operations (`marionette ops`).",
+      "status": "gap"
+    },
+    {
+      "name": "EditorWindow",
+      "role": "editor",
+      "marionette": "Editor code is not ported: Marionette is edited through operations (`marionette ops`).",
+      "status": "gap"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "Awake",
+      "marionette": "start",
+      "status": "script",
+      "note": "Marionette has one start hook, called on the first tick the entity runs. Put Awake code first, then Start code."
+    },
+    {
+      "name": "OnEnable",
+      "marionette": "start",
+      "status": "script",
+      "note": "No enable/disable; runs once with start."
+    },
+    {
+      "name": "Start",
+      "marionette": "start",
+      "status": "script"
+    },
+    {
+      "name": "Update",
+      "marionette": "update",
+      "status": "script",
+      "note": "Marionette only has fixed ticks (default 60 per second). Update and FixedUpdate both become update; Time.deltaTime is engine.dt."
+    },
+    {
+      "name": "FixedUpdate",
+      "marionette": "update",
+      "status": "script",
+      "note": "Put FixedUpdate code before Update code in update (Unity's order within a frame)."
+    },
+    {
+      "name": "LateUpdate",
+      "marionette": "update",
+      "status": "rewrite",
+      "note": "No hook after physics. Put the code at the end of update; cameras usually work better with the LookAt or Follow component."
+    },
+    {
+      "name": "OnCollisionEnter",
+      "marionette": "onCollisionEnter",
+      "status": "script",
+      "note": "Receives the other Entity, not a Collision. Contact points and impulse are not available."
+    },
+    {
+      "name": "OnCollisionEnter2D",
+      "marionette": "onCollisionEnter",
+      "status": "script",
+      "note": "Same hook in 2D."
+    },
+    {
+      "name": "OnCollisionExit",
+      "marionette": "onCollisionExit",
+      "status": "script"
+    },
+    {
+      "name": "OnCollisionExit2D",
+      "marionette": "onCollisionExit",
+      "status": "script"
+    },
+    {
+      "name": "OnTriggerEnter",
+      "marionette": "onCollisionEnter",
+      "status": "script",
+      "note": "Give the trigger a Collider with sensor: true; its overlaps arrive as onCollisionEnter. No separate trigger hook yet."
+    },
+    {
+      "name": "OnTriggerEnter2D",
+      "marionette": "onCollisionEnter",
+      "status": "script",
+      "note": "Collider with sensor: true; overlaps arrive as onCollisionEnter."
+    },
+    {
+      "name": "OnTriggerExit",
+      "marionette": "onCollisionExit",
+      "status": "script",
+      "note": "Collider with sensor: true."
+    },
+    {
+      "name": "OnTriggerExit2D",
+      "marionette": "onCollisionExit",
+      "status": "script",
+      "note": "Collider with sensor: true."
+    },
+    {
+      "name": "OnCollisionStay",
+      "marionette": "update",
+      "status": "rewrite",
+      "note": "Set a flag in self.state on enter, clear it on exit, act on it in update."
+    },
+    {
+      "name": "OnCollisionStay2D",
+      "marionette": "update",
+      "status": "rewrite",
+      "note": "Flag in self.state between enter and exit."
+    },
+    {
+      "name": "OnTriggerStay",
+      "marionette": "update",
+      "status": "rewrite",
+      "note": "Flag in self.state between enter and exit."
+    },
+    {
+      "name": "OnTriggerStay2D",
+      "marionette": "update",
+      "status": "rewrite",
+      "note": "Flag in self.state between enter and exit."
+    },
+    {
+      "name": "OnDestroy",
+      "marionette": "",
+      "status": "gap",
+      "note": "No despawn hook yet."
+    },
+    {
+      "name": "OnDisable",
+      "marionette": "",
+      "status": "gap",
+      "note": "No enable/disable."
+    },
+    {
+      "name": "OnGUI",
+      "marionette": "UiNode + UiText / UiRect / UiButton components",
+      "status": "rewrite",
+      "note": "Immediate-mode GUI becomes UI entities; update their UiText from the script."
+    },
+    {
+      "name": "OnDrawGizmos",
+      "marionette": "",
+      "status": "gap",
+      "note": "Editor-only drawing; drop it."
+    },
+    {
+      "name": "OnValidate",
+      "marionette": "",
+      "status": "gap",
+      "note": "Editor-only; scene validation is `marionette op scene_validate`."
+    },
+    {
+      "name": "Reset",
+      "marionette": "",
+      "status": "gap",
+      "note": "Editor-only; drop it."
+    },
+    {
+      "name": "OnApplicationQuit",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "OnMouseDown",
+      "marionette": "UiButton (screen UI) or engine.justPressed + observe raycast",
+      "status": "rewrite"
+    },
+    {
+      "name": "OnBecameVisible",
+      "marionette": "",
+      "status": "gap"
+    }
+  ],
+  "components": [
+    {
+      "name": "Transform",
+      "marionette": "Transform",
+      "status": "ready",
+      "note": "translation / rotation (quaternion x,y,z,w) / scale. No parent-child hierarchy: world space only."
+    },
+    {
+      "name": "RectTransform",
+      "marionette": "UiNode",
+      "status": "ready",
+      "note": "anchor + offset (pixels, +y down) + size."
+    },
+    {
+      "name": "Rigidbody",
+      "marionette": "RigidBody",
+      "status": "ready",
+      "note": "kind Dynamic (isKinematic=false) or Kinematic; drag -> linear_damping, angularDrag -> angular_damping, freezeRotation -> lock_rotations, useGravity=false -> gravity_scale 0. Needs a Collider."
+    },
+    {
+      "name": "Rigidbody2D",
+      "marionette": "RigidBody",
+      "status": "ready",
+      "note": "2D is chosen per scene; same component."
+    },
+    {
+      "name": "BoxCollider",
+      "marionette": "Collider { shape: Cuboid }",
+      "status": "ready",
+      "note": "half_extents = size / 2. isTrigger -> sensor: true. PhysicMaterial -> friction / restitution."
+    },
+    {
+      "name": "BoxCollider2D",
+      "marionette": "Collider { shape: Cuboid }",
+      "status": "ready",
+      "note": "half_extents = size / 2 (z ignored)."
+    },
+    {
+      "name": "SphereCollider",
+      "marionette": "Collider { shape: Ball }",
+      "status": "ready"
+    },
+    {
+      "name": "CircleCollider2D",
+      "marionette": "Collider { shape: Ball }",
+      "status": "ready"
+    },
+    {
+      "name": "CapsuleCollider",
+      "marionette": "Collider { shape: Capsule }",
+      "status": "ready",
+      "note": "half_height = height / 2 - radius (Unity height includes the caps)."
+    },
+    {
+      "name": "CapsuleCollider2D",
+      "marionette": "Collider { shape: Capsule }",
+      "status": "ready"
+    },
+    {
+      "name": "MeshCollider",
+      "marionette": "Collider { shape: TriMesh } (or ConvexHull when convex)",
+      "status": "ready"
+    },
+    {
+      "name": "CharacterController",
+      "marionette": "CharacterController + CharacterState",
+      "status": "ready",
+      "note": "Driven by input actions (move_x, move_forward, jump) instead of Move(); a fully script-driven Move() is a gap."
+    },
+    {
+      "name": "Camera",
+      "marionette": "Camera",
+      "status": "ready",
+      "note": "fieldOfView -> Perspective.fov_y_degrees; orthographicSize * 2 -> Orthographic.height; backgroundColor -> clear_color."
+    },
+    {
+      "name": "Light",
+      "marionette": "DirectionalLight",
+      "status": "ready",
+      "note": "Directional lights only; point and spot lights are a gap."
+    },
+    {
+      "name": "MeshRenderer",
+      "marionette": "Model + Material",
+      "status": "ready",
+      "note": "Model.asset is a glTF file (import FBX models through library_import first)."
+    },
+    {
+      "name": "MeshFilter",
+      "marionette": "Model",
+      "status": "ready"
+    },
+    {
+      "name": "SkinnedMeshRenderer",
+      "marionette": "Model",
+      "status": "gap",
+      "note": "Skinning and skeletal animation are not supported yet."
+    },
+    {
+      "name": "SpriteRenderer",
+      "marionette": "Sprite (+ SpriteRegion for atlas cells)",
+      "status": "ready",
+      "note": "sortingOrder -> layer; color -> color."
+    },
+    {
+      "name": "AudioSource",
+      "marionette": "AudioSource",
+      "status": "ready",
+      "note": "playOnAwake -> trigger OnStart; loop -> looping. Play() from code: use trigger OnAction or OnCollision, or engine.emit; arbitrary Play() is a gap."
+    },
+    {
+      "name": "AudioListener",
+      "marionette": "AudioListener",
+      "status": "ready"
+    },
+    {
+      "name": "Text",
+      "marionette": "UiNode + UiText",
+      "status": "ready",
+      "note": "Built-in bitmap font only, upper case."
+    },
+    {
+      "name": "TextMeshProUGUI",
+      "marionette": "UiNode + UiText",
+      "status": "ready",
+      "note": "Built-in bitmap font only, upper case."
+    },
+    {
+      "name": "TMP_Text",
+      "marionette": "UiNode + UiText",
+      "status": "ready"
+    },
+    {
+      "name": "Image",
+      "marionette": "UiNode + UiImage (or UiRect for a plain color)",
+      "status": "ready"
+    },
+    {
+      "name": "Button",
+      "marionette": "UiNode + UiButton",
+      "status": "ready",
+      "note": "A click sets an input action for one tick; read it with engine.justPressed(action) instead of onClick listeners."
+    },
+    {
+      "name": "Canvas",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: UiNode entities are always screen space."
+    },
+    {
+      "name": "Animator",
+      "marionette": "",
+      "status": "gap",
+      "note": "No animation system yet."
+    },
+    {
+      "name": "Animation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "ParticleSystem",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "NavMeshAgent",
+      "marionette": "",
+      "status": "gap",
+      "note": "No navigation mesh; move with Follow or script steering."
+    },
+    {
+      "name": "LineRenderer",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "TrailRenderer",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "Terrain",
+      "marionette": "",
+      "status": "gap",
+      "note": "Use a glTF model with a TriMesh collider."
+    },
+    {
+      "name": "Joint",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "HingeJoint",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "PlayerInput",
+      "marionette": "an action map file (*.actions.json)",
+      "status": "ready"
+    }
+  ],
+  "types": [
+    {
+      "name": "float",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "double",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "int",
+      "marionette": "number",
+      "status": "ready",
+      "note": "Use Math.trunc where integer division matters."
+    },
+    {
+      "name": "uint",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "long",
+      "marionette": "number",
+      "status": "ready",
+      "note": "Exact only up to 2^53."
+    },
+    {
+      "name": "short",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "byte",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "bool",
+      "marionette": "boolean",
+      "status": "ready"
+    },
+    {
+      "name": "string",
+      "marionette": "string",
+      "status": "ready"
+    },
+    {
+      "name": "char",
+      "marionette": "string",
+      "status": "ready"
+    },
+    {
+      "name": "Vector3",
+      "marionette": "{ x: number, y: number, z: number }",
+      "status": "ready"
+    },
+    {
+      "name": "Vector2",
+      "marionette": "{ x: number, y: number }",
+      "status": "ready"
+    },
+    {
+      "name": "Vector3Int",
+      "marionette": "{ x: number, y: number, z: number }",
+      "status": "ready"
+    },
+    {
+      "name": "Vector2Int",
+      "marionette": "{ x: number, y: number }",
+      "status": "ready"
+    },
+    {
+      "name": "Quaternion",
+      "marionette": "{ x: number, y: number, z: number, w: number }",
+      "status": "ready"
+    },
+    {
+      "name": "Color",
+      "marionette": "{ r: number, g: number, b: number, a: number }",
+      "status": "ready",
+      "note": "Marionette colors are linear; convert sRGB inspector colors."
+    },
+    {
+      "name": "Color32",
+      "marionette": "{ r: number, g: number, b: number, a: number }",
+      "status": "ready",
+      "note": "Divide by 255; linear."
+    },
+    {
+      "name": "GameObject",
+      "marionette": "entity id (number)",
+      "status": "ready",
+      "note": "Store the scene id; look it up with engine.entity(id) or engine.find(name)."
+    },
+    {
+      "name": "Transform",
+      "marionette": "entity id (number)",
+      "status": "ready"
+    },
+    {
+      "name": "AudioClip",
+      "marionette": "string (sound path or builtin:)",
+      "status": "ready"
+    },
+    {
+      "name": "Sprite",
+      "marionette": "string (PNG path or builtin:)",
+      "status": "ready"
+    },
+    {
+      "name": "Texture2D",
+      "marionette": "string (PNG path)",
+      "status": "ready"
+    },
+    {
+      "name": "Material",
+      "marionette": "Material component values",
+      "status": "ready"
+    },
+    {
+      "name": "Mesh",
+      "marionette": "string (glTF path)",
+      "status": "ready"
+    },
+    {
+      "name": "LayerMask",
+      "marionette": "",
+      "status": "gap",
+      "note": "No collision layers yet."
+    },
+    {
+      "name": "AnimationCurve",
+      "marionette": "",
+      "status": "gap",
+      "note": "Sample it into an array of numbers."
+    },
+    {
+      "name": "UnityEvent",
+      "marionette": "engine.emit(kind, detail)",
+      "status": "rewrite",
+      "note": "No inspector-wired callbacks; emit an event or call the code directly."
+    },
+    {
+      "name": "KeyCode",
+      "marionette": "an input action name",
+      "status": "rewrite",
+      "note": "Bind keys in the action map file; scripts read actions, not keys."
+    }
+  ],
+  "api": [
+    {
+      "pattern": "Time.deltaTime",
+      "marionette": "engine.dt",
+      "status": "script",
+      "note": "Fixed step (1/60 by default)."
+    },
+    {
+      "pattern": "Time.fixedDeltaTime",
+      "marionette": "engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "Time.time",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "Time.fixedTime",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "Time.frameCount",
+      "marionette": "engine.tick",
+      "status": "script"
+    },
+    {
+      "pattern": "Time.timeScale",
+      "marionette": "",
+      "status": "gap",
+      "note": "No time scale; pause by skipping logic on a state flag."
+    },
+    {
+      "pattern": "Time.realtimeSinceStartup",
+      "marionette": "engine.tick * engine.dt",
+      "status": "hazard",
+      "note": "Wall-clock time breaks determinism; use simulated time."
+    },
+    {
+      "pattern": "Time.unscaledTime",
+      "marionette": "engine.tick * engine.dt",
+      "status": "hazard",
+      "note": "Wall clock; use simulated time."
+    },
+    {
+      "pattern": "DateTime.Now",
+      "marionette": "engine.tick",
+      "status": "hazard",
+      "note": "Wall clock breaks determinism and replays."
+    },
+    {
+      "pattern": "DateTime.UtcNow",
+      "marionette": "engine.tick",
+      "status": "hazard",
+      "note": "Wall clock breaks determinism and replays."
+    },
+    {
+      "pattern": "Stopwatch",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Wall-clock timing; profile with observe_stats instead."
+    },
+    {
+      "pattern": "Input.GetAxis",
+      "marionette": "engine.action(\"<action>\")",
+      "status": "script",
+      "note": "Define the axis as an action (e.g. move_x bound to A/D and left stick) in the action map file."
+    },
+    {
+      "pattern": "Input.GetAxisRaw",
+      "marionette": "engine.action(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Input.GetButton",
+      "marionette": "engine.pressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Input.GetButtonDown",
+      "marionette": "engine.justPressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Input.GetButtonUp",
+      "marionette": "!engine.pressed(\"<action>\") with the previous value kept in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Input.GetKey",
+      "marionette": "engine.pressed(\"<action>\")",
+      "status": "script",
+      "note": "Bind the key to an action in the action map; scripts never read raw keys."
+    },
+    {
+      "pattern": "Input.GetKeyDown",
+      "marionette": "engine.justPressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Input.GetKeyUp",
+      "marionette": "pressed-last-tick flag in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Input.GetMouseButton",
+      "marionette": "engine.pressed(\"<action>\")",
+      "status": "script",
+      "note": "Bind the mouse button to an action."
+    },
+    {
+      "pattern": "Input.GetMouseButtonDown",
+      "marionette": "engine.justPressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Input.mousePosition",
+      "marionette": "",
+      "status": "gap",
+      "note": "Pointer position is not exposed to scripts yet."
+    },
+    {
+      "pattern": "InputAction.ReadValue",
+      "marionette": "engine.action(\"<action>\")",
+      "status": "script",
+      "note": "Input System actions map one to one onto Marionette actions."
+    },
+    {
+      "pattern": "ReadValue",
+      "marionette": "engine.action(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "WasPressedThisFrame",
+      "marionette": "engine.justPressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "IsPressed",
+      "marionette": "engine.pressed(\"<action>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "Random.Range",
+      "marionette": "min + engine.rand() * (max - min)",
+      "status": "script",
+      "note": "Seeded and deterministic. The int overload excludes max: Math.floor(min + engine.rand() * (max - min))."
+    },
+    {
+      "pattern": "Random.value",
+      "marionette": "engine.rand()",
+      "status": "script"
+    },
+    {
+      "pattern": "Random.insideUnitSphere",
+      "marionette": "rejection-sample with engine.rand()",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Random.InitState",
+      "marionette": "the run seed (--seed / seed)",
+      "status": "rewrite",
+      "note": "Seeding is per run, not per call."
+    },
+    {
+      "pattern": "System.Random",
+      "marionette": "engine.rand()",
+      "status": "hazard",
+      "note": "Unseeded or separately seeded RNGs break replays; use the engine RNG."
+    },
+    {
+      "pattern": "Guid.NewGuid",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Non-deterministic ids; derive ids from entity ids and a counter."
+    },
+    {
+      "pattern": "Debug.Log",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "Debug.LogWarning",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "Debug.LogError",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "Debug.DrawLine",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Debug.DrawRay",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "print",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "GetComponent",
+      "marionette": "self.get(\"<Component>\")",
+      "status": "script",
+      "note": "Components are plain data: get returns a copy, change it, then self.set(name, value). Use self.has(name) to test."
+    },
+    {
+      "pattern": "TryGetComponent",
+      "marionette": "self.has(\"<Component>\") then self.get",
+      "status": "script"
+    },
+    {
+      "pattern": "GetComponentInChildren",
+      "marionette": "",
+      "status": "gap",
+      "note": "No hierarchy; reference the other entity by id or name."
+    },
+    {
+      "pattern": "GetComponentInParent",
+      "marionette": "",
+      "status": "gap",
+      "note": "No hierarchy."
+    },
+    {
+      "pattern": "GetComponents",
+      "marionette": "",
+      "status": "rewrite",
+      "note": "One component of each type per entity."
+    },
+    {
+      "pattern": "AddComponent",
+      "marionette": "self.set(\"<Component>\", value)",
+      "status": "script"
+    },
+    {
+      "pattern": "RequireComponent",
+      "marionette": "add the component to the entity in the scene",
+      "status": "ready"
+    },
+    {
+      "pattern": "SerializeField",
+      "marionette": "a field in self.state (default set in start) or a component value in the scene",
+      "status": "script"
+    },
+    {
+      "pattern": "HideInInspector",
+      "marionette": "",
+      "status": "ready",
+      "note": "No inspector; drop the attribute."
+    },
+    {
+      "pattern": "Header",
+      "marionette": "",
+      "status": "ready",
+      "note": "No inspector; keep as a comment."
+    },
+    {
+      "pattern": "Tooltip",
+      "marionette": "",
+      "status": "ready",
+      "note": "Keep as a comment."
+    },
+    {
+      "pattern": "Range",
+      "marionette": "",
+      "status": "ready",
+      "note": "Inspector-only clamp; clamp in code if it matters."
+    },
+    {
+      "pattern": "transform.position",
+      "marionette": "self.get(\"Transform\").translation",
+      "status": "script",
+      "note": "Write: const t = self.get(\"Transform\"); t.translation = {...}; self.set(\"Transform\", t). Kinematic bodies follow Transform; dynamic bodies are moved by physics."
+    },
+    {
+      "pattern": "transform.localPosition",
+      "marionette": "self.get(\"Transform\").translation",
+      "status": "script",
+      "note": "No hierarchy, so local equals world."
+    },
+    {
+      "pattern": "transform.rotation",
+      "marionette": "self.get(\"Transform\").rotation",
+      "status": "script",
+      "note": "Quaternion {x, y, z, w}."
+    },
+    {
+      "pattern": "transform.localRotation",
+      "marionette": "self.get(\"Transform\").rotation",
+      "status": "script"
+    },
+    {
+      "pattern": "transform.localScale",
+      "marionette": "self.get(\"Transform\").scale",
+      "status": "script"
+    },
+    {
+      "pattern": "transform.eulerAngles",
+      "marionette": "convert to a quaternion",
+      "status": "hazard",
+      "note": "Euler conversion needs sin/cos; precompute constants or use quaternion math with sqrt only (ARCHITECTURE.md, determinism)."
+    },
+    {
+      "pattern": "transform.forward",
+      "marionette": "rotate (0, 0, -1) by Transform.rotation",
+      "status": "rewrite",
+      "note": "Marionette forward is -Z (glTF); Unity forward is +Z. Flip z when porting positions and directions."
+    },
+    {
+      "pattern": "transform.right",
+      "marionette": "rotate (1, 0, 0) by Transform.rotation",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "transform.up",
+      "marionette": "rotate (0, 1, 0) by Transform.rotation",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "transform.Translate",
+      "marionette": "add to Transform.translation",
+      "status": "script"
+    },
+    {
+      "pattern": "transform.Rotate",
+      "marionette": "multiply Transform.rotation by a precomputed quaternion",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "transform.LookAt",
+      "marionette": "LookAt component",
+      "status": "ready",
+      "note": "Set LookAt.target; it overrides Transform.rotation."
+    },
+    {
+      "pattern": "transform.parent",
+      "marionette": "",
+      "status": "gap",
+      "note": "No parent-child hierarchy yet; keep offsets in script and copy positions each tick, or use Follow."
+    },
+    {
+      "pattern": "transform.SetParent",
+      "marionette": "",
+      "status": "gap",
+      "note": "No hierarchy yet."
+    },
+    {
+      "pattern": "transform.Find",
+      "marionette": "engine.find(name)",
+      "status": "script"
+    },
+    {
+      "pattern": "transform.GetChild",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "gameObject.SetActive",
+      "marionette": "",
+      "status": "gap",
+      "note": "No enable/disable; move it away or keep an `active` flag in self.state."
+    },
+    {
+      "pattern": "gameObject.name",
+      "marionette": "the entity name in the scene file",
+      "status": "ready"
+    },
+    {
+      "pattern": "gameObject.tag",
+      "marionette": "",
+      "status": "gap",
+      "note": "No tags; use names or a marker component."
+    },
+    {
+      "pattern": "CompareTag",
+      "marionette": "other.has(\"<MarkerComponent>\") or a name check",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "GameObject.Find",
+      "marionette": "engine.find(name)",
+      "status": "script"
+    },
+    {
+      "pattern": "GameObject.FindWithTag",
+      "marionette": "engine.query(\"<MarkerComponent>\")",
+      "status": "rewrite",
+      "note": "No tags."
+    },
+    {
+      "pattern": "GameObject.FindGameObjectsWithTag",
+      "marionette": "engine.query(\"<MarkerComponent>\")",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "FindObjectOfType",
+      "marionette": "engine.query(\"<Component>\")[0]",
+      "status": "script"
+    },
+    {
+      "pattern": "FindObjectsOfType",
+      "marionette": "engine.query(\"<Component>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "FindFirstObjectByType",
+      "marionette": "engine.query(\"<Component>\")[0]",
+      "status": "script"
+    },
+    {
+      "pattern": "Instantiate",
+      "marionette": "",
+      "status": "gap",
+      "note": "No spawning from scripts yet. Pre-place a pool of entities in the scene and move them in and out, or add them with the entity_create operation."
+    },
+    {
+      "pattern": "Destroy",
+      "marionette": "",
+      "status": "gap",
+      "note": "No despawn from scripts yet; move the entity away and mark it inactive in self.state."
+    },
+    {
+      "pattern": "DestroyImmediate",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "DontDestroyOnLoad",
+      "marionette": "",
+      "status": "gap",
+      "note": "One scene per run."
+    },
+    {
+      "pattern": "SceneManager.LoadScene",
+      "marionette": "",
+      "status": "gap",
+      "note": "One scene per run; scene switching is not available yet."
+    },
+    {
+      "pattern": "StartCoroutine",
+      "marionette": "a tick counter in self.state, checked in update",
+      "status": "rewrite",
+      "note": "No coroutines yet. Each `yield return` becomes a step number in self.state; WaitForSeconds(t) becomes `waitUntil = engine.tick + Math.round(t / engine.dt)`."
+    },
+    {
+      "pattern": "StopCoroutine",
+      "marionette": "reset the step in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "StopAllCoroutines",
+      "marionette": "reset the steps in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "WaitForSeconds",
+      "marionette": "self.state.waitUntil = engine.tick + Math.round(seconds / engine.dt)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "WaitForFixedUpdate",
+      "marionette": "continue on the next tick",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "WaitUntil",
+      "marionette": "check the condition in update",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Invoke",
+      "marionette": "self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)",
+      "status": "rewrite",
+      "note": "Check the tick in update and call the function."
+    },
+    {
+      "pattern": "InvokeRepeating",
+      "marionette": "tick counter in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "CancelInvoke",
+      "marionette": "clear the tick in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Rigidbody.AddForce",
+      "marionette": "",
+      "status": "gap",
+      "note": "Scripts cannot push dynamic bodies yet (physics reads Velocity only at load). Use a kinematic body moved through Transform, or CharacterController."
+    },
+    {
+      "pattern": "AddForce",
+      "marionette": "",
+      "status": "gap",
+      "note": "Scripts cannot push dynamic bodies yet. Use a kinematic body or CharacterController."
+    },
+    {
+      "pattern": "AddTorque",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "AddExplosionForce",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "MovePosition",
+      "marionette": "set Transform.translation of a Kinematic RigidBody",
+      "status": "script"
+    },
+    {
+      "pattern": "MoveRotation",
+      "marionette": "set Transform.rotation of a Kinematic RigidBody",
+      "status": "script"
+    },
+    {
+      "pattern": "velocity",
+      "marionette": "self.get(\"Velocity\")",
+      "status": "script",
+      "note": "Reading works (physics writes it). Writing it on a dynamic body has no effect yet."
+    },
+    {
+      "pattern": "linearVelocity",
+      "marionette": "self.get(\"Velocity\")",
+      "status": "script",
+      "note": "Read only for dynamic bodies."
+    },
+    {
+      "pattern": "angularVelocity",
+      "marionette": "self.get(\"AngularVelocity\")",
+      "status": "script",
+      "note": "Read only."
+    },
+    {
+      "pattern": "isGrounded",
+      "marionette": "self.get(\"CharacterState\").grounded",
+      "status": "script"
+    },
+    {
+      "pattern": "CharacterController.Move",
+      "marionette": "CharacterController component driven by actions",
+      "status": "rewrite",
+      "note": "Movement comes from input actions; script-computed Move() is a gap."
+    },
+    {
+      "pattern": "Physics.Raycast",
+      "marionette": "",
+      "status": "gap",
+      "note": "Raycasts exist as the observe_raycast operation but not inside scripts yet."
+    },
+    {
+      "pattern": "Physics2D.Raycast",
+      "marionette": "",
+      "status": "gap",
+      "note": "Not inside scripts yet (observe_raycast operation only)."
+    },
+    {
+      "pattern": "Physics.OverlapSphere",
+      "marionette": "",
+      "status": "gap",
+      "note": "Use a sensor Collider and onCollisionEnter/Exit."
+    },
+    {
+      "pattern": "Physics.SphereCast",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Physics.gravity",
+      "marionette": "RigidBody.gravity_scale / CharacterController.gravity",
+      "status": "ready"
+    },
+    {
+      "pattern": "AudioSource.Play",
+      "marionette": "AudioSource with trigger OnAction / OnCollision / OnJump",
+      "status": "rewrite",
+      "note": "Sounds are triggered by data; playing any sound from script is a gap."
+    },
+    {
+      "pattern": "PlayOneShot",
+      "marionette": "AudioSource trigger",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "AudioSource.PlayClipAtPoint",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Mathf.Sin",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Platform sin/cos/atan2/pow/exp differ between machines and break the state hash. Use precomputed tables, quaternion math with sqrt only, or a deterministic helper when the script runtime adds one."
+    },
+    {
+      "pattern": "Mathf.Cos",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See Mathf.Sin."
+    },
+    {
+      "pattern": "Mathf.Tan",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See Mathf.Sin."
+    },
+    {
+      "pattern": "Mathf.Atan2",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See Mathf.Sin."
+    },
+    {
+      "pattern": "Mathf.Pow",
+      "marionette": "x * x ... for small integer powers",
+      "status": "hazard",
+      "note": "See Mathf.Sin."
+    },
+    {
+      "pattern": "Mathf.Exp",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See Mathf.Sin."
+    },
+    {
+      "pattern": "Mathf.PerlinNoise",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Mathf.Sqrt",
+      "marionette": "Math.sqrt",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Abs",
+      "marionette": "Math.abs",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Min",
+      "marionette": "Math.min",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Max",
+      "marionette": "Math.max",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Clamp",
+      "marionette": "Math.min(Math.max(v, lo), hi)",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Clamp01",
+      "marionette": "Math.min(Math.max(v, 0), 1)",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Lerp",
+      "marionette": "a + (b - a) * Math.min(Math.max(t, 0), 1)",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.MoveTowards",
+      "marionette": "inline: step toward target by at most maxDelta",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Floor",
+      "marionette": "Math.floor",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.Round",
+      "marionette": "Math.round",
+      "status": "script",
+      "note": "Unity rounds .5 to even; Math.round rounds up."
+    },
+    {
+      "pattern": "Mathf.Sign",
+      "marionette": "(v >= 0 ? 1 : -1)",
+      "status": "script",
+      "note": "Unity Sign(0) is 1."
+    },
+    {
+      "pattern": "Vector3.Lerp",
+      "marionette": "component-wise lerp",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.Distance",
+      "marionette": "Math.sqrt(dx*dx + dy*dy + dz*dz)",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.Normalize",
+      "marionette": "divide by Math.sqrt of the squared length",
+      "status": "script"
+    },
+    {
+      "pattern": "Quaternion.Euler",
+      "marionette": "a precomputed quaternion constant",
+      "status": "hazard",
+      "note": "Needs sin/cos at run time; precompute."
+    },
+    {
+      "pattern": "Quaternion.Slerp",
+      "marionette": "nlerp (normalize a lerp)",
+      "status": "rewrite",
+      "note": "Slerp needs acos/sin."
+    },
+    {
+      "pattern": "Quaternion.LookRotation",
+      "marionette": "LookAt component",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "PlayerPrefs",
+      "marionette": "",
+      "status": "gap",
+      "note": "No save data yet; reading files during a tick is forbidden."
+    },
+    {
+      "pattern": "Resources.Load",
+      "marionette": "reference the asset path in a component",
+      "status": "rewrite",
+      "note": "Assets are named by path in scene data and loaded at scene load."
+    },
+    {
+      "pattern": "Addressables",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Application.Quit",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Thread",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Simulation is single-threaded; threads break determinism."
+    },
+    {
+      "pattern": "Task.Run",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Background work breaks determinism."
+    },
+    {
+      "pattern": "UnityWebRequest",
+      "marionette": "",
+      "status": "hazard",
+      "note": "No network in the simulation."
+    },
+    {
+      "pattern": "SendMessage",
+      "marionette": "engine.emit(kind, detail), or call the other entity's data",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "BroadcastMessage",
+      "marionette": "engine.emit(kind, detail)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "onClick.AddListener",
+      "marionette": "UiButton { action } + engine.justPressed(action)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Animator.SetTrigger",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Animator.SetFloat",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Animator.SetBool",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Animator.Play",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "NavMeshAgent.SetDestination",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Vector3",
+      "marionette": "{ x, y, z }",
+      "status": "script",
+      "note": "Plain objects; flip z for positions and directions copied from Unity (port_convert)."
+    },
+    {
+      "pattern": "Vector2",
+      "marionette": "{ x, y }",
+      "status": "script"
+    },
+    {
+      "pattern": "Color",
+      "marionette": "{ r, g, b, a }",
+      "status": "script",
+      "note": "Linear color."
+    },
+    {
+      "pattern": "Quaternion",
+      "marionette": "{ x, y, z, w }",
+      "status": "script",
+      "note": "Convert with port_convert (x, y flip sign)."
+    },
+    {
+      "pattern": "Vector3.zero",
+      "marionette": "{ x: 0, y: 0, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.one",
+      "marionette": "{ x: 1, y: 1, z: 1 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.up",
+      "marionette": "{ x: 0, y: 1, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.down",
+      "marionette": "{ x: 0, y: -1, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.right",
+      "marionette": "{ x: 1, y: 0, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.left",
+      "marionette": "{ x: -1, y: 0, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.forward",
+      "marionette": "{ x: 0, y: 0, z: -1 }",
+      "status": "script",
+      "note": "Unity forward is +Z; Marionette forward is -Z."
+    },
+    {
+      "pattern": "Vector3.back",
+      "marionette": "{ x: 0, y: 0, z: 1 }",
+      "status": "script",
+      "note": "Unity back is -Z; Marionette back is +Z."
+    },
+    {
+      "pattern": "Vector2.zero",
+      "marionette": "{ x: 0, y: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector2.up",
+      "marionette": "{ x: 0, y: 1 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector2.right",
+      "marionette": "{ x: 1, y: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Quaternion.identity",
+      "marionette": "{ x: 0, y: 0, z: 0, w: 1 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.Dot",
+      "marionette": "a.x*b.x + a.y*b.y + a.z*b.z",
+      "status": "script"
+    },
+    {
+      "pattern": "Vector3.Cross",
+      "marionette": "component-wise cross product",
+      "status": "script",
+      "note": "Handedness changes: cross products of converted vectors stay correct, but hand-written axis assumptions may flip."
+    },
+    {
+      "pattern": "magnitude",
+      "marionette": "Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)",
+      "status": "script"
+    },
+    {
+      "pattern": "sqrMagnitude",
+      "marionette": "v.x*v.x + v.y*v.y + v.z*v.z",
+      "status": "script"
+    },
+    {
+      "pattern": "normalized",
+      "marionette": "divide by the length if it is not zero",
+      "status": "script"
+    },
+    {
+      "pattern": "ForceMode.Impulse",
+      "marionette": "",
+      "status": "gap",
+      "note": "Forces from scripts are a gap."
+    },
+    {
+      "pattern": "transform.childCount",
+      "marionette": "",
+      "status": "gap",
+      "note": "No hierarchy."
+    },
+    {
+      "pattern": "Screen.width",
+      "marionette": "",
+      "status": "gap",
+      "note": "Screen size is not exposed to scripts; UiNode anchors place UI without it."
+    },
+    {
+      "pattern": "Screen.height",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Cursor.lockState",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Camera.main",
+      "marionette": "engine.query(\"Camera\")[0]",
+      "status": "script"
+    }
+  ],
+  "roots": [
+    "Input",
+    "Time",
+    "Physics",
+    "Physics2D",
+    "Random",
+    "Mathf",
+    "Debug",
+    "GameObject",
+    "Quaternion",
+    "Vector3",
+    "Vector2",
+    "Rigidbody",
+    "Rigidbody2D",
+    "SceneManager",
+    "Application",
+    "PlayerPrefs",
+    "Resources",
+    "Screen",
+    "Cursor",
+    "Camera",
+    "AudioSource",
+    "Animator",
+    "NavMesh",
+    "NavMeshAgent",
+    "Gizmos",
+    "Handles",
+    "EditorGUILayout",
+    "GUILayout",
+    "GUI",
+    "Graphics",
+    "Shader",
+    "Material",
+    "Light",
+    "RenderSettings",
+    "QualitySettings",
+    "Object",
+    "Color",
+    "transform",
+    "gameObject",
+    "rb",
+    "rigidbody",
+    "Keyboard",
+    "Mouse",
+    "Gamepad"
+  ]
+}

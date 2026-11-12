@@ -160,3 +160,8 @@ pub fn components(agent: &Agent) -> String {
     }
     out
 }
+
+/// The Unity/Unreal concept tables as one reference document.
+pub fn porting_map() -> String {
+    marionette_port::map::reference()
+}
