@@ -375,6 +375,58 @@ fn throw(ctx: &Ctx<'_>, msg: String) -> rquickjs::Error {
     Exception::throw_message(ctx, &msg)
 }
 
+/// `Entity.playClip` / `blendClip` / `stopClip`: the same `Animator` changes as the
+/// `anim_play`, `anim_blend` and `anim_stop` operations (one implementation, in
+/// `marionette-anim`). Unknown clips throw `anim.unknown_clip`.
+fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
+    use marionette_anim::{Animator, Rigs};
+    let v: serde_json::Value =
+        serde_json::from_str(json).map_err(|err| format!("script.bad_value: {err}"))?;
+    let num = |k: &str, d: f64| v.get(k).and_then(serde_json::Value::as_f64).unwrap_or(d) as f32;
+    let looping = v
+        .get("looping")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let clip = v.get("clip").and_then(serde_json::Value::as_str);
+    if let Some(clip) = clip {
+        let model = world
+            .get::<marionette_core::spatial::Model>(e)
+            .ok_or_else(|| "anim.no_model: this entity has no Model".to_string())?;
+        let rig = world
+            .get_resource::<Rigs>()
+            .and_then(|r| r.0.get(&model.asset))
+            .ok_or_else(|| {
+                format!(
+                    "anim.asset: `{}` was not loaded as an animated model",
+                    model.asset
+                )
+            })?;
+        if rig.clip(clip).is_none() {
+            let names: Vec<&str> = rig.clips.iter().map(|c| c.name.as_str()).collect();
+            return Err(format!(
+                "anim.unknown_clip: `{}` has no clip `{clip}` (clips: {})",
+                model.asset,
+                names.join(", ")
+            ));
+        }
+    }
+    let mut animator = world.get::<Animator>(e).cloned().unwrap_or_default();
+    match (v.get("op").and_then(serde_json::Value::as_str), clip) {
+        (Some("play"), Some(c)) => animator.play(c, num("fade", 0.2), num("speed", 1.0), looping),
+        (Some("blend"), Some(c)) => animator.blend(
+            c,
+            num("weight", 1.0),
+            num("fade", 0.2),
+            num("speed", 1.0),
+            looping,
+        ),
+        (Some("stop"), c) => animator.stop(c, num("fade", 0.2)),
+        _ => return Err("script.bad_value: unknown animation call".into()),
+    }
+    world.entity_mut(e).insert(animator);
+    Ok(())
+}
+
 /// Native functions behind the prelude, the deterministic math, and the removed globals.
 fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
     let g = ctx.globals();
@@ -467,6 +519,24 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
                         .ids
                         .get(&(id as u64))
                         .is_some_and(|&e| entry.get(world, Some(e)).is_some()))
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "anim",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, json: String| -> rquickjs::Result<()> {
+                with_world(&b, |world, br| {
+                    let Some(&e) = br.ids.get(&(id as u64)) else {
+                        return Err(throw(
+                            &ctx,
+                            format!("script.no_entity: entity {id} does not exist"),
+                        ));
+                    };
+                    animate(world, e, &json).map_err(|msg| throw(&ctx, msg))
                 })
             },
         )?,

@@ -78,7 +78,7 @@ pub struct WorldTarget {
 }
 
 /// Runs `f` on the target world. Stateless targets are loaded, stepped and discarded.
-fn with_world<T>(
+pub(crate) fn with_world<T>(
     agent: &mut Agent,
     target: &WorldTarget,
     f: impl FnOnce(&mut Agent, &mut Sim, &str) -> Result<T, Errors>,

@@ -163,7 +163,7 @@ fn entity_mut<'a>(s: &'a mut Scene, id: u64, target: &str) -> Result<&'a mut Sce
 }
 
 /// Applies `change` to the target, validates, then writes. Returns the diff.
-fn apply(
+pub(crate) fn apply(
     agent: &mut Agent,
     target: &EditTarget,
     change: impl FnOnce(&mut Scene, &str) -> Result<(), Errors>,
