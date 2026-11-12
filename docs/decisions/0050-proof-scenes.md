@@ -42,6 +42,9 @@ the games needed (listed below).
 | Scenario `field` paths read into JSON text (`ScriptState.data.score`) | Tests assert on game state kept in `self.state`. |
 | Scenario `event` assertions take `at_least` / `at_most` | "Five lanterns lit, never caught" is a count. |
 | `input` on every observe operation's `scene` target | Observing a played game (events, entities, rays) needs its input replayed. |
+| Sensors report contacts with every body type (`ActiveCollisionTypes::all()` on sensors only); character movement ignores sensors | Pickups and checkpoints: a fixed sensor never saw the (kinematic) character, and the character was stopped by it as if it were a wall. Solid pairs are unchanged. |
+| A script that changes the `Transform` of a dynamic body or a character teleports it | Respawning at a checkpoint. Physics compares the Transform with what it wrote back last tick; untouched bodies are equal bit for bit, so existing results are unchanged. |
+| `Entity.name` in scripts | Telling pickups, hazards and checkpoints apart in a trigger hook. |
 
 ## Why
 
