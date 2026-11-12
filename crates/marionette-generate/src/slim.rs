@@ -198,7 +198,7 @@ fn simplify(indices: &[u32], positions: &[[f32; 3]], target: usize) -> Vec<u32> 
 }
 
 fn is_opaque(rgba: &[u8]) -> bool {
-    rgba.chunks_exact(4).all(|p| p[3] == 255)
+    rgba.as_chunks::<4>().0.iter().all(|p| p[3] == 255)
 }
 
 /// Shrinks one image so its longer side is at most `max_px`, re-encoding it. None when the
@@ -224,7 +224,12 @@ fn shrink_image(bytes: &[u8], max_px: u32) -> Option<Shrunk> {
     let rgba = texture::resample(img.as_raw(), w, h, tw, th);
     let mut out = Vec::new();
     let mime = if is_opaque(&rgba) {
-        let rgb: Vec<u8> = rgba.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
+        let rgb: Vec<u8> = rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2]])
+            .collect();
         image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY)
             .encode(&rgb, tw, th, image::ExtendedColorType::Rgb8)
             .ok()?;
@@ -300,11 +305,7 @@ pub fn slim(glb: &[u8], max_triangles: Option<u64>, max_texture_px: Option<u32>)
                 Some(i) => i.into_u32().collect(),
                 None => (0..count as u32).collect(),
             };
-            let positions: Vec<[f32; 3]> = attrs[0]
-                .values
-                .chunks_exact(3)
-                .map(|c| [c[0], c[1], c[2]])
-                .collect();
+            let positions: Vec<[f32; 3]> = attrs[0].values.as_chunks::<3>().0.to_vec();
             let tri = prim.mode() == Mode::Triangles && indices.len() >= 3;
             let mut idx = if tri && ratio < 1.0 {
                 let target = ((indices.len() / 3) as f64 * ratio).floor().max(1.0) as usize * 3;
