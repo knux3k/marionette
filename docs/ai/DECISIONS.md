@@ -33,6 +33,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0027 | FBX to glTF conversion inside the importer | accepted |
 | 0028 | Skeletal animation: clips on the fixed tick, GPU skinning and blend shapes | accepted |
 | 0029 | The Unreal importer reads exports (FBX, glTF, images, T3D materials), diagnoses packages | accepted |
+| 0030 | Job TypeScript: a numbers-only TypeScript subset compiled to WebAssembly for job bodies | accepted |
 | 0031 | Stability suite per game mode: seeded soak runs, crash reports, every scene registered | accepted |
 | 0032 | Memory and crash hygiene: no leaks, nothing outlives a crash (`marionette-host`) | accepted |
 | 0040 | Unity prefabs become flat Marionette prefabs in the owned library (`prefab_instantiate`) | accepted |

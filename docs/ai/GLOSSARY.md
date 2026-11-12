@@ -36,6 +36,11 @@
   first (template: `docs/PROTOCOL.md`).
 - **Script**: a TypeScript ES module attached with the `Script` component; its hooks run in
   `Stage::Script` (decision 0022). Its per-entity state is `self.state` (`ScriptState`).
+- **Job file**: a `*.job.ts` file in job TypeScript, a typed numbers-only TypeScript subset the
+  engine compiles to WebAssembly and runs over arrays in chunks on all cores (decision 0030,
+  `docs/ai/JOBS-TS.md`).
+- **Chunk**: one piece of a job run (`chunk` elements); chunk boundaries come from the data, never
+  from the thread count (decision 0024).
 - **Hook**: a function a script exports (`start`, `update`, `onCollisionEnter`, ...).
 - **Stability mode**: one entry of `stability/suite.json`: a scene run fast or long with seeded
   input and checked for panics, hangs, determinism, budgets and memory (STABILITY.md).
