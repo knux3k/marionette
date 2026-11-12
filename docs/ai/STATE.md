@@ -150,11 +150,13 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `fbx_7500_from_a_second_writer_matches_blenders_reading`,
   `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
   `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `blend_shapes_become_morph_targets_and_match_blender`,
   `unity_project_fbx_is_converted_with_its_texture`,
   `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
   conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
+  false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
+  (decision 0027); skinning in
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
@@ -236,3 +238,4 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
