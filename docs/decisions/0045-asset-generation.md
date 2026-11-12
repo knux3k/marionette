@@ -55,6 +55,9 @@ Date: 2026-11-12. Status: accepted.
   default, so a default build still cannot reach a paid API. Build with
   `cargo build --release -p marionette-cli --features net` on the machine that holds the keys.
   Tested against a server on the same machine only.
+- **Qwen regions.** A Model Studio key works only in its own region. The plug-in tries the
+  international, China and US addresses in that order and moves on after a 401 (a refused key
+  is not charged); it polls the region that accepted the job. Found with the first live check.
 - **Tripo with a local image.** Uploaded with `POST /v2/openapi/upload` (multipart, field
   `file`), then `image_to_model` with `file_token`.
 - **Post-processing, deterministic.** Images: decode to RGBA8, exact integer box resampling,
