@@ -18,7 +18,7 @@ it finds every `*.scene.json` outside `crates/`, `spikes/`, `docs/` and `target/
 | No hang | `hang` | no finished tick for `hang_s` (default 20 s) |
 | Deterministic | `nondeterminism` | a second run with the same scene, seed and input gives the same state hash |
 | Snapshots work | `snapshot` | restore the snapshot taken halfway, run to the end, same hash |
-| Time budget | `budget` | p99 tick (`tick_budget_ms`) and p99 frame (`frame_budget_ms`) x budget scale; release builds only (debug timings mean nothing) |
+| Time budget | `budget` | p99 tick (`tick_budget_ms`) and p99 frame (`frame_budget_ms`) x budget scale; release builds only (debug timings mean nothing); frame budgets only on a hardware GPU (a software rasterizer such as lavapipe or WARP draws on the CPU, decision 0023), shown as `frame_budget_checked` |
 | Memory steady | `memory` | growth after warm-up (first fifth of the run) at most `memory_growth_mib` (default 32) |
 | Scripts healthy | `script_error` | no `script_error` events unless `allow_script_errors` |
 | Loads and operations | `error` | load errors, setup operations and agent operations must succeed |
@@ -96,6 +96,10 @@ replay, a sleep per tick, memory kept per tick). The tests use it to prove each 
 caught. Never use it in the suite file.
 
 ## Not covered yet
+
+- Frame budgets in CI: shared runners only have software GPUs, so CI checks tick budgets and
+  records frame times without judging them. Run the suite on a machine with a real GPU (or the
+  headset machine) to check frame budgets: `cargo run --release -q -p marionette-cli -- stability`.
 
 - A real window and a real audio device (the `render` kind runs the same loop offscreen; opening
   windows on a user's screen needs the owner's approval).

@@ -93,6 +93,9 @@ pub fn human(v: &Value) -> String {
         if let Some(m) = r.get("memory").filter(|m| m.is_object()) {
             line.push_str(&format!(", memory +{} MiB", m["growth_mib"]));
         }
+        if r["frame"].is_object() && r["frame_budget_checked"] == false && v["timing_enforced"] == true {
+            line.push_str(" (frame budget not checked: software GPU)");
+        }
         if let Some(s) = r["skipped"].as_str() {
             line.push_str(&format!(" [{s}]"));
         }

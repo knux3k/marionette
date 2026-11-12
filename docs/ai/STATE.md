@@ -285,6 +285,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
+- Stability suite frame budgets: CI has only software GPUs (lavapipe, WARP), so frame budgets
+  are checked only on a hardware GPU; no hardware-GPU run of the suite yet. On WARP the
+  factory-vr frame p99 was 44 ms at 256x256 per eye (software rasterizer).
 - Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
   runs have no memory check (resident size is read on Linux only) until the counting allocator
   from the memory work is installed as the probe.

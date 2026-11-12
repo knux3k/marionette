@@ -336,6 +336,13 @@ pub struct ModeResult {
     pub tick: Percentiles,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frame: Option<Percentiles>,
+    /// The GPU adapter of a render mode.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu: Option<String>,
+    /// Whether `frame_budget_ms` was checked: only on a hardware GPU, since a software
+    /// rasterizer (lavapipe, WARP) draws on the CPU and says nothing about frame time
+    /// (decision 0023). Tick budgets are checked either way.
+    pub frame_budget_checked: bool,
     pub tick_budget_ms: Option<f64>,
     pub frame_budget_ms: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -797,6 +804,8 @@ struct Meter {
     after_warmup: Option<u64>,
     peak: u64,
     leak: Vec<Vec<u8>>,
+    /// Frames are drawn by a software rasterizer: frame times are not checked.
+    software_gpu: bool,
 }
 
 impl Meter {
@@ -812,6 +821,7 @@ impl Meter {
             after_warmup: None,
             peak: start.unwrap_or(0),
             leak: Vec::new(),
+            software_gpu: false,
         }
     }
 
@@ -847,7 +857,7 @@ impl Meter {
                     backtrace: None,
                 });
             }
-            if let (Some(b), Some(f)) = (job.mode.frame_budget_ms, &frame)
+            if let (Some(b), Some(f), false) = (job.mode.frame_budget_ms, &frame, self.software_gpu)
                 && f.p99_ms > b * s
             {
                 r.failures.push(Failure {
@@ -884,6 +894,10 @@ impl Meter {
                 limit_mib: limit,
             });
         }
+        r.frame_budget_checked = job.timing_enforced
+            && job.mode.frame_budget_ms.is_some()
+            && frame.is_some()
+            && !self.software_gpu;
         r.tick = tick;
         r.frame = frame;
         drop(self.leak);
@@ -940,6 +954,11 @@ fn work_sim(job: &Job, progress: &Progress, out: &Mutex<ModeResult>) -> Result<(
     }
     let views = job.mode.views.unwrap_or(1);
     let mut meter = Meter::new(job.ticks);
+    if let Some((gpu, _)) = &render {
+        let info = gpu.adapter.get_info();
+        meter.software_gpu = format!("{:?}", info.device_type) == "Cpu";
+        out.lock().unwrap_or_else(|e| e.into_inner()).gpu = Some(gpu.describe());
+    }
     let sample_every = (job.ticks / 50).max(1);
     let half = job.ticks / 2;
     let mut snapshot = None;
