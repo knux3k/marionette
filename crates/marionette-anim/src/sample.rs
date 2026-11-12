@@ -175,8 +175,8 @@ pub fn blend(rig: &Rig, layers: &[(&Clip, f32, f32)]) -> LocalPose {
             }
             let q = pose.rotation[i];
             let s = if dot4(acc.rotation[i], q) < 0.0 { -w } else { w };
-            for k in 0..4 {
-                acc.rotation[i][k] += q[k] * s;
+            for (r, c) in acc.rotation[i].iter_mut().zip(q) {
+                *r += c * s;
             }
             let mw = &pose.morph_weights[i];
             let slot = &mut acc.morph_weights[i];

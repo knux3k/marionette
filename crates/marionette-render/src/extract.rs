@@ -186,17 +186,28 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         }
         frame.cameras.sort_by_key(|c| c.entity);
     }
+    // `Pose` is looked up separately: a query naming a component type the world has never
+    // seen (no animation module) matches nothing, even inside `Option`.
+    let poses = world
+        .components()
+        .component_id::<marionette_core::spatial::Pose>()
+        .is_some();
     if let Some(mut q) = world.try_query::<(
+        bevy_ecs::entity::Entity,
         &SceneId,
         &Model,
         Option<&Material>,
-        Option<&marionette_core::spatial::Pose>,
         Place,
     )>() {
         // Share one allocation per distinct asset path.
         let mut names: std::collections::BTreeMap<&str, std::sync::Arc<str>> = Default::default();
         frame.meshes.reserve(q.iter(world).len());
-        for (id, model, material, pose, (t, p, l)) in q.iter(world) {
+        for (e, id, model, material, (t, p, l)) in q.iter(world) {
+            let pose = if poses {
+                world.get::<marionette_core::spatial::Pose>(e)
+            } else {
+                None
+            };
             let asset = names
                 .entry(model.asset.as_str())
                 .or_insert_with(|| model.asset.as_str().into())

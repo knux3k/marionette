@@ -237,6 +237,9 @@ fn tube(
     }
 }
 
+/// One animation channel: node, glTF path, key times, values per key.
+type Track<'a> = (usize, &'a str, Vec<f32>, Vec<Vec<f32>>);
+
 fn quat(axis: [f32; 3], degrees: f32) -> [f32; 4] {
     let h = degrees.to_radians() * 0.5;
     let a = norm(axis);
@@ -485,7 +488,7 @@ fn main() {
     let y = [0.0, 1.0, 0.0];
     let z = [0.0, 0.0, 1.0];
     let mut animations = Vec::new();
-    let mut add_clip = |bin: &mut Bin, name: &str, tracks: Vec<(usize, &str, Vec<f32>, Vec<Vec<f32>>)>| {
+    let mut add_clip = |bin: &mut Bin, name: &str, tracks: Vec<Track>| {
         let mut samplers = Vec::new();
         let mut channels = Vec::new();
         for (node, path, times, values) in tracks {

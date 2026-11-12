@@ -167,6 +167,20 @@ impl Module for AnimModule {
             .unwrap_or_default();
         let mut errors = Vec::new();
         let mut rigs: BTreeMap<String, Arc<Rig>> = BTreeMap::new();
+        // Every glTF model of the scene, animated now or not: scripts and operations may add
+        // an `Animator` later, and files are never read during a tick. Files that fail to
+        // load are reported here only for animated entities (the renderer reports the rest).
+        let mut q = world.query::<&Model>();
+        let assets: std::collections::BTreeSet<String> = q
+            .iter(world)
+            .filter(|m| !m.asset.starts_with("primitive:"))
+            .map(|m| m.asset.clone())
+            .collect();
+        for asset in assets {
+            if let Ok(rig) = load_rig(&asset, &dir) {
+                rigs.insert(asset, Arc::new(rig));
+            }
+        }
         for (id, entity) in animated(world) {
             let Some(model) = world.get::<Model>(entity) else {
                 errors.push(
@@ -268,6 +282,10 @@ fn advance(layer: &mut AnimLayer, duration: f32, dt: f32) -> bool {
             } else {
                 (layer.weight - step).max(layer.target_weight)
             };
+            // Land exactly on the target instead of one rounding error short of it.
+            if (layer.weight - layer.target_weight).abs() < 1e-5 {
+                layer.weight = layer.target_weight;
+            }
         }
     }
     finished

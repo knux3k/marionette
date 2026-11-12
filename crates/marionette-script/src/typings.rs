@@ -101,6 +101,14 @@ interface Entity {
   /** Adds or replaces the component. Throws `script.bad_value` if the value does not fit. */
   set<K extends keyof Components>(name: K, value: Components[K]): void;
   has(name: keyof Components): boolean;
+  /** Plays a clip of this entity's animated `Model`, cross-fading other clips out over
+   *  `fade` seconds (default 0.2). Changes the `Animator` component, like `anim_play`.
+   *  Throws `anim.unknown_clip` for a clip the model does not have. */
+  playClip(clip: string, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Sets one clip's blend weight (e.g. walk 0.7 + run 0.3) without touching other clips. */
+  blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades out one clip, or every clip when `clip` is omitted. */
+  stopClip(clip?: string, options?: { fade?: number }): void;
 }
 
 /** What a script module exports. Only `update` is required. Hooks for one entity run in

@@ -255,6 +255,9 @@
         "Model": {
           "asset": "assets/puppet.glb"
         },
+        "Script": {
+          "path": "scripts/greeter.ts"
+        },
         "Transform": {
           "rotation": {
             "w": 0.953717,

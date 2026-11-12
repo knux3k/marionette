@@ -20,6 +20,15 @@
     has(name) {
       return h.has(this.id, name);
     }
+    playClip(clip, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "play", clip: String(clip), fade: o.fade, speed: o.speed, looping: o.looping }));
+    }
+    blendClip(clip, weight, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "blend", clip: String(clip), weight, fade: o.fade, speed: o.speed, looping: o.looping }));
+    }
+    stopClip(clip, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "stop", clip: clip === undefined || clip === null ? undefined : String(clip), fade: o.fade }));
+    }
   }
   Object.freeze(Entity.prototype);
 

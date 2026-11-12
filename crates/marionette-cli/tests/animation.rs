@@ -1,6 +1,7 @@
 //! Proofs for skeletal animation (decision 0025) on `examples/animation.scene.json`: four
 //! copies of the self-made rigged character (`examples/assets/puppet.glb`) walking, waving,
-//! blending both, and idling. Simulation checks go through the operation table; GPU checks
+//! blending both, and idling (with a script, `examples/scripts/greeter.ts`, that makes it wave
+//! every three seconds). Simulation checks go through the operation table; GPU checks
 //! skip without an adapter unless MARIONETTE_REQUIRE_GPU=1. Set
 //! MARIONETTE_UPDATE_REFERENCES=1 to rewrite `examples/reference/animation.png`.
 
@@ -15,7 +16,7 @@ const SCENE: &str = "examples/animation.scene.json";
 
 /// State hash after 600 ticks, seed 1. A change here changes simulation results: say so in
 /// the commit and in docs/ai/STATE.md.
-const HASH_600: &str = "6961b26a6c6e86f01e06dc6e722a02c1bbbc6131589528ccf046ad0dd8fdeb7b";
+const HASH_600: &str = "f409e570ea3b9d3c1e92a01adc3070dbbd49b39d147b0dd97caa39297dba6d13";
 
 fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -31,6 +32,12 @@ fn temp_dir(tag: &str) -> PathBuf {
     std::fs::copy(
         repo().join("examples/assets/puppet.glb"),
         dir.join("assets/puppet.glb"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(dir.join("scripts")).unwrap();
+    std::fs::copy(
+        repo().join("examples/scripts/greeter.ts"),
+        dir.join("scripts/greeter.ts"),
     )
     .unwrap();
     dir
@@ -147,17 +154,17 @@ fn play_cross_fades_and_finished_layers_disappear() {
     call(
         &mut a,
         "anim_play",
-        json!({ "session": id, "id": 7, "clip": "walk", "fade": 0.5 }),
+        json!({ "session": id, "id": 4, "clip": "idle", "fade": 0.5 }),
     );
     let layers = |a: &mut Agent| {
-        call(a, "observe_entity", json!({ "session": id, "id": 7 }))["components"]["Animator"]["layers"]
+        call(a, "observe_entity", json!({ "session": id, "id": 4 }))["components"]["Animator"]["layers"]
             .clone()
     };
     let l = layers(&mut a);
     assert_eq!(
         l.as_array().unwrap().len(),
         2,
-        "idle fading out, walk fading in: {l}"
+        "walk fading out, idle fading in: {l}"
     );
     call(&mut a, "session_step", json!({ "session": id, "ticks": 15 }));
     let l = layers(&mut a);
@@ -173,14 +180,14 @@ fn play_cross_fades_and_finished_layers_disappear() {
     );
     call(&mut a, "session_step", json!({ "session": id, "ticks": 20 }));
     let l = layers(&mut a);
-    assert_eq!(l.as_array().unwrap().len(), 1, "idle removed after its fade: {l}");
-    assert_eq!(l[0]["clip"], "walk");
+    assert_eq!(l.as_array().unwrap().len(), 1, "walk removed after its fade: {l}");
+    assert_eq!(l[0]["clip"], "idle");
 
     // A one-shot clip logs when it ends.
     call(
         &mut a,
         "anim_play",
-        json!({ "session": id, "id": 7, "clip": "wave", "fade": 0.0, "looping": false }),
+        json!({ "session": id, "id": 4, "clip": "wave", "fade": 0.0, "looping": false }),
     );
     call(&mut a, "session_step", json!({ "session": id, "ticks": 70 }));
     let events = call(
@@ -190,13 +197,13 @@ fn play_cross_fades_and_finished_layers_disappear() {
     );
     let list = events["events"].as_array().unwrap();
     assert_eq!(list.len(), 1, "{events}");
-    assert_eq!(list[0]["entity"], 7);
+    assert_eq!(list[0]["entity"], 4);
     assert_eq!(list[0]["detail"]["clip"], "wave");
 
     // Unknown clips are refused with the list of real ones; nothing changes.
     let before = layers(&mut a);
     let err = a
-        .call("anim_play", json!({ "session": id, "id": 7, "clip": "run" }))
+        .call("anim_play", json!({ "session": id, "id": 4, "clip": "run" }))
         .unwrap_err();
     assert_eq!(err.0[0].code, "anim.unknown_clip");
     assert!(err.0[0].fix.as_deref().unwrap().contains("idle, walk, wave"));
@@ -205,9 +212,56 @@ fn play_cross_fades_and_finished_layers_disappear() {
     call(
         &mut a,
         "anim_stop",
-        json!({ "session": id, "id": 7, "fade": 0.0 }),
+        json!({ "session": id, "id": 4, "fade": 0.0 }),
     );
     assert_eq!(layers(&mut a), json!([]));
+}
+
+#[test]
+fn scripts_play_clips_with_the_same_result_as_the_operation() {
+    let mut a = agent();
+    let layers = |a: &mut Agent, ticks: u64| {
+        call(
+            a,
+            "observe_entity",
+            json!({ "scene": SCENE, "seed": 1, "ticks": ticks, "id": 7 }),
+        )["components"]["Animator"]["layers"]
+            .clone()
+    };
+    // greeter.ts: playClip("wave", { fade: 0.25 }) at tick 30, playClip("idle", ...) at 90.
+    let at_31 = layers(&mut a, 31);
+    let s = call(
+        &mut a,
+        "session_start",
+        json!({ "scene": SCENE, "seed": 1, "ticks": 30 }),
+    );
+    let id = s["session"].as_str().unwrap().to_string();
+    call(
+        &mut a,
+        "entity_update",
+        json!({ "session": id, "id": 7, "remove": ["Script"] }),
+    );
+    call(
+        &mut a,
+        "anim_play",
+        json!({ "session": id, "id": 7, "clip": "wave", "fade": 0.25 }),
+    );
+    call(&mut a, "session_step", json!({ "session": id, "ticks": 1 }));
+    let by_op =
+        call(&mut a, "observe_entity", json!({ "session": id, "id": 7 }))["components"]["Animator"]["layers"]
+            .clone();
+    assert_eq!(at_31, by_op, "script and operation disagree");
+    assert_eq!(
+        layers(&mut a, 45),
+        json!([{ "clip": "wave", "fade": 0.25, "looping": true, "speed": 1.0, "target_weight": 1.0, "time": 0.25, "weight": 1.0 }])
+    );
+    let at_100: Vec<String> = layers(&mut a, 100)
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["clip"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(at_100, ["wave", "idle"]);
 }
 
 #[test]
