@@ -3,21 +3,21 @@
   "name": "crate_ref",
   "output": "image",
   "file": "crate_ref.png",
-  "sha256": "9b5286895a85aedd35da9b23e6e832c5dd2f0ec3452c86390d06981f620f8e71",
+  "sha256": "bcb977b1318283a189758eef6ce0206927cdf0facf7aa10860744844d9988961",
   "recipe": "crate_ref.recipe.json",
-  "recipe_sha256": "ebb2115e0819b5a533cadeeab64d2ac5fa369645521efeb37eee995b03ade20c",
+  "recipe_sha256": "43e9ae79169db18ab946be5db4f4dbb7fd82ff5915a7070081e064a6da49a580",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
     "provider_verified": false,
     "kind": "image",
-    "prompt": "a sturdy wooden shipping crate with metal corner brackets and stencilled marks without letters, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "prompt": "a sturdy plain wooden shipping crate with metal corner brackets, bare unmarked planks with no letters, numbers, symbols or stencils, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
     "size": [
       1024,
       1024
     ],
-    "cache_key": "008e0472df5a17f312d3440f066baec5d29a7e3e3bc179dc53005d599b7a5516",
-    "raw_sha256": "e096734788a67ad03482fbb39978da4f69a96072ceb1b092488f7b6cb09f868c",
+    "cache_key": "5c4e7e5c4d66ce94b76ebafcf26967b717dc3b9342052d6bc240af06bdcf54a0",
+    "raw_sha256": "d3ce9cf674d8812e04018f0cdc3c4579def5e15d21c6c5ca1b83dbe9a0c2fc61",
     "cost_usd": 0.05
   },
   "postprocess": {
