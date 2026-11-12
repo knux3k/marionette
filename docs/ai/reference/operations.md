@@ -60,6 +60,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `generate_list` | no | Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked). |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
+| `stability_run` | no | Run the stability suite (default `stability/suite.json`): every game mode for `fast` or `long` length with seeded random input. Checks no panic, no hang, same hash on replay and after a snapshot/restore, time budgets and memory growth. Failures come back as data with seed, tick, backtrace and a reproduce command. |
 | `asset_search` | no | Finds an asset in the required order: (1) project files, (2) the owned library, (3) the CC0 pool, (4) online CC0 libraries (Poly Haven, ambientCG; only with `online: true`), (5) generation (a pointer to generate_plan). Stops at the first step with results unless `all_steps` is set. Read-only. |
 | `pool_info` | no | Where the CC0 pool is (operation input, MARIONETTE_POOL, or cc0_pool in the user config file), how many assets it holds, and the CC0 libraries it knows with their license pages. |
 | `pool_list` | no | Lists pooled CC0 assets (id, kind, name, tags, origin), sorted by id, paged. |
@@ -1346,6 +1347,39 @@ Output:
 | --- | --- | --- | --- |
 | `bytes` | integer | yes |  |
 | `path` | string | yes |  |
+
+## `stability_run`
+
+Run the stability suite (default `stability/suite.json`): every game mode for `fast` or `long` length with seeded random input. Checks no panic, no hang, same hash on replay and after a snapshot/restore, time budgets and memory growth. Failures come back as data with seed, tick, backtrace and a reproduce command.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `budget_scale` | number \| null |  | Multiplies every time budget (default: env `MARIONETTE_BUDGET_SCALE`, else 1). |
+| `enforce_timing` | boolean \| null |  | Check time budgets (default: only in release builds; debug timings mean nothing). |
+| `hang_s` | number \| null |  | Seconds without a finished tick that count as a hang, overriding every mode's `hang_s`. |
+| `inject` | Inject \| null |  | Test the harness: make modes fail on purpose. |
+| `length` | Length |  | `fast` (default) or `long`. |
+| `modes` | array of string |  | Only these modes (default: all). |
+| `seed` | integer \| null |  | First seed (default: the suite's seed). |
+| `seeds` | integer \| null |  | Seeds per mode (default 1 for fast, 3 for long). |
+| `suite` | string \| null |  | Suite file (default `stability/suite.json`). |
+| `ticks` | integer \| null |  | Ticks per mode, overriding fast_ticks/long_ticks. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `budget_scale` | number | yes |  |
+| `build` | string | yes |  |
+| `length` | Length | yes |  |
+| `passed` | boolean | yes |  |
+| `results` | array of ModeResult | yes |  |
+| `suite` | string | yes |  |
+| `timing_enforced` | boolean | yes |  |
 
 ## `asset_search`
 
