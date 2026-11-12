@@ -57,6 +57,10 @@ names later.
 
 - Caps: `spend_cap_usd` (total, default zero) and `provider_caps_usd` in that file, or
   `MARIONETTE_SPEND_CAP_USD` and `MARIONETTE_SPEND_CAP_<PROVIDER>_USD`.
+- Qwen keys from any Model Studio region work: the international, China and US addresses are
+  tried in order.
+- In Windows PowerShell 5.1, inner JSON quotes are stripped from arguments: run `marionette op`
+  with JSON from Git Bash or `cmd`, or escape quotes as `\"`.
 - A network build: `cargo build --release -p marionette-cli --features net`.
 - `marionette provider status` shows readiness, spending and caps without showing any key.
 
