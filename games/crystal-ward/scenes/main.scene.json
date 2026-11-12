@@ -208,19 +208,6 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.14,
-            "g": 0.1,
-            "r": 0.1
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
-        "Model": {
-          "asset": "primitive:cube"
-        },
         "Transform": {
           "rotation": {
             "w": 1.0,
@@ -259,19 +246,6 @@
               }
             }
           }
-        },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.14,
-            "g": 0.1,
-            "r": 0.1
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
-        "Model": {
-          "asset": "primitive:cube"
         },
         "Transform": {
           "rotation": {
@@ -312,19 +286,6 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.14,
-            "g": 0.1,
-            "r": 0.1
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
-        "Model": {
-          "asset": "primitive:cube"
-        },
         "Transform": {
           "rotation": {
             "w": 1.0,
@@ -363,19 +324,6 @@
               }
             }
           }
-        },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.14,
-            "g": 0.1,
-            "r": 0.1
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
-        "Model": {
-          "asset": "primitive:cube"
         },
         "Transform": {
           "rotation": {
@@ -416,18 +364,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.12,
-            "r": 0.14
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/pillar.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.5,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1111,
+            "y": 1.0,
+            "z": 1.1111
+          }
         },
         "Transform": {
           "rotation": {
@@ -468,18 +424,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.12,
-            "r": 0.14
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/pillar.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.5,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1111,
+            "y": 1.0,
+            "z": 1.1111
+          }
         },
         "Transform": {
           "rotation": {
@@ -520,18 +484,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.12,
-            "r": 0.14
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/pillar.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.5,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1111,
+            "y": 1.0,
+            "z": 1.1111
+          }
         },
         "Transform": {
           "rotation": {
@@ -572,18 +544,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.12,
-            "r": 0.14
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/pillar.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.5,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1111,
+            "y": 1.0,
+            "z": 1.1111
+          }
         },
         "Transform": {
           "rotation": {
@@ -624,18 +604,35 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
+        "Emissive": {
+          "color": {
             "a": 1.0,
             "b": 1.0,
             "g": 0.9,
             "r": 0.3
           },
-          "metallic": 0.3,
-          "roughness": 0.1
+          "intensity": 0.6
         },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/crystal.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.25,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 1.0,
+            "z": 1.6
+          }
         },
         "Transform": {
           "rotation": {
@@ -727,18 +724,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.3,
-            "g": 0.75,
-            "r": 0.95
-          },
-          "metallic": 0.1,
-          "roughness": 0.4
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/warden.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.9,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "RigidBody": {
           "angular_damping": 0.0,
@@ -771,6 +776,906 @@
       },
       "id": 30,
       "name": "warden"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -13.6,
+            "y": 0.0,
+            "z": -16.5
+          }
+        }
+      },
+      "id": 970,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -6.8,
+            "y": 0.0,
+            "z": -16.5
+          }
+        }
+      },
+      "id": 971,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": -16.5
+          }
+        }
+      },
+      "id": 972,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 6.8,
+            "y": 0.0,
+            "z": -16.5
+          }
+        }
+      },
+      "id": 973,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 13.6,
+            "y": 0.0,
+            "z": -16.5
+          }
+        }
+      },
+      "id": 974,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -13.6,
+            "y": 0.0,
+            "z": 16.5
+          }
+        }
+      },
+      "id": 980,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -6.8,
+            "y": 0.0,
+            "z": 16.5
+          }
+        }
+      },
+      "id": 981,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 16.5
+          }
+        }
+      },
+      "id": 982,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 6.8,
+            "y": 0.0,
+            "z": 16.5
+          }
+        }
+      },
+      "id": 983,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8877,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 13.6,
+            "y": 0.0,
+            "z": 16.5
+          }
+        }
+      },
+      "id": 984,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -16.5,
+            "y": 0.0,
+            "z": -12.8
+          }
+        }
+      },
+      "id": 990,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -16.5,
+            "y": 0.0,
+            "z": -6.4
+          }
+        }
+      },
+      "id": 991,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -16.5,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 992,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -16.5,
+            "y": 0.0,
+            "z": 6.4
+          }
+        }
+      },
+      "id": 993,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -16.5,
+            "y": 0.0,
+            "z": 12.8
+          }
+        }
+      },
+      "id": 994,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 16.5,
+            "y": 0.0,
+            "z": -12.8
+          }
+        }
+      },
+      "id": 1000,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 16.5,
+            "y": 0.0,
+            "z": -6.4
+          }
+        }
+      },
+      "id": 1001,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 16.5,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 1002,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 16.5,
+            "y": 0.0,
+            "z": 6.4
+          }
+        }
+      },
+      "id": 1003,
+      "name": "wall-stone"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../assets/generated/ward_wall.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.8355,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 16.5,
+            "y": 0.0,
+            "z": 12.8
+          }
+        }
+      },
+      "id": 1004,
+      "name": "wall-stone"
     }
   ],
   "format": "marionette.scene",

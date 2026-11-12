@@ -7,6 +7,6 @@
     { "event": { "kind": "crystal_hit", "at_least": 10, "at_most": 10 } },
     { "event": { "kind": "lost" } },
     { "field": { "entity": 3, "path": "ScriptState.data.hp", "op": "eq", "value": 0 } },
-    { "state_hash": "44f4865fdb58b12d30f91af5b2ccfa740e55c34c14f6ceadf7935bc34296fddc" }
+    { "state_hash": "666e367a07c5b72dd4c8d6112f09129c87a0c97eb98b44c4518448b8a7235de3" }
   ]
 }

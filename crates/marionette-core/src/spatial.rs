@@ -122,6 +122,29 @@ pub struct Model {
     pub asset: String,
 }
 
+/// Where a `Model` is drawn relative to its entity, for models that do not match the entity's
+/// collider: the model is moved by `offset` (in the entity's rotated frame, unscaled), turned
+/// by `rotation` and sized by `scale`, which replaces the entity's `Transform.scale` for
+/// drawing. Physics and scripts still see the entity's own `Transform`. Typical use: a
+/// generated model whose origin is at its feet on a character whose origin is at the center of
+/// its capsule.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ModelPlacement {
+    pub offset: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+}
+
+impl Default for ModelPlacement {
+    fn default() -> Self {
+        Self {
+            offset: Vec3::default(),
+            rotation: Quat::default(),
+            scale: Vec3::new(1.0, 1.0, 1.0),
+        }
+    }
+}
+
 /// Overrides the material of a `Model` (all of its parts) with simple PBR values.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
 pub struct Material {

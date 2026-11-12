@@ -12,6 +12,6 @@
     { "event": { "kind": "script_error", "at_most": 0 } },
     { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
     { "count": { "with": ["CharacterInput"], "equals": 1 } },
-    { "state_hash": "ba5e30583c75c99d7f71b2d138d4fb2307733df717dc108e1146e1a88580f0b4" }
+    { "state_hash": "1774ef28dac015c7cf2eb2efc1042844e95c582a4958264a735df82f3eb6c926" }
   ]
 }

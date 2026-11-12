@@ -36,15 +36,16 @@ that play the game with scripted input. Decision 0050. Proof test:
 Each game has generation recipes in `assets/generated/` and a `providers.json` choosing Qwen
 for images and Tripo for models (decision 0045, `docs/ai/GENERATION.md`). The paid run happens
 on the machine that holds the keys, and every 3D model waits for a person to approve its
-reference image. The images are built and the two 2D games use them; the models are not built
-yet.
+reference image. Every recipe is built and every game uses its outputs. Models are drawn with
+`ModelPlacement` (offset to the collider's bottom, turned to face -Z, sized to the old box), so
+colliders and gameplay are unchanged.
 
 | Game | Recipes | Use once built |
 | --- | --- | --- |
-| Crystal Ward | `warden`, `crawler`, `crystal`, `pillar`, `ward_wall` (models, each from a `*_ref` image) | `Model` on the warden, the spawned crawlers, the crystal, pillars and walls |
-| Dust Circuit | `car`, `rival_car`, `tyre_stack`, `grandstand`, `marker_tower` (models from `*_ref` images) | `Model` on the two cars, trackside props |
-| Signal Yard | `drone`, `crate`, `pylon`, `relay` (models from `*_ref` images) | `Model` on spawned drones and the yard's cover and mast |
-| Cloudstep | `hero`, `island`, `seed`, `beacon`, `spring` (models from `*_ref` images) | `Model` on the hero, islands, seeds, the beacon and the spring |
+| Crystal Ward | `warden`, `crawler`, `crystal`, `pillar`, `ward_wall` (models, each from a `*_ref` image) | In use: warden, spawned crawlers (glow hotter each wave), crystal (glow fades with damage), pillars; each arena wall is an invisible collider shown by five stone wall segments. |
+| Dust Circuit | `car`, `rival_car`, `tyre_stack`, `grandstand`, `marker_tower` (models from `*_ref` images) | In use: both cars, marker towers, two grandstands per stand, tyre stacks inside the curves. |
+| Signal Yard | `drone`, `crate`, `pylon`, `relay` (models from `*_ref` images) | In use: spawned drones (hits flash through `Emissive`), crates, pylons and the relay mast. |
+| Cloudstep | `hero`, `island`, `seed`, `beacon`, `spring` (models from `*_ref` images) | In use: the hero, islands (also the stepping stones and the ferry, scaled down), seeds, the spring and the beacon. |
 | Ember Run | `runner`, `ember` (sprites), `rooftops` (background) | In use: runner and embers (`Sprite.image` plus a `SpriteRegion` cropping each to its subject), and a `sky` backdrop the level script drifts with the camera. |
 | Lantern Keeper | `keeper`, `lantern`, `ghost` (sprites), `hedge` (tileable texture) | In use: the keeper, lanterns and ghosts (cropped with `SpriteRegion`) and hedge walls. A lit lantern also gets a warm glow sprite on its tile. |
 
@@ -73,7 +74,7 @@ Open (not fixed here; each names the cheapest fix seen):
 | G3 | `entity.set` replaces the whole component; changing one sprite color repeats image, size and layer. | Lantern Keeper | `entity.patch(name, partial)` merging fields. |
 | G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
 | G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
-| G6 | The 3D games still use built-in primitives: their Tripo models wait for reference-image approval. The 2D games use their generated images. Generated sprites come on a padded square canvas, so each needs a hand-measured `SpriteRegion`. | 3D games | Approve and build the models, then swap through the build recipes; `generate_run` could report each sprite's opaque bounds for the region. |
+| G6 | Fixed: every game uses its generated images or models. Generated sprites come on a padded square canvas, so each needs a hand-measured `SpriteRegion`, and each model needs a hand-measured `ModelPlacement`. | all | `generate_run` could report each sprite's opaque bounds and each model's size and facing for these components. |
 | G7 | A character standing on a moving kinematic platform is not carried; the platform slides out from under it. | Ember Run (the lift is a stepping stone) | Add the ground body's velocity to the character's movement in the controller. |
 | G8 | Colors are linear; values picked by eye come out pale on screen (0.2 looks like 0.5). | all | Document it in the component description, or accept sRGB colors in `Sprite`/`Material`/`UiText` behind a flag. |
 | G9 | No shadows; in a 3D platformer it is hard to judge where a jump lands. | Cloudstep | A shadow map for the first directional light (or a blob shadow under characters). |
@@ -88,4 +89,4 @@ Open (not fixed here; each names the cheapest fix seen):
 | G18 | No point or spot lights and no emissive materials: tracers, orbs and the relay beacon are only bright colors, and a night scene cannot be lit locally. | Signal Yard | `PointLight` component and an `emissive` color on `Material`. |
 | G19 | No hit feedback beyond what scripts fake: no decals, particles or screen flash. | Signal Yard | A small particle burst component (count, speed, lifetime, color) and a UI flash helper. |
 | G20 | Fixed: `texture.remove_background` keys out the flat background and removes the tinted fringe; the 2D sprite recipes use it. | Ember Run, Lantern Keeper | Done. |
-| G21 | `Material` overrides a whole model's colour and `Material` has no texture, so a generated model loses its own look as soon as a script tints it (hit flashes, team colours), and primitives cannot be textured. | Signal Yard, Dust Circuit | A `tint` multiplier that keeps the model's textures, and a `base_color_texture` on `Material`. |
+| G21 | `Material` overrides a whole model's colour and `Material` has no texture, so a generated model loses its own look as soon as a script tints it (hit flashes, team colours), and primitives cannot be textured. | Signal Yard, Dust Circuit (worked around: flashes use `Emissive`) | A `tint` multiplier that keeps the model's textures, and a `base_color_texture` on `Material`. |

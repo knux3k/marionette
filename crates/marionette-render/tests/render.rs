@@ -259,3 +259,49 @@ fn opt_in_looks_change_the_image_only_when_present() {
     assert!(frame.fog.is_none() && frame.sky.is_none());
     assert!(frame.meshes.iter().all(|m| m.emissive == glam::Vec3::ZERO));
 }
+
+#[test]
+fn model_placement_moves_turns_and_sizes_only_the_drawn_model() {
+    use marionette_core::spatial::{Model, ModelPlacement, Quat, Transform, Vec3};
+    let mut s = sim("lighting.scene.json");
+    let e = s
+        .world
+        .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<Model>>()
+        .iter(&s.world)
+        .next()
+        .unwrap();
+    let before = *s.world.get::<Transform>(e).unwrap();
+    let id = s.world.get::<marionette_core::scene::SceneId>(e).unwrap().0;
+    let half = std::f32::consts::FRAC_1_SQRT_2;
+    s.world.entity_mut(e).insert(ModelPlacement {
+        offset: Vec3::new(0.0, -0.5, 0.0),
+        rotation: Quat {
+            x: 0.0,
+            y: half,
+            z: 0.0,
+            w: half,
+        },
+        scale: Vec3::new(2.0, 3.0, 4.0),
+    });
+    let frame = extract(&s.world);
+    let draw = frame.meshes.iter().find(|m| m.entity == id).unwrap();
+    let (scale, _, translation) = draw.world.to_scale_rotation_translation();
+    assert!(
+        (scale - glam::Vec3::new(2.0, 3.0, 4.0)).abs().max_element() < 1e-4,
+        "{scale}"
+    );
+    let t = before.translation;
+    let rot = glam::Quat::from_xyzw(
+        before.rotation.x,
+        before.rotation.y,
+        before.rotation.z,
+        before.rotation.w,
+    );
+    let expected = glam::Vec3::new(t.x, t.y, t.z) + rot * glam::Vec3::new(0.0, -0.5, 0.0);
+    assert!(
+        (translation - expected).length() < 1e-4,
+        "{translation} vs {expected}"
+    );
+    // The entity itself is unchanged.
+    assert_eq!(*s.world.get::<Transform>(e).unwrap(), before);
+}

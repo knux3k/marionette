@@ -7,7 +7,6 @@ const HP = 2;
 const ORBIT = 2.5; // metres
 const SPIN = 0.7; // radians per second
 const ORB_SPEED = 8; // m/s
-const BASE = { r: 0.6, g: 0.65, b: 0.7, a: 1 };
 
 export function start(self: Entity): void {
   self.state.hp = HP;
@@ -68,8 +67,14 @@ export function update(self: Entity): void {
   };
   t.rotation = { x: 0, y: Math.sin(-a / 2), z: 0, w: Math.cos(-a / 2) };
   self.set("Transform", t);
-  const m = self.get("Material")!;
-  m.base_color = s.flash > 0 ? { r: 1, g: 1, b: 1, a: 1 } : s.hp < HP ? { r: 0.8, g: 0.35, b: 0.15, a: 1 } : BASE;
-  self.set("Material", m);
+  // Hit feedback as glow, so the model keeps its textures: white flash, then orange once hurt.
+  self.set(
+    "Emissive",
+    s.flash > 0
+      ? { color: { r: 1, g: 1, b: 1, a: 1 }, intensity: 1.5 }
+      : s.hp < HP
+        ? { color: { r: 1, g: 0.35, b: 0.1, a: 1 }, intensity: 0.6 }
+        : { color: { r: 0, g: 0, b: 0, a: 1 }, intensity: 0 },
+  );
   if (s.flash > 0) s.flash -= 1;
 }

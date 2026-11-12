@@ -12,6 +12,6 @@
     { "event": { "kind": "script_error", "at_most": 0 } },
     { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
     { "field": { "entity": 30, "path": "ScriptState.data.hits", "op": "eq", "value": 24 } },
-    { "state_hash": "4f856c388afaafdab602b82be0d7fdeb3a2386eef78f82e787084015bfcce624" }
+    { "state_hash": "cc031cf54e624ab1a2e3bf86105e0aea83fbcac693c4973714e8db870cd19db8" }
   ]
 }

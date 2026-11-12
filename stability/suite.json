@@ -203,7 +203,8 @@
       "random_input": true,
       "fast_ticks": 120,
       "long_ticks": 54000,
-      "frame_budget_ms": 11.1
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
     },
     {
       "name": "proof-ember-run",
@@ -253,7 +254,8 @@
       "random_input": true,
       "fast_ticks": 120,
       "long_ticks": 54000,
-      "frame_budget_ms": 11.1
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
     },
     {
       "name": "proof-dust-circuit",
@@ -273,7 +275,8 @@
       "random_input": true,
       "fast_ticks": 120,
       "long_ticks": 54000,
-      "frame_budget_ms": 11.1
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
     },
     {
       "name": "proof-signal-yard",
@@ -293,7 +296,8 @@
       "random_input": true,
       "fast_ticks": 120,
       "long_ticks": 54000,
-      "frame_budget_ms": 11.1
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
     }
   ],
   "exempt": {

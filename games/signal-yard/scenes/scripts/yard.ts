@@ -38,8 +38,10 @@ export function nextWave(self: Entity): void {
         Transform: { translation: { x: post.x + 2.5, y: post.y, z: post.z }, rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: { x: 1.1, y: 0.35, z: 1.1 } },
         RigidBody: { kind: "Kinematic", linear_damping: 0, angular_damping: 0, gravity_scale: 0, lock_rotations: true },
         Collider: { shape: { Cuboid: { half_extents: { x: 0.5, y: 0.5, z: 0.5 } } }, density: 1, friction: 0, restitution: 0, sensor: false },
-        Model: { asset: "primitive:cube" },
-        Material: { base_color: { r: 0.6, g: 0.65, b: 0.7, a: 1 }, metallic: 0.7, roughness: 0.3 },
+        Model: { asset: "../assets/generated/drone.glb" },
+        // Sized to the flat collider box and centred on it; faces -Z.
+        ModelPlacement: { offset: { x: 0, y: -0.115, z: 0 }, rotation: { x: 0, y: 0.707107, z: 0, w: 0.707107 }, scale: { x: 0.38, y: 0.38, z: 0.38 } },
+        Emissive: { color: { r: 0, g: 0, b: 0, a: 1 }, intensity: 0 },
         Script: { path: "scripts/drone.ts" },
       },
       "drone",
