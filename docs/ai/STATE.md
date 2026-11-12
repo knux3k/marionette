@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Not started. |
-| 8 | Assets (import, pool, generation) | In progress: owned library and Unity importer done (W2); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0021); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -87,8 +87,18 @@ Line 8, owned library and Unity import (W2, decision 0018):
   tests in `src/tar.rs`, `src/license.rs`, `src/unity.rs`.
 - `crates/marionette-cli/tests/library_e2e.rs`: `library_operations_import_list_and_gate`,
   `operations_never_write_license_declarations`.
-- Not covered yet: FBX/OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+- FBX to glTF (decision 0021): `crates/marionette-import/tests/fbx.rs`
+  (`static_meshes_match_blenders_own_gltf`, `embedded_textures_are_used`,
+  `other_axis_systems_and_units_give_the_same_world`,
+  `fbx_7500_from_a_second_writer_matches_blenders_reading`,
+  `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
+  `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `unity_project_fbx_is_converted_with_its_texture`,
+  `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
+  conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
+- Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
+  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0021); skinning in
+  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
 ## UNVERIFIED
@@ -110,6 +120,9 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
   layout used by `package_location_reason` are from memory, not checked against a Unity install.
 - The pasted-license phrase list catches common wording only; it never grants permission.
+- FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
+  FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
+  curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
 ## Session log
 
@@ -123,3 +136,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0021. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |

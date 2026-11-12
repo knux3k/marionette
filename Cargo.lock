@@ -1751,6 +1751,8 @@ name = "marionette-import"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "glam 0.34.3",
+ "gltf",
  "image",
  "marionette-assets",
  "marionette-core",
