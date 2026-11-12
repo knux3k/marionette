@@ -59,6 +59,9 @@ names later.
   `MARIONETTE_SPEND_CAP_USD` and `MARIONETTE_SPEND_CAP_<PROVIDER>_USD`.
 - Qwen keys from any Model Studio region work: the international, China and US addresses are
   tried in order.
+- A Model Studio plan key (`sk-sp-...`) needs the plan's own address and model, in the same
+  file (decision 0046): `"provider_endpoints": {"qwen": {"url": "<address, or a file holding
+  it>", "model": "qwen-image-3.0-pro"}}`. Coding-plan addresses serve chat models only.
 - In Windows PowerShell 5.1, inner JSON quotes are stripped from arguments: run `marionette op`
   with JSON from Git Bash or `cmd`, or escape quotes as `\"`.
 - A network build: `cargo build --release -p marionette-cli --features net`.

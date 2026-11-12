@@ -9,6 +9,13 @@
 //!
 //! The key's region is found by trying [`BASES`] in order (a 401 moves on).
 //!
+//! A person's own address (decision 0046, `endpoints`), such as a Model Studio plan address
+//! `https://token-plan.<region>.maas.aliyuncs.com/compatible-mode/v1`, switches to the
+//! synchronous image API on that host: `POST {host}/api/v1/services/aigc/multimodal-generation/generation`
+//! with `{model, input: {messages: [{role: "user", content: [{text}]}]}, parameters: {size, n,
+//! watermark, prompt_extend}}`; the image address is in `output.choices[0].message.content[*].image`.
+//! No region search there.
+//!
 //! UNVERIFIED: endpoint, field names and the price are from documentation as remembered, not
 //! checked against the live service (decision 0019).
 
@@ -97,6 +104,60 @@ pub fn parse_status(v: &Value) -> Result<Option<String>, Errors> {
     }
 }
 
+/// The host part of a personal address: `scheme://host`, path dropped.
+pub fn host_of(url: &str) -> &str {
+    let rest = url.find("://").map_or(0, |i| i + 3);
+    match url[rest..].find('/') {
+        Some(i) => &url[..rest + i],
+        None => url.trim_end_matches('/'),
+    }
+}
+
+/// The synchronous image call on a personal address (see the module docs).
+pub fn build_sync_at(
+    endpoint: &str,
+    model: &str,
+    key: &str,
+    prompt: &str,
+    width: u32,
+    height: u32,
+) -> HttpRequest {
+    let body = json!({
+        "model": model,
+        "input": { "messages": [ { "role": "user", "content": [ { "text": prompt } ] } ] },
+        "parameters": {
+            "size": format!("{width}*{height}"),
+            "n": 1,
+            "watermark": false,
+            "prompt_extend": false,
+        },
+    });
+    HttpRequest::post_json(
+        format!(
+            "{}/api/v1/services/aigc/multimodal-generation/generation",
+            host_of(endpoint)
+        ),
+        &body,
+    )
+    .secret_header("authorization", format!("Bearer {key}"))
+}
+
+/// The image address in a synchronous answer.
+pub fn parse_sync(v: &Value) -> Result<String, Errors> {
+    v.pointer("/output/choices/0/message/content")
+        .and_then(Value::as_array)
+        .and_then(|c| c.iter().find_map(|p| p.get("image").and_then(Value::as_str)))
+        .map(str::to_string)
+        .ok_or_else(|| {
+            let msg = v.get("message").and_then(Value::as_str);
+            net::job_failed(
+                "qwen",
+                "NO_IMAGE",
+                msg.or(Some("the answer holds no image address")),
+            )
+        })
+}
+
 impl Provider for Qwen {
     fn info(&self) -> &'static ProviderInfo {
         &INFO
@@ -114,6 +175,18 @@ impl Provider for Qwen {
             unreachable!("generate checks the kind first")
         };
         let key = ctx.key.expect("generate checks the key first");
+        if let Some(endpoint) = ctx.endpoint {
+            let req = build_sync_at(endpoint, ctx.model, key, &i.prompt, i.width, i.height);
+            let resp = net::send(ctx.transport, &req, "qwen")?;
+            let url = parse_sync(&net::json(&resp, "qwen")?)?;
+            let png = net::send(ctx.transport, &HttpRequest::get(url), "qwen")?.body;
+            net::check_png(&png, "qwen")?;
+            return Ok(Generated {
+                output: Output::Image(png),
+                cost_usd: PRICE_PER_IMAGE,
+                usage: None,
+            });
+        }
         // Find the key's region: a 401 means "not this region's key", so try the next one.
         let mut found = None;
         for (n, base) in BASES.iter().enumerate() {
