@@ -4,7 +4,7 @@
 //! Rendering reads the ECS world through [`extract::extract`], which takes `&World`, so it
 //! cannot change simulation state.
 
-pub mod assets;
+pub use marionette_assets as assets;
 pub mod compare;
 pub mod extract;
 pub mod gpu;

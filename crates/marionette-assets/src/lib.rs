@@ -1,6 +1,8 @@
 //! CPU-side assets: meshes, materials and images, from glTF files, PNG files, or built in.
-//! Nothing here touches the GPU; `renderer.rs` uploads these.
+//! Nothing here touches the GPU: the renderer uploads these, and physics builds mesh and
+//! convex colliders from the same meshes.
 
+pub use glam;
 use glam::{Mat4, Vec2, Vec3};
 use std::path::Path;
 

@@ -8,11 +8,10 @@ rust-version.workspace = true
 
 [dependencies]
 marionette-core.workspace = true
+marionette-assets = { path = "../marionette-assets" }
 bevy_ecs.workspace = true
 wgpu = "30.0.1"
 winit = "0.30.13"
-gltf = { version = "1.4.1", default-features = false, features = ["import", "utils", "names"] }
-png = "0.18.1"
 bytemuck = { version = "1.25", features = ["derive"] }
 glam = "0.34"
 pollster = "1.0.1"

@@ -1,0 +1,12 @@
+[package]
+name = "marionette-assets"
+description = "Marionette CPU-side assets: glTF models, PNG images, built-in shapes and images. No GPU."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+glam = "0.34"
+gltf = { version = "1.4.1", default-features = false, features = ["import", "utils", "names"] }
+png = "0.18.1"
