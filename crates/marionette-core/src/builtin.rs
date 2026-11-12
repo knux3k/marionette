@@ -7,10 +7,12 @@
 //! All arithmetic is plain `f32` add/multiply (no transcendental functions), and every
 //! system that consumes randomness visits entities in stable-id order.
 
+use crate::module::Stage;
 use crate::registry::Registry;
 use crate::rng::SimRng;
 use crate::scene::SceneId;
 use crate::spatial;
+use crate::ui;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use std::collections::BTreeMap;
@@ -81,11 +83,17 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<spatial::SpriteRegion>();
     registry.register_component::<spatial::DirectionalLight>();
     registry.register_resource::<spatial::AmbientLight>();
+    registry.register_component::<ui::UiNode>();
+    registry.register_component::<ui::UiRect>();
+    registry.register_component::<ui::UiText>();
+    registry.register_component::<ui::UiImage>();
+    registry.register_component::<ui::UiButton>();
 }
 
 /// Adds the built-in systems to `schedule`, in a fixed order.
 pub fn add_builtin_systems(schedule: &mut Schedule) {
-    schedule.add_systems((random_impulse, follow, integrate, advance_clock).chain());
+    schedule.add_systems((random_impulse, follow, integrate).chain().in_set(Stage::Logic));
+    schedule.add_systems(advance_clock.in_set(Stage::End));
 }
 
 fn dt(step: &Option<Res<FixedStep>>) -> f32 {

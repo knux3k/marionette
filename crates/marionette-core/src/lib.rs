@@ -3,17 +3,21 @@
 //!
 //! The ECS is [`bevy_ecs`] used standalone; type descriptions come from [`bevy_reflect`].
 
+pub mod actions;
 pub mod builtin;
 pub mod error;
 pub mod json_span;
+pub mod module;
 pub mod registry;
 pub mod rng;
 pub mod scene;
 pub mod schema;
 pub mod sim;
 pub mod spatial;
+pub mod ui;
 
 pub use error::{Diagnostic, Errors, Result, Severity};
+pub use module::{EngineEvent, EventLog, Module, Modules, SceneDir, SimSnapshot, Stage};
 pub use registry::{Kind, Registry};
 pub use scene::Scene;
 pub use sim::Sim;
