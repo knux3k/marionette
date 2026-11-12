@@ -5,6 +5,7 @@
   "from": "beacon_ref",
   "model": {
     "height_m": 5.0,
-    "max_triangles": 10000
+    "max_triangles": 10000,
+    "max_texture_px": 512
   }
 }

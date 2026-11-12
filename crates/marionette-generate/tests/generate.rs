@@ -216,6 +216,7 @@ fn three_recipes(root: &Path) {
             model: Some(ModelOptions {
                 height_m: Some(1.0),
                 max_triangles: Some(10),
+                max_texture_px: None,
             }),
             ..recipe("crate", OutputKind::Model)
         },
@@ -260,12 +261,10 @@ fn three_assets_rebuild_identically_from_recipes() {
     assert_eq!(from.file, "crate_ref.png");
     assert_eq!(from.sha256, generate::sha256_hex(&read(&root, "crate_ref.png")));
     assert!(!from.approved, "mock is free, so no approval was needed");
+    let notes = crate_rec.postprocess["notes"].to_string();
     assert!(
-        crate_rec.postprocess["notes"][0]
-            .as_str()
-            .unwrap()
-            .contains("over the budget of 10"),
-        "triangle budget is reported"
+        notes.contains("decimated from 12 to") || notes.contains("over the budget of 10"),
+        "triangle budget is applied and reported: {notes}"
     );
 
     // A second run does nothing.
@@ -533,6 +532,76 @@ fn a_paid_model_needs_a_person_to_approve_its_image() {
     let r = generate::run(&target(&root, &[]), &env(&k, &t, cap(5.0)), false).unwrap();
     assert_eq!(r.blocked[0].problem.code, codes::NOT_APPROVED);
     assert!(t.sent().is_empty());
+}
+
+#[test]
+fn an_owner_can_waive_reference_approval_in_their_personal_config() {
+    let root = temp_project("waive");
+    write(
+        &root,
+        &image_recipe("hero_ref", "a small robot, front view", [128, 128]),
+    );
+    write(
+        &root,
+        &Recipe {
+            from: Some("hero_ref".into()),
+            provider: pin("tripo"),
+            ..recipe("hero", OutputKind::Model)
+        },
+    );
+    let home = root.join("home");
+    std::fs::create_dir_all(home.join("marionette")).unwrap();
+    let home_s = home.to_string_lossy().to_string();
+    let base = vars(&[
+        ("DASHSCOPE_API_KEY", FAKE_KEY),
+        ("TRIPO_API_KEY", FAKE_KEY),
+        ("APPDATA", &home_s),
+        ("XDG_CONFIG_HOME", &home_s),
+    ]);
+    let set = |list: &str| {
+        std::fs::write(
+            home.join("marionette").join("config.json"),
+            format!("{{\"waive_reference_approval\": {list}}}"),
+        )
+        .unwrap()
+    };
+    // Another provider listed: still refused.
+    set(r#"["qwen"]"#);
+    let t = Scripted::new(vec![]);
+    let r = generate::run(&target(&root, &[]), &env(&base, &t, cap(5.0)), false).unwrap();
+    assert_eq!(r.blocked[0].problem.code, codes::NOT_APPROVED);
+    assert!(t.sent().is_empty());
+
+    // The model's provider listed (any case): no approval needed, and provenance says so.
+    set(r#"["qwen", " Tripo "]"#);
+    let plan = generate::plan(&target(&root, &[]), &env(&base, &Scripted::new(vec![]), cap(5.0))).unwrap();
+    let hero = plan.steps.iter().find(|s| s.name == "hero").unwrap();
+    assert!(!hero.needs_approval);
+    assert!(hero.blocked.is_none());
+    let t = Scripted::new(vec![
+        recorded("tripo_upload.json"),
+        recorded("tripo_submit.json"),
+        recorded("tripo_status_running.json"),
+        recorded("tripo_status_success.json"),
+        bytes(mock_glb()),
+    ]);
+    let r = generate::run(&target(&root, &[]), &env(&base, &t, cap(5.0)), false).unwrap();
+    assert!(r.blocked.is_empty(), "{:?}", r.blocked);
+    let from = provenance::read(&root.join(DIR), "hero")
+        .unwrap()
+        .source
+        .from
+        .unwrap();
+    assert!(!from.approved);
+    assert!(from.approval_waived);
+
+    // An environment variable cannot set it.
+    set("[]");
+    let with_env = |k: &str| match k {
+        "MARIONETTE_WAIVE_REFERENCE_APPROVAL" | "waive_reference_approval" => Some("tripo".to_string()),
+        other => base(other),
+    };
+    assert!(approval::waived_providers(&with_env).is_empty());
 }
 
 #[test]

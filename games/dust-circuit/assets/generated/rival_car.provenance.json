@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "rival_car",
+  "output": "model",
+  "file": "rival_car.glb",
+  "sha256": "8d931ac30336aeb6f2e03d11b910e988331ff7eec493c99f40ddedaa2b05cde0",
+  "recipe": "rival_car.recipe.json",
+  "recipe_sha256": "819c1c5fc3539066e05f1e3b966095e4e9595e0c376db3378dd87302fe0819ea",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "rival_car_ref",
+      "file": "rival_car_ref.png",
+      "sha256": "1d1c4b29f786fd79b3beb370cfe9340719cb96dfd844f7ee92cca5b9fb1ce112",
+      "approved": true
+    },
+    "cache_key": "c892aac198c51d524a99ce5047b311ee18058617ff94feb3c3ce0f716dead0c7",
+    "raw_sha256": "1378c7d1b3f65bbf10bb1234a4712e9f6114b6501fbce65ce4da5c823fd8973f",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.653912,
+        0.0,
+        -0.847967
+      ],
+      [
+        0.653912,
+        1.0,
+        0.847967
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 502856 to 20000 triangles (budget 20000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 1.698672,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.384933,
+        -0.293824,
+        -0.499521
+      ],
+      [
+        0.384976,
+        0.294871,
+        0.498867
+      ]
+    ],
+    "textures": 3,
+    "triangles": 20000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

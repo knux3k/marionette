@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pillar",
+  "output": "model",
+  "file": "pillar.glb",
+  "sha256": "6b6ced2a0fe7deb825dc9d062c85ffc2191612948e91c7e4419c22c6500c9189",
+  "recipe": "pillar.recipe.json",
+  "recipe_sha256": "f5907f0cd44bd50b9252eedaae1b97e50ac99fc77703a5d606c6f659b68619b6",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "pillar_ref",
+      "file": "pillar_ref.png",
+      "sha256": "c9c9340a08097658c6b50b57344f29ed006d3f51ef54a69e7318350f68e1ae87",
+      "approved": true
+    },
+    "cache_key": "13ff86f2d837751c8f33584e0324d891aadeb5010d22c42e0dd6eae114137fd0",
+    "raw_sha256": "3d40e99ab7d2e5a94837c14df3e9bffde17b8051a7c9a36d9969aefc818cd5c4",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.676347,
+        0.0,
+        -0.678715
+      ],
+      [
+        0.676347,
+        3.0,
+        0.678715
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 426100 to 6000 triangles (budget 6000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 3.001309,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.225325,
+        -0.499999,
+        -0.226272
+      ],
+      [
+        0.225377,
+        0.499565,
+        0.226008
+      ]
+    ],
+    "textures": 3,
+    "triangles": 6000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

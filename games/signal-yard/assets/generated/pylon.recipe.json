@@ -5,6 +5,7 @@
   "from": "pylon_ref",
   "model": {
     "height_m": 6.0,
-    "max_triangles": 6000
+    "max_triangles": 6000,
+    "max_texture_px": 512
   }
 }

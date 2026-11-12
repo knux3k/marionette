@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "crate",
+  "output": "model",
+  "file": "crate.glb",
+  "sha256": "b15df57c207871e10b278ed65e5483ea2852e8cb8be852cc19b6e0f3179336ce",
+  "recipe": "crate.recipe.json",
+  "recipe_sha256": "982b646345e277b106d97bd9550a060015853bbce678a6f4f7caa88dca2dc918",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "crate_ref",
+      "file": "crate_ref.png",
+      "sha256": "bcb977b1318283a189758eef6ce0206927cdf0facf7aa10860744844d9988961",
+      "approved": true
+    },
+    "cache_key": "689ae6fa6c919859eb2dc3bcd767533d9a5a0b34b12ba3015e8cfe98659c53c3",
+    "raw_sha256": "699e0228cb36cadcd6307d54bd4d0236e41ba670263a1c7f5a2aefb1ef04600e",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.49224,
+        0.0,
+        -0.446346
+      ],
+      [
+        0.49224,
+        1.0,
+        0.446346
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 501546 to 3000 triangles (budget 3000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 1.00178,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.490834,
+        -0.49934,
+        -0.444917
+      ],
+      [
+        0.491897,
+        0.498884,
+        0.44619
+      ]
+    ],
+    "textures": 3,
+    "triangles": 3000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

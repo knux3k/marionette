@@ -78,7 +78,7 @@ Status: done (decision 0041). The public pool is `knux3k/marionette-assets` (see
 Status: pipeline done offline (decision 0045, guide GENERATION.md): recipes, cache,
 provenance, approval, post-processing, network transport behind `net`, per-provider caps,
 keys files. Next: first approved live calls for the proof scenes, then `verified: true`;
-Tripo auto-rig and rig checks; decimation.
+Tripo auto-rig and rig checks (decimation done, decision 0048).
 
 - Scope: recipes (a generated asset is a recipe plus a cached output keyed by content hash),
   Qwen for images only, Tripo for 3D models, rigging (Tripo auto-rig first for humanoids and

@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "ward_wall",
+  "output": "model",
+  "file": "ward_wall.glb",
+  "sha256": "1172d234e7167d9518b3027e7e3d1f283f45346b2bd092a30d7c1b9445049901",
+  "recipe": "ward_wall.recipe.json",
+  "recipe_sha256": "853211ebfb45e4588669675d8a67652edde559cf77e71078c472f5f004378df7",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "ward_wall_ref",
+      "file": "ward_wall_ref.png",
+      "sha256": "e214e083a1732756d4d54defb5de8391a22f98e93e06b8a586885e98b232632a",
+      "approved": true
+    },
+    "cache_key": "934a7dfcb5f834caebb36dd76f30acfd78322d1443126872b26da82c3d2a5354",
+    "raw_sha256": "d8d489e62604967bf42dde2ae378cab842d73e0148355a3b06b8a3698a998dae",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -3.830735,
+        0.0,
+        -0.595603
+      ],
+      [
+        3.830735,
+        2.0,
+        0.595603
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 207428 to 6000 triangles (budget 6000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 7.663393,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.499909,
+        -0.130652,
+        -0.077933
+      ],
+      [
+        0.49984,
+        0.130329,
+        0.077508
+      ]
+    ],
+    "textures": 3,
+    "triangles": 6000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

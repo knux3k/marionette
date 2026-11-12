@@ -5,6 +5,7 @@
   "from": "warden_ref",
   "model": {
     "height_m": 1.8,
-    "max_triangles": 20000
+    "max_triangles": 20000,
+    "max_texture_px": 1024
   }
 }

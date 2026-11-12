@@ -24,6 +24,10 @@ pub struct FromImage {
     pub sha256: String,
     /// A person approved this exact image (required when the model provider is paid).
     pub approved: bool,
+    /// The owner's personal config waived the approval for this model's provider
+    /// (`waive_reference_approval`, decision 0047).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub approval_waived: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

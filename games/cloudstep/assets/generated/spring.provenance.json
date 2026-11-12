@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "spring",
+  "output": "model",
+  "file": "spring.glb",
+  "sha256": "62b10521d76f5f947d77e11dfd08c78d7d3b91dc6b4faa3d696c7a2931d01b3d",
+  "recipe": "spring.recipe.json",
+  "recipe_sha256": "133752328e91adecd9240c1c38a4f583049fc00171a96def25e0c2a8f506c709",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "spring_ref",
+      "file": "spring_ref.png",
+      "sha256": "ee8bb3dd707d93b83224798ad260a2df216fca2b46e912c69a4fd33d01c6041d",
+      "approved": true
+    },
+    "cache_key": "b3c0999169d571b2886f2750d5ed469e7c2fc229d7534dead8ff759ea3a9991a",
+    "raw_sha256": "9928672d71404cfa3b7108b2f0e863d96718b1cac9c5dcd0e73b64ca2e9cba35",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.460085,
+        0.0,
+        -0.450775
+      ],
+      [
+        0.460085,
+        1.0,
+        0.450775
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 501860 to 5000 triangles (budget 5000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 1.000286,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.459737,
+        -0.499982,
+        -0.450285
+      ],
+      [
+        0.460169,
+        0.499732,
+        0.451008
+      ]
+    ],
+    "textures": 3,
+    "triangles": 5000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

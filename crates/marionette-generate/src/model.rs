@@ -1,8 +1,9 @@
 //! Model post-processing: check that the GLB is valid glTF 2.0, measure it (bounds through
 //! the node hierarchy, triangles, meshes, materials, textures, skins, animations), and
 //! normalize it for the engine by adding one root node that grounds the model (lowest point at
-//! y = 0), centers it on x and z, and optionally scales it to a height in meters. Mesh data is
-//! never rewritten; only the JSON chunk changes, so the result is deterministic.
+//! y = 0), centers it on x and z, and optionally scales it to a height in meters. Before that,
+//! a model over its triangle budget or texture size is slimmed ([`crate::slim`], decision
+//! 0048); otherwise mesh data is never rewritten. The result is deterministic.
 
 use crate::codes;
 use crate::recipe::ModelOptions;
@@ -40,12 +41,12 @@ fn post_err(msg: impl Into<String>) -> Errors {
         .into()
 }
 
-struct Glb {
-    json: Value,
-    bin: Option<Vec<u8>>,
+pub(crate) struct Glb {
+    pub json: Value,
+    pub bin: Option<Vec<u8>>,
 }
 
-fn read_glb(bytes: &[u8]) -> Result<Glb, Errors> {
+pub(crate) fn read_glb(bytes: &[u8]) -> Result<Glb, Errors> {
     let u32_at = |o: usize| -> Option<u32> {
         bytes
             .get(o..o + 4)
@@ -85,7 +86,7 @@ fn read_glb(bytes: &[u8]) -> Result<Glb, Errors> {
     Ok(Glb { json, bin })
 }
 
-fn write_glb(json: &Value, bin: Option<&[u8]>) -> Vec<u8> {
+pub(crate) fn write_glb(json: &Value, bin: Option<&[u8]>) -> Vec<u8> {
     let mut j = serde_json::to_vec(json).expect("JSON values serialize");
     while !j.len().is_multiple_of(4) {
         j.push(b' ');
@@ -188,6 +189,9 @@ fn arr(v: DVec3) -> [f64; 3] {
 /// Validates, measures and normalizes a generated GLB.
 pub fn process(glb: &[u8], options: Option<&ModelOptions>) -> Result<(Vec<u8>, ModelReport), Errors> {
     let opts = options.cloned().unwrap_or_default();
+    let slimmed = crate::slim::slim(glb, opts.max_triangles, opts.max_texture_px);
+    let mut notes = slimmed.notes;
+    let glb: &[u8] = slimmed.glb.as_deref().unwrap_or(glb);
     let gltf =
         gltf::Gltf::from_slice(glb).map_err(|e| post_err(format!("the model is not valid glTF: {e}")))?;
     let doc = &gltf.document;
@@ -219,13 +223,10 @@ pub fn process(glb: &[u8], options: Option<&ModelOptions>) -> Result<(Vec<u8>, M
     let new_lo = lo * scale + translation;
     let new_hi = hi * scale + translation;
 
-    let mut notes = Vec::new();
     if let Some(max) = opts.max_triangles
         && triangles > max
     {
-        notes.push(format!(
-            "{triangles} triangles is over the budget of {max}; decimation is not built yet (decision 0045)"
-        ));
+        notes.push(format!("{triangles} triangles is still over the budget of {max}"));
     }
 
     let Glb { mut json, bin } = read_glb(glb)?;

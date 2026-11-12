@@ -8,6 +8,14 @@
 //! the image name at an interactive terminal. Like the spend cap, this keeps an agent from
 //! approving its own spending by accident; it is not a security boundary against a program
 //! that writes files directly.
+//!
+//! An owner who does not want the step can waive it for named providers in their personal
+//! config, never in a project (decision 0047): `"waive_reference_approval": ["qwen", "tripo"]`
+//! in `%APPDATA%\marionette\config.json` (Windows) or `~/.config/marionette/config.json`. A
+//! model made by a listed provider skips the approval of its reference image (images never
+//! need one, so listing an image provider such as `qwen` only records the owner's intent).
+//! Provenance then records `approval_waived: true` beside `approved: false`, so the
+//! asset still says no person approved the image. No environment variable sets it.
 
 use crate::codes;
 use marionette_core::{Diagnostic, Errors};
@@ -27,6 +35,24 @@ pub struct Approval {
 }
 
 pub use marionette_core::person_only::{approval_write_refused as write_refused, is_approval_file_name};
+
+/// The providers the owner's personal config lists under `waive_reference_approval`,
+/// lowercased (see the module docs).
+pub fn waived_providers(var: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
+    marionette_providers::spend::user_config_file(var)
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t.trim_start_matches('\u{feff}')).ok())
+        .and_then(|v| {
+            v.get("waive_reference_approval")
+                .and_then(|l| l.as_array().cloned())
+        })
+        .unwrap_or_default()
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .map(|n| n.trim().to_ascii_lowercase())
+        .filter(|n| !n.is_empty())
+        .collect()
+}
 
 /// Whether `dir/<name>.approval.json` approves exactly these image bytes.
 pub fn is_approved(dir: &Path, name: &str, image_sha256: &str) -> bool {

@@ -5,6 +5,7 @@
   "from": "crystal_ref",
   "model": {
     "height_m": 2.5,
-    "max_triangles": 8000
+    "max_triangles": 8000,
+    "max_texture_px": 1024
   }
 }

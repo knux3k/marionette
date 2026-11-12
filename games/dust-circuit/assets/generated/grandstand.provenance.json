@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "grandstand",
+  "output": "model",
+  "file": "grandstand.glb",
+  "sha256": "78d2ffc59786bd1dc4cfdf48ffa1eb56ea1e307018234944796634333c6d6978",
+  "recipe": "grandstand.recipe.json",
+  "recipe_sha256": "c6e561d88ef73d9c549df41a54d50ff0f5c4be47f2ca6c0b2e9b5c8ca2ca8492",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "grandstand_ref",
+      "file": "grandstand_ref.png",
+      "sha256": "9d1900df90f8edec32c26a787559fc0ff6c2b4cd603389898df33463e262c890",
+      "approved": true
+    },
+    "cache_key": "2c7e37cb1c678598c4281dda49fe5c6175464530148b97d7b18b90adfa168434",
+    "raw_sha256": "70b12f5e4c6a04ecd798530800b3d7a62f3094da4c223a157b0206c721e6e911",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -1.582274,
+        0.0,
+        -2.395008
+      ],
+      [
+        1.582274,
+        3.5,
+        2.395008
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 502434 to 15000 triangles (budget 15000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 4.799781,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.329827,
+        -0.364892,
+        -0.498359
+      ],
+      [
+        0.329484,
+        0.364308,
+        0.499607
+      ]
+    ],
+    "textures": 3,
+    "triangles": 15000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

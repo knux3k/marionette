@@ -26,7 +26,7 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
 
    Fields: `name` (lowercase, digits, `_`, `-`), `output` (`image`, `texture`, `model`),
    `prompt`, `size` (image and texture), `texture` {`resize`, `tileable`, `remove_background`},
-   `from` (model: an image or texture recipe), `model` {`height_m`, `max_triangles`},
+   `from` (model: an image or texture recipe), `model` {`height_m`, `max_triangles` (simplified to fit, decision 0048), `max_texture_px`},
    `provider` {`provider`, `model`} to pin one, `notes`. `remove_background` makes a flat
    background transparent after the resize: the key is the mean of the four corner pixels,
    colours near it fade out, and a band along the cut loses the key's tint (ask the model for
@@ -41,7 +41,9 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
    `marionette generate approve <image name>` in a terminal; run again. For many images at
    once, `marionette generate approve --all` from the project root lists every reference image
    models wait on and approves them all after the person types `yes`. Agents cannot approve,
-   even when the owner says so in chat: the owner runs the command.
+   even when the owner says so in chat: the owner runs the command. An owner who wants no
+   approval step lists the model provider in their personal config,
+   `"waive_reference_approval": ["tripo"]` (decision 0047); judge the image yourself then.
 5. `generate_list`: state of every recipe (`built`, `stale`, `missing`).
 
 Use the outputs like any asset: a texture or image path in a `Sprite` or material, a model path
