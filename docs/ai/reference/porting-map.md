@@ -32,7 +32,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `OnCollisionExit2D` | `onCollisionExit` | script |  |
 | `OnCollisionStay` | `update` | rewrite | Set a flag in self.state on enter, clear it on exit, act on it in update. |
 | `OnCollisionStay2D` | `update` | rewrite | Flag in self.state between enter and exit. |
-| `OnDestroy` |  | gap | No despawn hook yet. |
+| `OnDestroy` | `onDestroy` | script | Runs when engine.destroy removes the entity (end of the script stage), not when the run ends. |
 | `OnDisable` |  | gap | No enable/disable. |
 | `OnDrawGizmos` |  | gap | Editor-only drawing; drop it. |
 | `OnEnable` | `start` | script | No enable/disable; runs once with start. |
@@ -141,7 +141,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `AudioSource.PlayClipAtPoint` |  | gap |  |
 | `BroadcastMessage` | `engine.emit(kind, detail)` | rewrite |  |
 | `Camera.main` | `engine.query("Camera")[0]` | script |  |
-| `CancelInvoke` | `clear the tick in self.state` | rewrite |  |
+| `CancelInvoke` | `engine.cancel(fn) or engine.cancel()` | script |  |
 | `CharacterController.Move` | `CharacterController component driven by actions` | rewrite | Movement comes from input actions; script-computed Move() is a gap. |
 | `Color` | `{ r, g, b, a }` | script | Linear color. |
 | `CompareTag` | `other.has("<MarkerComponent>") or a name check` | rewrite |  |
@@ -153,8 +153,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Debug.Log` | `engine.log(message)` | script |  |
 | `Debug.LogError` | `engine.log(message)` | script |  |
 | `Debug.LogWarning` | `engine.log(message)` | script |  |
-| `Destroy` |  | gap | No despawn from scripts yet; move the entity away and mark it inactive in self.state. |
-| `DestroyImmediate` |  | gap |  |
+| `Destroy` | `engine.destroy(entity, seconds?)` | script | Removed at the end of the script stage (after onDestroy), like Unity's end-of-frame Destroy; Destroy(obj, t) is engine.destroy(e, t). Destroy(component) has no equivalent yet. |
+| `DestroyImmediate` | `engine.destroy(entity)` | script | Removal still waits for the end of the script stage. |
 | `DontDestroyOnLoad` |  | gap | One scene per run. |
 | `FindFirstObjectByType` | `engine.query("<Component>")[0]` | script |  |
 | `FindObjectOfType` | `engine.query("<Component>")[0]` | script |  |
@@ -182,9 +182,10 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Input.GetMouseButtonDown` | `engine.justPressed("<action>")` | script |  |
 | `Input.mousePosition` |  | gap | Pointer position is not exposed to scripts yet. |
 | `InputAction.ReadValue` | `engine.action("<action>")` | script | Input System actions map one to one onto Marionette actions. |
-| `Instantiate` |  | gap | No spawning from scripts yet. Pre-place a pool of entities in the scene and move them in and out, or add them with the entity_create operation. |
-| `Invoke` | `self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)` | rewrite | Check the tick in update and call the function. |
-| `InvokeRepeating` | `tick counter in self.state` | rewrite |  |
+| `Instantiate` | `engine.clone(prefabEntity, { Transform: t }) or engine.spawn({ ...components })` | script | No prefab assets: clone a template entity in the scene, or keep the prefab as a components object in the script. The copy gets a new id and its script starts next tick; physics bodies are added in the same tick. |
+| `Invoke` | `engine.after(seconds, fn)` | script | fn is an exported function of the same script, called as fn(self, arg). |
+| `InvokeRepeating` | `engine.every(repeatRate, fn, undefined, time)` | script |  |
+| `IsInvoking` | `engine.pending(fn) > 0` | script |  |
 | `IsPressed` | `engine.pressed("<action>")` | script |  |
 | `Mathf.Abs` | `Math.abs` | script |  |
 | `Mathf.Atan2` |  | hazard | See Mathf.Sin. |
@@ -233,9 +234,9 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Screen.width` |  | gap | Screen size is not exposed to scripts; UiNode anchors place UI without it. |
 | `SendMessage` | `engine.emit(kind, detail), or call the other entity's data` | rewrite |  |
 | `SerializeField` | `a field in self.state (default set in start) or a component value in the scene` | script |  |
-| `StartCoroutine` | `a tick counter in self.state, checked in update` | rewrite | No coroutines yet. Each `yield return` becomes a step number in self.state; WaitForSeconds(t) becomes `waitUntil = engine.tick + Math.round(t / engine.dt)`. |
-| `StopAllCoroutines` | `reset the steps in self.state` | rewrite |  |
-| `StopCoroutine` | `reset the step in self.state` | rewrite |  |
+| `StartCoroutine` | `exported step functions chained with engine.after` | rewrite | Split the coroutine at each `yield return`: the code before the first yield runs now and ends with `engine.after(seconds, step2)`; step2 does the next part and schedules step3, and so on. Locals the steps share go in self.state or the timer argument. Generators are not used because their position cannot be saved in snapshots (decision 0021). |
+| `StopAllCoroutines` | `engine.cancel()` | script | Cancels every timer of this entity. |
+| `StopCoroutine` | `engine.cancel(stepFunction)` | script | Cancel the pending step of that chain. |
 | `Stopwatch` |  | hazard | Wall-clock timing; profile with observe_stats instead. |
 | `System.Random` | `engine.rand()` | hazard | Unseeded or separately seeded RNGs break replays; use the engine RNG. |
 | `Task.Run` |  | hazard | Background work breaks determinism. |
@@ -269,8 +270,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Vector3.right` | `{ x: 1, y: 0, z: 0 }` | script |  |
 | `Vector3.up` | `{ x: 0, y: 1, z: 0 }` | script |  |
 | `Vector3.zero` | `{ x: 0, y: 0, z: 0 }` | script |  |
-| `WaitForFixedUpdate` | `continue on the next tick` | rewrite |  |
-| `WaitForSeconds` | `self.state.waitUntil = engine.tick + Math.round(seconds / engine.dt)` | rewrite |  |
+| `WaitForFixedUpdate` | `engine.afterTicks(1, nextStep)` | script |  |
+| `WaitForSeconds` | `engine.after(seconds, nextStep)` | script | Inside a coroutine split into steps (see StartCoroutine). |
 | `WaitUntil` | `check the condition in update` | rewrite |  |
 | `WasPressedThisFrame` | `engine.justPressed("<action>")` | script |  |
 | `angularVelocity` | `self.get("AngularVelocity")` | script | Read only. |
@@ -331,10 +332,10 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 
 | C++ | Marionette | Status | Note |
 | --- | --- | --- | --- |
-| `BeginDestroy` |  | gap |  |
+| `BeginDestroy` | `onDestroy` | script | Garbage-collection hook; put cleanup in onDestroy. |
 | `BeginPlay` | `start` | script | Drop the Super::BeginPlay() call. |
-| `Destroyed` |  | gap | No despawn hook yet. |
-| `EndPlay` |  | gap | No despawn hook yet. |
+| `Destroyed` | `onDestroy` | script | Runs when engine.destroy removes the entity (end of the script stage), not when the run ends. |
+| `EndPlay` | `onDestroy` | script | Runs when engine.destroy removes the entity (end of the script stage), not when the run ends. |
 | `Landed` | `update, when CharacterState.grounded turns true` | rewrite |  |
 | `NativeConstruct` | `start` | rewrite |  |
 | `NativeTick` | `update` | rewrite |  |
@@ -348,8 +349,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `ReceiveActorBeginOverlap` | `onTriggerEnter` | script | Blueprint overlap event; Collider.sensor: true. |
 | `ReceiveActorEndOverlap` | `onTriggerExit` | script | Collider.sensor: true. |
 | `ReceiveBeginPlay` | `start` | script | Blueprint Event BeginPlay. |
-| `ReceiveDestroyed` |  | gap | No despawn hook yet. |
-| `ReceiveEndPlay` |  | gap | No despawn hook yet. |
+| `ReceiveDestroyed` | `onDestroy` | script | Runs when engine.destroy removes the entity (end of the script stage), not when the run ends. |
+| `ReceiveEndPlay` | `onDestroy` | script | Runs when engine.destroy removes the entity (end of the script stage), not when the run ends. |
 | `ReceiveHit` | `onCollisionEnter` | script |  |
 | `ReceiveTick` | `update` | script | Blueprint Event Tick; Delta Seconds is engine.dt. |
 | `SetupPlayerInputComponent` | `the action map file (*.actions.json)` | rewrite | Each BindAxis / BindAction / Enhanced Input action becomes an action in the map; the bound function's body moves into update, reading engine.action / engine.justPressed. |
@@ -401,11 +402,11 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `FRotator` | `{ x: number, y: number, z: number, w: number } (quaternion)` | rewrite | Convert to a quaternion while porting (Pitch, Yaw, Roll in degrees); per-tick sin/cos is a determinism hazard. |
 | `FString` | `string` | ready |  |
 | `FText` | `string` | ready |  |
-| `FTimerHandle` | `a tick number in self.state` | rewrite |  |
+| `FTimerHandle` | `the number returned by engine.after / engine.every` | script | Keep it in self.state to cancel later. |
 | `FTransform` | `Transform` | ready |  |
 | `FVector` | `{ x: number, y: number, z: number }` | ready | Convert axes and units: Marionette (x, y, z) = Unreal (Y, Z, -X) / 100. |
 | `FVector2D` | `{ x: number, y: number }` | ready |  |
-| `TSubclassOf` |  | gap | Spawning classes from scripts is not available yet. |
+| `TSubclassOf` | `a template entity name for engine.clone, or a components object for engine.spawn` | rewrite | Entities have no classes: pick the template by name (engine.find) and clone it. |
 | `UCurveFloat` |  | gap | Sample into an array. |
 | `UMaterialInterface` | `Material component values` | ready |  |
 | `USoundBase` | `string (sound path or builtin:)` | ready |  |
@@ -440,7 +441,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `AsyncTask` |  | hazard | Background work breaks determinism. |
 | `AttachToActor` |  | gap |  |
 | `AttachToComponent` |  | gap |  |
-| `BeginDeferredActorSpawnFromClass` |  | gap | No spawning from scripts yet. |
+| `BeginDeferredActorSpawnFromClass` | `engine.spawn(components) then set more components` | script | Spawning is already deferred: the script starts next tick. |
 | `BindAction` | `action in the action map` | rewrite |  |
 | `BindAxis` | `axis action in the action map` | rewrite |  |
 | `Broadcast` | `engine.emit(kind, detail)` | rewrite |  |
@@ -449,8 +450,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `CreateDefaultSubobject` | `add the component to the entity in the scene file` | rewrite | Constructor-created components are scene data, written with entity_create / component_set. |
 | `CreateWidget` | `UiNode entities in the scene` | rewrite |  |
 | `DECLARE_DYNAMIC_MULTICAST_DELEGATE` | `engine.emit(kind, detail)` | rewrite |  |
-| `Delay` | `tick counter in self.state` | rewrite | Blueprint Delay node: store the due tick in self.state and continue in update when it arrives. |
-| `Destroy` |  | gap | No despawn from scripts yet; move away and mark inactive in self.state. |
+| `Delay` | `engine.after(seconds, nextStep)` | rewrite | Blueprint Delay node: the nodes after it move into an exported nextStep(self, arg). |
+| `Destroy` | `engine.destroy(entity)` | script | Removed at the end of the script stage, after onDestroy. |
 | `DrawDebugBox` |  | gap |  |
 | `DrawDebugLine` |  | gap |  |
 | `DrawDebugSphere` |  | gap |  |
@@ -459,7 +460,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `FDateTime.UtcNow` |  | hazard | Wall clock. |
 | `FHttpModule` |  | hazard | No network in the simulation. |
 | `FInputActionValue` | `engine.action(name)` | script |  |
-| `FLatentActionInfo` | `tick counter in self.state` | rewrite |  |
+| `FLatentActionInfo` | `engine.after(seconds, nextStep)` | rewrite | Latent actions become timer steps (see Delay). |
 | `FLinearColor` | `{ r, g, b, a }` | script |  |
 | `FMath.Abs` | `Math.abs` | script |  |
 | `FMath.Atan2` |  | hazard | See FMath.Sin. |
@@ -508,7 +509,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `GetActorUpVector` | `rotate (0, 1, 0) by Transform.rotation` | rewrite |  |
 | `GetCapsuleComponent` | `self.get("Collider")` | script |  |
 | `GetCharacterMovement` | `self.get("CharacterController")` | script | MaxWalkSpeed -> speed (cm/s / 100), JumpZVelocity -> jump_speed (/ 100). |
-| `GetClass` |  | gap | Entities have no classes; spawning by class is a gap. |
+| `GetClass` |  | gap | Entities have no classes; spawn by cloning a template entity instead. |
 | `GetComponentByClass` | `self.get("<Component>")` | script |  |
 | `GetDeltaSeconds` | `engine.dt` | script |  |
 | `GetGameTimeInSeconds` | `engine.tick * engine.dt` | script |  |
@@ -519,26 +520,26 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `GetRealTimeSeconds` | `engine.tick * engine.dt` | hazard | Real time breaks determinism. |
 | `GetSafeNormal` | `divide by the length if it is not zero` | script |  |
 | `GetTimeSeconds` | `engine.tick * engine.dt` | script |  |
-| `GetTimerManager.ClearTimer` | `clear the tick in self.state` | rewrite |  |
-| `GetTimerManager.IsTimerActive` | `check the tick in self.state` | rewrite |  |
-| `GetTimerManager.SetTimer` | `self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)` | rewrite | No timers yet: store the due tick in self.state and check it in update. Looping timers add the period again when they fire. |
-| `GetTimerManager.SetTimerForNextTick` | `a flag in self.state handled next update` | rewrite |  |
+| `GetTimerManager.ClearTimer` | `engine.cancel(handle)` | script |  |
+| `GetTimerManager.IsTimerActive` | `engine.pending(handle) > 0` | script |  |
+| `GetTimerManager.SetTimer` | `engine.after(seconds, fn) or engine.every(seconds, fn) when looping` | script | fn is an exported function of the same script, called as fn(self, arg); FirstDelay is the fourth argument of engine.every. |
+| `GetTimerManager.SetTimerForNextTick` | `engine.afterTicks(1, fn)` | script |  |
 | `GetVelocity` | `self.get("Velocity")` | script | Read only for dynamic bodies. |
 | `GetWorld.GetDeltaSeconds` | `engine.dt` | script |  |
 | `GetWorld.GetTimeSeconds` | `engine.tick * engine.dt` | script |  |
-| `GetWorld.SpawnActor` |  | gap | No spawning from scripts yet; pre-place a pool of entities, or add them with entity_create. |
+| `GetWorld.SpawnActor` | `engine.clone(templateEntity, { Transform: t }) or engine.spawn({ ...components })` | script | The new entity gets a new id; its script starts next tick; physics bodies are added in the same tick. |
 | `GetWorldDeltaSeconds` | `engine.dt` | script |  |
 | `IsA` | `other.has("<Component>")` | rewrite |  |
 | `IsInputKeyDown` | `engine.pressed(action)` | script | Bind the key to an action. |
 | `Jump` | `CharacterController.jump action` | rewrite | Jumping is driven by the controller's jump action. |
 | `K2_AddActorWorldOffset` | `add to Transform.translation` | script |  |
-| `K2_DestroyActor` |  | gap | No despawn from scripts yet. |
+| `K2_DestroyActor` | `engine.destroy(self)` | script |  |
 | `K2_GetActorLocation` | `self.get("Transform").translation` | script |  |
 | `K2_GetActorRotation` | `self.get("Transform").rotation` | script |  |
 | `K2_SetActorLocation` | `set Transform.translation` | script |  |
 | `K2_SetActorRotation` | `set Transform.rotation` | script |  |
-| `K2_SetTimer` | `self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)` | rewrite | Blueprint Set Timer by Function Name. |
-| `K2_SetTimerDelegate` | `tick number in self.state` | rewrite |  |
+| `K2_SetTimer` | `engine.after(seconds, "FunctionName") or engine.every when looping` | script | Blueprint Set Timer by Function Name; the name is an exported function of the script. |
+| `K2_SetTimerDelegate` | `engine.after(seconds, fn) or engine.every(seconds, fn)` | script |  |
 | `LaunchCharacter` |  | gap |  |
 | `LineTraceMultiByChannel` |  | gap |  |
 | `LineTraceSingleByChannel` |  | gap | Raycasts exist as the observe_raycast operation but not inside scripts yet. |
@@ -575,14 +576,14 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `SetCollisionEnabled` |  | gap |  |
 | `SetCollisionProfileName` |  | gap | No collision channels or profiles yet. |
 | `SetGenerateOverlapEvents` | `Collider.sensor: true` | ready |  |
-| `SetLifeSpan` |  | gap |  |
+| `SetLifeSpan` | `engine.destroy(self, seconds)` | script |  |
 | `SetPhysicsLinearVelocity` |  | gap | Velocity is read by physics only at load. |
 | `SetRootComponent` |  | ready | Not needed. |
 | `SetSimulatePhysics` | `RigidBody { kind: Dynamic } in the scene` | ready |  |
 | `SetText` | `set UiText.text on the UI entity` | script |  |
 | `SetupAttachment` |  | gap | No attachment hierarchy yet; use separate entities, Follow, or copy positions in update. |
 | `Size` | `Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)` | script |  |
-| `SpawnActor` |  | gap | No spawning from scripts yet. |
+| `SpawnActor` | `engine.clone(templateEntity, overrides) or engine.spawn(components)` | script |  |
 | `StopJumping` |  | ready | Not needed. |
 | `Super.BeginPlay` |  | ready | Not needed: drop Super calls. |
 | `Super.EndPlay` |  | ready | Not needed. |
@@ -614,7 +615,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `UGameplayStatics.SpawnEmitterAtLocation` |  | gap |  |
 | `UInputAction` | `an action name` | ready |  |
 | `UInputMappingContext` | `the action map file` | ready |  |
-| `UKismetSystemLibrary.Delay` | `tick counter in self.state` | rewrite |  |
+| `UKismetSystemLibrary.Delay` | `engine.after(seconds, nextStep)` | rewrite | Split the function at the Delay: the rest moves into an exported nextStep(self, arg). |
 | `UKismetSystemLibrary.PrintString` | `engine.log(message)` | script |  |
 | `Value.Get` | `engine.action(name)` | script |  |
 | `WasInputKeyJustPressed` | `engine.justPressed(action)` | script |  |

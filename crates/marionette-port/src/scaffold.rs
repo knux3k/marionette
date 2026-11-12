@@ -1,7 +1,8 @@
 //! TypeScript script skeletons for ported classes (decision 0020).
 //!
 //! One `.ts` file per gameplay class, written for the script API of decision 0022: exported
-//! `start`, `update`, `onCollisionEnter`, `onCollisionExit`, `onTriggerEnter` and `onTriggerExit` hooks taking `self: Entity`.
+//! `start`, `update`, `onCollisionEnter`, `onCollisionExit`, `onTriggerEnter`, `onTriggerExit`
+//! and `onDestroy` hooks taking `self: Entity`.
 //! Fields become `self.state` entries with their defaults. Every original method body is
 //! kept as comments inside the hook it belongs to, and each line that uses an engine API is
 //! followed by a `->` line naming the Marionette equivalent. The skeleton compiles as is; an
@@ -18,7 +19,7 @@ pub fn script_name(c: &Class) -> String {
 
 /// Hooks in the order they are written, with the source methods that feed each, in the
 /// order their bodies are placed.
-const ORDER: [(&str, &[&str]); 6] = [
+const ORDER: [(&str, &[&str]); 7] = [
     (
         "start",
         &[
@@ -47,6 +48,7 @@ const ORDER: [(&str, &[&str]); 6] = [
     ("onCollisionExit", &[]),
     ("onTriggerEnter", &[]),
     ("onTriggerExit", &[]),
+    ("onDestroy", &[]),
 ];
 
 fn default_for(ts: &str, kind: &str) -> String {
@@ -285,7 +287,7 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
         if !needed {
             continue;
         }
-        let sig = if hook.starts_with("on") {
+        let sig = if hook.starts_with("on") && hook != "onDestroy" {
             "self: Entity, other: Entity"
         } else {
             "self: Entity"
@@ -322,7 +324,7 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
         }
         if hook == "update" {
             for (name, (pattern, h)) in &c.bound {
-                if h.is_empty() {
+                if h.is_empty() && !crate::is_timer_binder(pattern) {
                     let _ = writeln!(
                         out,
                         "  // {name}(self) was bound with {pattern}; call it here when its action or due tick fires."
@@ -369,8 +371,11 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
                 m.name,
                 if h.note.is_empty() { &h.marionette } else { &h.note }
             );
-        } else if m.ret == "IEnumerator" {
-            out.push_str("// [rewrite] Coroutine: keep a step number and a due tick in self.state and advance them in update.\n");
+        } else if m.ret == "IEnumerator" || m.ret.starts_with("IEnumerator<") {
+            out.push_str(
+                "// [rewrite] Coroutine: split it at each `yield return` into exported steps; each step ends with\n\
+                 // engine.after(seconds, nextStep, arg) (WaitForSeconds) and shared locals go in self.state or arg.\n",
+            );
         } else if bound.is_some() {
             let _ = writeln!(out, "// [{}] {note}", status.as_str());
         }
@@ -390,7 +395,14 @@ pub fn skeleton(a: &Analysis, ci: usize, path_hint: &str) -> String {
                 }
             })
             .collect();
-        let _ = writeln!(out, "function {ident}(self: Entity{params}): void {{");
+        // Timer callbacks must be exported: engine.after/every call exported functions by name.
+        let export =
+            if m.ret.starts_with("IEnumerator") || bound.as_deref().is_some_and(crate::is_timer_binder) {
+                "export "
+            } else {
+                ""
+            };
+        let _ = writeln!(out, "{export}function {ident}(self: Entity{params}): void {{");
         body(&mut out, a, ci, mi, &by_line);
         out.push_str("}\n\n");
     }

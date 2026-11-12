@@ -148,9 +148,9 @@
     },
     {
       "name": "OnDestroy",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn hook yet."
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
     },
     {
       "name": "OnDisable",
@@ -970,20 +970,21 @@
     },
     {
       "pattern": "Instantiate",
-      "marionette": "",
-      "status": "gap",
-      "note": "No spawning from scripts yet. Pre-place a pool of entities in the scene and move them in and out, or add them with the entity_create operation."
+      "marionette": "engine.clone(prefabEntity, { Transform: t }) or engine.spawn({ ...components })",
+      "status": "script",
+      "note": "No prefab assets: clone a template entity in the scene, or keep the prefab as a components object in the script. The copy gets a new id and its script starts next tick; physics bodies are added in the same tick."
     },
     {
       "pattern": "Destroy",
-      "marionette": "",
-      "status": "gap",
-      "note": "No despawn from scripts yet; move the entity away and mark it inactive in self.state."
+      "marionette": "engine.destroy(entity, seconds?)",
+      "status": "script",
+      "note": "Removed at the end of the script stage (after onDestroy), like Unity's end-of-frame Destroy; Destroy(obj, t) is engine.destroy(e, t). Destroy(component) has no equivalent yet."
     },
     {
       "pattern": "DestroyImmediate",
-      "marionette": "",
-      "status": "gap"
+      "marionette": "engine.destroy(entity)",
+      "status": "script",
+      "note": "Removal still waits for the end of the script stage."
     },
     {
       "pattern": "DontDestroyOnLoad",
@@ -999,29 +1000,32 @@
     },
     {
       "pattern": "StartCoroutine",
-      "marionette": "a tick counter in self.state, checked in update",
+      "marionette": "exported step functions chained with engine.after",
       "status": "rewrite",
-      "note": "No coroutines yet. Each `yield return` becomes a step number in self.state; WaitForSeconds(t) becomes `waitUntil = engine.tick + Math.round(t / engine.dt)`."
+      "note": "Split the coroutine at each `yield return`: the code before the first yield runs now and ends with `engine.after(seconds, step2)`; step2 does the next part and schedules step3, and so on. Locals the steps share go in self.state or the timer argument. Generators are not used because their position cannot be saved in snapshots (decision 0021)."
     },
     {
       "pattern": "StopCoroutine",
-      "marionette": "reset the step in self.state",
-      "status": "rewrite"
+      "marionette": "engine.cancel(stepFunction)",
+      "status": "script",
+      "note": "Cancel the pending step of that chain."
     },
     {
       "pattern": "StopAllCoroutines",
-      "marionette": "reset the steps in self.state",
-      "status": "rewrite"
+      "marionette": "engine.cancel()",
+      "status": "script",
+      "note": "Cancels every timer of this entity."
     },
     {
       "pattern": "WaitForSeconds",
-      "marionette": "self.state.waitUntil = engine.tick + Math.round(seconds / engine.dt)",
-      "status": "rewrite"
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "script",
+      "note": "Inside a coroutine split into steps (see StartCoroutine)."
     },
     {
       "pattern": "WaitForFixedUpdate",
-      "marionette": "continue on the next tick",
-      "status": "rewrite"
+      "marionette": "engine.afterTicks(1, nextStep)",
+      "status": "script"
     },
     {
       "pattern": "WaitUntil",
@@ -1030,19 +1034,24 @@
     },
     {
       "pattern": "Invoke",
-      "marionette": "self.state.<name>At = engine.tick + Math.round(seconds / engine.dt)",
-      "status": "rewrite",
-      "note": "Check the tick in update and call the function."
+      "marionette": "engine.after(seconds, fn)",
+      "status": "script",
+      "note": "fn is an exported function of the same script, called as fn(self, arg)."
     },
     {
       "pattern": "InvokeRepeating",
-      "marionette": "tick counter in self.state",
-      "status": "rewrite"
+      "marionette": "engine.every(repeatRate, fn, undefined, time)",
+      "status": "script"
     },
     {
       "pattern": "CancelInvoke",
-      "marionette": "clear the tick in self.state",
-      "status": "rewrite"
+      "marionette": "engine.cancel(fn) or engine.cancel()",
+      "status": "script"
+    },
+    {
+      "pattern": "IsInvoking",
+      "marionette": "engine.pending(fn) > 0",
+      "status": "script"
     },
     {
       "pattern": "Rigidbody.AddForce",
