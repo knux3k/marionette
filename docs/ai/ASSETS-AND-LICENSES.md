@@ -68,9 +68,12 @@ template, Starter Content and mannequin folders, plugins whose `.uplugin` says `
 Epic), `src/import.rs` (refusal order, import report), `src/library.rs` (location
 rules, records with `private: true` and `pool: "blocked"`), `src/pool.rs` (the owned-asset
 gate the pool MUST call). Operations: `library_import`, `library_list`, `library_get`,
-`library_info`, `license_check_text`, `pool_admission_check`. Proofs:
+`library_info`, `license_check_text`, `pool_admission_check`, `prefab_instantiate`. Unity
+prefabs (decision 0040, `src/prefab.rs`) follow the same rules: a prefab needs its own covering
+declaration, a nested prefab is expanded only under the same declaration (rule 12a), and the
+models and materials it uses are separate library assets referenced by id. Proofs:
 `crates/marionette-import/tests/import.rs`, `crates/marionette-import/tests/unreal.rs`,
-`crates/marionette-cli/tests/library_e2e.rs`.
+`crates/marionette-import/tests/prefab.rs`, `crates/marionette-cli/tests/library_e2e.rs`.
 
 ## Spending
 
