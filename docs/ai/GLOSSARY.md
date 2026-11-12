@@ -24,6 +24,11 @@
   decision 0006.
 - **Recipe**: the description of how a generated asset was made (inputs, providers, steps); the
   output is cached by content hash so the asset can be rebuilt.
+- **Provider**: a plug-in that generates text/code (`language`), images (`image`) or 3D models
+  (`model3d`): `mock`, `claude`, `qwen`, `tripo`. Chosen per kind in the project's
+  `providers.json` (decision 0019).
+- **Spend cap**: the most money paid providers may cost a project in total, set only by a person
+  (`MARIONETTE_SPEND_CAP_USD` or the user config file); zero by default.
 - **Pool**: the public CC0 asset collection in the assets repository.
 - **Owned library**: a per-user folder of assets the user owns (for example imported from Unity
   or Unreal), shared across their projects, private, never pooled.

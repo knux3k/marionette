@@ -7,13 +7,13 @@ refer to `docs/DESIGN.md`.
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Done locally. CI file exists, never run (no remote). |
+| 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
 | 2 | Core | Done. |
 | 3 | Renderer | Done. |
 | 4 | Scripting spike (TypeScript vs Luau) | Ready to start (workstream W7). Not started. |
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
-| 7 | Providers | Not started. |
+| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0021); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
@@ -77,6 +77,22 @@ Line 6 (input, physics, audio, UI):
   `cargo run --release -p marionette-physics --example step_cost -- 1000`).
 - Modules: decision 0011; input 0013; physics 0012; audio 0014; UI 0015.
 
+Line 7, providers (W5, decision 0019):
+- `crates/marionette-cli/tests/providers_e2e.rs`: `one_command_swaps_a_provider_and_mock_needs_nothing`
+  (`marionette provider use image qwen` swaps; generation then stops at the missing key; swapping
+  back gives the same bytes), `bad_switches_are_refused_and_leave_the_file_alone`,
+  `provider_list_names_every_plugin_without_showing_keys`.
+- `crates/marionette-providers/tests/providers.rs`: `mock_is_deterministic_and_pinned_across_platforms`
+  (mock PNG `f9049f7ad383f5b97363c83ee7711822ea04b9aba608958ae44a323be995bbbf`, GLB
+  `658a8b15dcc62bf38e65bde6c267b411c0cf2c57abe5c9cb13cdd0a97f1308ad`), `mock_outputs_load_in_the_engine`,
+  `config_defaults_to_mock_and_refuses_keys`, `checks_run_in_order_before_any_request_is_sent`,
+  `claude_request_shape_cost_and_ledger`, `claude_refusal_and_http_errors_are_data_without_the_key`,
+  `qwen_submits_polls_and_downloads`, `tripo_text_and_image_jobs`,
+  `unreadable_ledger_refuses_paid_calls_but_not_free_ones`,
+  `spend_cap_comes_from_the_environment_or_the_user_config_only`,
+  `every_offered_kind_has_a_default_model_and_keys_are_env_names`.
+- The whole suite builds and passes with no `providers.json`, no keys and no network.
+
 Line 8, owned library and Unity import (W2, decision 0018):
 - `crates/marionette-import/tests/import.rs`: `owned_file_with_declaration_is_imported_with_its_license`,
   `undeclared_assets_are_refused_with_reasons`, `engine_locked_licenses_are_refused`,
@@ -103,7 +119,10 @@ Line 8, owned library and Unity import (W2, decision 0018):
 
 ## UNVERIFIED
 
-- CI has never run (no remote); the state hash has never been compared on Linux.
+- Linux CI has not passed yet (first run failed at build: missing ALSA library; fixed in the
+  workflow). In a Linux container without a GPU the drift hash, the seed-2 hash and the
+  playground hashes (`line6_proofs.rs`) match the Windows values; GPU tests skipped there.
+  Windows CI passed, including the GPU tests on WARP.
 - Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.
@@ -112,7 +131,6 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `README.md` is unchecked.
 - Reference-image tolerance on AMD, Intel, Apple GPUs and on Mesa lavapipe.
 - OGG decoding (enabled in kira; no OGG file has been decoded).
-- The playground hashes have only been produced on Windows; Linux equality is unchecked.
 - Live gamepad input (format supported, no backend).
 - Unity importer against real Unity files: all fixtures are synthetic (built in the tests). No
   real project or Asset Store `.unitypackage` has been imported (reading the owner's Unity
@@ -120,6 +138,10 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
   layout used by `package_location_reason` are from memory, not checked against a Unity install.
 - The pasted-license phrase list catches common wording only; it never grants permission.
+- Provider plug-ins (`claude`, `qwen`, `tripo`): request and answer formats are written from
+  documentation and tested only against recorded shapes; none has been called live
+  (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
+  pin depends on the locked `png` encoder version.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
@@ -136,4 +158,5 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0021. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
