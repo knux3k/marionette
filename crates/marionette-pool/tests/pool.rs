@@ -70,6 +70,15 @@ fn new_pool(base: &Path) -> Pool {
 }
 
 #[test]
+fn the_committed_seed_pool_verifies() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../pool");
+    let pool = Pool::at(&repo, PoolFrom::Input).unwrap();
+    let r = marionette_pool::verify::verify(&pool);
+    assert_eq!(r.assets, 5);
+    assert!(r.problems.is_empty(), "{:?}", r.problems);
+}
+
+#[test]
 fn seed_pool_matches_its_generator() {
     let base = temp("seed");
     let pool = new_pool(&base);

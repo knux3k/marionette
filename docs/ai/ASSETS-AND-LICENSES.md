@@ -27,8 +27,9 @@ the engine.
 
 Pool layout, record format and rules in code: decision 0041, `crates/marionette-pool`
 (`src/admit.rs`). Operations: `asset_search` (the search order above), `pool_info`,
-`pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`. Seed set:
-`pool/` (made by `crates/marionette-pool/src/seed.rs`).
+`pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`, `pool_verify`.
+The public pool is the repository `knux3k/marionette-assets`; the engine's `pool/` is its seed
+(made by `crates/marionette-pool/src/seed.rs`).
 
 ## Importing owned Unity and Unreal assets
 
