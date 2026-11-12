@@ -1,0 +1,16 @@
+[package]
+name = "marionette-script"
+description = "Marionette game scripts: TypeScript run by QuickJS-ng after type stripping (oxc), deterministic and hot-reloadable, with typings generated from the schema."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde_json.workspace = true
+rquickjs = { version = "0.14", features = ["parallel"] }
+oxc = { version = "0.158", features = ["transformer", "codegen", "semantic"] }
+libm = "0.2"

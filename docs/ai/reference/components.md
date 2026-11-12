@@ -183,6 +183,26 @@ Rust type: `marionette_physics::components::RigidBody`.
 | `linear_damping` | number | yes |  |
 | `lock_rotations` | boolean | yes | Keep the body upright (no rotation from contacts). |
 
+### `Script`
+
+Runs a TypeScript file every tick. `path` is relative to the scene file. The module must export `function update(self: Entity): void` (see the generated `marionette.d.ts`).
+
+Rust type: `marionette_script::Script`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes |  |
+
+### `ScriptState`
+
+A script's per-entity state (`self.state`), as JSON text. Written by the engine after each `update`; part of the state hash and of snapshots.
+
+Rust type: `marionette_script::ScriptState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | string | yes |  |
+
 ### `Sprite`
 
 A textured, camera-independent quad in the XY plane at the entity's translation. `image` is a PNG file relative to the scene file or a built-in image (`builtin:white`, `builtin:circle`, `builtin:checker`, `builtin:atlas`). Higher `layer` draws on top; equal layers draw in entity-id order.

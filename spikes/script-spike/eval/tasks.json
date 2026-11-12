@@ -1,0 +1,98 @@
+{
+  "about": "Ten small gameplay tasks. Each solution file (tasks.luau, tasks.ts) defines one function per task with the given name; it is written once from these descriptions, then run unchanged against the cases. Arrays are 1-based tables in Luau and arrays in TypeScript; objects are tables/objects with the given keys.",
+  "tasks": [
+    {
+      "name": "move_x",
+      "spec": "move_x(vx, input, dt) -> number. Horizontal platformer speed. input is -1..1. If input is not 0, accelerate by 30*input*dt. If input is 0, apply friction: reduce |vx| by 20*dt toward 0 without crossing 0. Clamp the result to [-6, 6].",
+      "cases": [
+        { "args": [0, 1, 0.1], "expect": 3 },
+        { "args": [5, 1, 0.1], "expect": 6 },
+        { "args": [1, 0, 0.1], "expect": 0 },
+        { "args": [-3, 0, 0.1], "expect": -1 },
+        { "args": [2, -1, 0.1], "expect": -1 }
+      ]
+    },
+    {
+      "name": "patrol",
+      "spec": "patrol(points, index, pos, speed, dt) -> {index, x, y}. points is a list of {x, y}; index is the 1-based index (Luau) or 0-based index (TypeScript) of the current target; pos is {x, y}. Move pos toward the target by speed*dt. If the remaining distance is <= speed*dt, snap to the target and advance index to the next point, wrapping to the first. Return the new index (same base as the input) and position.",
+      "cases": [
+        { "args": [[{"x": 0, "y": 0}, {"x": 10, "y": 0}], "$second", {"x": 0, "y": 0}, 5, 1], "expect": {"index": "$second", "x": 5, "y": 0} },
+        { "args": [[{"x": 0, "y": 0}, {"x": 10, "y": 0}], "$second", {"x": 8, "y": 0}, 5, 1], "expect": {"index": "$first", "x": 10, "y": 0} },
+        { "args": [[{"x": 0, "y": 0}, {"x": 3, "y": 4}], "$second", {"x": 0, "y": 0}, 1, 1], "expect": {"index": "$second", "x": 0.6, "y": 0.8} }
+      ]
+    },
+    {
+      "name": "add_item",
+      "spec": "add_item(slots, item, count, max_stack) -> leftover. slots is a list of {item, count} where an empty slot has item = \"\" and count = 0. First top up existing slots holding the same item (in order) up to max_stack, then fill empty slots in order. Mutate slots in place and return how many items did not fit.",
+      "cases": [
+        { "args": [[{"item": "gem", "count": 98}, {"item": "", "count": 0}], "gem", 5, 99], "expect": 0, "expect_arg0": [{"item": "gem", "count": 99}, {"item": "gem", "count": 4}] },
+        { "args": [[{"item": "ore", "count": 1}, {"item": "", "count": 0}], "gem", 250, 99], "expect": 151, "expect_arg0": [{"item": "ore", "count": 1}, {"item": "gem", "count": 99}] },
+        { "args": [[], "gem", 3, 99], "expect": 3 }
+      ]
+    },
+    {
+      "name": "timer_events",
+      "spec": "timer_events(before, after, marks) -> list of strings. A countdown went from `before` seconds to `after` seconds (after < before). marks is a list of {at, name}. Return the names of marks with after < at <= before, ordered by `at` descending (the order they were crossed); equal `at` keep their list order.",
+      "cases": [
+        { "args": [10, 4, [{"at": 5, "name": "five"}, {"at": 9, "name": "nine"}, {"at": 4, "name": "four"}, {"at": 10, "name": "ten"}]], "expect": ["ten", "nine", "five"] },
+        { "args": [3, 2.5, [{"at": 1, "name": "one"}]], "expect": [] },
+        { "args": [3, 0, [{"at": 2, "name": "a"}, {"at": 2, "name": "b"}]], "expect": ["a", "b"] }
+      ]
+    },
+    {
+      "name": "nearest",
+      "spec": "nearest(from, others) -> id or nil/null. from is {x, y}; others is a list of {id, x, y, alive}. Return the id of the nearest alive entity by Euclidean distance; on a tie the lower id wins. Return nil (Luau) / null (TypeScript) if none is alive.",
+      "cases": [
+        { "args": [{"x": 0, "y": 0}, [{"id": 7, "x": 3, "y": 4, "alive": true}, {"id": 2, "x": 1, "y": 1, "alive": false}, {"id": 5, "x": -3, "y": 4, "alive": true}]], "expect": 5 },
+        { "args": [{"x": 0, "y": 0}, [{"id": 1, "x": 9, "y": 9, "alive": false}]], "expect": null },
+        { "args": [{"x": 1, "y": 1}, [{"id": 4, "x": 2, "y": 1, "alive": true}, {"id": 3, "x": 1, "y": 3, "alive": true}]], "expect": 4 }
+      ]
+    },
+    {
+      "name": "loot",
+      "spec": "loot(table, r) -> string. table is a list of {name, weight} with weight >= 0; r is uniform in [0, 1). Pick by cumulative weight: the first entry where r * total_weight < running_sum. Entries with weight 0 are never picked. Return \"\" if the total weight is 0.",
+      "cases": [
+        { "args": [[{"name": "a", "weight": 1}, {"name": "b", "weight": 3}], 0.0], "expect": "a" },
+        { "args": [[{"name": "a", "weight": 1}, {"name": "b", "weight": 3}], 0.25], "expect": "b" },
+        { "args": [[{"name": "a", "weight": 0}, {"name": "b", "weight": 2}], 0.0], "expect": "b" },
+        { "args": [[{"name": "a", "weight": 0}], 0.5], "expect": "" }
+      ]
+    },
+    {
+      "name": "path_len",
+      "spec": "path_len(grid) -> number. grid is a list of equal-length strings; 'S' start, 'G' goal, '#' wall, '.' floor. Moves are 4-directional. Return the number of moves on the shortest path, or -1 if the goal cannot be reached.",
+      "cases": [
+        { "args": [["S.#", "..#", "#.G"]], "expect": 4 },
+        { "args": [["S#G"]], "expect": -1 },
+        { "args": [["SG"]], "expect": 1 }
+      ]
+    },
+    {
+      "name": "score_text",
+      "spec": "score_text(score, combo) -> string. Format as \"Score: \" + score zero-padded to 5 digits; if combo > 1 append \" x\" + combo. Scores above 99999 are shown as 99999. score and combo are non-negative integers.",
+      "cases": [
+        { "args": [1234, 1], "expect": "Score: 01234" },
+        { "args": [42, 3], "expect": "Score: 00042 x3" },
+        { "args": [123456, 2], "expect": "Score: 99999 x2" }
+      ]
+    },
+    {
+      "name": "top_scores",
+      "spec": "top_scores(entries, n) -> list of names. entries is a list of {name, score}. Sort by score descending, then name ascending (plain byte order), and return the first n names (fewer if there are fewer entries). Do not modify the input list.",
+      "cases": [
+        { "args": [[{"name": "cy", "score": 5}, {"name": "al", "score": 9}, {"name": "bo", "score": 5}], 2], "expect": ["al", "bo"] },
+        { "args": [[{"name": "zed", "score": 1}], 3], "expect": ["zed"] },
+        { "args": [[], 1], "expect": [] }
+      ]
+    },
+    {
+      "name": "parse_config",
+      "spec": "parse_config(text) -> object. text is \"key=value\" pairs separated by ';'. Trim spaces around keys and values. Values that are valid decimal numbers (like 3, -2.5, 0.25) become numbers, \"true\"/\"false\" become booleans, anything else stays a string. Skip empty segments and segments without '='. Later keys override earlier ones.",
+      "cases": [
+        { "args": ["speed = 3.5; name=hero ;god=false"], "expect": {"speed": 3.5, "name": "hero", "god": false} },
+        { "args": [";;a=1;bad;a=-2"], "expect": {"a": -2} },
+        { "args": ["x=1e3x; y = 0.25"], "expect": {"x": "1e3x", "y": 0.25} }
+      ]
+    }
+  ]
+}
