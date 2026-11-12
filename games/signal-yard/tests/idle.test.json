@@ -1,0 +1,15 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 600,
+  "assertions": [
+    { "event": { "kind": "wave", "at_least": 1, "at_most": 1 } },
+    { "event": { "kind": "hurt", "at_least": 5, "at_most": 5 } },
+    { "event": { "kind": "lost" } },
+    { "event": { "kind": "shot", "at_most": 0 } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "lost" } },
+    { "field": { "entity": 30, "path": "ScriptState.data.hp", "op": "eq", "value": 0 } },
+    { "state_hash": "6255abb4e6702e7333aba722e1c7fc17f33dc44173d59c820554e8f05887ef84" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "drone",
+  "output": "model",
+  "from": "drone_ref",
+  "model": {
+    "height_m": 0.6,
+    "max_triangles": 12000
+  }
+}

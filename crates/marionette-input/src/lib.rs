@@ -16,7 +16,9 @@
 //! ```
 //! An action's value is the sum of `device value * scale` over its bindings, clamped to -1..1.
 //! Input names: `key:<KeyCode>` (winit names such as `KeyW`, `Space`, `ArrowLeft`),
-//! `mouse:Left|Right|Middle`, `pad:<Button>`, `axis:<Axis>`.
+//! `mouse:Left|Right|Middle`, `pad:<Button>`, `axis:<Axis>`. The window feeds mouse movement as
+//! `axis:MouseX` (right +) and `axis:MouseY` (down +): pixels moved / 100, clamped to -1..1,
+//! for the one tick after the movement, then 0 (scripted tests use the same two axes).
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

@@ -1,0 +1,17 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 2220,
+  "input": "tests/play.inputs.json",
+  "assertions": [
+    { "event": { "kind": "wave", "at_least": 5, "at_most": 5 } },
+    { "event": { "kind": "won" } },
+    { "event": { "kind": "kill", "at_least": 15 } },
+    { "event": { "kind": "shot", "at_least": 30 } },
+    { "event": { "kind": "crystal_hit", "at_most": 6 } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
+    { "count": { "with": ["CharacterInput"], "equals": 1 } },
+    { "state_hash": "ba5e30583c75c99d7f71b2d138d4fb2307733df717dc108e1146e1a88580f0b4" }
+  ]
+}

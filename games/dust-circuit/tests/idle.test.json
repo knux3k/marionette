@@ -1,0 +1,15 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 2000,
+  "assertions": [
+    { "event": { "kind": "go" } },
+    { "event": { "kind": "lost" } },
+    { "event": { "kind": "won", "at_most": 0 } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "lost" } },
+    { "field": { "entity": 31, "path": "ScriptState.data.laps", "op": "eq", "value": 3 } },
+    { "field": { "entity": 30, "path": "ScriptState.data.passed", "op": "eq", "value": 0 } },
+    { "state_hash": "3b50b703ac5a8acf105f9f4f992ccc09b95701682ca6817371ac05265dd1b131" }
+  ]
+}

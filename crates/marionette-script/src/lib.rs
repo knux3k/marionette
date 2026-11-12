@@ -74,6 +74,15 @@ pub struct ScriptTimers {
     pub data: String,
 }
 
+/// Messages waiting for an entity's script (`engine.send`), as JSON text: a list of
+/// `{from, kind, detail}`. Written by the engine; delivered to `onMessage` at the start of the
+/// entity's next turn (the same tick if it has not run yet). Part of the state hash and of
+/// snapshots.
+#[derive(Component, Reflect, Debug, Clone, PartialEq)]
+pub struct ScriptInbox {
+    pub data: String,
+}
+
 /// Marks an entity for removal: at the end of the script stage of tick `tick` (or the first
 /// later one), the entity's script gets `onDestroy`, then the entity is removed.
 /// `engine.destroy` adds it; scene files may use it for a fixed lifetime.
@@ -121,6 +130,7 @@ impl Module for ScriptModule {
         r.register_component::<Script>();
         r.register_component::<ScriptState>();
         r.register_component::<ScriptTimers>();
+        r.register_component::<ScriptInbox>();
         r.register_component::<DestroyAt>();
         r.register_resource::<SpawnIds>();
     }
@@ -794,7 +804,7 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
 }
 
 /// Components a clone does not copy from its source.
-const NOT_CLONED: [&str; 3] = ["ScriptState", "ScriptTimers", "DestroyAt"];
+const NOT_CLONED: [&str; 4] = ["ScriptState", "ScriptTimers", "ScriptInbox", "DestroyAt"];
 
 /// The next unused scene id; ids are never reused (see [`SpawnIds`]).
 fn next_id(world: &mut World, ids: &BTreeMap<u64, Entity>) -> u64 {

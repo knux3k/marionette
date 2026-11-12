@@ -1,0 +1,7 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "ghost",
+  "output": "image",
+  "prompt": "a soft pale blue drifting ghost wisp, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "notes": "Sprite: key out the magenta background when it is wired in."
+}

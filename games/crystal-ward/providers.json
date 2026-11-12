@@ -1,0 +1,9 @@
+{
+  "format": "marionette.providers/1",
+  "image": {
+    "provider": "qwen"
+  },
+  "model3d": {
+    "provider": "tripo"
+  }
+}

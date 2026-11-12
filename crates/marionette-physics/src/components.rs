@@ -52,6 +52,13 @@ pub enum ColliderShape {
     Cuboid {
         half_extents: Vec3,
     },
+    /// Box with rounded edges: the same outer half sizes as `Cuboid`, with edges and corners
+    /// rounded by `border` metres (after scale). Character controllers slide over flat ground
+    /// with it where a sharp `Cuboid` snags; use it for box-shaped characters such as cars.
+    RoundCuboid {
+        half_extents: Vec3,
+        border: f32,
+    },
     Ball {
         radius: f32,
     },
