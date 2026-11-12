@@ -421,6 +421,9 @@ pub enum MetalLayout {
     MetallicSmoothness,
     /// HDRP mask map: R metallic, G occlusion, A smoothness.
     HdrpMask,
+    /// Already the glTF packing: R occlusion, G roughness, B metallic (Unreal ORM textures).
+    /// Used as it is, never converted.
+    Gltf,
 }
 
 /// A Unity material mapped to glTF-style metallic-roughness PBR. Texture fields hold Unity
