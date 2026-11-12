@@ -6,7 +6,7 @@ Date: 2026-11-12. Status: accepted.
 
 The project owner wants Unity (C# MonoBehaviour) and Unreal (C++ and Blueprint) gameplay code to
 convert into Marionette as easily as possible. Asset import already exists (decision 0018);
-this record is about code. Scripts are TypeScript (decision 0019): an ES module named by a
+this record is about code. Scripts are TypeScript (decision 0022): an ES module named by a
 `Script { path }` component, hooks `start`, `update`, `onCollisionEnter`, `onCollisionExit`
 taking `self: Entity`, and `engine.*` globals.
 
@@ -54,11 +54,11 @@ taking `self: Entity`, and `engine.*` globals.
   convert differently there.
 - **Influence on the scripting choice.** Porting ease was sent to the scripting spike: C# and
   C++ classes, static types, enums, generics and camelCase methods map onto TypeScript far more
-  directly than onto Luau. TypeScript was chosen there (decision 0019) also for determinism.
+  directly than onto Luau. TypeScript was chosen there (decision 0022) also for determinism.
 
 ## Consequences
 
-- Entries marked `script` depend on the script runtime (decision 0019). When it gains spawning,
+- Entries marked `script` depend on the script runtime (decision 0022). When it gains spawning,
   despawn and `onDestroy`, trigger hooks, timers or raycasts, flip the matching `gap`/`rewrite`
   entries and regenerate the reference.
 - The scanner reads structure, not semantics: macros that hide declarations, partial classes

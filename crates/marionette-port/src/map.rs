@@ -30,7 +30,7 @@ impl Engine {
 pub enum Status {
     /// Exists now as a component, an action map entry, a file or an operation. Port as data.
     Ready,
-    /// Exists in the TypeScript script API (`marionette-script`, decision 0019): a direct
+    /// Exists in the TypeScript script API (`marionette-script`, decision 0022): a direct
     /// call or hook with the same meaning.
     Script,
     /// Possible today, but the code must take a different shape (for example a coroutine

@@ -3,7 +3,7 @@
 Recipe for an agent asked to bring a Unity (C#) or Unreal (C++ or Blueprint) game, or part of
 one, into Marionette. The design is decision 0020; the concept tables are
 [reference/porting-map.md](reference/porting-map.md) (generated from
-`crates/marionette-port/data/`). Scripts are TypeScript (decision 0019): an ES module named by a
+`crates/marionette-port/data/`). Scripts are TypeScript (decision 0022): an ES module named by a
 `Script { path }` component, exporting hooks that take `self: Entity`.
 
 ## The model in one paragraph

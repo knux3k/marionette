@@ -1,6 +1,6 @@
 # Scripting spike (plan line 4)
 
-The measurement harness behind decision 0019 (`docs/decisions/0019-scripting-language.md`).
+The measurement harness behind decision 0022 (`docs/decisions/0022-scripting-language.md`).
 The same game script in Luau (`src/luau.rs`, mlua) and TypeScript (`src/ts.rs`, oxc type
 stripping + QuickJS-ng through rquickjs), measured the same way. Not a workspace member, so CI
 does not build it; results are in the decision record.

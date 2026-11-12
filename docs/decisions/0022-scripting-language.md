@@ -1,4 +1,4 @@
-# 0019: Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau)
+# 0022: Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau)
 
 Date: 2026-11-12. Status: accepted.
 

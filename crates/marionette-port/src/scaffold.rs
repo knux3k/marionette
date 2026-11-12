@@ -1,6 +1,6 @@
 //! TypeScript script skeletons for ported classes (decision 0020).
 //!
-//! One `.ts` file per gameplay class, written for the script API of decision 0019: exported
+//! One `.ts` file per gameplay class, written for the script API of decision 0022: exported
 //! `start`, `update`, `onCollisionEnter` and `onCollisionExit` hooks taking `self: Entity`.
 //! Fields become `self.state` entries with their defaults. Every original method body is
 //! kept as comments inside the hook it belongs to, and each line that uses an engine API is

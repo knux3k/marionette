@@ -1,4 +1,4 @@
-//! Marionette game scripts (plan line 4, decision 0019).
+//! Marionette game scripts (plan line 4, decision 0022).
 //!
 //! Game logic is TypeScript. An entity with a [`Script`] component names a `.ts` file
 //! (relative to the scene). The file is an ES module that exports

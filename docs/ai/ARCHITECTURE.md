@@ -28,7 +28,7 @@ marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipelin
    events, updates `DeviceState`, recomputes `ActionState` from the action map, records changes.
 2. `Stage::Script`: `run_scripts` (`crates/marionette-script/src/lib.rs`): for each entity
    with a `Script`, in id order, the module's hooks (`start` once, contact hooks for last
-   tick's collisions, due timers, `update`). Decision 0019. Then entities whose `DestroyAt`
+   tick's collisions, due timers, `update`). Decision 0022. Then entities whose `DestroyAt`
    tick has come get `onDestroy` and are removed (id order), and scripts first used by
    entities spawned this tick are loaded. Decision 0021.
 3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
@@ -102,7 +102,7 @@ Forbidden in simulation code (systems and anything they call):
   entity's `Collider` needs (decision 0021).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
-math, `**` rewritten to `Math.pow` (decision 0019).
+math, `**` rewritten to `Math.pow` (decision 0022).
 
 Rapier runs with `enhanced-determinism`. Test: same scene, seed, ticks and input give the same
 hash (`crates/marionette-core/tests/acceptance.rs`, `crates/marionette-cli/tests/agent_e2e.rs`).

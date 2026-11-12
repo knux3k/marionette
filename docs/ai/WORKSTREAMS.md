@@ -93,7 +93,7 @@ and audio are not covered and are listed as later work in STATE.md.
 
 ## W7: scripting spike (line 4)
 
-Status: done (decision 0019): TypeScript on QuickJS-ng, crate `crates/marionette-script`.
+Status: done (decision 0022): TypeScript on QuickJS-ng, crate `crates/marionette-script`.
 Follow-ups listed under line 4 in STATE.md.
 
 - Scope: one-week spike, TypeScript against Luau, measured on startup, call cost and reload

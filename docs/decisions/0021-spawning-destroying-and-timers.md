@@ -1,6 +1,6 @@
 # 0021: Scripts spawn and destroy entities and set timers; all of it is saved state
 
-Date: 2026-11-12. Status: accepted. Extends decision 0019 (script API) and closes the
+Date: 2026-11-12. Status: accepted. Extends decision 0022 (script API) and closes the
 spawning, `OnDestroy` and timer gaps that decision 0020 (porting) listed.
 
 ## Decision
