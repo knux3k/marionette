@@ -43,3 +43,5 @@ Date: 2026-11-12. Status: accepted.
   event; a scripted scene grew 48 MiB in one hour of game time). Bounding it belongs to the
   memory work; until then the nightly soak reports it.
 - Windows has no memory check until a counting allocator probe is installed.
+- VR is covered by rendering both eyes of an emulated headset (`views: 2`); a real OpenXR
+  runtime is not.

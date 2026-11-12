@@ -26,5 +26,9 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0020 | Porting Unity and Unreal code: scan, concept tables, TypeScript skeletons, coordinate conversion | accepted |
 | 0021 | Scripts spawn, clone and destroy entities (`onDestroy`) and set timers; all saved as state | accepted |
 | 0022 | Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau) | accepted |
+| 0023 | Performance budgets, checked by tests | accepted |
+| 0024 | Deterministic data-parallel jobs | accepted |
+| 0025 | Instanced, multi-view renderer and bulk draws | accepted |
+| 0026 | Factory simulation module | accepted |
 | 0027 | FBX to glTF conversion inside the importer | accepted |
 | 0031 | Stability suite per game mode: seeded soak runs, crash reports, every scene registered | accepted |

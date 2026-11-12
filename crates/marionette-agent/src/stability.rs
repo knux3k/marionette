@@ -158,7 +158,7 @@ pub struct Mode {
     /// Skip the snapshot check (restore the mid-run snapshot, run on, same hash).
     #[serde(default)]
     pub no_snapshot: bool,
-    /// Operations to run first (through the caller's agent, so read-only refuses them).
+    /// Operations to run first (with the caller's read-only setting, so read-only refuses them).
     #[serde(default)]
     pub setup: Vec<SetupOp>,
 }
@@ -521,8 +521,12 @@ fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
             .clone()
             .filter(|i| i.mode.as_ref().is_none_or(|m| m == &mode.name));
         let mut setup_error = None;
+        // The caller's operation table is checked out while this operation runs, so setup
+        // goes through a second agent on the same project with the same read-only setting.
+        let mut setup_agent = (!mode.setup.is_empty()).then(|| Agent::new(agent.root(), agent.read_only()));
         for s in &mode.setup {
-            if let Err(e) = agent.call(&s.op, s.input.clone()) {
+            let helper = setup_agent.as_mut().expect("created when there is setup");
+            if let Err(e) = helper.call(&s.op, s.input.clone()) {
                 setup_error = Some(format!("setup operation `{}` failed: {e}", s.op));
                 break;
             }
@@ -935,14 +939,6 @@ fn work_sim(job: &Job, progress: &Progress, out: &Mutex<ModeResult>) -> Result<(
         }
     }
     let views = job.mode.views.unwrap_or(1);
-    if views != 1 {
-        return Err(Diagnostic::error(
-            errors::SUITE,
-            "views 2 (emulated headset) needs the stereo renderer (`Offscreen::render_eyes`)",
-        )
-        .fix("use views 1 until the stereo renderer is on this branch")
-        .into());
-    }
     let mut meter = Meter::new(job.ticks);
     let sample_every = (job.ticks / 50).max(1);
     let half = job.ticks / 2;
@@ -954,7 +950,12 @@ fn work_sim(job: &Job, progress: &Progress, out: &Mutex<ModeResult>) -> Result<(
         meter.ticks.push(start.elapsed().as_secs_f64() * 1000.0);
         if let Some((gpu, off)) = render.as_mut() {
             let frame = marionette_render::extract(&sim.world);
-            off.render(gpu, &frame, None)?;
+            if views == 2 {
+                // Both eyes of an emulated headset, 64 mm apart (decision 0025).
+                off.render_eyes(gpu, &frame, None, 2, 0.064)?;
+            } else {
+                off.render(gpu, &frame, None)?;
+            }
             meter.frames.push(start.elapsed().as_secs_f64() * 1000.0);
         }
         if t + 1 == half && !job.mode.no_snapshot {

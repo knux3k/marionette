@@ -11,6 +11,8 @@
 | `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
 | `crates/marionette-audio` | Sound triggers, headless sound log, kira player | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
+| `crates/marionette-jobs` | Deterministic data-parallel jobs (`Jobs` resource over rayon) | bevy_ecs, rayon | any other marionette crate |
+| `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend cap and ledger | core, assets, sha2, schemars | render, input, physics, audio, any HTTP client (decision 0019) |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
@@ -79,13 +81,15 @@ tick and RNG). File edits never touch sessions; session edits never touch files;
 
 `crates/marionette-render/src/renderer.rs`, one render pass per view:
 
-1. PBR models. Bind groups: 0 view (view-projection, eye), 1 lights, 2 material textures,
-   3 per-draw uniform (model and normal matrix, material factors) at dynamic offsets.
+1. PBR models, instanced: one draw call per (asset, part, material override) group, per-instance
+   model matrix and material factors in a vertex buffer, normal matrix computed in the shader.
+   Bind groups: 0 view (dynamic offset, one slot per view), 1 lights, 2 material textures.
+   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025).
 2. Sprites, same view, alpha blended, depth-tested without depth writes.
 3. UI in screen pixels (separate view buffer), no depth test.
 
-A `View` is a value passed to `Renderer::render`, not renderer state, so stereo (OpenXR) can
-render two views without a rewrite. `extract(&World)` (`extract.rs`) copies what to draw, so
+`Renderer::render_views` takes several views (eyes) and prepares instances once for all of
+them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so
 rendering cannot change simulation state. Offscreen capture: `gpu.rs`; window: `window.rs`.
 
 ## Determinism
@@ -93,7 +97,8 @@ rendering cannot change simulation state. Offscreen capture: `gpu.rs`; window: `
 Forbidden in simulation code (systems and anything they call):
 - wall-clock time (`Instant`, `SystemTime`);
 - iterating `HashMap` / `HashSet` (use `BTreeMap` / `BTreeSet`, or sort);
-- multithreaded execution or thread timing;
+- multithreaded execution or thread timing, except through `marionette-jobs` following its
+  rules (decision 0024);
 - relying on ECS query order where order matters (sort by `SceneId`);
 - `sin`, `cos`, `powf`, `exp`, `atan2` and other platform math in per-tick code (plain
   `+ - * /` and `sqrt` are fine; physics 2D converts angles with `atan2` only at load);

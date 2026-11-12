@@ -35,15 +35,18 @@ scripted file. The generator is separate from the simulation RNG.
 | `render` | one tick plus one offscreen frame per step: the windowed game loop without the window; skipped without a GPU unless `MARIONETTE_REQUIRE_GPU=1` |
 | `agent` | a live session driven through the operation table (step with input, query, stats, events, create and delete entities, snapshot, restore), as the CLI and MCP server run it |
 
-`views: 2` (both eyes of an emulated headset) needs the stereo renderer; until it is on `main`
-the suite refuses it with a diagnostic.
+`views: 2` renders both eyes of an emulated headset every frame (`Offscreen::render_eyes`, 64 mm
+apart, decision 0025). A mode with `setup` runs operations first, for example
+`perf_factory_scene` to generate a factory scene under `target/stability/`.
 
 ## Current suite (`stability/suite.json`)
 
-core-headless, physics-3d, physics-2d, scripted (TypeScript), scripted-spawning, render-3d, render-3d-play,
-render-2d, render-2d-play, render-ui, agent-session. Fast length: 120 to 1,000 ticks each, about
-4 s in a debug build for all ten. Long length: 1 hour of game time per sim mode (216,000 ticks;
-drift 1,000,000), 15 minutes per render mode (54,000 frames), 30 minutes of agent session.
+core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d, render-3d-play,
+render-2d, render-2d-play, render-ui, vr-headset (stereo), factory-sim (4x stress factory on the
+job system), factory-vr (factory in stereo), agent-session. Fast length: 120 to 1,000 ticks
+each, a few seconds in a debug build for all fourteen. Long length: 1 hour of game time per sim
+mode (216,000 ticks; drift 1,000,000), 15 minutes per render mode (54,000 frames), 30 minutes
+of agent session.
 
 ## Commands
 
@@ -97,5 +100,3 @@ caught. Never use it in the suite file.
   windows on a user's screen needs the owner's approval).
 - Memory on Windows: the default probe reads `/proc/self/statm`. A binary can install another
   with `marionette_agent::stability::set_memory_probe` (a counting allocator).
-- Stereo rendering (`views: 2`) and the factory benchmark scenes, until the performance work is
-  on `main`.

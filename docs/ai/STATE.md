@@ -95,10 +95,11 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
 Stability suite (decision 0031, `docs/ai/STABILITY.md`):
-- `cargo run --release -q -p marionette-cli -- stability` passes all eleven modes (core-headless,
-  physics-3d, physics-2d, scripted, render-3d, render-3d-play, render-2d, render-2d-play,
-  render-ui, agent-session); `--long --seeds 1` passes all ten in about 36 s with the old long
-  lengths (Linux container, lavapipe, release).
+- `cargo run --release -q -p marionette-cli -- stability` passes all fourteen modes
+  (core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d,
+  render-3d-play, render-2d, render-2d-play, render-ui, vr-headset, factory-sim, factory-vr,
+  agent-session); `--long --seeds 1` passed for every mode (Linux container, lavapipe, release;
+  factory-vr frame p99 12.4 ms at 256x256 per eye on the software GPU, under the CI scale).
 - Tests: `crates/marionette-cli/tests/stability.rs` (`fast_suite_passes_for_every_mode`,
   `drift_mode_reaches_the_pinned_drift_hash`, `injected_panic_is_reported_with_tick_and_backtrace`,
   `injected_hang_is_detected`, `nondeterminism_is_caught_and_the_crash_report_replays`,
@@ -165,11 +166,13 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `fbx_7500_from_a_second_writer_matches_blenders_reading`,
   `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
   `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `blend_shapes_become_morph_targets_and_match_blender`,
   `unity_project_fbx_is_converted_with_its_texture`,
   `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
   conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
+  false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
+  (decision 0027); skinning in
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
@@ -192,6 +195,14 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - Next: map trigger hooks and raycasts when the porting tables are revisited; Unity prefab and
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
+
+## Performance (workstream WP)
+
+Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
+draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
+`cargo test -p marionette-factory`; timing budgets in release:
+`cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
+Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
 ## UNVERIFIED
 
@@ -226,16 +237,15 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
-- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
-  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
-  those engines, not checked against their current documentation.
+- Performance on a real desktop GPU and headset: all timings come from a Linux container with
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
 - Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
-  runs have no memory check (resident size is read on Linux only); the long lengths were raised
-  after the local run (1 hour of game time per sim mode) and have only been run for `scripted`.
+  runs have no memory check (resident size is read on Linux only) until the counting allocator
+  from the memory work is installed as the probe.
 
 ## Session log
 
@@ -252,7 +262,9 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 | 2026-11-12 | W2 follow-up: read-only check against real Unity files; textures typed by content, not extension. | this commit |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
-| 2026-11-12 | Stability suite (decision 0031): `stability_run` operation, `marionette stability`, `stability/suite.json` with eleven modes, crash reports, rule and test that every scene has a mode, CI job and nightly soak, `docs/ai/STABILITY.md`. Drift hash unchanged. | branch `claude/project-thread-wqvnyq` |
+| 2026-11-12 | Stability suite (decision 0031): `stability_run` operation, `marionette stability`, `stability/suite.json` with fourteen modes (including VR headset and factory), crash reports, rule and test that every scene has a mode, CI job and nightly soak, `docs/ai/STABILITY.md`. Drift hash unchanged. | branch `claude/project-thread-wqvnyq` |
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |

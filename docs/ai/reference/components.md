@@ -113,6 +113,30 @@ Rust type: `marionette_core::spatial::DirectionalLight`.
 | `direction` | object {x, y, z} | yes |  |
 | `illuminance` | number | yes | Brightness multiplier (1.0 = a bright, unclipped sun on a white surface). |
 
+### `FactoryBelt`
+
+A belt from one machine's output to another machine's input.
+
+Rust type: `marionette_factory::FactoryBelt`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+| `slots` | integer | yes | Number of item slots (one item each); at least 1. |
+| `step_milliticks` | integer | yes | Thousandths of a tick an item waits in a slot before it may hop to the next (1000 = one slot per tick, the fastest a belt can run). |
+| `to` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+
+### `FactoryMachine`
+
+A machine running one recipe. Its position (for belts and drawing) is its `Transform`.
+
+Rust type: `marionette_factory::FactoryMachine`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `buffer` | integer | yes | Most items held per input, and in the output. |
+| `recipe` | string | yes | Recipe id from `FactoryRecipes`. |
+
 ### `Follow`
 
 Accelerates toward `target` with acceleration `gain * offset`.
@@ -352,6 +376,33 @@ Rust type: `marionette_core::spatial::AmbientLight`.
 | --- | --- | --- | --- |
 | `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
 | `intensity` | number | yes |  |
+
+### `FactoryRecipes`
+
+Every recipe and item look of the scene.
+
+Rust type: `marionette_factory::FactoryRecipes`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `looks` | array of object {color, item, model, scale} | yes | Optional looks; items without one are small grey cubes. |
+| `recipes` | array of object {id, inputs, output, ticks} | yes |  |
+
+### `FactoryState`
+
+The compiled factory: flat arrays stepped every tick. Saved in the scene and hashed.
+
+Rust type: `marionette_factory::FactoryState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `belts` | array of object {entity, first, from, len, step, to} | yes | Belts in scene-id order; their slots are consecutive in `slots`. |
+| `delivered` | integer | yes | Items delivered from belts into machines, ever. |
+| `layout` | integer | yes | Fingerprint of the authoring data these arrays were built from. A scene whose machines, belts or recipes changed gets fresh arrays at load. |
+| `machines` | array of object {buffer, entity, have, output, progress, recipe, running} | yes | Machines in scene-id order. |
+| `made` | integer | yes | Items finished by machines, ever. |
+| `now` | integer | yes | Ticks the factory has run. |
+| `slots` | array of object {arrived, item} | yes |  |
 
 ### `FixedStep`
 
