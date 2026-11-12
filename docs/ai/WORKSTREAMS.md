@@ -17,7 +17,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | now | W1, W2, W3, W7 |
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
-| W7 | Scripting spike, TypeScript vs Luau (line 4) | deferred until disk space allows a V8 build | any |
+| W7 | Scripting spike, TypeScript vs Luau (line 4) | now | any |
 | W8 | Six proof scenes (line 9) | after W1 (assets from W3/W4 help) | W6, W7 |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
@@ -84,10 +84,11 @@ UNVERIFIED list in STATE.md.
 - Scope: import from the Unreal Editor's glTF/FBX exports with the same license rules as W2.
 - Acceptance: as W2, for an Unreal export.
 
-## W7: scripting spike (line 4, deferred)
+## W7: scripting spike (line 4)
 
 - Scope: one-week spike, TypeScript against Luau, measured on startup, call cost and reload
   time; the winner gets typed bindings generated from the schema.
+- Owns: a new crate marionette-script and its tests; a spike report as a decision record.
 - Acceptance: the numbers, and a script change shows in a running session in under 1 second.
 
 ## W8: six proof scenes (line 9)

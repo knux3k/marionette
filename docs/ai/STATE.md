@@ -10,7 +10,7 @@ refer to `docs/DESIGN.md`.
 | 1 | Workspace, CI | Done locally. CI file exists, never run (no remote). |
 | 2 | Core | Done. |
 | 3 | Renderer | Done. |
-| 4 | Scripting spike (TypeScript vs Luau) | Deferred (V8 build size). Not started. |
+| 4 | Scripting spike (TypeScript vs Luau) | Ready to start (workstream W7). Not started. |
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | In progress (see below). |
 | 7 | Providers | Not started. |
@@ -100,8 +100,6 @@ Remaining (in this order):
   tests are line 6 remaining work.
 - Live gamepad input (format supported, no backend).
 - Cost of `enhanced-determinism`.
-- History content: older commits still hold earlier versions of a few files with identifying
-  details (decision 0016, known gap).
 
 ## Session log
 
@@ -111,4 +109,5 @@ Remaining (in this order):
 | 2026-11-11 | Line 3: renderer, offscreen capture, examples, reference images, decisions 0004 to 0007. | `4513604`..`7f793b8` |
 | 2026-11-11 | Line 5: agent operations, MCP server, e2e tests, decisions 0008 to 0010. | `699d177`..`a9ce4fe` |
 | 2026-11-11 | DESIGN asset importer; line 6 partial: modules, input, physics, audio, UI, ops. | `14e592d`..`a3c83b0` |
-| 2026-11-11 | Scrub of identifying details, neutral commit identity (history rewritten), hygiene test, `docs/ai/`, `marionette docs`, decisions 0011 to 0016. | `3d2b5d3`..HEAD |
+| 2026-11-11 | Scrub of identifying details, neutral commit identity, hygiene test, `docs/ai/`, `marionette docs`, decisions 0011 to 0016. | up to the commit adding `docs/ai/` |
+| 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |

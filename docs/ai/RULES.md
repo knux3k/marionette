@@ -18,7 +18,8 @@
    assets repository", generic hardware classes, and repo-relative paths. The check is
    `crates/marionette-cli/tests/repo_hygiene.rs` with `docs/ai/forbidden-patterns.txt`.
 9. Commits use the identity `Marionette Contributors` (repository-local git config). Small
-   commits with clear messages.
+   commits with clear messages. Credit AI authorship with a plain `Co-Authored-By: Claude`
+   trailer: no email address, no session or chat links.
 10. Determinism rules (ARCHITECTURE.md) are not optional: a change that alters an existing
     state hash or reference image must say so in its commit and in STATE.md, with the reason.
 11. Errors are data: stable codes, never change what an existing code means.

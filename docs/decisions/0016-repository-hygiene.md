@@ -11,7 +11,8 @@ Date: 2026-11-11. Status: accepted (permanent rule).
 - Performance numbers may name a generic hardware class and settings (for example "desktop GPU
   of the RTX 2080 class, 1920x1080, 4x MSAA").
 - Commits use the identity `Marionette Contributors` with the address `noreply` at
-  `marionette.invalid`; the existing history was rewritten to it.
+  `marionette.invalid`; the existing history was rewritten to it. An AI co-author is recorded
+  with a plain `Co-Authored-By: Claude` trailer, without an address or links.
 - `crates/marionette-cli/tests/repo_hygiene.rs` fails on generic patterns from
   `docs/ai/forbidden-patterns.txt` (absolute user paths, private links) and on email addresses.
 
@@ -20,8 +21,7 @@ Date: 2026-11-11. Status: accepted (permanent rule).
 The repository will be public. Generic patterns catch the common leaks without the pattern file
 itself listing anyone's details.
 
-## Known gap
+## History
 
-Older commits still contain earlier versions of a few files with such details: the identity was
-rewritten, but file contents in history were not. Removing them needs a content rewrite of the
-history, which needs the owner's approval before the first push.
+Before first publication, the whole history was rewritten (with the owner's approval) so that no
+commit's files or message contain such details; the final tree was unchanged by the rewrite.
