@@ -25,9 +25,13 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
    ```
 
    Fields: `name` (lowercase, digits, `_`, `-`), `output` (`image`, `texture`, `model`),
-   `prompt`, `size` (image and texture), `texture` {`resize`, `tileable`}, `from` (model: an
-   image or texture recipe), `model` {`height_m`, `max_triangles`}, `provider` {`provider`,
-   `model`} to pin one, `notes`.
+   `prompt`, `size` (image and texture), `texture` {`resize`, `tileable`, `remove_background`},
+   `from` (model: an image or texture recipe), `model` {`height_m`, `max_triangles`},
+   `provider` {`provider`, `model`} to pin one, `notes`. `remove_background` makes a flat
+   background transparent after the resize: the key is the mean of the four corner pixels,
+   colours near it fade out, and a band along the cut loses the key's tint (ask the model for
+   a flat magenta background, which subjects rarely use). Post-processing is not part of the
+   cache key, so changing these options rebuilds offline for free.
 2. `generate_plan` (or `marionette generate plan`): per step `up_to_date`, `cached`, `call`,
    `waits_for_image` or `blocked` with the reason; estimates and caps.
 3. `generate_run` (`marionette generate run [names] [--offline]`): writes `<name>.png|.glb`

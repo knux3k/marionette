@@ -34,7 +34,8 @@ pub const MAX_HEIGHT_M: f64 = 1000.0;
 pub enum OutputKind {
     /// A PNG as generated (concept art, a reference image for a model, a sprite).
     Image,
-    /// A PNG texture for materials: optionally resized and made tileable.
+    /// A PNG texture for materials or sprites: optionally resized, made tileable or given a
+    /// transparent background.
     Texture,
     /// A GLB model: from a prompt, from an approved image recipe (`from`), or both.
     Model,
@@ -75,6 +76,11 @@ pub struct TextureOptions {
     /// Blend the edges so the texture repeats without seams.
     #[serde(default, skip_serializing_if = "is_false")]
     pub tileable: bool,
+    /// Make the flat background transparent (a sprite generated on one plain colour): the
+    /// colour is read from the four corners, pixels near it become transparent with a soft
+    /// edge, and the background tint is taken out of the edge pixels. Runs after `resize`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub remove_background: bool,
 }
 
 /// Model post-processing.
