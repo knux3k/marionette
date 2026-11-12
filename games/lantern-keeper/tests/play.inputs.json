@@ -1,0 +1,28 @@
+{
+  "format": "marionette.input-events",
+  "version": 1,
+  "events": [
+    {"tick":0,"input":"key:KeyD","value":1},
+    {"tick":24,"input":"key:KeyD","value":0},
+    {"tick":24,"input":"key:KeyS","value":1},
+    {"tick":40,"input":"key:KeyS","value":0},
+    {"tick":40,"input":"key:KeyA","value":1},
+    {"tick":48,"input":"key:KeyA","value":0},
+    {"tick":48,"input":"key:KeyS","value":1},
+    {"tick":80,"input":"key:KeyS","value":0},
+    {"tick":80,"input":"key:KeyA","value":1},
+    {"tick":96,"input":"key:KeyA","value":0},
+    {"tick":96,"input":"key:KeyS","value":1},
+    {"tick":112,"input":"key:KeyS","value":0},
+    {"tick":112,"input":"key:KeyD","value":1},
+    {"tick":192,"input":"key:KeyD","value":0},
+    {"tick":192,"input":"key:KeyW","value":1},
+    {"tick":224,"input":"key:KeyW","value":0},
+    {"tick":224,"input":"key:KeyD","value":1},
+    {"tick":256,"input":"key:KeyD","value":0},
+    {"tick":256,"input":"key:KeyW","value":1},
+    {"tick":288,"input":"key:KeyW","value":0},
+    {"tick":288,"input":"key:KeyS","value":1},
+    {"tick":352,"input":"key:KeyS","value":0}
+  ]
+}

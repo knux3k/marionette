@@ -57,13 +57,18 @@ pub enum Assertion {
     },
     /// The exact state hash after `ticks`.
     StateHash(String),
-    /// An engine event happened (`kind` such as `sound`, `jump`, `collision_started`),
-    /// optionally at `tick`, for `entity`, and for sounds with this `sound`.
+    /// An engine event happened (`kind` such as `sound`, `jump`, `collision_started`, or a
+    /// script's `engine.emit` kind), optionally at `tick`, for `entity`, and for sounds with
+    /// this `sound`; `at_least` / `at_most` bound how many times.
     Event {
         kind: String,
         tick: Option<u64>,
         entity: Option<u64>,
         sound: Option<String>,
+        /// At least this many matching events (default 1, or 0 when `at_most` is given).
+        at_least: Option<usize>,
+        /// At most this many matching events (`0`: it never happened).
+        at_most: Option<usize>,
     },
 }
 
@@ -227,8 +232,8 @@ fn run_one(agent: &mut Agent, s: &Scenario) -> Result<Outcome, Errors> {
                     .iter()
                     .find(|e| e.id == *entity)
                     .and_then(|e| lookup(&e.components, path));
-                let ok = holds(actual, *op, value);
-                let shown = actual.map_or("missing".to_string(), Value::to_string);
+                let ok = holds(actual.as_ref(), *op, value);
+                let shown = actual.as_ref().map_or("missing".to_string(), Value::to_string);
                 (
                     ok,
                     format!("entity {entity} {path} = {shown}; expected {op:?} {value}"),
@@ -247,6 +252,8 @@ fn run_one(agent: &mut Agent, s: &Scenario) -> Result<Outcome, Errors> {
                 tick,
                 entity,
                 sound,
+                at_least,
+                at_most,
             } => {
                 let n = sim
                     .events()
@@ -257,7 +264,13 @@ fn run_one(agent: &mut Agent, s: &Scenario) -> Result<Outcome, Errors> {
                     .filter(|e| entity.is_none_or(|id| e.entity == Some(id)))
                     .filter(|e| sound.as_ref().is_none_or(|s| e.detail["sound"] == s.as_str()))
                     .count();
-                (n > 0, format!("{n} matching `{kind}` events"))
+                let min = at_least.unwrap_or(if at_most.is_some() { 0 } else { 1 });
+                let ok = n >= min && at_most.is_none_or(|m| n <= m);
+                let range = match at_most {
+                    Some(m) => format!("{min} to {m}"),
+                    None => format!("at least {min}"),
+                };
+                (ok, format!("{n} matching `{kind}` events; expected {range}"))
             }
             Assertion::StateHash(expected) => (
                 &hash == expected,

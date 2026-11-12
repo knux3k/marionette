@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
-| 9 | Six proof scenes | Not started. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): 1 of 6 games done (`games/lantern-keeper`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -180,6 +180,23 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
 
+Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
+- `crates/marionette-cli/tests/proof_scenes.rs`: `every_game_directory_is_listed`,
+  `recipes_rebuild_the_committed_scenes` (each `build.ops.json` replayed by `batch_run` gives
+  the committed scene bytes), `scenario_tests_pass_twice_with_identical_results`,
+  `each_game_is_played_with_scripted_input_and_pins_its_hash`.
+- Engine features added for the games: `crates/marionette-cli/tests/game_api.rs`
+  (`resources_are_set_and_removed_through_operations`,
+  `batches_stop_at_the_failing_step_and_do_not_nest`,
+  `scripts_cast_rays_that_skip_sensors_and_the_caster`,
+  `script_driven_characters_face_turn_and_jump_once`,
+  `emit_without_detail_assertions_on_script_state_and_event_counts`,
+  `observe_operations_replay_scripted_input`). Drift, playground, scripted and spawner hashes
+  unchanged.
+- Lantern Keeper: `marionette --project games/lantern-keeper op test_run '{}'` (play: wins
+  with all five lanterns and three lives; idle: caught three times, game over).
+- Not yet: 90 fps measured on a mid-range desktop GPU per game; pooled or generated assets.
+
 ## Animation (decision 0028)
 
 - `cargo run -q -p marionette-cli -- run examples/animation.scene.json --headless --ticks 600 --seed 1`
@@ -267,3 +284,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
+| 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |

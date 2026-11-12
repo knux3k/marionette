@@ -15,7 +15,8 @@ use bevy_ecs::prelude::*;
 use components::*;
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
-use marionette_core::module::{EventLog, Module, SceneDir, Stage};
+use marionette_core::module::{EventLog, Module, RayCaster, SceneDir, Stage};
+pub use marionette_core::module::{RayFilter, RayHit};
 use marionette_core::scene::SceneId;
 use marionette_core::{Diagnostic, Errors, Registry, Result};
 use serde::{Deserialize, Serialize};
@@ -60,6 +61,7 @@ impl Module for PhysicsModule {
         r.register_component::<AngularVelocity>();
         r.register_component::<CharacterController>();
         r.register_component::<CharacterState>();
+        r.register_component::<CharacterInput>();
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {
@@ -68,6 +70,7 @@ impl Module for PhysicsModule {
 
     fn init(&self, world: &mut World) -> Result<()> {
         world.remove_resource::<FailedBodies>();
+        world.insert_resource(RayCaster(raycast));
         let Some(settings) = world.get_resource::<PhysicsSettings>().copied() else {
             world.remove_resource::<Physics>();
             return Ok(());
@@ -148,21 +151,18 @@ fn physics_tick(world: &mut World) {
     world.insert_resource(physics);
 }
 
-/// A ray hit: the entity, distance along the ray, hit point and surface normal.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-pub struct RayHit {
-    pub entity: u64,
-    pub distance: f32,
-    pub point: [f32; 3],
-    pub normal: [f32; 3],
-}
-
 /// Casts a ray in the world's physics scene (2D ignores z). `None` if nothing is hit or the
 /// scene has no physics.
-pub fn raycast(world: &World, origin: [f32; 3], direction: [f32; 3], max_distance: f32) -> Option<RayHit> {
+pub fn raycast(
+    world: &World,
+    origin: [f32; 3],
+    direction: [f32; 3],
+    max_distance: f32,
+    filter: RayFilter,
+) -> Option<RayHit> {
     let hit = match world.get_resource::<Physics>()? {
-        Physics::D3(s) => dims::d3::raycast(s, origin, direction, max_distance),
-        Physics::D2(s) => dims::d2::raycast(s, origin, direction, max_distance),
+        Physics::D3(s) => dims::d3::raycast(s, origin, direction, max_distance, filter),
+        Physics::D2(s) => dims::d2::raycast(s, origin, direction, max_distance, filter),
     }?;
     let len =
         (direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]).sqrt();
