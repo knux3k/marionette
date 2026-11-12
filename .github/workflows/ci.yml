@@ -21,7 +21,7 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: System libraries (Linux): ALSA for audio, software Vulkan for GPU tests
+      - name: System libraries on Linux (ALSA for audio, software Vulkan for GPU tests)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers
       - run: cargo fmt --all -- --check
