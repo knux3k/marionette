@@ -17,6 +17,16 @@ struct SkinIn {
 
 @vertex
 fn vs_skinned(in: VsIn, inst: InstIn, skin: SkinIn, @builtin(vertex_index) vi: u32) -> VsOut {
+    return skin_vertex(in, inst, skin, vi);
+}
+
+// Depth-only pass from the shadow-casting light (group 0 holds the light's view-projection).
+@vertex
+fn vs_skinned_shadow(in: VsIn, inst: InstIn, skin: SkinIn, @builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
+    return skin_vertex(in, inst, skin, vi).clip;
+}
+
+fn skin_vertex(in: VsIn, inst: InstIn, skin: SkinIn, vi: u32) -> VsOut {
     var out: VsOut;
     var position = in.position;
     var normal = in.normal;
@@ -52,5 +62,6 @@ fn vs_skinned(in: VsIn, inst: InstIn, skin: SkinIn, @builtin(vertex_index) vi: u
     out.uv = in.uv;
     out.base_color = inst.base_color;
     out.params = inst.params;
+    out.emissive = inst.emissive;
     return out;
 }

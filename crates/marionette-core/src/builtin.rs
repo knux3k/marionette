@@ -83,6 +83,14 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<spatial::SpriteRegion>();
     registry.register_component::<spatial::DirectionalLight>();
     registry.register_resource::<spatial::AmbientLight>();
+    // Opt-in graphics features (decision 0063): absent means the plain look.
+    registry.register_component::<spatial::PointLight>();
+    registry.register_component::<spatial::SpotLight>();
+    registry.register_component::<spatial::Emissive>();
+    registry.register_resource::<spatial::Shadows>();
+    registry.register_resource::<spatial::ToneMapping>();
+    registry.register_resource::<spatial::Fog>();
+    registry.register_resource::<spatial::SkyLight>();
     registry.register_component::<ui::UiNode>();
     registry.register_component::<ui::UiRect>();
     registry.register_component::<ui::UiText>();

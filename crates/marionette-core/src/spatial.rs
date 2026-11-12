@@ -169,6 +169,80 @@ pub struct AmbientLight {
     pub intensity: f32,
 }
 
+/// A light at the entity's position shining in every direction (a lamp, a torch, a glowing
+/// crystal). Brightness falls off with the square of the distance and reaches zero at
+/// `range`. The renderer uses the first 16 point and spot lights by entity id.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct PointLight {
+    pub color: Color,
+    /// Brightness at 1 m (same scale as `DirectionalLight::illuminance`).
+    pub intensity: f32,
+    /// Distance in meters where the light has faded to nothing.
+    pub range: f32,
+}
+
+/// A cone of light from the entity's position along `direction` (a flashlight, a street
+/// lamp). Full brightness inside `inner_angle_degrees` from the axis, fading to zero at
+/// `outer_angle_degrees`. Shares the 16-light limit with `PointLight`.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct SpotLight {
+    pub direction: Vec3,
+    pub color: Color,
+    /// Brightness at 1 m on the axis.
+    pub intensity: f32,
+    pub range: f32,
+    pub inner_angle_degrees: f32,
+    pub outer_angle_degrees: f32,
+}
+
+/// Light a model gives off by itself (screens, lava, lit windows), added on top of its
+/// lit color. Not a light source: it does not light other objects. With `ToneMapping`,
+/// intensities above 1 stay bright instead of clipping.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Emissive {
+    pub color: Color,
+    pub intensity: f32,
+}
+
+/// Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover
+/// a square `distance` meters on each side of the camera; farther objects are unshadowed.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Shadows {
+    /// Half the width of the shadowed area around the camera, in meters.
+    pub distance: f32,
+    /// Shadow map size in texels (256 to 4096; 2048 is a good default).
+    pub resolution: u32,
+    /// Edge blur in texels (0 = hard edges, 1 to 2 = soft).
+    pub softness: f32,
+}
+
+/// Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so
+/// bright light rolls off smoothly instead of clipping at white. Without it, colors clamp
+/// at 1.0.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ToneMapping {
+    pub exposure: f32,
+}
+
+/// Turns on distance fog for models: surfaces fade toward `color` with distance from the
+/// camera (exponential squared). Set the camera's `clear_color` to the same color so the
+/// horizon matches.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Fog {
+    pub color: Color,
+    /// Higher is thicker; about 2 / density meters is where fog is nearly opaque.
+    pub density: f32,
+}
+
+/// Replaces flat `AmbientLight` with sky light: surfaces facing up get `sky`, surfaces
+/// facing down get `ground`, blended by the surface direction, times `intensity`.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct SkyLight {
+    pub sky: Color,
+    pub ground: Color,
+    pub intensity: f32,
+}
+
 /// Many copies of one model drawn from a module's own arrays (belt items, crowds,
 /// particles), without one entity per copy. Built at render time by a [`BulkDrawHooks`]
 /// function, so the simulation pays nothing for it.
