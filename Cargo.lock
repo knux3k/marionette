@@ -1886,6 +1886,7 @@ dependencies = [
  "marionette-import",
  "marionette-input",
  "marionette-physics",
+ "marionette-port",
  "marionette-providers",
  "marionette-render",
  "marionette-script",
@@ -1980,6 +1981,16 @@ dependencies = [
  "postcard",
  "rapier2d",
  "rapier3d",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "marionette-port"
+version = "0.1.0"
+dependencies = [
+ "marionette-core",
+ "schemars",
  "serde",
  "serde_json",
 ]

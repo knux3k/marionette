@@ -1,0 +1,13 @@
+[package]
+name = "marionette-port"
+description = "Marionette porting tools: scans Unity C# and Unreal C++ gameplay code, maps every engine concept to its Marionette equivalent or a named gap, and writes TypeScript script skeletons."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars = "1.2"
