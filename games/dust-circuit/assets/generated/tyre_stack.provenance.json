@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "tyre_stack",
+  "output": "model",
+  "file": "tyre_stack.glb",
+  "sha256": "242c9e1c30adff00ccb6fabdfd3d3e372114e38d6b82bbc72fe1c54aeba63da8",
+  "recipe": "tyre_stack.recipe.json",
+  "recipe_sha256": "0b64c273c64de93eb7330b407b35143643c471768985f92d1c8d7e2c5626fa19",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "tyre_stack_ref",
+      "file": "tyre_stack_ref.png",
+      "sha256": "9fbfea960db25c791e57b2517695fe03034b7975d548cc10a0347bc7fb3d4c6e",
+      "approved": true
+    },
+    "cache_key": "e4a288b6c0b675e40a73839091a7dbbaa06f03028e961ed597c66784202a9690",
+    "raw_sha256": "406ef64b4ced327f9d4007f4d2970bd1accdce36a29682329f115ffa41b59ded",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.214212,
+        0.0,
+        -0.213492
+      ],
+      [
+        0.214212,
+        0.9,
+        0.213492
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 502414 to 3286 triangles (budget 4000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 0.900243,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.238312,
+        -0.499816,
+        -0.236743
+      ],
+      [
+        0.237585,
+        0.499914,
+        0.237556
+      ]
+    ],
+    "textures": 3,
+    "triangles": 3286
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

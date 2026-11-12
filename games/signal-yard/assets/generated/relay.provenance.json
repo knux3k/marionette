@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "relay",
+  "output": "model",
+  "file": "relay.glb",
+  "sha256": "fd1808af6553ceb058e77ea0cbdcbb7271d4d8d390554fe564488632570c946b",
+  "recipe": "relay.recipe.json",
+  "recipe_sha256": "f9fe7097487fff688931eea364694255590109fedf4be96fbdae13ffafb86b9a",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "relay_ref",
+      "file": "relay_ref.png",
+      "sha256": "722db1b53c25e1cf99fd765cc3b3b193969e32cd3566c6e9f6a63de84114ff0d",
+      "approved": true
+    },
+    "cache_key": "43f197bc34bf1ae376ff0dd1569ae8aae1b618adbab65084a06e2352dc3a12b4",
+    "raw_sha256": "4e730fdbd002d189ed4dd358b0c0b2792f7c1eafced76e4da06dc4f4c6e1bda8",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.856379,
+        0.0,
+        -0.806962
+      ],
+      [
+        0.856379,
+        8.0,
+        0.806962
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 158692 to 20000 triangles (budget 20000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 8.003042,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.106985,
+        -0.499964,
+        -0.100723
+      ],
+      [
+        0.107028,
+        0.499656,
+        0.10094
+      ]
+    ],
+    "textures": 3,
+    "triangles": 20000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

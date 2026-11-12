@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "crawler",
+  "output": "model",
+  "file": "crawler.glb",
+  "sha256": "cdc0fb9a05d048f3814e28078b1e96cefa9d93577ab00224ef36733e509b49ca",
+  "recipe": "crawler.recipe.json",
+  "recipe_sha256": "d8e8439049f627acbf590ea43702b92a632cd881da4c348599f931944275ee0e",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "crawler_ref",
+      "file": "crawler_ref.png",
+      "sha256": "b0bf021e1e8a72e3e3c68d7f98886a03ce827e47cda4475a32e4db1f069966ea",
+      "approved": true
+    },
+    "cache_key": "85746f45ecf1ea60322a769ecc361a77863d1eec27368141f7be2afe9faa4259",
+    "raw_sha256": "09086e3ee10f6178cf157353a945b6544158885218507b7f5bcd3b2882e7aec4",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.681004,
+        0.0,
+        -0.618597
+      ],
+      [
+        0.681004,
+        0.8,
+        0.618597
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 501432 to 12000 triangles (budget 12000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 1.36245,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.499999,
+        -0.293359,
+        -0.453904
+      ],
+      [
+        0.499677,
+        0.293818,
+        0.454161
+      ]
+    ],
+    "textures": 3,
+    "triangles": 12000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

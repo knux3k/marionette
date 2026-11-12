@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "drone",
+  "output": "model",
+  "file": "drone.glb",
+  "sha256": "80f62eb98837bb77d32e2e6fa9a4683653ac1c56311527c0c6b593705130fc1b",
+  "recipe": "drone.recipe.json",
+  "recipe_sha256": "8b30900a90f609a07755e809ae4dec66359218699db6c58244925509a777d6f0",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "drone_ref",
+      "file": "drone_ref.png",
+      "sha256": "fc4f2f9c4443139ff30555bba2f4ed63cd917e93fa68701db9530492d3323eb8",
+      "approved": true
+    },
+    "cache_key": "92bd75c0bd02dbaf9ade63b4aac3f0a668e345c358ac89a53c0640b5d6d6336a",
+    "raw_sha256": "5e7639cea227015635bdf6155327cca258f61619318aef6f387178e24e4c29eb",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -1.450694,
+        0.0,
+        -1.506578
+      ],
+      [
+        1.450694,
+        0.6,
+        1.506578
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 477374 to 11994 triangles (budget 12000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 3.015849,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.481271,
+        -0.099712,
+        -0.499615
+      ],
+      [
+        0.480776,
+        0.099237,
+        0.499491
+      ]
+    ],
+    "textures": 3,
+    "triangles": 11994
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

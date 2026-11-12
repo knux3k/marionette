@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pylon",
+  "output": "model",
+  "file": "pylon.glb",
+  "sha256": "3206cd617fd9a6d405e2cf3326a8b1ee65a5b8274f7687e1d4750aa72de12eb4",
+  "recipe": "pylon.recipe.json",
+  "recipe_sha256": "4468ee524dc9f7f81313e3ea6f4159fc23a1573cf078661922484c1741cb682c",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "pylon_ref",
+      "file": "pylon_ref.png",
+      "sha256": "c4e7ebc016a3b5c3a39846568eed2e5ab6487fc095b4e8d658c886ec8371eb55",
+      "approved": true
+    },
+    "cache_key": "173f616deb89f18df3a22ccb2bda2cdf02461c535594f9b16d9c3194993f388f",
+    "raw_sha256": "d8dcefdaf9617fa5c41af00cdeb02705b21a8a4c8a2a9c00f5324fe3358f21d9",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.667698,
+        0.0,
+        -0.530154
+      ],
+      [
+        0.667698,
+        6.0,
+        0.530154
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 94482 to 5998 triangles (budget 6000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 6.003247,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.11111,
+        -0.499516,
+        -0.088449
+      ],
+      [
+        0.111335,
+        0.499943,
+        0.088174
+      ]
+    ],
+    "textures": 3,
+    "triangles": 5998
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

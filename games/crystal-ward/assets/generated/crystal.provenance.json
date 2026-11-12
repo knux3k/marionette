@@ -1,0 +1,69 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "crystal",
+  "output": "model",
+  "file": "crystal.glb",
+  "sha256": "2651cb62eab79d15f3dfda46f4c4b22fd195f0a6bfbe7a9b6045e7b4ce2dcf06",
+  "recipe": "crystal.recipe.json",
+  "recipe_sha256": "082c89982d7c10c8f6ca0e97f57173ed047d6f460a016aa19e181105d8ecde55",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "crystal_ref",
+      "file": "crystal_ref.png",
+      "sha256": "4d58b7e47572349a3a9048b0c33f2244741954f95c85f5756fe20bf8fd1f3701",
+      "approved": true
+    },
+    "cache_key": "11ca5f789ee1d9cd659f23a385be682d4d0161fb2ef0b27ff9d2a8822a1bffca",
+    "raw_sha256": "6780aaf42efa4f42b00859d9316f5ae656a005c5b2440ae8d5c83e08d7382fe0",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.348269,
+        0.0,
+        -0.349418
+      ],
+      [
+        0.348269,
+        2.5,
+        0.349418
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 220006 to 8000 triangles (budget 8000)",
+      "image 0 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 1024x1024 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 1024x1024 (image/jpeg)"
+    ],
+    "scale": 2.500585,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.139317,
+        -0.499903,
+        -0.139717
+      ],
+      [
+        0.139233,
+        0.499863,
+        0.139752
+      ]
+    ],
+    "textures": 3,
+    "triangles": 8000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
