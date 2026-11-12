@@ -112,9 +112,11 @@ hooks. The other side is an `Entity`, not a Collision or hit result.
   dynamic body (`AddForce`, `AddImpulse`, setting velocity) is a gap: use a kinematic body or the
   `CharacterController`.
 - **Spawning** (`Instantiate`, `SpawnActor`): `engine.spawn(components, name?)` or
-  `engine.clone(template, overrides?, name?)`. There are no prefab assets: keep the prefab as a
-  components object in the script, or as a template entity in the scene (one without a body or
-  script, placed out of view). New entities get a new id (ids are never reused); their script
+  `engine.clone(template, overrides?, name?)`. Unity `.prefab` files import into the owned
+  library (`library_import`, decision 0040) and `prefab_instantiate` places them in a scene; for
+  spawning at run time, place one as a template entity (out of view, no body or script) and
+  `engine.clone` it, or keep a components object in the script. Imported prefabs keep each
+  MonoBehaviour's serialized fields under `unity.scripts` in `prefab.json`. New entities get a new id (ids are never reused); their script
   starts on the next tick; physics gives them a body in the same tick.
 - **Destroying** (`Destroy(obj, t)`, `K2_DestroyActor`): `engine.destroy(entity, seconds?)`;
   the entity is removed at the end of the script stage after its `onDestroy`.

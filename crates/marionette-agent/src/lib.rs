@@ -11,12 +11,14 @@ pub mod batch;
 pub mod docs;
 pub mod edit;
 pub mod engine;
+pub mod generate;
 pub mod jobs_ts;
 pub mod library;
 pub mod mcp;
 pub mod observe;
 pub mod perf;
 pub mod port;
+pub mod prefab;
 pub mod project;
 pub mod providers;
 pub mod scenario;
@@ -128,8 +130,10 @@ impl Agent {
             jobs_ts::ops(),
             providers::ops(),
             anim::ops(),
+            generate::ops(),
             script::ops(),
             port::ops(),
+            prefab::ops(),
             batch::ops(),
         ]
         .into_iter()
@@ -251,12 +255,26 @@ pub(crate) fn write_atomic(path: &Path, shown: &str, bytes: &[u8]) -> Result<(),
     {
         return Err(marionette_import::declaration_write_refused(shown).into());
     }
+    // Only a person approves an image for paid 3D generation (decision 0045).
+    if path
+        .file_name()
+        .is_some_and(|n| marionette_generate::approval::is_approval_file_name(&n.to_string_lossy()))
+    {
+        return Err(marionette_generate::approval::write_refused(shown).into());
+    }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }
     let tmp = path.with_extension("tmp-write");
     std::fs::write(&tmp, bytes).map_err(err)?;
     std::fs::rename(&tmp, path).map_err(err)
+}
+
+/// Reads an environment variable, falling back to the person's keys file (outside the
+/// project) for provider keys and the spend cap (decision 0045).
+pub(crate) fn env_lookup(root: &Path) -> impl Fn(&str) -> Option<String> + use<> {
+    let root = root.to_path_buf();
+    move |name| marionette_providers::keys::lookup(&|n| std::env::var(n).ok(), &root, name)
 }
 
 /// SHA-256 as lowercase hex.

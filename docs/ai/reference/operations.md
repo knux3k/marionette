@@ -57,12 +57,17 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_blend` | yes | Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing. |
 | `anim_stop` | yes | Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds. |
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
+| `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
+| `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
+| `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
+| `generate_list` | no | Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked). |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 
 ## `project_init`
@@ -1076,7 +1081,9 @@ Output:
 | --- | --- | --- | --- |
 | `cap` | SpendCap | yes |  |
 | `config_file` | boolean | yes | `providers.json` exists (otherwise every kind uses mock). |
+| `keys_file_found` | boolean \| null |  | The person's keys file (decision 0045): absent when none is configured, `true` when it exists, `false` when it is configured but missing. Its values are never shown. |
 | `kinds` | array of KindStatus | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps the project owner set for single providers (decision 0045). |
 | `spent_usd` | number | yes | Total of the project's spend ledger, US dollars. |
 
 ## `provider_use`
@@ -1264,6 +1271,106 @@ Output:
 | `nodes` | array of NodePose | yes |  |
 | `tick` | integer | yes |  |
 
+## `generate_recipe`
+
+Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `from` | string \| null |  | Model only: name of the image or texture recipe to build the model from. |
+| `model` | ModelOptions \| null |  |  |
+| `name` | string | yes | Lowercase letters, digits, `_` and `-`; the file stem of the recipe and its output. |
+| `notes` | string \| null |  |  |
+| `output` | OutputKind | yes |  |
+| `prompt` | string \| null |  |  |
+| `provider` | Choice \| null |  | Pin a provider (and model) for this recipe; default: providers.json. |
+| `replace` | boolean |  | Overwrite an existing recipe of the same name. |
+| `size` | array \| null |  | Image and texture: requested size `[width, height]` (default 1024 x 1024). |
+| `texture` | TextureOptions \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plan` | Plan | yes | What a run of this recipe would do now. |
+| `recipe` | string | yes | The recipe file written. |
+
+## `generate_plan`
+
+Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `before_generating` | array of string | yes | Generation is the last step of the lookup order; these come first. |
+| `cap` | SpendCap | yes |  |
+| `dir` | string | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps set for single providers (they replace the total cap for that provider). |
+| `spent_usd` | number | yes | Ledger total so far. |
+| `steps` | array of StepPlan | yes |  |
+| `total_estimate_usd` | number | yes | Sum of the estimates of every step that needs a provider call now (blocked or not). |
+| `within_cap` | boolean | yes | Every step that needs a paid call fits under the cap that applies to its provider, counting the run's earlier steps. |
+
+## `generate_run`
+
+Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `names` | array of string |  |  |
+| `offline` | boolean |  | Use cached provider outputs only; refuse any step that would call a provider. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `blocked` | array of Blocked | yes |  |
+| `built` | array of Built | yes |  |
+| `calls` | integer | yes | Provider calls made (free or paid). |
+| `cost_usd` | number | yes | Spent by this run. |
+| `dir` | string | yes |  |
+| `spent_usd` | number | yes | Ledger total after the run. |
+
+## `generate_list`
+
+Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `recipes` | array of Listed | yes |  |
+
 ## `script_reload`
 
 Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running.
@@ -1401,6 +1508,35 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `prefab_instantiate`
+
+Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets_dir` | string \| null |  | Folder, relative to the scene file, that receives copied library files. Default `library`. |
+| `at` | any |  | Where the prefab root goes: a `Transform` value (translation, rotation, scale). Default: the origin. |
+| `include_inactive` | boolean |  | Also place objects that were inactive in Unity. |
+| `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
+| `name` | string \| null |  | Name for the root entity; child names keep their paths under it. |
+| `prefab` | string | yes | Library id of the prefab (see `library_list` with kind `prefab`). |
+| `scene` | string | yes | Scene file to add the entities to. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `copied` | array of string | yes | Files copied beside the scene (relative to the scene file); files already there with the same content are not listed. |
+| `diff` | Diff | yes |  |
+| `entities` | array of PlacedEntity | yes |  |
+| `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
+| `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
+| `scene` | string | yes |  |
 
 ## `batch_run`
 
