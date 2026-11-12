@@ -29,6 +29,9 @@
     stopClip(clip, o = {}) {
       h.anim(this.id, JSON.stringify({ op: "stop", clip: clip === undefined || clip === null ? undefined : String(clip), fade: o.fade }));
     }
+    get name() {
+      return h.name(this.id) ?? null;
+    }
     destroy(seconds) {
       engine.destroy(this, seconds);
     }

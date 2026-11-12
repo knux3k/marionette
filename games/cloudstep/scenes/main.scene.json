@@ -1,0 +1,1360 @@
+{
+  "entities": [
+    {
+      "components": {
+        "AudioListener": {
+          "volume": 3.0
+        },
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.6,
+            "g": 0.25,
+            "r": 0.12
+          },
+          "projection": {
+            "Perspective": {
+              "far": 300.0,
+              "fov_y_degrees": 60.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": -2.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 5.0,
+            "z": 8.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.4,
+            "y": -1.0,
+            "z": -0.3
+          },
+          "illuminance": 1.2
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Script": {
+          "path": "scripts/course.ts"
+        }
+      },
+      "id": 3,
+      "name": "course"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "TopLeft",
+          "layer": 1,
+          "offset": {
+            "x": 12.0,
+            "y": 10.0
+          },
+          "size": {
+            "x": 640.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "size": 16.0,
+          "text": "SEEDS 0/8  TIME 0.0"
+        }
+      },
+      "id": 4,
+      "name": "hud"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": -60.0
+          },
+          "size": {
+            "x": 600.0,
+            "y": 24.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.6,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "size": 24.0,
+          "text": ""
+        }
+      },
+      "id": 5,
+      "name": "banner"
+    },
+    {
+      "components": {
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:jump",
+          "trigger": "OnJump",
+          "volume": 0.8
+        },
+        "CharacterController": {
+          "gravity": 20.0,
+          "jump": "jump",
+          "jump_speed": 7.5,
+          "mass": 60.0,
+          "move_forward": "move_forward",
+          "move_x": "move_x",
+          "speed": 5.0
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.25,
+              "radius": 0.5
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.45,
+            "r": 1.0
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Script": {
+          "path": "scripts/hero.ts"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.7,
+            "y": 1.4,
+            "z": 0.7
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "hero"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.35,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 6.0,
+            "y": 2.0,
+            "z": 6.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": -1.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 20,
+      "name": "island"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.35,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 4.0,
+            "y": 2.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": -7.0
+          }
+        }
+      },
+      "id": 21,
+      "name": "island"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.35,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 4.0,
+            "y": 2.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": -19.0
+          }
+        }
+      },
+      "id": 22,
+      "name": "island"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.35,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 4.0,
+            "y": 2.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 4.5,
+            "z": -24.5
+          }
+        }
+      },
+      "id": 23,
+      "name": "island"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.22,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.2,
+            "y": 1.0,
+            "z": 2.2
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 5.8,
+            "z": -29.5
+          }
+        }
+      },
+      "id": 24,
+      "name": "stone"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.22,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.2,
+            "y": 1.0,
+            "z": 2.2
+          },
+          "translation": {
+            "x": 1.2,
+            "y": 6.6,
+            "z": -32.5
+          }
+        }
+      },
+      "id": 25,
+      "name": "stone"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.22,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.2,
+            "y": 1.0,
+            "z": 2.2
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 7.4,
+            "z": -35.5
+          }
+        }
+      },
+      "id": 26,
+      "name": "stone"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.22,
+            "g": 0.42,
+            "r": 0.55
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 6.0,
+            "y": 2.0,
+            "z": 6.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 7.5,
+            "z": -40.0
+          }
+        }
+      },
+      "id": 27,
+      "name": "island"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.4,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 0.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5,
+            "y": 0.5,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.75,
+            "z": -13.0
+          }
+        }
+      },
+      "id": 30,
+      "name": "ferry"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.6,
+            "z": -3.0
+          }
+        }
+      },
+      "id": 40,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 2.0,
+            "y": 1.6,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 41,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.6,
+            "z": -7.0
+          }
+        }
+      },
+      "id": 42,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.0,
+            "z": -13.0
+          }
+        }
+      },
+      "id": 43,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 1.2,
+            "y": 3.6,
+            "z": -19.0
+          }
+        }
+      },
+      "id": 44,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 7.1,
+            "z": -24.5
+          }
+        }
+      },
+      "id": 45,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": 1.2,
+            "y": 8.6,
+            "z": -32.5
+          }
+        }
+      },
+      "id": 46,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.6,
+                "y": 0.6,
+                "z": 0.6
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "translation": {
+            "x": -2.0,
+            "y": 10.1,
+            "z": -40.0
+          }
+        }
+      },
+      "id": 47,
+      "name": "seed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.8,
+                "y": 0.3,
+                "z": 0.8
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.6,
+            "g": 0.2,
+            "r": 0.9
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.4,
+            "y": 0.3,
+            "z": 1.4
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.15,
+            "z": -20.2
+          }
+        }
+      },
+      "id": 50,
+      "name": "spring"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 2.0,
+                "y": 1.5,
+                "z": 2.0
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 60,
+      "name": "checkpoint"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 2.0,
+                "y": 1.5,
+                "z": 2.0
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 3.0,
+            "z": -19.0
+          }
+        }
+      },
+      "id": 61,
+      "name": "checkpoint"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 2.0,
+                "y": 1.5,
+                "z": 2.0
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 6.5,
+            "z": -24.5
+          }
+        }
+      },
+      "id": 62,
+      "name": "checkpoint"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 1.0,
+                "y": 1.5,
+                "z": 1.0
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.7,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "metallic": 0.2,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 3.0,
+            "z": 0.6
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 10.0,
+            "z": -41.0
+          }
+        }
+      },
+      "id": 70,
+      "name": "beacon"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 0.8,
+        "g": 0.6,
+        "r": 0.55
+      },
+      "intensity": 0.45
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "main.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": -9.81,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}

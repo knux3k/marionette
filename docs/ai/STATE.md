@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); Unreal importer done (W6, decision 0029); pool and search (W3) and generation (W4) not started. |
-| 9 | Six proof scenes | In progress (W8, decision 0050): 1 of 6 games done (`games/lantern-keeper`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -208,6 +208,10 @@ Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
   unchanged.
 - Lantern Keeper: `marionette --project games/lantern-keeper op test_run '{}'` (play: wins
   with all five lanterns and three lives; idle: caught three times, game over).
+- Ember Run (`games/ember-run`): play wins with 14 of 15 embers and two hits; pit loses all
+  lives. Cloudstep (`games/cloudstep`): play reaches the beacon in about 11 s with no falls;
+  plunge falls repeatedly. Same `test_run` command with their `--project`.
+- Also tested in `game_api.rs`: `characters_pass_through_sensors_trigger_them_and_can_be_teleported`.
 - Not yet: 90 fps measured on a mid-range desktop GPU per game; pooled or generated assets.
 
 ## Animation (decision 0028)
@@ -304,4 +308,5 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
 | 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
