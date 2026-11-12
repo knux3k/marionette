@@ -113,6 +113,10 @@ Follow-ups listed under line 4 in STATE.md.
 
 ## W8: six proof scenes (line 9)
 
+Status: in progress (decision 0050, PROOF-SCENES.md). Games in `games/`; owns `games/`,
+`crates/marionette-cli/tests/proof_scenes.rs`, `crates/marionette-cli/tests/game_api.rs`,
+`crates/marionette-agent/src/batch.rs`.
+
 - Scope: an FPS, a racing game, a platformer, a top-down 3D game, a top-down 2D game and a 2D
   side-scroller, each built through operations only.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its

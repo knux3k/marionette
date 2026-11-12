@@ -33,3 +33,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0027 | FBX to glTF conversion inside the importer | accepted |
 | 0028 | Skeletal animation: clips on the fixed tick, GPU skinning and blend shapes | accepted |
 | 0029 | The Unreal importer reads exports (FBX, glTF, images, T3D materials), diagnoses packages | accepted |
+| 0050 | Proof scenes are small original games built from operation recipes and tested by play | accepted |
