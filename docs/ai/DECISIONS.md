@@ -24,3 +24,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0018 | Owned library, license declarations and the Unity importer | accepted |
 | 0019 | Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau) | accepted |
 | 0020 | Porting Unity and Unreal code: scan, concept tables, TypeScript skeletons, coordinate conversion | accepted |
+| 0021 | Scripts spawn, clone and destroy entities (`onDestroy`) and set timers; all saved as state | accepted |
