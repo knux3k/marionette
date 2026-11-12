@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); Unreal importer done (W6, decision 0029); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -178,6 +178,19 @@ Line 8, owned library and Unity import (W2, decision 0018):
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+Line 8, Unreal importer (W6, decision 0029):
+- `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
+  (project with exported FBX, PNG, TGA, T3D material instance and material graph, Starter
+  Content, mannequins, an Epic plugin, packages, a `.pak`, code, generated folders),
+  `unreal_assets_follow_the_license_rules`, `a_content_folder_from_a_vault_cache_is_an_unreal_source`;
+  `unreal_convention_fbx_lands_in_meters_y_up` in `tests/fbx.rs` (fixture
+  `tests/fixtures/unreal/crate_unreal_cm.fbx`, made by `make_fixtures.py` there); unit tests in
+  `src/unreal.rs`.
+- Not covered yet: reading `.uasset`/`.umap` (diagnosed only, by design), levels and actor
+  placement, Blueprints (port_scan reads their text), audio, material graphs beyond direct
+  connections, material functions, zip downloads (unzip first), separate roughness and
+  metallic textures (listed, not packed).
+
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
   (`unity_classes_roles_hooks_and_components`, `unity_api_uses_actions_gaps_and_hazards`,
@@ -288,6 +301,12 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
+- Unreal importer on real files: nothing from a real Unreal project has been imported. T3D
+  material text is hand-written from knowledge of the editor's export format; the package
+  class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
+  is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
+  check: a dry run over a project the owner has, with their permission.
+
 ## Session log
 
 | Date | What changed | Commits |
@@ -311,4 +330,5 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
 | 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
 | 2026-11-12 | Memory and crash hygiene (decision 0032): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |
