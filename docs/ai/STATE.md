@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library and Unity importer done (W2); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -144,8 +144,18 @@ Line 8, owned library and Unity import (W2, decision 0018):
   tests in `src/tar.rs`, `src/license.rs`, `src/unity.rs`.
 - `crates/marionette-cli/tests/library_e2e.rs`: `library_operations_import_list_and_gate`,
   `operations_never_write_license_declarations`.
-- Not covered yet: FBX/OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+- FBX to glTF (decision 0027): `crates/marionette-import/tests/fbx.rs`
+  (`static_meshes_match_blenders_own_gltf`, `embedded_textures_are_used`,
+  `other_axis_systems_and_units_give_the_same_world`,
+  `fbx_7500_from_a_second_writer_matches_blenders_reading`,
+  `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
+  `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `unity_project_fbx_is_converted_with_its_texture`,
+  `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
+  conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
+- Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
+  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
+  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
@@ -201,6 +211,12 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
+  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
+  those engines, not checked against their current documentation.
+- FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
+  FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
+  curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
 ## Session log
 
@@ -219,3 +235,4 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
+| 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
