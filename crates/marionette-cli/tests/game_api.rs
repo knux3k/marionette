@@ -288,3 +288,39 @@ fn observe_operations_replay_scripted_input() {
     assert!(still.abs() < 0.01, "{still}");
     assert!(x(&mut a, json!("walk.inputs.json")) > 2.5);
 }
+
+#[test]
+fn characters_pass_through_sensors_trigger_them_and_can_be_teleported() {
+    let d = project("sensor");
+    let mut a = Agent::new(&d, false);
+    // Walk toward -Z through the sensor at z = -3; at tick 100 teleport back to z = 2.
+    arena(
+        &mut a,
+        r#"export function onTriggerEnter(self: Entity, other: Entity): void {
+  self.state.entered = [...(self.state.entered ?? []), other.name];
+}
+export function update(self: Entity): void {
+  self.set("CharacterInput", { move_x: 0, move_forward: engine.tick < 80 ? 1 : 0, jump: false });
+  const t = self.get("Transform")!;
+  if (engine.tick === 79) self.state.before = t.translation.z;
+  if (engine.tick === 100) {
+    t.translation.z = 2;
+    self.set("Transform", t);
+  }
+  self.state.z = t.translation.z;
+  self.state.me = self.name;
+}
+"#,
+    );
+    let s = state(&mut a, 120);
+    assert_eq!(s["entered"], json!(["sensor"]), "{s}");
+    assert!(
+        s["before"].as_f64().unwrap() < -3.5,
+        "walked through the sensor: {s}"
+    );
+    assert!(
+        (s["z"].as_f64().unwrap() - 2.0).abs() < 1e-4,
+        "teleported and stayed: {s}"
+    );
+    assert_eq!(s["me"], "hero");
+}
