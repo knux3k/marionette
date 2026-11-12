@@ -5,6 +5,7 @@
   "from": "tyre_stack_ref",
   "model": {
     "height_m": 0.9,
-    "max_triangles": 4000
+    "max_triangles": 4000,
+    "max_texture_px": 512
   }
 }

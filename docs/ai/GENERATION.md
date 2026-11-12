@@ -26,7 +26,7 @@ the project, the owned library and CC0 sources first. Design: decision 0045. Cod
 
    Fields: `name` (lowercase, digits, `_`, `-`), `output` (`image`, `texture`, `model`),
    `prompt`, `size` (image and texture), `texture` {`resize`, `tileable`, `remove_background`},
-   `from` (model: an image or texture recipe), `model` {`height_m`, `max_triangles`},
+   `from` (model: an image or texture recipe), `model` {`height_m`, `max_triangles` (simplified to fit, decision 0048), `max_texture_px`},
    `provider` {`provider`, `model`} to pin one, `notes`. `remove_background` makes a flat
    background transparent after the resize: the key is the mean of the four corner pixels,
    colours near it fade out, and a band along the cut loses the key's tint (ask the model for

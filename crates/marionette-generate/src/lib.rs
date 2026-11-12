@@ -20,6 +20,7 @@ pub mod cache;
 pub mod model;
 pub mod provenance;
 pub mod recipe;
+pub mod slim;
 pub mod texture;
 
 use marionette_core::{Diagnostic, Errors};

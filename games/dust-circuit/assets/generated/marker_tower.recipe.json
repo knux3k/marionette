@@ -5,6 +5,7 @@
   "from": "marker_tower_ref",
   "model": {
     "height_m": 8.0,
-    "max_triangles": 6000
+    "max_triangles": 6000,
+    "max_texture_px": 512
   }
 }

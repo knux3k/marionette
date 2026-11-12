@@ -91,9 +91,14 @@ pub struct ModelOptions {
     /// generated size.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub height_m: Option<f64>,
-    /// Triangle budget. Exceeding it is reported in the provenance notes (no decimation yet).
+    /// Triangle budget. A model over it is simplified to fit (decision 0048); what is still
+    /// over is reported in the provenance notes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_triangles: Option<u64>,
+    /// Largest texture side in pixels. Bigger embedded images are halved until they fit and
+    /// re-encoded (JPEG when opaque, PNG otherwise).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_texture_px: Option<u32>,
 }
 
 fn is_false(b: &bool) -> bool {

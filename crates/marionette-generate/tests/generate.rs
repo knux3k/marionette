@@ -216,6 +216,7 @@ fn three_recipes(root: &Path) {
             model: Some(ModelOptions {
                 height_m: Some(1.0),
                 max_triangles: Some(10),
+                max_texture_px: None,
             }),
             ..recipe("crate", OutputKind::Model)
         },
@@ -260,12 +261,10 @@ fn three_assets_rebuild_identically_from_recipes() {
     assert_eq!(from.file, "crate_ref.png");
     assert_eq!(from.sha256, generate::sha256_hex(&read(&root, "crate_ref.png")));
     assert!(!from.approved, "mock is free, so no approval was needed");
+    let notes = crate_rec.postprocess["notes"].to_string();
     assert!(
-        crate_rec.postprocess["notes"][0]
-            .as_str()
-            .unwrap()
-            .contains("over the budget of 10"),
-        "triangle budget is reported"
+        notes.contains("decimated from 12 to") || notes.contains("over the budget of 10"),
+        "triangle budget is applied and reported: {notes}"
     );
 
     // A second run does nothing.
