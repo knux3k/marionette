@@ -1,7 +1,14 @@
 {
   "format": "marionette.recipe/1",
   "name": "ember",
-  "output": "image",
+  "output": "texture",
   "prompt": "a small glowing ember coal, round, orange and yellow, single game sprite, side view, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text, no shadow on the ground",
-  "notes": "Sprite: key out the magenta background when it is wired in."
+  "texture": {
+    "resize": [
+      256,
+      256
+    ],
+    "remove_background": true
+  },
+  "notes": "Sprite: the magenta background is keyed out (remove_background)."
 }

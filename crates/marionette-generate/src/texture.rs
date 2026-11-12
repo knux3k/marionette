@@ -18,6 +18,9 @@ pub struct ImageReport {
     pub size: [u32; 2],
     pub resized: bool,
     pub tileable: bool,
+    /// The flat background was made transparent (`remove_background`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub background_removed: bool,
 }
 
 fn post_err(msg: impl Into<String>) -> Errors {
@@ -44,6 +47,7 @@ pub fn process(
     let (mut w, mut h) = (img.width, img.height);
     let mut resized = false;
     let mut tileable = false;
+    let mut background_removed = false;
     if output == OutputKind::Texture {
         let opts = options.cloned().unwrap_or_default();
         let [tw, th] = opts.resize.unwrap_or([floor_pow2(w), floor_pow2(h)]);
@@ -51,6 +55,10 @@ pub fn process(
             rgba = resample(&rgba, w, h, tw, th);
             (w, h) = (tw, th);
             resized = true;
+        }
+        if opts.remove_background {
+            remove_background(&mut rgba, w, h);
+            background_removed = true;
         }
         if opts.tileable {
             rgba = make_tileable(&rgba, w, h);
@@ -64,6 +72,7 @@ pub fn process(
             size: [w, h],
             resized,
             tileable,
+            background_removed,
         },
     ))
 }
@@ -137,6 +146,113 @@ pub fn resample(rgba: &[u8], w: u32, h: u32, tw: u32, th: u32) -> Vec<u8> {
     out
 }
 
+/// Distance from the key colour (largest channel difference) at which a pixel starts to show,
+/// and at which it is fully opaque.
+const KEY_LO: u32 = 48;
+const KEY_HI: u32 = 112;
+
+/// Makes a flat background transparent. The key is the mean colour of the four corner pixels.
+/// A pixel's opacity grows from 0 at distance `KEY_LO` from the key to full at `KEY_HI`;
+/// partly transparent pixels get the key's share taken out of their colour (so edges do not
+/// keep a coloured fringe), and fully transparent pixels become transparent black. Integer
+/// arithmetic only.
+pub fn remove_background(rgba: &mut [u8], w: u32, h: u32) {
+    if w == 0 || h == 0 {
+        return;
+    }
+    let (w, h) = (w as usize, h as usize);
+    let corners = [0, w - 1, (h - 1) * w, h * w - 1];
+    let mut key = [0u32; 3];
+    for c in 0..3 {
+        key[c] = (corners.iter().map(|&i| rgba[i * 4 + c] as u32).sum::<u32>() + 2) / 4;
+    }
+    for px in rgba.chunks_exact_mut(4) {
+        let d = (0..3).map(|c| (px[c] as u32).abs_diff(key[c])).max().unwrap_or(0);
+        let a = if d <= KEY_LO {
+            0
+        } else if d >= KEY_HI {
+            255
+        } else {
+            (d - KEY_LO) * 255 / (KEY_HI - KEY_LO)
+        };
+        if a == 0 {
+            px.copy_from_slice(&[0, 0, 0, 0]);
+            continue;
+        }
+        if a < 255 {
+            // c = a*fg + (255-a)*key  =>  fg = (255*c - (255-a)*key) / a
+            for c in 0..3 {
+                let num = (255 * px[c] as u32).saturating_sub((255 - a) * key[c]);
+                px[c] = ((num + a / 2) / a).min(255) as u8;
+            }
+        }
+        px[3] = ((px[3] as u32 * a + 127) / 255) as u8;
+    }
+    unmix_edge_spill(rgba, w, h, key);
+}
+
+/// Width in pixels of the band along transparent areas where `unmix_edge_spill` works.
+const SPILL_BAND: usize = 3;
+
+/// Smallest key share (of 255) that `unmix_edge_spill` treats as spill.
+const SPILL_MIN: u32 = 32;
+
+/// A dark subject blended with a bright key is far from the key on the largest channel and so
+/// stays opaque, keeping a coloured outline. Near transparent pixels, this estimates how much of
+/// the key a pixel holds from its spill (how far the key's strong channels rise above its weak
+/// ones, compared with the key itself), takes that share out of the colour and the opacity.
+/// Pixels deeper inside keep their colour, so key-coloured detail in the subject survives.
+fn unmix_edge_spill(rgba: &mut [u8], w: usize, h: usize, key: [u32; 3]) {
+    let strong: Vec<usize> = (0..3).filter(|&c| key[c] >= 128).collect();
+    let weak: Vec<usize> = (0..3).filter(|&c| key[c] < 128).collect();
+    if strong.is_empty() || weak.is_empty() {
+        return;
+    }
+    let spill_of = |px: &[u32; 3]| -> u32 {
+        let lo = strong.iter().map(|&c| px[c]).min().unwrap_or(0);
+        let hi = weak.iter().map(|&c| px[c]).max().unwrap_or(0);
+        lo.saturating_sub(hi)
+    };
+    let key_spill = spill_of(&key);
+    if key_spill == 0 {
+        return;
+    }
+    // Distance (in pixels, Chebyshev) to the nearest transparent pixel, capped at the band.
+    let transparent: Vec<bool> = rgba.chunks_exact(4).map(|p| p[3] == 0).collect();
+    let near_edge = |x: usize, y: usize| -> bool {
+        let (x0, x1) = (x.saturating_sub(SPILL_BAND), (x + SPILL_BAND).min(w - 1));
+        let (y0, y1) = (y.saturating_sub(SPILL_BAND), (y + SPILL_BAND).min(h - 1));
+        (y0..=y1).any(|yy| (x0..=x1).any(|xx| transparent[yy * w + xx]))
+    };
+    for y in 0..h {
+        for x in 0..w {
+            let i = (y * w + x) * 4;
+            if transparent[y * w + x] || !near_edge(x, y) {
+                continue;
+            }
+            let c = [rgba[i] as u32, rgba[i + 1] as u32, rgba[i + 2] as u32];
+            // Share of key, 0..=255.
+            let f = (spill_of(&c) * 255 / key_spill).min(255);
+            // A slight lean toward the key is the subject's own colour, not spill.
+            if f < SPILL_MIN {
+                continue;
+            }
+            let keep = 255 - f;
+            let a = (rgba[i + 3] as u32 * keep + 127) / 255;
+            if a == 0 {
+                rgba[i..i + 4].copy_from_slice(&[0, 0, 0, 0]);
+                continue;
+            }
+            // c = keep*fg + f*key  =>  fg = (255*c - f*key) / keep
+            for ch in 0..3 {
+                let num = (255 * c[ch]).saturating_sub(f * key[ch]);
+                rgba[i + ch] = ((num + keep / 2) / keep).min(255) as u8;
+            }
+            rgba[i + 3] = a as u8;
+        }
+    }
+}
+
 /// Seam blending with four copies: the original and the copies shifted half a width, half a
 /// height and both (wrapping). Weights are separable: `wx` goes from 0 at the left and right
 /// borders to 1 at the center column, `wy` likewise for rows; the original gets `wx*wy`, the
@@ -179,6 +295,41 @@ pub fn make_tileable(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn flat_backgrounds_become_transparent_and_lose_their_tint_at_edges() {
+        // 4x1: magenta, magenta-ish edge blend, orange, magenta.
+        let k = [250u8, 0, 200, 255];
+        let fg = [255u8, 140, 0, 255];
+        // A 50% blend of fg and key.
+        let mid = [252u8, 70, 100, 255];
+        let mut img = [k, mid, fg, k].concat();
+        remove_background(&mut img, 4, 1);
+        assert_eq!(&img[0..4], &[0, 0, 0, 0], "key colour is transparent");
+        assert_eq!(&img[8..12], &fg, "far colours are untouched");
+        assert_eq!(&img[12..16], &[0, 0, 0, 0]);
+        // The blend is opaque enough to show and its colour moves toward fg, away from the key.
+        assert!(img[7] > 0, "{:?}", &img[4..8]);
+        assert!(img[6] < mid[2] && img[5] >= mid[1], "{:?}", &img[4..8]);
+        // Deterministic.
+        let mut again = [k, mid, fg, k].concat();
+        remove_background(&mut again, 4, 1);
+        assert_eq!(img, again);
+    }
+
+    #[test]
+    fn dark_outlines_blended_with_the_key_lose_their_tint() {
+        let k = [250u8, 0, 200, 255];
+        let dark = [20u8, 10, 40, 255];
+        // Half dark, half key: far from the key on red, so the first pass keeps it opaque.
+        let blend = [135u8, 5, 120, 255];
+        let mut img = [k, blend, dark, dark, k].concat();
+        remove_background(&mut img, 5, 1);
+        let px = &img[4..8];
+        assert!(px[3] > 0 && px[3] < 200, "edge is partly transparent: {px:?}");
+        assert!(px[0] < 70 && px[2] < 90, "edge loses the magenta: {px:?}");
+        assert_eq!(&img[8..12], &dark, "subject colours are untouched");
+    }
 
     fn solid(w: u32, h: u32, c: [u8; 4]) -> Vec<u8> {
         c.iter().copied().cycle().take((w * h * 4) as usize).collect()
