@@ -137,27 +137,39 @@ pub fn resample(rgba: &[u8], w: u32, h: u32, tw: u32, th: u32) -> Vec<u8> {
     out
 }
 
-/// Seam blending: each pixel is mixed with the pixel half the image away (wrapping). The mix
-/// weight goes from all-shifted at the borders to all-original at the center, so the borders
-/// show the shifted copy, whose left and right (and top and bottom) neighbours are adjacent
-/// pixels of the original: the result repeats without a seam.
+/// Seam blending with four copies: the original and the copies shifted half a width, half a
+/// height and both (wrapping). Weights are separable: `wx` goes from 0 at the left and right
+/// borders to 1 at the center column, `wy` likewise for rows; the original gets `wx*wy`, the
+/// x-shifted copy `(1-wx)*wy`, the y-shifted copy `wx*(1-wy)` and the doubly shifted copy
+/// `(1-wx)*(1-wy)`. Each shifted copy has its own seam on a center line, exactly where its
+/// weight is zero, and at the borders only copies whose neighbours across the wrap are adjacent
+/// original pixels remain: the result repeats with no seam at the borders or the center.
+/// Integer weights (0..=256 per axis), so results are exact on every machine.
 pub fn make_tileable(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
     let (w, h) = (w as u64, h as u64);
     let mut out = vec![0u8; rgba.len()];
-    // Weight of the original, 0..=256: distance to the nearest border, relative to half size.
+    // 0 at a border, 256 at the center.
     let edge = |v: u64, n: u64| -> u64 {
         let d = v.min(n - 1 - v) * 2 * 256;
         (d / n.max(2).saturating_sub(1)).min(256)
     };
+    let at = |x: u64, y: u64| ((y * w + x) * 4) as usize;
     for y in 0..h {
+        let wy = edge(y, h);
+        let sy = (y + h / 2) % h;
         for x in 0..w {
-            let t = edge(x, w).min(edge(y, h));
-            let a = ((y * w + x) * 4) as usize;
-            let (sx, sy) = ((x + w / 2) % w, (y + h / 2) % h);
-            let b = ((sy * w + sx) * 4) as usize;
+            let wx = edge(x, w);
+            let sx = (x + w / 2) % w;
+            let copies = [
+                (at(x, y), wx * wy),
+                (at(sx, y), (256 - wx) * wy),
+                (at(x, sy), wx * (256 - wy)),
+                (at(sx, sy), (256 - wx) * (256 - wy)),
+            ];
+            let a = at(x, y);
             for c in 0..4 {
-                let v = rgba[a + c] as u64 * t + rgba[b + c] as u64 * (256 - t);
-                out[a + c] = ((v + 128) / 256) as u8;
+                let v: u64 = copies.iter().map(|&(i, k)| rgba[i + c] as u64 * k).sum();
+                out[a + c] = ((v + 32768) / 65536) as u8;
             }
         }
     }
@@ -208,6 +220,31 @@ mod tests {
             assert!((px(w - 1, y) - px(0, y)).abs() <= 8, "seam at row {y}");
         }
         assert_eq!(t, make_tileable(&img, w, h));
+    }
+
+    #[test]
+    fn tileable_has_no_seam_at_the_center_either() {
+        // A diagonal ramp wraps hard in both directions; every neighbour step, across the
+        // wrap and through the center lines, stays small.
+        let (w, h) = (64u32, 64u32);
+        let mut img = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let v = ((x + y) * 2) as u8;
+                img.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        let t = make_tileable(&img, w, h);
+        let px = |x: u32, y: u32| t[((y * w + x) * 4) as usize] as i32;
+        let mut worst = 0;
+        for y in 0..h {
+            for x in 0..w {
+                worst = worst
+                    .max((px(x, y) - px((x + 1) % w, y)).abs())
+                    .max((px(x, y) - px(x, (y + 1) % h)).abs());
+            }
+        }
+        assert!(worst <= 12, "largest neighbour step {worst}");
     }
 
     #[test]

@@ -61,7 +61,7 @@ Date: 2026-11-12. Status: accepted.
 - **Tripo with a local image.** Uploaded with `POST /v2/openapi/upload` (multipart, field
   `file`), then `image_to_model` with `file_token`.
 - **Post-processing, deterministic.** Images: decode to RGBA8, exact integer box resampling,
-  seam blending by a half-size wrap offset, canonical PNG re-encode (drops metadata). Models:
+  seam blending of four half-size wrap offsets with separable weights (no seam at the borders or the center; the first live texture showed a center seam with one offset), canonical PNG re-encode (drops metadata). Models:
   valid glTF 2.0, self-contained, bounds through the node tree from accessor min/max, one root
   node added that grounds (lowest point at y = 0), centers x and z and scales to `height_m`;
   mesh data untouched; triangle budget reported, not enforced; the engine's own loader must
