@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); pool and search (W3) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | In progress (W8, decision 0050): all 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`); stability-suite entries and generated assets still to come. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -170,6 +170,18 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `prefab_instantiate` twice, `scene_run`). Not covered: sub-mesh selection inside a model,
   overrides on model parts, point/spot lights, audio sources, physic materials, X/Z capsules,
   compound bodies, Unity `.unity` scenes (same reader would serve them).
+- CC0 pool (W3, decision 0041): `cargo test -p marionette-pool`:
+  `crates/marionette-pool/tests/pool.rs` (`seed_pool_matches_its_generator`,
+  `made_assets_need_a_method_and_cc0_license_files`, `generated_assets_need_a_persons_dedication`,
+  `owned_assets_and_copies_of_them_are_refused`,
+  `online_assets_need_a_known_library_its_domain_and_license_file`,
+  `poly_haven_textures_and_models_are_ingested_with_checks`,
+  `ambientcg_materials_are_ingested_from_their_archives`, `search_follows_the_required_order`);
+  unit tests in `src/net.rs` (MD5) and `src/zip.rs`; `crates/marionette-cli/tests/pool_e2e.rs`
+  (`pool_operations_search_fetch_add_and_refuse`). Seed set in `pool/` rebuilt by
+  `cargo run -p marionette-pool --example make_seed -- <folder>`. Operations `asset_search`,
+  `pool_info`, `pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`.
+  The pool moves to its own repository once one exists; until then `pool/` is the pool.
 
 Line 8, Unreal importer (W6, decision 0029):
 - `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
@@ -270,6 +282,10 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 
 ## UNVERIFIED
 
+- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
+  are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
+  build machine's network blocks those sites, so no live search or download has run.
+
 - Unity prefab import (decision 0040) is tested only on hand-written prefab files in Unity's text
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
@@ -350,6 +366,7 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 | 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
 | 2026-11-12 | Line 8 part (W4): `marionette-generate` crate (recipes, request-keyed cache, provenance, person-only image approval, PNG and GLB post-processing), operations `generate_recipe`/`generate_plan`/`generate_run`/`generate_list`, `marionette generate`, providers: Tripo local-image upload, `net` feature transport, keys files, per-provider caps; decision 0045, `docs/ai/GENERATION.md`. Drift hash unchanged. | branch `claude/project-thread-3n87gn` |
 | 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
+| 2026-11-12 | Line 8 part (W3): `marionette-pool` crate (pool layout and per-asset proof, admission rules, owned gate, generated-asset dedication gate, Poly Haven and ambientCG adapters, archive ingest for Kenney and Quaternius, ordered asset search), eight pool operations, seed set in `pool/`, decision 0041. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | W8: `games/crystal-ward` (top-down 3D); script messages (`engine.send`, `onMessage`, `ScriptInbox`); porting map points Raycast, SendMessage and CharacterController.Move at the script API. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/dust-circuit` (racing, AI rival); `RoundCuboid` collider shape for box-shaped characters. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/signal-yard` (first-person shooter, played and recorded through MCP sessions); mouse axes `axis:MouseX`/`axis:MouseY` from the window. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
