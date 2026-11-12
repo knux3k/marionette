@@ -46,42 +46,101 @@ fn load(path: &str, seed: u64) -> Result<Sim, Errors> {
     engine::load_file(Path::new(path), path, seed)
 }
 
-pub fn bench(
-    path: &str,
-    frames: u32,
-    seed: u64,
-    camera: Option<u64>,
-    size: &str,
-    msaa: u32,
-) -> Result<Value, Errors> {
+/// Typical interpupillary distance in meters, for the stereo benchmark.
+const IPD_M: f32 = 0.064;
+
+/// Options of `marionette bench`.
+pub struct BenchOptions<'a> {
+    pub path: &'a str,
+    pub frames: u32,
+    pub seed: u64,
+    pub camera: Option<u64>,
+    pub size: &'a str,
+    pub msaa: u32,
+    pub eyes: u32,
+    pub headset: bool,
+    pub warmup: u32,
+}
+
+/// Head turn for headset emulation: yaw in radians at frame `i` (90 Hz, 2 s period).
+/// Measurement only; the simulation never sees it.
+fn head_yaw(i: u32) -> f32 {
+    let t = i as f32 / 90.0;
+    25f32.to_radians() * (t * std::f32::consts::PI).sin()
+}
+
+pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
+    let BenchOptions {
+        path,
+        frames,
+        seed,
+        camera,
+        size,
+        msaa,
+        eyes,
+        headset,
+        warmup,
+    } = o;
     let (width, height) = parse_size(size)?;
     check_msaa(msaa)?;
     if frames == 0 {
         return Err(Diagnostic::error("cli.bad_frames", "--frames must be at least 1").into());
     }
+    if !(1..=marionette_render::MAX_VIEWS as u32).contains(&eyes) {
+        return Err(Diagnostic::error(
+            "cli.bad_eyes",
+            format!("--eyes must be 1..{}", marionette_render::MAX_VIEWS),
+        )
+        .fix("use --eyes 2 for a stereo headset")
+        .into());
+    }
     let mut sim = load(path, seed)?;
     let gpu = Gpu::headless()?;
     let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
     // Warm-up: load assets, compile pipelines, settle clocks. Not measured.
-    for _ in 0..30 {
+    for _ in 0..warmup {
         sim.step();
         offscreen
-            .render(&gpu, &extract(&sim.world), camera)
+            .render_eyes(&gpu, &extract(&sim.world), camera, eyes, IPD_M)
             .map_err(|e| e.with_file(path))?;
     }
-    let mut times = Vec::with_capacity(frames as usize);
-    for _ in 0..frames {
+    let n = frames as usize;
+    let (mut times, mut sims, mut extracts, mut records, mut waits) = (
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+    );
+    let mut stats = marionette_render::RenderStats::default();
+    let ms = |d: std::time::Duration| d.as_secs_f64() * 1000.0;
+    for i in 0..frames {
         let start = Instant::now();
         sim.step();
-        let frame = extract(&sim.world);
-        offscreen.render(&gpu, &frame, camera)?;
-        times.push(start.elapsed().as_secs_f64() * 1000.0);
+        let stepped = Instant::now();
+        let mut frame = extract(&sim.world);
+        if headset {
+            let turn = glam::Mat4::from_rotation_y(head_yaw(i));
+            for c in &mut frame.cameras {
+                c.world *= turn;
+            }
+        }
+        let extracted = Instant::now();
+        stats = offscreen.render_eyes(&gpu, &frame, camera, eyes, IPD_M)?;
+        times.push(ms(start.elapsed()));
+        sims.push(ms(stepped - start));
+        extracts.push(ms(extracted - stepped));
+        records.push(offscreen.last_timing.record_ms);
+        waits.push(offscreen.last_timing.gpu_wait_ms);
     }
-    let avg = times.iter().sum::<f64>() / times.len() as f64;
-    let mut sorted = times.clone();
-    sorted.sort_by(f64::total_cmp);
-    let pct = |p: f64| sorted[((sorted.len() as f64 - 1.0) * p).round() as usize];
     let round = |x: f64| (x * 1000.0).round() / 1000.0;
+    let pct = |v: &[f64], p: f64| {
+        let mut sorted = v.to_vec();
+        sorted.sort_by(f64::total_cmp);
+        round(sorted[((sorted.len() as f64 - 1.0) * p).round() as usize])
+    };
+    let avg = times.iter().sum::<f64>() / times.len() as f64;
+    let max = times.iter().copied().fold(0.0, f64::max);
     const BUDGET_MS: f64 = 1000.0 / 90.0;
     Ok(json!({
         "ok": true,
@@ -91,14 +150,23 @@ pub fn bench(
         "width": width,
         "height": height,
         "msaa": msaa,
+        "eyes": eyes,
+        "headset": headset,
         "frames": frames,
         "avg_ms": round(avg),
-        "p50_ms": round(pct(0.5)),
-        "p99_ms": round(pct(0.99)),
-        "max_ms": round(*sorted.last().expect("frames >= 1")),
+        "p50_ms": pct(&times, 0.5),
+        "p99_ms": pct(&times, 0.99),
+        "max_ms": round(max),
+        "phases_p50_ms": {
+            "sim": pct(&sims, 0.5),
+            "extract": pct(&extracts, 0.5),
+            "record": pct(&records, 0.5),
+            "gpu_wait": pct(&waits, 0.5),
+        },
+        "render": stats,
         "budget_ms": round(BUDGET_MS),
-        "within_budget": sorted.last().is_some_and(|&m| m <= BUDGET_MS),
-        "method": "offscreen; per frame: 1 sim tick + extract + render + wait for GPU idle (serialized, so conservative)",
+        "within_budget": max <= BUDGET_MS,
+        "method": "offscreen; per frame: 1 sim tick + extract + render all eyes + wait for GPU idle (serialized, so conservative)",
     }))
 }
 

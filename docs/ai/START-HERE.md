@@ -11,6 +11,7 @@ be checked against a repo-relative path, a command or a test name. Read in this 
 6. [ENVIRONMENT.md](ENVIRONMENT.md): toolchain, exact commands, durations, GPU-less setup.
 7. As needed: [DECISIONS.md](DECISIONS.md) (index of `docs/decisions/`),
    [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) (normative asset rules),
+   [PERFORMANCE.md](PERFORMANCE.md) (budgets and how to measure),
    [GLOSSARY.md](GLOSSARY.md), [PORTING.md](PORTING.md) (bringing Unity or Unreal code over),
    and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),

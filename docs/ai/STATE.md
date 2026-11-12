@@ -150,11 +150,13 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `fbx_7500_from_a_second_writer_matches_blenders_reading`,
   `skinned_animation_matches_blenders_own_gltf`, `ascii_fbx_converts_like_binary`,
   `conversion_is_deterministic`, `broken_files_are_errors_not_panics`,
+  `blend_shapes_become_morph_targets_and_match_blender`,
   `unity_project_fbx_is_converted_with_its_texture`,
   `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
   conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
+  false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
+  (decision 0027); skinning in
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
@@ -177,6 +179,14 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - Next: map trigger hooks and raycasts when the porting tables are revisited; Unity prefab and
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
+
+## Performance (workstream WP)
+
+Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
+draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
+`cargo test -p marionette-factory`; timing budgets in release:
+`cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
+Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
 ## UNVERIFIED
 
@@ -211,9 +221,8 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
-- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
-  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
-  those engines, not checked against their current documentation.
+- Performance on a real desktop GPU and headset: all timings come from a Linux container with
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
@@ -236,3 +245,5 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |

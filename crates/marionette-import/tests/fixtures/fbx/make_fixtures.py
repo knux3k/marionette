@@ -124,3 +124,26 @@ bpy.ops.import_scene.gltf(filepath=os.path.join(out, "crate.glb"))
 bpy.ops.export_scene.fbx(filepath=os.path.join(out, "crate_zup_units.fbx"), axis_forward="Y", axis_up="Z",
                          apply_scale_options="FBX_SCALE_UNITS", path_mode="STRIP")
 print("ok")
+
+# 4. Blend shapes: a grid with two shape keys, one animated and one held at 0.25.
+reset()
+bpy.ops.mesh.primitive_grid_add(x_subdivisions=4, y_subdivisions=4, size=2, location=(0, 0, 0))
+grid = bpy.context.object
+grid.name = "Face"
+grid.data.materials.append(plain_material("FaceSkin", (0.9, 0.7, 0.6, 1)))
+grid.shape_key_add(name="Basis")
+raise_key = grid.shape_key_add(name="Raise", from_mix=False)
+for v in raise_key.data:
+    if v.co.x > 0.1:
+        v.co.z += 0.5
+twist = grid.shape_key_add(name="Twist", from_mix=False)
+for v in twist.data:
+    v.co.x += 0.3 * v.co.y
+twist.value = 0.25
+scene = bpy.context.scene
+scene.frame_start = 1; scene.frame_end = 11
+for f, val in ((1, 0.0), (6, 1.0), (11, 0.0)):
+    raise_key.value = val
+    raise_key.keyframe_insert("value", frame=f)
+export("morph.fbx", bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False, bake_anim_simplify_factor=0.0)
+print("ok")

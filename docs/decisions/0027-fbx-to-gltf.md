@@ -43,6 +43,12 @@ imported models were kept as `source.fbx` with `engine_ready: false` (decision 0
 - **Skins.** Clusters become joints; a cluster's `Transform` is the inverse bind matrix
   (mesh node space to bone space; `TransformLink` is used only when `Transform` is missing). Up
   to four weights per vertex, largest kept, normalized.
+- **Blend shapes.** Each `BlendShapeChannel` becomes a glTF morph target on every primitive of
+  its mesh (position offsets per output vertex, through the same change of basis); default
+  weights come from the channel's `DeformPercent` (a plain child node in most files, a property
+  in some); target names go to `mesh.extras.targetNames`. A channel with in-between shapes uses
+  its full-weight (last) shape. Shape normal offsets are not converted (base normals are kept).
+  Animated `DeformPercent` curves become a `weights` channel in the same glTF animation.
 - **Animation.** One glTF animation per animation stack, first layer only. Translation,
   rotation and scale are sampled at the union of the node's key times and interpolated linearly
   (constant keys honored); cubic curves are approximated by their keys, which is exact for
@@ -50,7 +56,7 @@ imported models were kept as `source.fbx` with `engine_ready: false` (decision 0
 - **Pipeline.** The import writes `model.glb` (main) and keeps the original as `source.fbx`;
   the record notes summarize the conversion and list everything approximated or left out. If
   conversion fails the old behaviour stays (`source.fbx`, not engine-ready, with the reason).
-- **Not converted yet:** blend shapes, vertex colors, extra UV sets, texture tiling/offset,
+- **Not converted yet:** blend shape in-betweens and normal offsets, vertex colors, extra UV sets, texture tiling/offset,
   extra animation layers, cameras and lights (empty nodes), FBX 6.x. The renderer does not skin
   yet, so skinned models draw in their bind pose.
 
@@ -60,8 +66,9 @@ imported models were kept as `source.fbx` with `engine_ready: false` (decision 0
 `crates/marionette-import/tests/fixtures/fbx/` (CC0, generator script beside them). Blender's
 own glTF export of the same scenes is the reference: corner positions within 0.1 mm, equal
 signed volume (winding) and area for the static crate, the Z-up/meters variant, the FBX 7.5
-file from Assimp (against Blender's reading of it) and the skinned, animated column at five
-times. ASCII is checked by writing the binary trees as ASCII and converting both. Broken and
+file from Assimp (against Blender's reading of it), the skinned, animated column at five
+times, and a grid with two blend shapes (one animated, one held at 0.25) with default weights
+and at five times. ASCII is checked by writing the binary trees as ASCII and converting both. Broken and
 truncated files return errors, never panic. The outputs pass the Khronos glTF validator with no
 errors (one warning: a skinned mesh node keeps its local transform so non-skinning renderers
 show the bind pose).

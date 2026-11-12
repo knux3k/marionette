@@ -11,6 +11,7 @@ name = "marionette"
 path = "src/main.rs"
 
 [dependencies]
+glam = "0.34"
 marionette-core.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent" }
