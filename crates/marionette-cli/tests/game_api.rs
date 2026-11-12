@@ -324,3 +324,66 @@ export function update(self: Entity): void {
     );
     assert_eq!(s["me"], "hero");
 }
+
+#[test]
+fn messages_reach_on_message_in_order_and_wait_as_world_state() {
+    let d = project("messages");
+    let mut a = Agent::new(&d, false);
+    // Entity 4 (hero) sends to entity 1 (lower id: delivered next tick) and to itself; a spawned
+    // entity gets its first message before its first update.
+    arena(
+        &mut a,
+        r#"export function onMessage(self: Entity, m: Message): void {
+  self.state.got = [...(self.state.got ?? []), [engine.tick, m.kind, m.detail, m.from]];
+}
+export function update(self: Entity): void {
+  if (engine.tick === 1) {
+    engine.send(self, "note", { n: 1 });
+    engine.send(self.id, "note", { n: 2 });
+    const kid = engine.spawn({ Script: { path: "hero.ts" } }, "kid");
+    engine.send(kid, "hello");
+    self.state.kid = kid.id;
+  }
+  if (engine.tick === 3) {
+    try {
+      engine.send(1, "x");
+    } catch (e) {
+      self.state.refused = String(e).includes("script.no_script");
+    }
+  }
+}
+"#,
+    );
+    let s = state(&mut a, 5);
+    assert_eq!(
+        s["got"],
+        json!([[2, "note", { "n": 1 }, 4], [2, "note", { "n": 2 }, 4]]),
+        "{s}"
+    );
+    assert_eq!(s["refused"], true);
+    let kid = s["kid"].as_u64().unwrap();
+    let k = call(
+        &mut a,
+        "observe_entity",
+        json!({ "scene": "arena.scene.json", "seed": 1, "ticks": 5, "id": kid }),
+    );
+    let ks: Value = serde_json::from_str(k["components"]["ScriptState"]["data"].as_str().unwrap()).unwrap();
+    assert_eq!(ks["got"], json!([[2, "hello", null, 4]]), "{ks}");
+    // Waiting messages are world state (component `ScriptInbox`), emptied on delivery.
+    let sess = call(
+        &mut a,
+        "session_start",
+        json!({ "scene": "arena.scene.json", "seed": 1 }),
+    );
+    let id = sess["session"].as_str().unwrap().to_string();
+    let inbox = |a: &mut Agent| {
+        call(a, "observe_entity", json!({ "session": id, "id": 4 }))["components"]["ScriptInbox"]["data"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    call(&mut a, "session_step", json!({ "session": id, "ticks": 2 }));
+    assert!(inbox(&mut a).contains("\"n\":2"), "two messages wait");
+    call(&mut a, "session_step", json!({ "session": id, "ticks": 1 }));
+    assert_eq!(inbox(&mut a), "[]", "delivered and emptied");
+}

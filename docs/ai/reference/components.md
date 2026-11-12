@@ -249,6 +249,16 @@ Rust type: `marionette_script::Script`.
 | --- | --- | --- | --- |
 | `path` | string | yes |  |
 
+### `ScriptInbox`
+
+Messages waiting for an entity's script (`engine.send`), as JSON text: a list of `{from, kind, detail}`. Written by the engine; delivered to `onMessage` at the start of the entity's next turn (the same tick if it has not run yet). Part of the state hash and of snapshots.
+
+Rust type: `marionette_script::ScriptInbox`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | string | yes |  |
+
 ### `ScriptState`
 
 A script's per-entity state (`self.state`), as JSON text. Written by the engine after each `update`; part of the state hash and of snapshots.

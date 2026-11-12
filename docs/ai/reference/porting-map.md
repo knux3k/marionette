@@ -142,7 +142,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `BroadcastMessage` | `engine.emit(kind, detail)` | rewrite |  |
 | `Camera.main` | `engine.query("Camera")[0]` | script |  |
 | `CancelInvoke` | `engine.cancel(fn) or engine.cancel()` | script |  |
-| `CharacterController.Move` | `CharacterController component driven by actions` | rewrite | Movement comes from input actions; script-computed Move() is a gap. |
+| `CharacterController.Move` | `CharacterController driven by actions, or by a CharacterInput component a script sets` | rewrite | Set CharacterInput.move_x/move_forward/jump each tick; turn by setting Transform.rotation. |
 | `Color` | `{ r, g, b, a }` | script | Linear color. |
 | `CompareTag` | `other.has("<MarkerComponent>") or a name check` | rewrite |  |
 | `Cursor.lockState` |  | gap |  |
@@ -209,10 +209,10 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `MoveRotation` | `set Transform.rotation of a Kinematic RigidBody` | script |  |
 | `NavMeshAgent.SetDestination` |  | gap |  |
 | `Physics.OverlapSphere` |  | gap | Use a sensor Collider and onTriggerEnter/Exit. |
-| `Physics.Raycast` |  | gap | Raycasts exist as the observe_raycast operation but not inside scripts yet. |
+| `Physics.Raycast` | `engine.raycast(origin, direction, maxDistance, exclude)` | script | Returns the first hit or null; sensors are skipped. |
 | `Physics.SphereCast` |  | gap |  |
 | `Physics.gravity` | `RigidBody.gravity_scale / CharacterController.gravity` | ready |  |
-| `Physics2D.Raycast` |  | gap | Not inside scripts yet (observe_raycast operation only). |
+| `Physics2D.Raycast` | `engine.raycast(origin, direction, maxDistance, exclude)` | script | In 2D the z of origin and direction is ignored. |
 | `PlayOneShot` | `AudioSource trigger` | rewrite |  |
 | `PlayerPrefs` |  | gap | No save data yet; reading files during a tick is forbidden. |
 | `Quaternion` | `{ x, y, z, w }` | script | Convert with port_convert (x, y flip sign). |
@@ -232,7 +232,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `SceneManager.LoadScene` |  | gap | One scene per run; scene switching is not available yet. |
 | `Screen.height` |  | gap |  |
 | `Screen.width` |  | gap | Screen size is not exposed to scripts; UiNode anchors place UI without it. |
-| `SendMessage` | `engine.emit(kind, detail), or call the other entity's data` | rewrite |  |
+| `SendMessage` | `engine.send(entity, kind, detail) and an onMessage hook` | rewrite | Delivered on the receiver's next turn, not synchronously. |
 | `SerializeField` | `a field in self.state (default set in start) or a component value in the scene` | script |  |
 | `StartCoroutine` | `exported step functions chained with engine.after` | rewrite | Split the coroutine at each `yield return`: the code before the first yield runs now and ends with `engine.after(seconds, step2)`; step2 does the next part and schedules step3, and so on. Locals the steps share go in self.state or the timer argument. Generators are not used because their position cannot be saved in snapshots (decision 0021). |
 | `StopAllCoroutines` | `engine.cancel()` | script | Cancels every timer of this entity. |

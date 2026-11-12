@@ -12,7 +12,7 @@ that play the game with scripted input. Decision 0050. Proof test:
 | Lantern Keeper | top-down 2D | `games/lantern-keeper/` | done: wins with scripted input; idle run loses all lives |
 | Ember Run | 2D side-scroller | `games/ember-run/` | done: wins with scripted input (14 of 15 embers, two hits); running into the first gap loses all lives |
 | Cloudstep | 3D platformer | `games/cloudstep/` | done: reaches the beacon in about 11 s with scripted input, no falls; walking straight ahead falls again and again |
-| (planned) | top-down 3D | - | not started |
+| Crystal Ward | top-down 3D | `games/crystal-ward/` | done: survives five waves with scripted input (crystal at 5 of 10); idle loses in wave 3 |
 | (planned) | racing | - | not started |
 | (planned) | first-person shooter | - | not started |
 
@@ -43,7 +43,7 @@ Open (not fixed here; each names the cheapest fix seen):
 | # | Gap | Seen in | Possible fix |
 | --- | --- | --- | --- |
 | G1 | No tile map: a tile game spawns one sprite entity per wall (about 100 in Lantern Keeper). | Lantern Keeper | A `TileMap` component (text rows plus a palette) drawn as one batch. |
-| G2 | A script cannot read another entity's `self.state`: `engine.find(..).state` is empty; the only way is parsing `get("ScriptState").data`. | Lantern Keeper (one controller script owns the ghosts for this reason) | Make `Entity.state` of other entities a read-only parsed copy, or add `engine.send(entity, message)`. |
+| G2 | A script cannot read another entity's `self.state`: `engine.find(..).state` is empty; the only way is parsing `get("ScriptState").data`. Messages (`engine.send`) now cover writes. | Lantern Keeper, Ember Run and Cloudstep HUDs | Make `Entity.state` of other entities a read-only parsed copy. |
 | G3 | `entity.set` replaces the whole component; changing one sprite color repeats image, size and layer. | Lantern Keeper | `entity.patch(name, partial)` merging fields. |
 | G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
 | G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
@@ -53,3 +53,5 @@ Open (not fixed here; each names the cheapest fix seen):
 | G9 | No shadows; in a 3D platformer it is hard to judge where a jump lands. | Cloudstep | A shadow map for the first directional light (or a blob shadow under characters). |
 | G10 | Built-in meshes are cube, sphere and plane only; the hero is a stretched sphere over a capsule collider. | Cloudstep | Add `primitive:capsule` and `primitive:cylinder` to match the collider shapes. |
 | G11 | A character carried sideways by a moving platform keeps the drift after it leaves (contact pushes it); jumps need correcting. | Cloudstep | Part of G7. |
+| G12 | A spawned entity cannot be given starting script state; its first `start` sees `{}` (Crystal Ward sends bolts their heading as a message). | Crystal Ward | An optional `state` argument to `engine.spawn`. |
+| G13 | Script files cannot `import` each other; small helpers (yaw to quaternion) are copied into each script. | Crystal Ward | Module imports between scripts in the same project. |

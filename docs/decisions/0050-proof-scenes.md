@@ -45,6 +45,7 @@ the games needed (listed below).
 | Sensors report contacts with every body type (`ActiveCollisionTypes::all()` on sensors only); character movement ignores sensors | Pickups and checkpoints: a fixed sensor never saw the (kinematic) character, and the character was stopped by it as if it were a wall. Solid pairs are unchanged. |
 | A script that changes the `Transform` of a dynamic body or a character teleports it | Respawning at a checkpoint. Physics compares the Transform with what it wrote back last tick; untouched bodies are equal bit for bit, so existing results are unchanged. |
 | `Entity.name` in scripts | Telling pickups, hazards and checkpoints apart in a trigger hook. |
+| `engine.send(target, kind, detail)` and the `onMessage(self, message)` hook; waiting messages live in the `ScriptInbox` component | Enemies report breaches and projectiles report kills to a director, and a spawner gives a new projectile its heading. Kept as a component, so messages are in the state hash and in snapshots. Delivered at the start of the target's next turn, after contact hooks and before timers: the same tick if the target runs later in id order, otherwise the next tick. |
 
 ## Why
 

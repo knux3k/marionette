@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// The proof games. A new game is added here and in `docs/ai/PROOF-SCENES.md`.
-const GAMES: [&str; 3] = ["lantern-keeper", "ember-run", "cloudstep"];
+const GAMES: [&str; 4] = ["lantern-keeper", "ember-run", "cloudstep", "crystal-ward"];
 
 fn games_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../games")
