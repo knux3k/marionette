@@ -110,6 +110,8 @@ pub struct MeshDraw {
     pub asset: std::sync::Arc<str>,
     pub world: Mat4,
     pub material: Option<Material>,
+    /// Animated node matrices (from the animation module); `None` draws the rest pose.
+    pub pose: Option<std::sync::Arc<marionette_core::spatial::Pose>>,
 }
 
 #[derive(Debug, Clone)]
@@ -184,11 +186,17 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         }
         frame.cameras.sort_by_key(|c| c.entity);
     }
-    if let Some(mut q) = world.try_query::<(&SceneId, &Model, Option<&Material>, Place)>() {
+    if let Some(mut q) = world.try_query::<(
+        &SceneId,
+        &Model,
+        Option<&Material>,
+        Option<&marionette_core::spatial::Pose>,
+        Place,
+    )>() {
         // Share one allocation per distinct asset path.
         let mut names: std::collections::BTreeMap<&str, std::sync::Arc<str>> = Default::default();
         frame.meshes.reserve(q.iter(world).len());
-        for (id, model, material, (t, p, l)) in q.iter(world) {
+        for (id, model, material, pose, (t, p, l)) in q.iter(world) {
             let asset = names
                 .entry(model.asset.as_str())
                 .or_insert_with(|| model.asset.as_str().into())
@@ -198,6 +206,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 asset,
                 world: world_matrix(t, p, l),
                 material: material.copied(),
+                pose: pose.map(|p| std::sync::Arc::new(p.clone())),
             });
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);

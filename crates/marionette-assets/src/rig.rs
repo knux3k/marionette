@@ -255,7 +255,10 @@ pub(crate) fn rig_from(doc: &gltf::Document, buffers: &[gltf::buffer::Data]) -> 
         };
         for ch in anim.channels() {
             let reader = ch.reader(get);
-            let times: Vec<f32> = reader.read_inputs().ok_or("animation channel has no key times")?.collect();
+            let times: Vec<f32> = reader
+                .read_inputs()
+                .ok_or("animation channel has no key times")?
+                .collect();
             use gltf::animation::util::ReadOutputs;
             let (property, values, width): (Property, Vec<f32>, usize) =
                 match reader.read_outputs().ok_or("animation channel has no values")? {
@@ -265,11 +268,12 @@ pub(crate) fn rig_from(doc: &gltf::Document, buffers: &[gltf::buffer::Data]) -> 
                     ReadOutputs::MorphTargetWeights(v) => {
                         let vals: Vec<f32> = v.into_f32().collect();
                         let keys = times.len().max(1);
-                        let per = if ch.sampler().interpolation() == gltf::animation::Interpolation::CubicSpline {
-                            vals.len() / (keys * 3)
-                        } else {
-                            vals.len() / keys
-                        };
+                        let per =
+                            if ch.sampler().interpolation() == gltf::animation::Interpolation::CubicSpline {
+                                vals.len() / (keys * 3)
+                            } else {
+                                vals.len() / keys
+                            };
                         (Property::Weights, vals, per)
                     }
                 };
@@ -323,7 +327,11 @@ mod tests {
     fn trs_matches_glam() {
         let q = glam::Quat::from_rotation_y(0.7) * glam::Quat::from_rotation_x(-0.3);
         let m = trs([1.0, 2.0, 3.0], q.to_array(), [2.0, 0.5, 1.5]);
-        let g = glam::Mat4::from_scale_rotation_translation(glam::Vec3::new(2.0, 0.5, 1.5), q, glam::Vec3::new(1.0, 2.0, 3.0));
+        let g = glam::Mat4::from_scale_rotation_translation(
+            glam::Vec3::new(2.0, 0.5, 1.5),
+            q,
+            glam::Vec3::new(1.0, 2.0, 3.0),
+        );
         for (a, b) in m.iter().zip(g.to_cols_array()) {
             assert!((a - b).abs() < 1e-6, "{m:?} vs {g:?}");
         }

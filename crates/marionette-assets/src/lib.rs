@@ -6,8 +6,8 @@ pub use glam;
 
 pub mod font;
 pub mod rig;
-pub use rig::{Rig, load_rig};
 use glam::{Mat4, Vec2, Vec3};
+pub use rig::{Rig, load_rig};
 use std::path::Path;
 
 /// RGBA8 image. `srgb` says how the color bytes are encoded (true for colors, false for
@@ -284,7 +284,8 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                     joints = j.into_u16().collect();
                     weights = w.into_f32().map(normalize_weights).collect();
                 }
-                let skin = skin.filter(|_| joints.len() == positions.len() && weights.len() == positions.len());
+                let skin =
+                    skin.filter(|_| joints.len() == positions.len() && weights.len() == positions.len());
                 if skin.is_none() {
                     joints.clear();
                     weights.clear();

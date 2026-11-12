@@ -53,12 +53,12 @@ struct LightsUniform {
 /// Per-instance vertex data: one per drawn copy of a mesh part.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-struct InstanceData {
+pub(crate) struct InstanceData {
     /// World matrix; the shader derives the normal matrix from it.
-    model: [[f32; 4]; 4],
-    base_color: [f32; 4],
+    pub model: [[f32; 4]; 4],
+    pub base_color: [f32; 4],
     /// metallic, roughness, normal_scale, has_normal_map (0/1)
-    params: [f32; 4],
+    pub params: [f32; 4],
 }
 
 /// What one frame cost in GPU work, counted on the CPU. Deterministic for a given frame,
@@ -91,18 +91,48 @@ struct SpriteVertex {
     color: [f32; 4],
 }
 
-struct GpuPart {
-    vertices: wgpu::Buffer,
-    indices: wgpu::Buffer,
-    index_count: u32,
-    material: usize,
-    transform: Mat4,
+pub(crate) struct GpuPart {
+    pub vertices: wgpu::Buffer,
+    pub indices: wgpu::Buffer,
+    pub index_count: u32,
+    pub material: usize,
+    pub transform: Mat4,
+    /// The glTF node the part hangs from; an animated pose moves it.
+    pub node: Option<usize>,
+    /// Skin index and per-vertex joints and weights, for skinned parts (drawn by
+    /// `skinning.rs`, not the static path).
+    pub skin: Option<(usize, wgpu::Buffer)>,
 }
 
-struct GpuModel {
-    parts: Vec<GpuPart>,
+pub(crate) struct GpuModel {
+    pub parts: Vec<GpuPart>,
     /// Texture bind group and factors per material.
-    materials: Vec<(wgpu::BindGroup, MaterialData)>,
+    pub materials: Vec<(wgpu::BindGroup, MaterialData)>,
+    pub skins: Vec<crate::skinning::GpuSkin>,
+    /// Model-space rest matrix of every node (used when an entity has no pose).
+    pub rest: Vec<Mat4>,
+}
+
+/// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
+pub(crate) fn instance_material(
+    model: &GpuModel,
+    part: &GpuPart,
+    over: Option<marionette_core::spatial::Material>,
+) -> ([f32; 4], [f32; 4]) {
+    match over {
+        Some(m) => {
+            let c = m.base_color;
+            ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
+        }
+        None => {
+            let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
+            let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
+            (
+                md.base_color,
+                [md.metallic, md.roughness, md.normal_scale, has_normal],
+            )
+        }
+    }
 }
 
 struct GpuTexture {
@@ -152,6 +182,7 @@ pub struct Renderer {
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
+    skinning: crate::skinning::Skinning,
 }
 
 fn uniform_entry(
@@ -336,6 +367,15 @@ impl Renderer {
             cache: None,
         });
 
+        let skinning = crate::skinning::Skinning::new(
+            device,
+            [&view_layout, &lights_layout, &material_layout],
+            color_format,
+            depth_stencil(true),
+            multisample,
+            size_of::<MeshVertex>() as u64,
+        );
+
         let sprite_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sprite"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/sprite.wgsl").into()),
@@ -449,6 +489,7 @@ impl Renderer {
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
+            skinning,
         }
     }
 
@@ -590,10 +631,41 @@ impl Renderer {
                     index_count: p.mesh.indices.len() as u32,
                     material: p.material,
                     transform: p.transform,
+                    node: p.node,
+                    skin: p.skin.filter(|&s| s < model.rig.skins.len()).map(|s| {
+                        let skin_vertices: Vec<crate::skinning::SkinVertex> = (0..p.mesh.positions.len())
+                            .map(|i| crate::skinning::SkinVertex {
+                                joints: p.mesh.joints[i],
+                                weights: p.mesh.weights[i],
+                            })
+                            .collect();
+                        let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("skin vertices"),
+                            contents: bytemuck::cast_slice(&skin_vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                        (s, buffer)
+                    }),
                 }
             })
             .collect();
-        GpuModel { parts, materials }
+        let skins = model
+            .rig
+            .skins
+            .iter()
+            .map(|s| crate::skinning::GpuSkin {
+                // Joints outside the node list (a broken file) fall back to the rest pose.
+                joints: s.joints.clone(),
+                inverse_bind: s.inverse_bind.iter().map(Mat4::from_cols_array).collect(),
+            })
+            .collect();
+        let rest = model.rig.rest_pose().iter().map(Mat4::from_cols_array).collect();
+        GpuModel {
+            parts,
+            materials,
+            skins,
+            rest,
+        }
     }
 
     /// Records one view of the frame into `encoder`. Call [`Renderer::prepare`] first.
@@ -689,21 +761,16 @@ impl Renderer {
                 },
             };
             for (p, part) in model.parts.iter().enumerate() {
-                let model_m = draw.world * part.transform;
-                let (base_color, params) = match draw.material {
-                    Some(m) => {
-                        let c = m.base_color;
-                        ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
-                    }
-                    None => {
-                        let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-                        let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
-                        (
-                            md.base_color,
-                            [md.metallic, md.roughness, md.normal_scale, has_normal],
-                        )
-                    }
+                if part.skin.is_some() {
+                    continue; // drawn by the skinned pass
+                }
+                // An animated pose moves parts hanging from animated nodes (props on bones).
+                let local = match (&draw.pose, part.node) {
+                    (Some(pose), Some(n)) if n < pose.nodes.len() => Mat4::from_cols_array(&pose.nodes[n]),
+                    _ => part.transform,
                 };
+                let model_m = draw.world * local;
+                let (base_color, params) = instance_material(model, part, draw.material);
                 let key = (&*draw.asset, p, draw.material.is_some());
                 let g = match last_key {
                     Some((k, g)) if k == key => g,
@@ -810,6 +877,17 @@ impl Renderer {
                 &instances,
                 wgpu::BufferUsages::VERTEX,
             );
+        }
+
+        // Skinned parts: their own instanced draws, one joint palette per character.
+        let (palettes, skinned, skinned_calls) =
+            crate::skinning::build(frame, &self.models, &self.plain_material);
+        self.skinning
+            .upload(&self.device, &self.queue, &palettes, &skinned);
+        for call in &skinned_calls {
+            let n = call.instances.end - call.instances.start;
+            stats.instances += n;
+            stats.triangles += (call.part.index_count / 3) as u64 * n as u64;
         }
 
         // Sprites: build one vertex/index buffer, batch consecutive sprites by image.
@@ -1011,6 +1089,24 @@ impl Renderer {
                     stats.draw_calls += 1;
                 }
             }
+            if let (Some(ib), false) = (&self.skinning.instances, skinned_calls.is_empty()) {
+                pass.set_pipeline(&self.skinning.pipeline);
+                pass.set_bind_group(0, &self.view_group, &[world_offset]);
+                pass.set_bind_group(1, &self.lights_group, &[]);
+                pass.set_bind_group(3, &self.skinning.group, &[]);
+                pass.set_vertex_buffer(1, ib.slice(..));
+                for call in &skinned_calls {
+                    let Some((_, skin_vertices)) = &call.part.skin else {
+                        continue;
+                    };
+                    pass.set_bind_group(2, call.material, &[]);
+                    pass.set_vertex_buffer(0, call.part.vertices.slice(..));
+                    pass.set_vertex_buffer(2, skin_vertices.slice(..));
+                    pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
+                    stats.draw_calls += 1;
+                }
+            }
             if let (Some(vb), Some(ib), false) =
                 (&self.sprite_vertices, &self.sprite_indices, batches.is_empty())
             {
@@ -1043,6 +1139,7 @@ impl Renderer {
             }
         }
         drop(calls);
+        drop(skinned_calls);
         self.scratch = (raw, gid, instances);
         stats
     }
@@ -1079,7 +1176,7 @@ fn material_textures(
 }
 
 /// Writes `data` into `slot`, recreating the buffer when it is too small.
-fn write_growable<T: Pod>(
+pub(crate) fn write_growable<T: Pod>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     slot: &mut Option<wgpu::Buffer>,

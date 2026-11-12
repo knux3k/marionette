@@ -81,7 +81,11 @@ impl Animator {
                 time: 0.0,
                 speed,
                 looping,
-                weight: if fade > 0.0 && !self.layers.is_empty() { 0.0 } else { 1.0 },
+                weight: if fade > 0.0 && !self.layers.is_empty() {
+                    0.0
+                } else {
+                    1.0
+                },
                 target_weight: 1.0,
                 fade,
             }),
@@ -166,10 +170,13 @@ impl Module for AnimModule {
         for (id, entity) in animated(world) {
             let Some(model) = world.get::<Model>(entity) else {
                 errors.push(
-                    Diagnostic::error(codes::NO_MODEL, format!("entity {id} has an Animator but no Model"))
-                        .entity(id)
-                        .component("Animator")
-                        .fix("add a Model whose asset is a glTF file with animations"),
+                    Diagnostic::error(
+                        codes::NO_MODEL,
+                        format!("entity {id} has an Animator but no Model"),
+                    )
+                    .entity(id)
+                    .component("Animator")
+                    .fix("add a Model whose asset is a glTF file with animations"),
                 );
                 continue;
             };
@@ -280,7 +287,11 @@ fn write_poses(world: &mut World, dt: Option<f32>) {
     let tick = world.get_resource::<SimClock>().map_or(0, |c| c.tick);
     let mut finished: Vec<(u64, String)> = Vec::new();
     for (id, entity) in animated(world) {
-        let Some(rig) = world.get::<Model>(entity).and_then(|m| rigs.get(&m.asset)).cloned() else {
+        let Some(rig) = world
+            .get::<Model>(entity)
+            .and_then(|m| rigs.get(&m.asset))
+            .cloned()
+        else {
             continue;
         };
         let Some(mut animator) = world.get::<Animator>(entity).cloned() else {
@@ -367,7 +378,16 @@ mod tests {
         a.stop(Some("walk"), 0.0);
         assert_eq!(a.layers.len(), 1);
         a.play("idle", 0.0, 1.0, false);
-        assert_eq!(a.layers, vec![layer("idle", 1.0)].into_iter().map(|mut l| { l.looping = false; l }).collect::<Vec<_>>());
+        assert_eq!(
+            a.layers,
+            vec![layer("idle", 1.0)]
+                .into_iter()
+                .map(|mut l| {
+                    l.looping = false;
+                    l
+                })
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
