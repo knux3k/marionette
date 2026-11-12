@@ -193,6 +193,22 @@ Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
   scene YAML to Marionette scenes (entities, components, converted transforms) would remove
   most of step 3 of the porting recipe.
 
+## Animation (decision 0028)
+
+- `cargo run -q -p marionette-cli -- run examples/animation.scene.json --headless --ticks 600 --seed 1`
+  prints `f409e570ea3b9d3c1e92a01adc3070dbbd49b39d147b0dd97caa39297dba6d13` (twice in a row).
+- Reference image `examples/reference/animation.png` (320x180, 15 ticks, seed 1, MSAA 4).
+- Tests: `crates/marionette-cli/tests/animation.rs` (recorded hash twice, snapshot mid-clip
+  and restore, bones move and loop exactly, cross-fade and `anim_finished`, unknown clips
+  refused, script `playClip` equals `anim_play`, clip listing, reference image, 64 skinned
+  characters in 4 draw calls, morph targets change the mesh); `crates/marionette-anim/tests/puppet.rs`;
+  unit tests in `crates/marionette-anim/src/lib.rs`, `crates/marionette-anim/src/sample.rs` and `crates/marionette-assets/src/rig.rs`.
+- Test character `examples/assets/puppet.glb` (CC0, made by
+  `cargo run -p marionette-anim --example make_puppet -- examples/assets/puppet.glb`,
+  byte-identical every run).
+- Not yet: root motion, additive layers, bone masks, animation events, IK; FBX blend shapes
+  (the FBX converter of the FBX branch writes skins and clips; blend shapes not yet).
+
 ## Performance (workstream WP)
 
 Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
@@ -234,6 +250,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Skinned and morphed characters have been rendered only on Mesa lavapipe (Linux container);
+  never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
+  export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
   Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
@@ -266,4 +285,5 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
 | 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |

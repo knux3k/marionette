@@ -47,6 +47,11 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
 | `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
 | `provider_generate` | yes | Generates text (language), a PNG (image) or a GLB (model3d) with the configured provider. Paid providers are checked against the spend cap first and every paid call is logged in .marionette/spend.jsonl. |
+| `anim_clips` | no | List the animation clips (name, seconds, animated nodes), nodes, skins and morph targets of a model: `asset` (a glTF path relative to the project root) or the `Model` of entity `id` in `scene`. |
+| `anim_play` | yes | Play a clip on an entity's Animator (added if missing), cross-fading every other clip out over `fade` seconds. Target: `scene` (file) or `session` (live world). |
+| `anim_blend` | yes | Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing. |
+| `anim_stop` | yes | Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds. |
+| `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
@@ -1005,6 +1010,131 @@ Output:
 | `spent_usd` | number | yes | Ledger total after this call. |
 | `text` | string \| null |  | Language: the reply. |
 | `usage` | Usage \| null |  |  |
+
+## `anim_clips`
+
+List the animation clips (name, seconds, animated nodes), nodes, skins and morph targets of a model: `asset` (a glTF path relative to the project root) or the `Model` of entity `id` in `scene`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `asset` | string \| null |  | glTF file relative to the project root. |
+| `id` | integer \| null |  |  |
+| `scene` | string \| null |  | Scene file whose entity `id` has the `Model` to inspect (instead of `asset`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `asset` | string | yes |  |
+| `clips` | array of ClipInfo | yes |  |
+| `morph_targets` | array of array of any | yes | Nodes with morph targets and how many each has. |
+| `nodes` | array of string | yes |  |
+| `skins` | array of SkinInfo | yes |  |
+
+## `anim_play`
+
+Play a clip on an entity's Animator (added if missing), cross-fading every other clip out over `fade` seconds. Target: `scene` (file) or `session` (live world).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `clip` | string | yes | Clip name (see anim_clips); `#0` is the first clip. |
+| `fade` | number \| null |  | Cross-fade seconds. Default 0.2. |
+| `id` | integer | yes |  |
+| `looping` | boolean \| null |  | Default true. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `speed` | number \| null |  | Playback rate. Default 1. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `anim_blend`
+
+Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `clip` | string | yes |  |
+| `fade` | number \| null |  | Seconds for a full 0 to 1 change. Default 0.2. |
+| `id` | integer | yes |  |
+| `looping` | boolean \| null |  | Default true. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `speed` | number \| null |  | Default 1. |
+| `weight` | number | yes | Target weight (0 fades it out). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `anim_stop`
+
+Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `clip` | string \| null |  | Clip to stop; all clips when omitted. |
+| `fade` | number \| null |  | Fade-out seconds. Default 0.2. |
+| `id` | integer | yes |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `anim_pose`
+
+World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `nodes` | array \| null |  | Node names to report; all nodes when omitted. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `nodes` | array of NodePose | yes |  |
+| `tick` | integer | yes |  |
 
 ## `script_reload`
 
