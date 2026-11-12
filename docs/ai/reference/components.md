@@ -52,7 +52,7 @@ Rust type: `marionette_core::spatial::Camera`.
 
 ### `CharacterController`
 
-Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z, 2D in X.
+Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X.
 
 Rust type: `marionette_physics::components::CharacterController`.
 
@@ -65,6 +65,18 @@ Rust type: `marionette_physics::components::CharacterController`.
 | `move_forward` | string | yes | Action for back (-1) / forward (+1, toward -Z). Ignored in 2D. |
 | `move_x` | string | yes | Action for left (-1) / right (+1). |
 | `speed` | number | yes | Horizontal speed in m/s at full input. |
+
+### `CharacterInput`
+
+Drives a `CharacterController` from a script instead of input actions (AI characters, vehicles): when present, its values replace the controller's actions. Values are like action values (-1..1). `jump` asks for one jump: physics starts it if the character stands on ground and sets `jump` back to false either way.
+
+Rust type: `marionette_physics::components::CharacterInput`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `jump` | boolean | yes |  |
+| `move_forward` | number | yes |  |
+| `move_x` | number | yes |  |
 
 ### `CharacterState`
 

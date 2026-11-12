@@ -2,6 +2,16 @@
 // Marionette game scripts are TypeScript ES modules: export the hooks of `ScriptHooks`.
 // Determinism: no Date, no Math.random (use engine.rand), Math functions are platform-independent.
 
+/** A point or direction in meters (2D uses x and y). */
+type Vec3 = { x: number; y: number; z: number };
+/** What `engine.raycast` hit. */
+interface RayHit {
+  entity: Entity;
+  /** Meters along the ray. */
+  distance: number;
+  point: Vec3;
+  normal: Vec3;
+}
 /** The entity a hook runs for, or one found with `engine.entity` / `engine.query`. */
 interface Entity {
   /** Stable scene id. */
@@ -66,6 +76,11 @@ declare const engine: {
   /** Every entity with the component, in id order. */
   query(name: keyof Components): Entity[];
   resource<K extends keyof Resources>(name: K): Resources[K] | undefined;
+  /** First solid collider hit by a ray from `origin` along `direction` (any length) within
+ *  `maxDistance` meters (default 1000), skipping sensors and `exclude` (usually `self`).
+ *  Sees the physics world as the last physics step left it. Null without a hit or without
+ *  physics. 2D ignores z. */
+  raycast(origin: Vec3, direction: Vec3, maxDistance?: number, exclude?: Entity | number): RayHit | null;
   /** Adds an entity now, with a new id that is never reused (Unity `Instantiate`, Unreal
    *  `SpawnActor`). Throws `script.bad_value` and spawns nothing if a component does not
    *  fit. Its script's `start` and `update` first run on the next tick; physics gives it a
@@ -172,7 +187,7 @@ type Camera = {
   };
 };
 
-/** Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z, 2D in X. */
+/** Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X. */
 type CharacterController = {
   /** Downward acceleration in m/s². */
   gravity: number;
@@ -187,6 +202,13 @@ type CharacterController = {
   move_x: string;
   /** Horizontal speed in m/s at full input. */
   speed: number;
+};
+
+/** Drives a `CharacterController` from a script instead of input actions (AI characters, vehicles): when present, its values replace the controller's actions. Values are like action values (-1..1). `jump` asks for one jump: physics starts it if the character stands on ground and sets `jump` back to false either way. */
+type CharacterInput = {
+  jump: boolean;
+  move_forward: number;
+  move_x: number;
 };
 
 /** Runtime state of a character controller. Written by physics. */
@@ -478,6 +500,7 @@ interface Components {
   AudioSource: AudioSource;
   Camera: Camera;
   CharacterController: CharacterController;
+  CharacterInput: CharacterInput;
   CharacterState: CharacterState;
   Collider: Collider;
   DestroyAt: DestroyAt;

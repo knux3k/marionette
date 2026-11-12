@@ -18,6 +18,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `entity_delete` | yes | Remove an entity. Fails if other entities still refer to it. |
 | `component_set` | yes | Add or replace one component on an entity. |
 | `component_remove` | yes | Remove one component from an entity. |
+| `resource_set` | yes | Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`). |
+| `resource_remove` | yes | Remove one scene resource. |
 | `session_start` | yes | Load a scene into a live headless world (optionally pre-stepped). Returns the session id. |
 | `session_step` | yes | Advance a live session by `ticks` fixed ticks. Returns the state hash. |
 | `session_stop` | yes | Discard a live session. |
@@ -51,6 +53,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 
 ## `project_init`
 
@@ -315,6 +318,51 @@ Output:
 | `id` | integer | yes | The entity the edit was about. |
 | `target` | string | yes | The scene file or session that was changed. |
 
+## `resource_set`
+
+Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resource` | string | yes | Resource type name, e.g. `PhysicsSettings`. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `value` | any | yes | The full resource value, e.g. {"mode": "Dim3", "gravity": {"x": 0, "y": -9.81, "z": 0}}. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `replaced` | boolean | yes | True when the resource existed before the edit. |
+| `resource` | string | yes |  |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `resource_remove`
+
+Remove one scene resource.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resource` | string | yes |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `replaced` | boolean | yes | True when the resource existed before the edit. |
+| `resource` | string | yes |  |
+| `target` | string | yes | The scene file or session that was changed. |
+
 ## `session_start`
 
 Load a scene into a live headless world (optionally pre-stepped). Returns the session id.
@@ -489,6 +537,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `limit` | integer \| null |  | Page size (default 50, max 500). |
 | `offset` | integer |  |  |
 | `scene` | string \| null |  |  |
@@ -515,6 +564,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `limit` | integer \| null |  |  |
 | `offset` | integer |  |  |
 | `scene` | string \| null |  |  |
@@ -545,6 +595,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `scene` | string \| null |  |  |
 | `seed` | integer |  |  |
 | `session` | string \| null |  |  |
@@ -570,6 +621,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `camera` | integer \| null |  | Camera entity id (default: the lowest-id camera). |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `msaa` | integer \| null |  | MSAA samples, 1 or 4 (default 4). |
 | `out` | string \| null |  | Output PNG path (default `.marionette/screenshots/<name>-t<tick>.png`). |
 | `scene` | string \| null |  |  |
@@ -648,6 +700,7 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `direction` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `max_distance` | number \| null |  | Default 1000. |
 | `origin` | array of number | yes |  |
 | `scene` | string \| null |  |  |
@@ -672,6 +725,7 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
 | `kind` | string \| null |  | Only this kind (e.g. `sound`). |
 | `limit` | integer \| null |  |  |
 | `offset` | integer |  |  |
@@ -1087,4 +1141,24 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `batch_run`
+
+Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string \| null |  | A `*.ops.json` file (relative to the project root). |
+| `ops` | array \| null |  | Steps to run instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ran` | array of string | yes | Operation name of each step, in order. |
+| `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
 

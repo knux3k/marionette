@@ -4,8 +4,8 @@
 macro_rules! backend {
     () => {
         use crate::components::{
-            AngularVelocity, BodyKind, CharacterController, CharacterState, Collider as ColliderComp,
-            RigidBody as BodyComp,
+            AngularVelocity, BodyKind, CharacterController, CharacterInput, CharacterState,
+            Collider as ColliderComp, RigidBody as BodyComp,
         };
         use bevy_ecs::entity::Entity;
         use bevy_ecs::world::World;
@@ -210,14 +210,38 @@ macro_rules! backend {
                         };
                         let mut cs = world.get::<CharacterState>(e).copied().unwrap_or_default();
                         let mut vy = cs.vertical_velocity - cc.gravity * dt;
-                        if cs.grounded && actions.just_pressed(&cc.jump) {
+                        let scripted = world.get::<CharacterInput>(e).copied();
+                        let (move_x, move_forward, jump) = match scripted {
+                            Some(i) => (
+                                i.move_x.clamp(-1.0, 1.0),
+                                i.move_forward.clamp(-1.0, 1.0),
+                                i.jump,
+                            ),
+                            None => (
+                                actions.value(&cc.move_x),
+                                actions.value(&cc.move_forward),
+                                actions.just_pressed(&cc.jump),
+                            ),
+                        };
+                        if scripted.is_some_and(|i| i.jump)
+                            && let Some(mut i) = world.get_mut::<CharacterInput>(e)
+                        {
+                            i.jump = false;
+                        }
+                        if cs.grounded && jump {
                             vy = cc.jump_speed;
                             log.push(("jump", id, None));
                         }
-                        let desired = conv::walk(
-                            actions.value(&cc.move_x) * cc.speed * dt,
-                            actions.value(&cc.move_forward) * cc.speed * dt,
-                            vy * dt,
+                        let t = world.get::<Transform>(e).copied().unwrap_or_default();
+                        let q = [t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w];
+                        conv::turn(&mut pw.bodies[h.body], q);
+                        let desired = conv::face(
+                            q,
+                            conv::walk(
+                                move_x * cc.speed * dt,
+                                move_forward * cc.speed * dt,
+                                vy * dt,
+                            ),
                         );
                         let controller = KinematicCharacterController::default();
                         let pose = *pw.bodies[h.body].position();
@@ -331,12 +355,18 @@ macro_rules! backend {
             origin: [f32; 3],
             dir: [f32; 3],
             max: f32,
+            filter: marionette_core::module::RayFilter,
         ) -> Option<(u64, f32, [f32; 3])> {
             let ray = Ray::new(conv::vector(origin), conv::vector(dir).normalize_or_zero());
-            let (handle, hit) =
-                state
-                    .world
-                    .cast_ray_and_get_normal(&ray, max, true, QueryFilter::default())?;
+            let mut q = QueryFilter::default();
+            if filter.skip_sensors {
+                q = q.exclude_sensors();
+            }
+            let skip = |_: ColliderHandle, c: &Collider| filter.exclude != Some(c.user_data as u64);
+            if filter.exclude.is_some() {
+                q = q.predicate(&skip);
+            }
+            let (handle, hit) = state.world.cast_ray_and_get_normal(&ray, max, true, q)?;
             let id = state.world.colliders.get(handle)?.user_data as u64;
             Some((id, hit.time_of_impact, conv::to3(hit.normal)))
         }

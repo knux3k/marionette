@@ -63,7 +63,8 @@ pub(crate) fn ops() -> Vec<Op> {
     ]
 }
 
-/// Which world to look at: a live `session`, or `scene` loaded and run `ticks` with `seed`.
+/// Which world to look at: a live `session`, or `scene` loaded and run `ticks` with `seed`
+/// (and `input`, a scripted input file or recording, relative to the project root).
 #[derive(Deserialize, JsonSchema, Clone, Default)]
 pub struct WorldTarget {
     pub session: Option<String>,
@@ -72,6 +73,8 @@ pub struct WorldTarget {
     pub seed: u64,
     #[serde(default)]
     pub ticks: u64,
+    /// Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions.
+    pub input: Option<String>,
 }
 
 /// Runs `f` on the target world. Stateless targets are loaded, stepped and discarded.
@@ -90,6 +93,7 @@ fn with_world<T>(
         }
         (None, Some(scene)) => {
             let mut sim = crate::project::load_sim(agent, scene, target.seed)?;
+            crate::engine::feed(agent, &mut sim, target.input.as_deref(), &[])?;
             sim.run(target.ticks);
             f(agent, &mut sim, scene)
         }
@@ -183,16 +187,25 @@ pub struct Predicate {
 }
 
 /// Looks a dotted path up in an entity's components.
-pub fn lookup<'a>(
-    components: &'a std::collections::BTreeMap<String, Value>,
-    path: &str,
-) -> Option<&'a Value> {
+/// Reads `Component.field.sub` from an entity's components. A JSON text value (such as
+/// `ScriptState.data`) is parsed when the path goes further into it, so
+/// `ScriptState.data.score` reads `self.state.score` of a script.
+pub fn lookup(components: &std::collections::BTreeMap<String, Value>, path: &str) -> Option<Value> {
     let mut parts = path.split('.');
-    let mut v = components.get(parts.next()?)?;
+    let mut v = components.get(parts.next()?)?.clone();
     for p in parts {
+        if let Value::String(text) = &v {
+            v = serde_json::from_str(text).ok()?;
+        }
         v = match v {
-            Value::Object(m) => m.get(p)?,
-            Value::Array(a) => a.get(p.parse::<usize>().ok()?)?,
+            Value::Object(mut m) => m.remove(p)?,
+            Value::Array(mut a) => {
+                let i = p.parse::<usize>().ok()?;
+                if i >= a.len() {
+                    return None;
+                }
+                a.swap_remove(i)
+            }
             _ => return None,
         };
     }
@@ -232,7 +245,7 @@ pub fn matching(scene: &Scene, with: &[String], predicates: &[Predicate]) -> Vec
         .filter(|e| {
             predicates
                 .iter()
-                .all(|p| holds(lookup(&e.components, &p.path), p.op, &p.value))
+                .all(|p| holds(lookup(&e.components, &p.path).as_ref(), p.op, &p.value))
         })
         .map(|e| e.id)
         .collect()
@@ -555,6 +568,7 @@ fn raycast(agent: &mut Agent, input: RaycastInput) -> Result<RaycastOutput, Erro
             input.origin,
             input.direction,
             input.max_distance.unwrap_or(1000.0),
+            Default::default(),
         )
         .map(|h| RaycastHit {
             entity: h.entity,
