@@ -1,0 +1,36 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Position": {
+          "x": 3.0,
+          "y": 2.0,
+          "z": -1.0
+        },
+        "Spring": {
+          "anchor": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          },
+          "damping": 1.5,
+          "stiffness": 4.0
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 1,
+      "name": "bob"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}

@@ -530,7 +530,8 @@ fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
         let mut setup_error = None;
         // The caller's operation table is checked out while this operation runs, so setup
         // goes through a second agent on the same project with the same read-only setting.
-        let mut setup_agent = (!mode.setup.is_empty()).then(|| Agent::new(agent.root(), agent.read_only()));
+        let mut setup_agent = (!mode.setup.is_empty())
+            .then(|| Agent::with_engine(agent.root(), agent.read_only(), agent.engine().clone()));
         for s in &mode.setup {
             let helper = setup_agent.as_mut().expect("created when there is setup");
             if let Err(e) = helper.call(&s.op, s.input.clone()) {
@@ -543,6 +544,7 @@ fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
             let mut job_mode = mode.clone();
             job_mode.hang_s = input.hang_s.or(mode.hang_s);
             let job = Job {
+                engine: agent.engine().clone(),
                 mode: job_mode,
                 root: agent.root().to_path_buf(),
                 scene_path: agent.resolve(&mode.scene)?,
@@ -598,6 +600,7 @@ fn reproduce(suite: &str, mode: &str, seed: u64, ticks: u64) -> String {
 
 #[derive(Clone)]
 struct Job {
+    engine: crate::Engine,
     mode: Mode,
     root: PathBuf,
     scene_path: PathBuf,
@@ -760,7 +763,7 @@ fn entities(sim: &mut Sim) -> usize {
 }
 
 fn load(job: &Job) -> Result<Sim, Errors> {
-    crate::engine::load_file(&job.scene_path, &job.mode.scene, job.seed)
+    job.engine.load_file(&job.scene_path, &job.mode.scene, job.seed)
 }
 
 fn inputs_for(job: &Job, sim: &Sim) -> Result<Vec<InputEvent>, Errors> {
@@ -1016,7 +1019,8 @@ fn work_sim(job: &Job, progress: &Progress, out: &Mutex<ModeResult>) -> Result<(
     if !job.mode.no_replay {
         let mut again = if job.inject.nondeterminism {
             // Same input, but the simulation's own RNG starts elsewhere.
-            crate::engine::load_file(&job.scene_path, &job.mode.scene, job.seed ^ 0xbad)?
+            job.engine
+                .load_file(&job.scene_path, &job.mode.scene, job.seed ^ 0xbad)?
         } else {
             load(job)?
         };
@@ -1074,7 +1078,7 @@ fn agent_pass(
     meter: Option<&mut Meter>,
     out: &Mutex<ModeResult>,
 ) -> Result<String, Errors> {
-    let mut agent = Agent::new(&job.root, false);
+    let mut agent = Agent::with_engine(&job.root, false, job.engine.clone());
     let started = agent.call(
         "session_start",
         json!({ "scene": job.mode.scene, "seed": job.seed }),

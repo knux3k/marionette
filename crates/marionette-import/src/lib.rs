@@ -56,7 +56,7 @@ pub mod codes {
     /// A declaration file is malformed.
     pub const IMPORT_BAD_DECLARATION: &str = "import.bad_declaration";
     /// Writing a license declaration was attempted by a tool; only a person may write one.
-    pub const DECLARATION_WRITE_REFUSED: &str = "import.declaration_write_refused";
+    pub const DECLARATION_WRITE_REFUSED: &str = marionette_core::person_only::DECLARATION_WRITE_REFUSED;
 
     // Refusal reasons (one per refused asset in the import report).
     /// No declaration covers the asset, so its license is unknown.
@@ -97,18 +97,4 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// True when `name` is a license declaration file name (`*.license.json`). Tools must never
-/// write such a file: only a person may declare a license (ASSETS-AND-LICENSES.md rule 9).
-pub fn is_declaration_file_name(name: &str) -> bool {
-    name.to_ascii_lowercase().ends_with(".license.json")
-}
-
-/// The refusal for a tool that tries to write a declaration file.
-pub fn declaration_write_refused(shown: &str) -> marionette_core::Diagnostic {
-    marionette_core::Diagnostic::error(
-        codes::DECLARATION_WRITE_REFUSED,
-        format!("`{shown}` is a license declaration; only a person may write one, never a tool or an AI agent"),
-    )
-    .file(shown)
-    .fix("ask the person who bought the asset to write the declaration (format in docs/ai/ASSETS-AND-LICENSES.md)")
-}
+pub use marionette_core::person_only::{declaration_write_refused, is_declaration_file_name};

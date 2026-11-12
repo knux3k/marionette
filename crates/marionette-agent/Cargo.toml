@@ -13,18 +13,18 @@ marionette-render = { path = "../marionette-render" }
 marionette-input = { path = "../marionette-input" }
 marionette-physics = { path = "../marionette-physics" }
 marionette-audio = { path = "../marionette-audio" }
-marionette-import = { path = "../marionette-import" }
+marionette-import = { path = "../marionette-import", optional = true }
 marionette-anim = { path = "../marionette-anim" }
 bevy_ecs.workspace = true
 marionette-assets = { path = "../marionette-assets" }
-marionette-pool = { path = "../marionette-pool" }
+marionette-pool = { path = "../marionette-pool", optional = true }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
-marionette-jobs-ts = { path = "../marionette-jobs-ts" }
-marionette-providers = { path = "../marionette-providers" }
-marionette-generate = { path = "../marionette-generate" }
-marionette-script = { path = "../marionette-script" }
-marionette-port = { path = "../marionette-port" }
+marionette-jobs-ts = { path = "../marionette-jobs-ts", optional = true }
+marionette-providers = { path = "../marionette-providers", optional = true }
+marionette-generate = { path = "../marionette-generate", optional = true }
+marionette-script = { path = "../marionette-script", optional = true }
+marionette-port = { path = "../marionette-port", optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
@@ -33,5 +33,21 @@ rmcp = { version = "3.9.0", default-features = false, features = ["server", "tra
 tokio = { version = "1", features = ["rt"] }
 
 [features]
+# Optional engine parts (decision 0062). A game that does not use one builds without it:
+# `default-features = false, features = ["script"]`. Each feature adds its operations (and
+# for `script`, the script module).
+default = ["script", "import", "pool", "generate", "port", "jobs-ts"]
+# TypeScript game scripts (QuickJS and the oxc TypeScript stripper).
+script = ["dep:marionette-script"]
+# Owned-asset library and prefab import (library_*, prefab_* operations).
+import = ["dep:marionette-import"]
+# The CC0 asset pool (pool_* operations).
+pool = ["import", "generate", "dep:marionette-pool"]
+# Image and model generation through providers (generate_*, provider_* operations).
+generate = ["dep:marionette-generate", "dep:marionette-providers"]
+# Unity and Unreal porting tools (port_* operations).
+port = ["dep:marionette-port"]
+# Job TypeScript compiled to WebAssembly (wasmtime, jobs_ts_* operations).
+jobs-ts = ["dep:marionette-jobs-ts"]
 # Network transport for paid providers (off by default; decision 0045).
-net = ["marionette-providers/net"]
+net = ["generate", "marionette-providers/net"]

@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "marionette.approval/1";
-pub const SUFFIX: &str = ".approval.json";
+pub const SUFFIX: &str = marionette_core::person_only::APPROVAL_SUFFIX;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,20 +34,7 @@ pub struct Approval {
     pub sha256: String,
 }
 
-pub fn is_approval_file_name(name: &str) -> bool {
-    name.to_ascii_lowercase().ends_with(SUFFIX)
-}
-
-pub fn write_refused(shown: &str) -> Diagnostic {
-    Diagnostic::error(
-        codes::APPROVAL_WRITE_REFUSED,
-        format!(
-            "`{shown}` is an image approval; only a person may approve, with `marionette generate approve`"
-        ),
-    )
-    .file(shown)
-    .fix("ask the project owner to look at the image and run `marionette generate approve <name>`")
-}
+pub use marionette_core::person_only::{approval_write_refused as write_refused, is_approval_file_name};
 
 /// The providers the owner's personal config lists under `waive_reference_approval`,
 /// lowercased (see the module docs).

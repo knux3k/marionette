@@ -35,6 +35,22 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. Extend `crates/marionette-cli/tests/agent_e2e.rs` (CLI and, if relevant, MCP).
 6. Run `cargo run -q -p marionette-cli -- docs` and commit `docs/ai/reference/`.
 
+## Add a game's own Rust module or operation (no engine edit)
+
+Template: `examples/rust-module` (decision 0062).
+
+1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
+   `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
+   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`).
+2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
+   with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
+   `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.
+3. `Engine::builder().module(M).ops(ops()).build()?`, then in `main.rs`
+   `marionette_cli::main_with(engine)` plus the `#[global_allocator]` line from
+   `crates/marionette-cli/src/main.rs`. Tests use `Agent::with_engine` or `Engine::load_file`.
+4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
+   workspace's.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.
@@ -50,7 +66,8 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
    `edition.workspace`, `license.workspace`, `rust-version.workspace`.
 2. Add it to `members` in the root `Cargo.toml`.
 3. If it adds simulation behavior, implement `marionette_core::Module` and add it to
-   `marionette_agent::engine::modules()` (`crates/marionette-agent/src/engine.rs`).
+   `EngineBuilder::standard` (`crates/marionette-agent/src/engine.rs`). If games may leave it
+   out, make it a cargo feature of `marionette-agent` and `marionette-cli` (decision 0062).
 4. Add it to the crate map in ARCHITECTURE.md with its forbidden dependencies.
 5. Record why in a decision.
 

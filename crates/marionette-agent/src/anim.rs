@@ -258,7 +258,8 @@ fn edit_animator(
     change: impl Fn(&mut Animator),
 ) -> Result<EditOutput, Errors> {
     let dir = target_dir(agent, target)?;
-    let registry = crate::engine::registry();
+    let engine = agent.engine().clone();
+    let registry = engine.registry();
     let entry = registry
         .get("Animator")
         .expect("the anim module registers Animator");

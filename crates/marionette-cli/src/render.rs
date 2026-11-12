@@ -1,7 +1,7 @@
 //! CLI commands that use the renderer directly: bench and the windowed run.
 //! (Screenshots go through the shared `observe_screenshot` operation.)
 
-use marionette_agent::engine;
+use marionette_agent::{Engine, engine};
 use marionette_core::{Diagnostic, Errors, Sim};
 use marionette_render::window::{WindowHooks, WindowOptions, run_windowed};
 use marionette_render::{Gpu, Offscreen, extract};
@@ -41,9 +41,9 @@ fn scene_dir(path: &str) -> PathBuf {
         .unwrap_or_default()
 }
 
-/// Loads a scene with every engine module (input, physics, audio), as `scene_run` does.
-fn load(path: &str, seed: u64) -> Result<Sim, Errors> {
-    engine::load_file(Path::new(path), path, seed)
+/// Loads a scene with the running engine's modules, as `scene_run` does.
+fn load(engine: &Engine, path: &str, seed: u64) -> Result<Sim, Errors> {
+    engine.load_file(Path::new(path), path, seed)
 }
 
 /// Typical interpupillary distance in meters, for the stereo benchmark.
@@ -51,6 +51,7 @@ const IPD_M: f32 = 0.064;
 
 /// Options of `marionette bench`.
 pub struct BenchOptions<'a> {
+    pub engine: &'a Engine,
     pub path: &'a str,
     pub frames: u32,
     pub seed: u64,
@@ -71,6 +72,7 @@ fn head_yaw(i: u32) -> f32 {
 
 pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
     let BenchOptions {
+        engine: o_engine,
         path,
         frames,
         seed,
@@ -94,7 +96,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         .fix("use --eyes 2 for a stereo headset")
         .into());
     }
-    let mut sim = load(path, seed)?;
+    let mut sim = load(o_engine, path, seed)?;
     let gpu = Gpu::headless()?;
     let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
     // Warm-up: load assets, compile pipelines, settle clocks. Not measured.
@@ -209,6 +211,7 @@ impl WindowHooks for Live {
 
 /// Options of the windowed run beyond the shared ones.
 pub struct WindowedRun<'a> {
+    pub engine: &'a Engine,
     pub path: &'a str,
     pub ticks: Option<u64>,
     pub seed: u64,
@@ -221,6 +224,7 @@ pub struct WindowedRun<'a> {
 
 pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
     let WindowedRun {
+        engine: o_engine,
         path,
         ticks,
         seed,
@@ -231,7 +235,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         mute,
     } = run;
     let (width, height) = parse_size(size)?;
-    let mut sim = load(path, seed)?;
+    let mut sim = load(o_engine, path, seed)?;
     if let Some(f) = input {
         engine::feed_file(&mut sim, Path::new(f), f)?;
     }

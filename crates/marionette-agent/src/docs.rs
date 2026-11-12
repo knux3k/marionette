@@ -161,16 +161,19 @@ pub fn components(agent: &Agent) -> String {
     out
 }
 
+#[cfg(feature = "script")]
 /// `docs/ai/reference/marionette.d.ts`: the script declarations (same text as `script_types`).
 pub fn script_typings(agent: &Agent) -> String {
     marionette_script::typings::typings(agent.registry())
 }
 
+#[cfg(feature = "port")]
 /// The Unity/Unreal concept tables as one reference document.
 pub fn porting_map() -> String {
     marionette_port::map::reference()
 }
 
+#[cfg(feature = "jobs-ts")]
 /// `docs/ai/reference/jobs.d.ts`: the job TypeScript prelude (same text as `jobs_types`).
 pub fn job_typings() -> String {
     marionette_jobs_ts::PRELUDE_DTS.to_string()
