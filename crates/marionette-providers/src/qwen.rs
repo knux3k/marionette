@@ -7,6 +7,8 @@
 //! `GET {BASE}/api/v1/tasks/<id>` until `output.task_status` is `SUCCEEDED` (or `FAILED`,
 //! `CANCELED`, `UNKNOWN`), and download `output.results[0].url`. The image must be PNG.
 //!
+//! The key's region is found by trying [`BASES`] in order (a 401 moves on).
+//!
 //! UNVERIFIED: endpoint, field names and the price are from documentation as remembered, not
 //! checked against the live service (decision 0019).
 
@@ -18,6 +20,14 @@ use serde_json::{Value, json};
 pub struct Qwen;
 
 pub const BASE: &str = "https://dashscope-intl.aliyuncs.com";
+/// Model Studio regions, tried in this order. A key works in the region it was made in only
+/// (international/Singapore, China/Beijing, US/Virginia); a 401 from one region moves on to the
+/// next. A refused key is not charged.
+pub const BASES: &[&str] = &[
+    BASE,
+    "https://dashscope.aliyuncs.com",
+    "https://dashscope-us.aliyuncs.com",
+];
 pub const DEFAULT_MODEL: &str = "qwen-image";
 /// Assumed upper price per image, US dollars (UNVERIFIED).
 pub const PRICE_PER_IMAGE: f64 = 0.05;
@@ -34,6 +44,17 @@ static INFO: ProviderInfo = ProviderInfo {
 };
 
 pub fn build_submit(model: &str, key: &str, prompt: &str, width: u32, height: u32) -> HttpRequest {
+    build_submit_at(BASE, model, key, prompt, width, height)
+}
+
+pub fn build_submit_at(
+    base: &str,
+    model: &str,
+    key: &str,
+    prompt: &str,
+    width: u32,
+    height: u32,
+) -> HttpRequest {
     let body = json!({
         "model": model,
         "input": { "prompt": prompt },
@@ -46,7 +67,7 @@ pub fn build_submit(model: &str, key: &str, prompt: &str, width: u32, height: u3
         },
     });
     HttpRequest::post_json(
-        format!("{BASE}/api/v1/services/aigc/text2image/image-synthesis"),
+        format!("{base}/api/v1/services/aigc/text2image/image-synthesis"),
         &body,
     )
     .secret_header("authorization", format!("Bearer {key}"))
@@ -54,7 +75,11 @@ pub fn build_submit(model: &str, key: &str, prompt: &str, width: u32, height: u3
 }
 
 pub fn build_status(key: &str, task_id: &str) -> HttpRequest {
-    HttpRequest::get(format!("{BASE}/api/v1/tasks/{task_id}"))
+    build_status_at(BASE, key, task_id)
+}
+
+pub fn build_status_at(base: &str, key: &str, task_id: &str) -> HttpRequest {
+    HttpRequest::get(format!("{base}/api/v1/tasks/{task_id}"))
         .secret_header("authorization", format!("Bearer {key}"))
 }
 
@@ -89,14 +114,21 @@ impl Provider for Qwen {
             unreachable!("generate checks the kind first")
         };
         let key = ctx.key.expect("generate checks the key first");
-        let submit = net::send(
-            ctx.transport,
-            &build_submit(ctx.model, key, &i.prompt, i.width, i.height),
-            "qwen",
-        )?;
+        // Find the key's region: a 401 means "not this region's key", so try the next one.
+        let mut found = None;
+        for (n, base) in BASES.iter().enumerate() {
+            let req = build_submit_at(base, ctx.model, key, &i.prompt, i.width, i.height);
+            let resp = ctx.transport.send(&req);
+            if matches!(&resp, Ok(r) if r.status == 401) && n + 1 < BASES.len() {
+                continue;
+            }
+            found = Some((*base, net::send_result(resp, &req, "qwen")?));
+            break;
+        }
+        let (base, submit) = found.expect("the last region returns or errors");
         let task_id = net::str_at(&net::json(&submit, "qwen")?, "/output/task_id", "qwen")?.to_string();
         let url = net::poll(ctx.max_polls, ctx.wait, "qwen", || {
-            let resp = net::send(ctx.transport, &build_status(key, &task_id), "qwen")?;
+            let resp = net::send(ctx.transport, &build_status_at(base, key, &task_id), "qwen")?;
             parse_status(&net::json(&resp, "qwen")?)
         })?;
         let png = net::send(ctx.transport, &HttpRequest::get(url), "qwen")?.body;
