@@ -35,6 +35,12 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_raycast` | no | Cast a ray through the physics scene; returns the first entity hit, distance, point and normal. |
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
+| `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
+| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
+| `library_list` | no | Lists owned library assets (id, kind, name, license, engine readiness), sorted by id, paged. |
+| `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
+| `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
+| `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
 
 ## `project_init`
 
@@ -694,4 +700,149 @@ Output:
 | `failed` | integer | yes |  |
 | `passed` | integer | yes |  |
 | `results` | array of ScenarioResult | yes |  |
+
+## `library_info`
+
+Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
+| `configured_from` | ConfiguredFrom | yes |  |
+| `exists` | boolean | yes |  |
+| `path` | string | yes |  |
+
+## `library_import`
+
+Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `declarations` | array of string |  | Declaration files (written by a person) to use besides `<source>.license.json`. |
+| `dry_run` | boolean |  | Report what would be imported and refused without writing anything. |
+| `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
+| `source` | string | yes | A .unitypackage file, a Unity project folder, or an owned file or folder. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `already_in_library` | array of ImportedAsset | yes |  |
+| `counts` | Counts | yes |  |
+| `declarations` | array of DeclarationSummary | yes |  |
+| `dry_run` | boolean | yes |  |
+| `imported` | array of ImportedAsset | yes |  |
+| `importer` | string | yes | `unitypackage`, `unity_project` or `files`. |
+| `refused` | array of NotImported | yes | Refused for license or engine-content reasons. |
+| `skipped` | array of NotImported | yes | Not imported for other reasons (unsupported type, binary serialization, ...). |
+| `source_name` | string | yes | File or folder name of the source. |
+
+## `library_list`
+
+Lists owned library assets (id, kind, name, license, engine readiness), sorted by id, paged.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | AssetKind \| null |  | Only this kind: texture, model or material. |
+| `library` | string \| null |  |  |
+| `limit` | integer \| null |  | Default 50, at most 500. |
+| `offset` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | array of AssetSummary | yes |  |
+| `next` | integer \| null |  | Offset of the next page, if any. |
+| `total` | integer | yes |  |
+
+## `library_get`
+
+Reads one owned asset's full record (license, source, files, notes).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | yes |  |
+| `library` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes | True when `main` is in a format the engine loads today. |
+| `files` | array of FileRecord | yes |  |
+| `format` | string | yes | Always `marionette.owned_asset/1`. |
+| `id` | string | yes |  |
+| `kind` | AssetKind | yes |  |
+| `license` | LicenseRecord | yes |  |
+| `main` | string \| null |  | The file the engine loads (for example `texture.png` or `model.glb`), if any. |
+| `name` | string | yes |  |
+| `notes` | array of string |  | Extra facts (texture usage, material mapping gaps, conversions still needed). |
+| `pool` | string | yes | Always `blocked`: owned assets never enter the CC0 pool. |
+| `private` | boolean | yes | Always true: owned assets are private to the user. |
+| `source` | SourceRecord | yes |  |
+| `uses` | array of string |  | Ids of other library assets this one uses (a material's textures). |
+
+## `license_check_text`
+
+Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `text` | string | yes | License text a person pasted in. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limits_to_one_engine` | boolean | yes | True when the text limits use to one engine: assets under it must be refused. |
+| `matches` | array of EngineLimit | yes |  |
+
+## `pool_admission_check`
+
+The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `library` | string \| null |  | Owned library to compare contents with; defaults to the configured one, if any. |
+| `path` | string | yes | The pool candidate: a file or folder. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `admitted_by_owned_gate` | boolean | yes | False when any refusal applies. True only means "not an owned asset". |
+| `compared_with_library` | boolean | yes | Whether file contents were compared against an owned library. |
+| `files_checked` | integer | yes |  |
+| `refusals` | array of PoolRefusal | yes |  |
 

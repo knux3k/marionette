@@ -9,6 +9,7 @@
 pub mod docs;
 pub mod edit;
 pub mod engine;
+pub mod library;
 pub mod mcp;
 pub mod observe;
 pub mod project;
@@ -115,6 +116,7 @@ impl Agent {
             session::ops(),
             observe::ops(),
             scenario::ops(),
+            library::ops(),
         ]
         .into_iter()
         .flatten()
@@ -228,6 +230,13 @@ pub(crate) fn write_atomic(path: &Path, shown: &str, bytes: &[u8]) -> Result<(),
             .file(shown),
         )
     };
+    // Only a person may write a license declaration (ASSETS-AND-LICENSES.md rule 9).
+    if path
+        .file_name()
+        .is_some_and(|n| marionette_import::is_declaration_file_name(&n.to_string_lossy()))
+    {
+        return Err(marionette_import::declaration_write_refused(shown).into());
+    }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }

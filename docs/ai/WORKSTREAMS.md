@@ -40,6 +40,9 @@ UNVERIFIED list in STATE.md.
 
 ## W2: assets A, local import path and Unity importer
 
+Status: done (decision 0018). FBX/OBJ conversion to glTF, Unity prefabs, scenes, animation
+and audio are not covered and are listed as later work in STATE.md.
+
 - Scope: the owned library (per-user folder shared across projects, path from configuration,
   never inside the engine repository), the project's own files, and a Unity importer that reads
   Unity project folders and `.unitypackage` archives (models, textures, materials as far as they
@@ -59,6 +62,9 @@ UNVERIFIED list in STATE.md.
 - Owns: the pool and search modules in `crates/marionette-assets/`, matching operations.
 - Acceptance: search returns results in the required order; the pool refuses non-CC0 and owned
   assets; every pooled asset has a source record.
+- Must use (from W2): `marionette_import::pool::check` before admitting anything (refuses owned
+  assets, their copies and anything with a declaration); `marionette_import::Library` and
+  `Library::records()` for the owned-library step of the search (decision 0018).
 
 ## W4: assets C, generation
 

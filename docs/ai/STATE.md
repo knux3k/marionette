@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Not started. |
-| 8 | Assets (import, pool, generation) | Not started. DESIGN updated with the owned-asset importer. |
+| 8 | Assets (import, pool, generation) | In progress: owned library and Unity importer done (W2); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -77,6 +77,20 @@ Line 6 (input, physics, audio, UI):
   `cargo run --release -p marionette-physics --example step_cost -- 1000`).
 - Modules: decision 0011; input 0013; physics 0012; audio 0014; UI 0015.
 
+Line 8, owned library and Unity import (W2, decision 0018):
+- `crates/marionette-import/tests/import.rs`: `owned_file_with_declaration_is_imported_with_its_license`,
+  `undeclared_assets_are_refused_with_reasons`, `engine_locked_licenses_are_refused`,
+  `engine_content_in_a_unity_project_is_refused_without_override`,
+  `the_most_specific_declaration_applies`, `unitypackage_brings_in_textures_models_and_materials`,
+  `materials_resolve_textures_from_earlier_imports`, `pool_refuses_owned_assets_and_copies_of_them`,
+  `library_location_rules_hold`, `dry_run_writes_nothing_and_bad_archives_are_errors`; plus unit
+  tests in `src/tar.rs`, `src/license.rs`, `src/unity.rs`.
+- `crates/marionette-cli/tests/library_e2e.rs`: `library_operations_import_list_and_gate`,
+  `operations_never_write_license_declarations`.
+- Not covered yet: FBX/OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
+  false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+  `.mat` files (skipped and listed).
+
 ## UNVERIFIED
 
 - CI has never run (no remote); the state hash has never been compared on Linux.
@@ -90,6 +104,12 @@ Line 6 (input, physics, audio, UI):
 - OGG decoding (enabled in kira; no OGG file has been decoded).
 - The playground hashes have only been produced on Windows; Linux equality is unchecked.
 - Live gamepad input (format supported, no backend).
+- Unity importer against real Unity files: all fixtures are synthetic (built in the tests). No
+  real project or Asset Store `.unitypackage` has been imported (reading the owner's Unity
+  projects needs the owner's permission). The URP Unlit and HDRP Lit shader GUIDs in
+  `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
+  layout used by `package_location_reason` are from memory, not checked against a Unity install.
+- The pasted-license phrase list catches common wording only; it never grants permission.
 
 ## Session log
 
@@ -102,3 +122,4 @@ Line 6 (input, physics, audio, UI):
 | 2026-11-11 | Scrub of identifying details, neutral commit identity, hygiene test, `docs/ai/`, `marionette docs`, decisions 0011 to 0016. | up to the commit adding `docs/ai/` |
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
+| 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |

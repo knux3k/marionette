@@ -12,6 +12,7 @@ marionette-render = { path = "../marionette-render" }
 marionette-input = { path = "../marionette-input" }
 marionette-physics = { path = "../marionette-physics" }
 marionette-audio = { path = "../marionette-audio" }
+marionette-import = { path = "../marionette-import" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

@@ -21,3 +21,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0015 | Minimal UI as components, built-in bitmap font | accepted |
 | 0016 | No identifying details in the repository | accepted, permanent |
 | 0017 | The window hands input and frames to its caller through hooks | accepted |
+| 0018 | Owned library, license declarations and the Unity importer | accepted |

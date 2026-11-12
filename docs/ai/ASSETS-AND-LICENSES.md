@@ -35,6 +35,37 @@ the engine.
 12. The import report MUST list every refused asset with the reason.
 13. Imported assets are private to the user and MUST be blocked from the pool.
 
+## Declaration file format
+
+A person writes one JSON file named `<anything>.license.json` per pack, beside the source as
+`<source name>.license.json` or anywhere and passed to `library_import` in `declarations`:
+
+```json
+{
+  "format": "marionette.license_declaration/1",
+  "store": "where it was obtained",
+  "product": "product name or link",
+  "license_type": "license name as the store gives it",
+  "other_engines_allowed": "yes",
+  "publisher": "optional",
+  "covers": ["Assets/SomePack/"],
+  "license_text": "optional pasted license text"
+}
+```
+
+`covers` is optional (empty means the whole source); the most specific matching prefix wins.
+`other_engines_allowed` is `yes` or `no`. Tools refuse to write any `*.license.json` file
+(`import.declaration_write_refused`).
+
+## Where the rules are enforced
+
+`crates/marionette-import` (decision 0018): `src/license.rs` (declarations, engine content,
+license text), `src/import.rs` (refusal order, import report), `src/library.rs` (location
+rules, records with `private: true` and `pool: "blocked"`), `src/pool.rs` (the owned-asset
+gate the pool MUST call). Operations: `library_import`, `library_list`, `library_get`,
+`library_info`, `license_check_text`, `pool_admission_check`. Proofs:
+`crates/marionette-import/tests/import.rs`, `crates/marionette-cli/tests/library_e2e.rs`.
+
 ## Spending
 
 14. Spending API credits MUST have the user's approval and a spend cap.

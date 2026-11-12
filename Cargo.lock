@@ -1690,6 +1690,7 @@ version = "0.1.0"
 dependencies = [
  "marionette-audio",
  "marionette-core",
+ "marionette-import",
  "marionette-input",
  "marionette-physics",
  "marionette-render",
@@ -1740,6 +1741,20 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "marionette-import"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "image",
+ "marionette-assets",
+ "marionette-core",
+ "schemars",
  "serde",
  "serde_json",
  "sha2",
