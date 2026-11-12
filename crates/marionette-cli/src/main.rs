@@ -1,12 +1,15 @@
 //! `marionette`: the single command line tool. Every command accepts `--json`, which
 //! prints one JSON object on stdout: `{"ok": true, ...}` or `{"ok": false, "diagnostics": [...]}`.
 //! Exit code is 0 on success, 1 on any error.
+//!
+//! The engine's operations live in `marionette-agent`, shared with the MCP server.
+//! `marionette op <name> '<json>'` runs any of them; the named commands below (`validate`,
+//! `run --headless`, `screenshot`, `scene fmt`, `schema`) are shortcuts for the same operations.
 
 use clap::{Parser, Subcommand};
-use marionette_core::error::codes;
-use marionette_core::{Diagnostic, Errors, Sim, default_registry, scene, schema};
+use marionette_agent::Agent;
+use marionette_core::{Diagnostic, Errors};
 use serde_json::{Value, json};
-use std::path::Path;
 use std::process::ExitCode;
 
 mod render;
@@ -17,6 +20,12 @@ struct Cli {
     /// Print a single JSON object on stdout instead of human-readable text.
     #[arg(long, global = true)]
     json: bool,
+    /// Project root; relative paths in operations resolve against it.
+    #[arg(long, global = true, default_value = ".")]
+    project: String,
+    /// Refuse every operation that changes files or sessions.
+    #[arg(long, global = true)]
+    read_only: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -85,6 +94,16 @@ enum Command {
         #[command(subcommand)]
         command: SceneCommand,
     },
+    /// List every operation with its description and JSON Schemas.
+    Ops,
+    /// Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`.
+    Op {
+        name: String,
+        /// Input as a JSON object (default `{}`).
+        input: Option<String>,
+    },
+    /// Serve every operation as an MCP tool over stdio.
+    Mcp,
 }
 
 #[derive(Subcommand)]
@@ -100,16 +119,39 @@ enum SceneCommand {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    let mut agent = Agent::new(&cli.project, cli.read_only);
     let result = match cli.command {
-        Command::Schema => Ok(schema::schema(&default_registry())),
-        Command::Validate { scene } => validate(&scene),
+        Command::Mcp => {
+            return match marionette_agent::mcp::serve_stdio(agent) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("{e}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+        Command::Ops => Ok(json!({ "ok": true, "operations": agent.operations().collect::<Vec<_>>() })),
+        Command::Op { name, input } => parse_input(input.as_deref())
+            .and_then(|input| agent.call(&name, input))
+            .map(|result| json!({ "ok": true, "operation": name, "result": result })),
+        Command::Schema => agent
+            .call("project_schema", json!({ "full": true }))
+            .map(|v| v["schema"].clone()),
+        Command::Validate { scene } => agent
+            .call("scene_validate", json!({ "scene": scene }))
+            .map(|v| merge("validate", v)),
         Command::Run {
             scene,
             headless: true,
             ticks,
             seed,
             ..
-        } => run(&scene, ticks.unwrap_or(1000), seed),
+        } => agent
+            .call(
+                "scene_run",
+                json!({ "scene": scene, "seed": seed, "ticks": ticks.unwrap_or(1000) }),
+            )
+            .map(|v| merge("run", v)),
         Command::Run {
             scene,
             headless: false,
@@ -126,7 +168,13 @@ fn main() -> ExitCode {
             size,
             out,
             msaa,
-        } => render::screenshot(&scene, ticks, seed, camera, &size, &out, msaa),
+        } => agent
+            .call(
+                "observe_screenshot",
+                json!({ "scene": scene, "ticks": ticks, "seed": seed, "camera": camera,
+                        "size": size, "out": out, "msaa": msaa }),
+            )
+            .map(|v| merge("screenshot", v)),
         Command::Bench {
             scene,
             frames,
@@ -136,12 +184,34 @@ fn main() -> ExitCode {
             msaa,
         } => render::bench(&scene, frames, seed, camera, &size, msaa),
         Command::Scene {
-            command: SceneCommand::Fmt { scene, check },
-        } => fmt(&scene, check),
+            command: SceneCommand::Fmt { scene, check: false },
+        } => agent
+            .call("scene_format", json!({ "scene": scene }))
+            .map(|v| merge("fmt", v)),
+        Command::Scene {
+            command: SceneCommand::Fmt { scene, check: true },
+        } => agent
+            .call("scene_validate", json!({ "scene": scene }))
+            .and_then(|v| {
+                if v["canonical"] == true {
+                    Ok(merge("fmt", json!({ "scene": scene, "changed": false })))
+                } else {
+                    Err(Diagnostic::error(
+                        marionette_core::error::codes::SCENE_NOT_CANONICAL,
+                        "scene file is not in canonical form",
+                    )
+                    .file(&scene)
+                    .fix(format!("run `marionette scene fmt {scene}`"))
+                    .into())
+                }
+            }),
     };
     match result {
         Ok(value) => {
-            if cli.json || value.get("$schema").is_some() {
+            let always_json = ["$schema", "operation", "operations"]
+                .iter()
+                .any(|k| value.get(k).is_some());
+            if cli.json || always_json {
                 println!("{}", serde_json::to_string_pretty(&value).expect("serializable"));
             } else {
                 println!("{}", human(&value));
@@ -160,6 +230,30 @@ fn main() -> ExitCode {
     }
 }
 
+fn parse_input(input: Option<&str>) -> Result<Value, Errors> {
+    match input {
+        None => Ok(json!({})),
+        Some(text) => serde_json::from_str(text).map_err(|e| {
+            Diagnostic::error(
+                marionette_agent::codes::BAD_INPUT,
+                format!("input is not valid JSON: {e}"),
+            )
+            .at(Some(e.line()), Some(e.column()))
+            .fix("pass one JSON object, quoted for your shell")
+            .into()
+        }),
+    }
+}
+
+/// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.
+fn merge(command: &str, v: Value) -> Value {
+    let mut out = json!({ "ok": true, "command": command });
+    if let (Value::Object(o), Value::Object(m)) = (&mut out, v) {
+        o.extend(m);
+    }
+    out
+}
+
 /// Short human text for a successful result.
 fn human(value: &Value) -> String {
     let s = |k: &str| {
@@ -169,11 +263,11 @@ fn human(value: &Value) -> String {
             .unwrap_or_default()
     };
     match value.get("command").and_then(Value::as_str) {
-        Some("validate") => format!("ok: {} ({} entities)", s("file"), s("entities")),
+        Some("validate") => format!("ok: {} ({} entities)", s("scene"), s("entities")),
         Some("run") => s("state_hash"),
         Some("screenshot") => format!(
             "wrote {} ({}x{}, state {})",
-            s("out"),
+            s("path"),
             s("width"),
             s("height"),
             s("state_hash")
@@ -188,61 +282,8 @@ fn human(value: &Value) -> String {
             s("max_ms"),
             s("frames")
         ),
-        Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("file")),
-        Some("fmt") => format!("already canonical: {}", s("file")),
+        Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
+        Some("fmt") => format!("already canonical: {}", s("scene")),
         _ => value.to_string(),
     }
-}
-
-pub(crate) fn read(path: &str) -> Result<String, Errors> {
-    std::fs::read_to_string(path).map_err(|e| {
-        Diagnostic::error(codes::IO_READ, format!("cannot read {path}: {e}"))
-            .file(path)
-            .fix("check the path exists and is readable")
-            .into()
-    })
-}
-
-fn validate(path: &str) -> Result<Value, Errors> {
-    let text = read(path)?;
-    let registry = default_registry();
-    let parsed = scene::parse(&text).map_err(|e| e.with_file(path))?;
-    scene::validate(&parsed, &registry, Some(&text)).map_err(|e| e.with_file(path))?;
-    Ok(json!({ "ok": true, "command": "validate", "file": path, "entities": parsed.entities.len() }))
-}
-
-fn run(path: &str, ticks: u64, seed: u64) -> Result<Value, Errors> {
-    let text = read(path)?;
-    let mut sim = Sim::from_text(&text, Some(path), default_registry(), seed)?;
-    sim.run(ticks);
-    Ok(json!({
-        "ok": true,
-        "command": "run",
-        "file": path,
-        "ticks": ticks,
-        "seed": seed,
-        "state_hash": sim.state_hash(),
-    }))
-}
-
-fn fmt(path: &str, check: bool) -> Result<Value, Errors> {
-    let text = read(path)?;
-    let formatted = scene::format_text(&text, &default_registry()).map_err(|e| e.with_file(path))?;
-    let changed = formatted != text;
-    if check && changed {
-        return Err(
-            Diagnostic::error(codes::SCENE_NOT_CANONICAL, "scene file is not in canonical form")
-                .file(path)
-                .fix(format!("run `marionette scene fmt {path}`"))
-                .into(),
-        );
-    }
-    if changed && !check {
-        std::fs::write(Path::new(path), &formatted).map_err(|e| {
-            Errors::from(Diagnostic::error(codes::IO_WRITE, format!("cannot write {path}: {e}")).file(path))
-        })?;
-    }
-    Ok(
-        json!({ "ok": true, "command": "fmt", "file": path, "changed": changed, "written": changed && !check }),
-    )
 }

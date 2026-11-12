@@ -1,13 +1,11 @@
-//! CLI commands that use the renderer: screenshot, bench, windowed run.
+//! CLI commands that use the renderer directly: bench and the windowed run.
+//! (Screenshots go through the shared `observe_screenshot` operation.)
 
-use crate::read;
 use marionette_core::error::codes;
 use marionette_core::{Diagnostic, Errors, Sim, default_registry};
-use marionette_render::assets::encode_png;
 use marionette_render::window::{WindowOptions, run_windowed};
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -44,53 +42,14 @@ fn scene_dir(path: &str) -> PathBuf {
 }
 
 fn load(path: &str, seed: u64) -> Result<Sim, Errors> {
-    let text = read(path)?;
-    Sim::from_text(&text, Some(path), default_registry(), seed)
-}
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
-}
-
-pub fn screenshot(
-    path: &str,
-    ticks: u64,
-    seed: u64,
-    camera: Option<u64>,
-    size: &str,
-    out: &str,
-    msaa: u32,
-) -> Result<Value, Errors> {
-    let (width, height) = parse_size(size)?;
-    check_msaa(msaa)?;
-    let mut sim = load(path, seed)?;
-    sim.run(ticks);
-    let gpu = Gpu::headless()?;
-    let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
-    let frame = extract(&sim.world);
-    offscreen
-        .render(&gpu, &frame, camera)
-        .map_err(|e| e.with_file(path))?;
-    let pixels = offscreen.read_pixels(&gpu)?;
-    let png = encode_png(width, height, &pixels);
-    std::fs::write(out, &png).map_err(|e| {
-        Errors::from(Diagnostic::error(codes::IO_WRITE, format!("cannot write {out}: {e}")).file(out))
+    let text = std::fs::read_to_string(path).map_err(|e| {
+        Errors::from(
+            Diagnostic::error(codes::IO_READ, format!("cannot read {path}: {e}"))
+                .file(path)
+                .fix("check the path exists and is readable"),
+        )
     })?;
-    Ok(json!({
-        "ok": true,
-        "command": "screenshot",
-        "file": path,
-        "out": out,
-        "width": width,
-        "height": height,
-        "camera": camera,
-        "ticks": ticks,
-        "seed": seed,
-        "msaa": msaa,
-        "gpu": gpu.describe(),
-        "image_sha256": sha256_hex(&png),
-        "state_hash": sim.state_hash(),
-    }))
+    Sim::from_text(&text, Some(path), default_registry(), seed)
 }
 
 pub fn bench(
