@@ -380,7 +380,7 @@ fn run(cli: Cli) -> ExitCode {
                 Ok(v) if v["passed"] == true => 0,
                 _ => 1,
             };
-            print_result(cli.json, report);
+            let _ = print_result(cli.json, report);
             std::process::exit(code);
         }
         Command::Provider { command } => match command {
