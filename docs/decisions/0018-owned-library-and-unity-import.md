@@ -72,3 +72,4 @@ Date: 2026-11-12. Status: accepted.
 - Owned assets are importable today with their licenses recorded; FBX models need a converter
   before the renderer can draw them.
 - Prefabs, scenes, animations and audio from Unity are skipped and listed; they are later work.
+  Prefabs: done in decision 0040.
