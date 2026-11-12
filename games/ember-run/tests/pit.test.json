@@ -1,0 +1,14 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 600,
+  "input": "tests/pit.inputs.json",
+  "assertions": [
+    { "event": { "kind": "hurt", "at_least": 3, "at_most": 3 } },
+    { "event": { "kind": "lost" } },
+    { "event": { "kind": "won", "at_most": 0 } },
+    { "field": { "entity": 30, "path": "ScriptState.data.lives", "op": "eq", "value": 0 } },
+    { "field": { "entity": 30, "path": "Transform.translation.x", "op": "lt", "value": 1 } },
+    { "state_hash": "8c07f81652a55349161b7627a71e625d0958e6d7a9c0c4d3b2aaaf672569dfb9" }
+  ]
+}

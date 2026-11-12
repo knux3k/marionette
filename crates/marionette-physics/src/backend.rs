@@ -158,13 +158,18 @@ macro_rules! backend {
                             .component("Collider"),
                     )
                 })?;
-                let c = shape
+                let mut c = shape
                     .friction(collider.friction)
                     .restitution(collider.restitution)
                     .density(collider.density)
                     .sensor(collider.sensor)
                     .active_events(ActiveEvents::COLLISION_EVENTS)
                     .user_data(id as u128);
+                // Sensors report every body type, so characters (kinematic) and fixed or
+                // kinematic pickups trigger them; solid pairs keep Rapier's default.
+                if collider.sensor {
+                    c = c.active_collision_types(ActiveCollisionTypes::all());
+                }
                 let (body, collider) = state.world.insert(b, c);
                 state.entities.insert(
                     id,
@@ -195,6 +200,20 @@ macro_rules! backend {
 
             for (&id, h) in &state.entities {
                 let Some(&e) = ids.get(&id) else { continue };
+                // A script that moved a dynamic body or a character (its Transform no longer
+                // matches what physics wrote back) teleports it. Untouched bodies compare
+                // equal bit for bit, so they are left alone.
+                if h.kind == 0 || h.kind == 3 {
+                    let t = world.get::<Transform>(e).copied().unwrap_or_default();
+                    let want = conv::vector([t.translation.x, t.translation.y, t.translation.z]);
+                    let body = &mut pw.bodies[h.body];
+                    if body.translation() != want {
+                        body.set_translation(want, true);
+                        if h.kind == 3 {
+                            body.set_next_kinematic_translation(want);
+                        }
+                    }
+                }
                 match h.kind {
                     2 => {
                         let t = world.get::<Transform>(e).copied().unwrap_or_default();
@@ -248,7 +267,9 @@ macro_rules! backend {
                         let shape = pw.colliders[h.collider].shared_shape().clone();
                         let mut collisions = Vec::new();
                         let movement = {
-                            let filter = QueryFilter::default().exclude_rigid_body(h.body);
+                            let filter = QueryFilter::default()
+                                .exclude_rigid_body(h.body)
+                                .exclude_sensors();
                             let queries = pw.broad_phase.as_query_pipeline(
                                 pw.narrow_phase.query_dispatcher(),
                                 &pw.bodies,
@@ -267,7 +288,9 @@ macro_rules! backend {
                         let target = pose.translation + movement.translation;
                         pw.bodies[h.body].set_next_kinematic_translation(target);
                         {
-                            let filter = QueryFilter::default().exclude_rigid_body(h.body);
+                            let filter = QueryFilter::default()
+                                .exclude_rigid_body(h.body)
+                                .exclude_sensors();
                             let mut queries = pw.broad_phase.as_query_pipeline_mut(
                                 pw.narrow_phase.query_dispatcher(),
                                 &mut pw.bodies,
