@@ -51,6 +51,53 @@ macro_rules! backend {
                 entities: BTreeMap::new(),
             };
             for (&id, &e) in ids {
+                add(&mut state, world, id, e, scene_dir)?;
+            }
+            Ok(state)
+        }
+
+        /// Follows entities spawned or despawned since the last tick (scripts do this):
+        /// bodies of entities that are gone are removed, new entities with a `Collider` get
+        /// a body, both in id order. Returns the diagnostics of new entities that cannot get
+        /// a body; `failed` keeps them from being retried every tick.
+        pub fn sync(
+            state: &mut State,
+            world: &World,
+            ids: &BTreeMap<u64, Entity>,
+            scene_dir: &Path,
+            failed: &mut std::collections::BTreeSet<u64>,
+        ) -> Vec<Errors> {
+            let gone: Vec<u64> = state
+                .entities
+                .keys()
+                .filter(|id| !ids.contains_key(id))
+                .copied()
+                .collect();
+            for id in gone {
+                if let Some(h) = state.entities.remove(&id) {
+                    state.world.remove_body(h.body);
+                }
+            }
+            failed.retain(|id| ids.contains_key(id));
+            let mut errors = Vec::new();
+            for (&id, &e) in ids {
+                if state.entities.contains_key(&id) || failed.contains(&id) {
+                    continue;
+                }
+                if world.get::<ColliderComp>(e).is_none() && world.get::<BodyComp>(e).is_none() {
+                    continue;
+                }
+                if let Err(err) = add(state, world, id, e, scene_dir) {
+                    failed.insert(id);
+                    errors.push(err);
+                }
+            }
+            errors
+        }
+
+        /// Adds the body and collider of one entity, if it has a `Collider`.
+        fn add(state: &mut State, world: &World, id: u64, e: Entity, scene_dir: &Path) -> Result<(), Errors> {
+            {
                 let Some(collider) = world.get::<ColliderComp>(e).cloned() else {
                     if world.get::<BodyComp>(e).is_some() {
                         return Err(err(
@@ -60,7 +107,7 @@ macro_rules! backend {
                             "add a Collider component",
                         ));
                     }
-                    continue;
+                    return Ok(());
                 };
                 if world.get::<Position>(e).is_some() {
                     return Err(err(
@@ -128,7 +175,7 @@ macro_rules! backend {
                     },
                 );
             }
-            Ok(state)
+            Ok(())
         }
 
         /// One fixed tick: kinematic targets, character controllers, the step, events, write-back.

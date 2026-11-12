@@ -18,6 +18,7 @@ marionette-jobs.workspace = true
 marionette-jobs-ts = { path = "../marionette-jobs-ts" }
 marionette-providers = { path = "../marionette-providers" }
 marionette-script = { path = "../marionette-script" }
+marionette-port = { path = "../marionette-port" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

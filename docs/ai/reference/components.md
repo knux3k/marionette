@@ -91,6 +91,16 @@ Rust type: `marionette_physics::components::Collider`.
 | `sensor` | boolean | yes | Detects overlaps (collision events) without pushing. |
 | `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
 
+### `DestroyAt`
+
+Marks an entity for removal: at the end of the script stage of tick `tick` (or the first later one), the entity's script gets `onDestroy`, then the entity is removed. `engine.destroy` adds it; scene files may use it for a fixed lifetime.
+
+Rust type: `marionette_script::DestroyAt`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tick` | integer | yes |  |
+
 ### `DirectionalLight`
 
 Sunlight: parallel rays travelling along `direction`.
@@ -222,6 +232,16 @@ Rust type: `marionette_script::Script`.
 A script's per-entity state (`self.state`), as JSON text. Written by the engine after each `update`; part of the state hash and of snapshots.
 
 Rust type: `marionette_script::ScriptState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | string | yes |  |
+
+### `ScriptTimers`
+
+Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore.
+
+Rust type: `marionette_script::ScriptTimers`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -414,4 +434,14 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | --- | --- | --- | --- |
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
+
+### `SpawnIds`
+
+The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity.
+
+Rust type: `marionette_script::SpawnIds`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `next` | integer | yes |  |
 

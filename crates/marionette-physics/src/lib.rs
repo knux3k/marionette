@@ -15,7 +15,7 @@ use bevy_ecs::prelude::*;
 use components::*;
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
-use marionette_core::module::{Module, SceneDir, Stage};
+use marionette_core::module::{EventLog, Module, SceneDir, Stage};
 use marionette_core::scene::SceneId;
 use marionette_core::{Diagnostic, Errors, Registry, Result};
 use serde::{Deserialize, Serialize};
@@ -37,6 +37,11 @@ pub enum Physics {
 }
 
 pub struct PhysicsModule;
+
+/// Spawned entities whose body could not be built (reported once as a `physics_error`
+/// event). Not simulation state: rebuilt empty on load and restore.
+#[derive(Resource, Default)]
+struct FailedBodies(std::collections::BTreeSet<u64>);
 
 fn scene_ids(world: &mut World) -> BTreeMap<u64, Entity> {
     let mut q = world.query::<(Entity, &SceneId)>();
@@ -62,6 +67,7 @@ impl Module for PhysicsModule {
     }
 
     fn init(&self, world: &mut World) -> Result<()> {
+        world.remove_resource::<FailedBodies>();
         let Some(settings) = world.get_resource::<PhysicsSettings>().copied() else {
             world.remove_resource::<Physics>();
             return Ok(());
@@ -92,6 +98,7 @@ impl Module for PhysicsModule {
             ))
         })?;
         world.insert_resource(p);
+        world.remove_resource::<FailedBodies>();
         Ok(())
     }
 }
@@ -108,6 +115,32 @@ fn physics_tick(world: &mut World) {
     let tick = world.resource::<SimClock>().tick;
     let actions = world.get_resource::<ActionState>().cloned().unwrap_or_default();
     let ids = scene_ids(world);
+    // Entities spawned or despawned since the last step (by scripts) gain or lose bodies.
+    let dir = world
+        .get_resource::<SceneDir>()
+        .map(|d| d.0.clone())
+        .unwrap_or_default();
+    let mut failed = world.remove_resource::<FailedBodies>().unwrap_or_default();
+    let errors = match &mut physics {
+        Physics::D3(s) => dims::d3::sync(s, world, &ids, &dir, &mut failed.0),
+        Physics::D2(s) => dims::d2::sync(s, world, &ids, &dir, &mut failed.0),
+    };
+    world.insert_resource(failed);
+    if !errors.is_empty()
+        && let Some(mut log) = world.get_resource_mut::<EventLog>()
+    {
+        for errs in errors {
+            for d in errs.0 {
+                log.push(
+                    tick,
+                    "physics_error",
+                    d.entity,
+                    None,
+                    serde_json::json!({ "code": d.code, "message": d.message }),
+                );
+            }
+        }
+    }
     match &mut physics {
         Physics::D3(s) => dims::d3::tick(s, world, &ids, &actions, dt, g, tick),
         Physics::D2(s) => dims::d2::tick(s, world, &ids, &actions, dt, g, tick),

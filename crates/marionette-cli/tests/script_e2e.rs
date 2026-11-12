@@ -10,6 +10,10 @@ use std::path::{Path, PathBuf};
 /// results: say so in the commit and in docs/ai/STATE.md.
 const SCRIPTED_HASH: &str = "4450bc3cb97805f59584f11c13b999a13f8ac42ca67752dc7d1cc247575251d3";
 
+/// `examples/spawner.scene.json`, 1,000 ticks, seed 1: a script drops physics crates with a
+/// repeating timer; each crate removes itself after three seconds.
+const SPAWNER_HASH: &str = "a04911705b0d9f1ce6b8ebc66858c7054c72aa081cff416e227d881650c4aaa8";
+
 fn examples() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples")
 }
@@ -185,4 +189,91 @@ export function onCollisionEnter(self: Entity, other: Entity): void {
         .collect();
     assert!(!started.is_empty(), "the player touches something");
     assert_eq!(hits, started);
+}
+
+#[test]
+fn spawned_crates_get_bodies_land_and_leave_physics_when_destroyed() {
+    let mut a = Agent::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."), false);
+    let run = |a: &mut Agent| {
+        call(
+            a,
+            "scene_run",
+            json!({ "scene": "examples/spawner.scene.json", "seed": 1, "ticks": 1000 }),
+        )["state_hash"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let first = run(&mut a);
+    assert_eq!(first, run(&mut a));
+    assert_eq!(first, SPAWNER_HASH);
+
+    let s = call(
+        &mut a,
+        "session_start",
+        json!({ "scene": "examples/spawner.scene.json", "seed": 1, "ticks": 300 }),
+    );
+    let id = s["session"].as_str().unwrap().to_string();
+    let count = |a: &mut Agent, kind: &str| -> usize {
+        call(
+            a,
+            "observe_events",
+            json!({ "session": id, "kind": kind, "limit": 100000 }),
+        )["events"]
+            .as_array()
+            .unwrap()
+            .len()
+    };
+    let tree = |a: &mut Agent| -> usize {
+        call(a, "observe_tree", json!({ "session": id, "limit": 500 }))["total"]
+            .as_u64()
+            .unwrap() as usize
+    };
+    // Mid-run: crates are falling and landing (they got physics bodies when spawned).
+    let alive = tree(&mut a) - 4;
+    assert!(alive > 5, "{alive} crates alive at tick 300");
+    assert!(count(&mut a, "landed") > 5);
+    assert_eq!(count(&mut a, "physics_error"), 0);
+    assert_eq!(count(&mut a, "script_error"), 0);
+
+    call(&mut a, "session_step", json!({ "session": id, "ticks": 700 }));
+    // 40 drops plus 4 copies, each removed after three seconds; nothing is left but the
+    // camera, sun, ground and spawner, and rays hit the ground, not a removed crate's body.
+    assert_eq!(count(&mut a, "crate_gone"), 44);
+    assert_eq!(count(&mut a, "destroyed"), 44);
+    assert_eq!(tree(&mut a), 4);
+    for x in [-2.0, 0.0, 2.0] {
+        let hit = call(
+            &mut a,
+            "observe_raycast",
+            json!({ "session": id, "origin": [x, 5.0, -3.0], "direction": [0.0, -1.0, 0.0] }),
+        );
+        assert_eq!(hit["hit"]["entity"], 3, "{hit}");
+    }
+    assert_eq!(count(&mut a, "physics_error"), 0);
+    assert_eq!(count(&mut a, "script_error"), 0);
+
+    // Snapshot with crates in flight, bodies spawned by scripts and pending timers; the
+    // restored session continues exactly like the uninterrupted one. (The event log is
+    // not rewound by a restore, so this uses its own session.)
+    let s = call(
+        &mut a,
+        "session_start",
+        json!({ "scene": "examples/spawner.scene.json", "seed": 1, "ticks": 300 }),
+    );
+    let id = s["session"].as_str().unwrap().to_string();
+    call(
+        &mut a,
+        "session_snapshot",
+        json!({ "session": id, "name": "mid" }),
+    );
+    let straight = call(&mut a, "session_step", json!({ "session": id, "ticks": 200 }))["state_hash"].clone();
+    call(
+        &mut a,
+        "session_restore",
+        json!({ "session": id, "snapshot": "mid" }),
+    );
+    let again = call(&mut a, "session_step", json!({ "session": id, "ticks": 200 }))["state_hash"].clone();
+    assert!(straight.is_string());
+    assert_eq!(straight, again);
 }
