@@ -77,8 +77,7 @@ fn bad(msg: String, fix: &str) -> Errors {
 
 fn safe_dir(dir: &str) -> bool {
     let p = Path::new(dir);
-    !dir.is_empty()
-        && p.components().all(|c| matches!(c, Component::Normal(_)))
+    !dir.is_empty() && p.components().all(|c| matches!(c, Component::Normal(_)))
 }
 
 /// Rewrites every `library:<id>/<file>` string to `<dir>/<id>/<file>` and collects the ids.
@@ -123,8 +122,12 @@ fn instantiate(agent: &mut Agent, input: InstantiateInput) -> Result<Instantiate
     }
     let main = rec.main.clone().unwrap_or_else(|| "prefab.json".into());
     let text = crate::read_text(&lib.asset_dir(&rec.id).join(&main), &format!("{}/{main}", rec.id))?;
-    let doc: Value = serde_json::from_str(&text)
-        .map_err(|e| bad(format!("prefab `{}` is unreadable: {e}", rec.id), "re-import the prefab"))?;
+    let doc: Value = serde_json::from_str(&text).map_err(|e| {
+        bad(
+            format!("prefab `{}` is unreadable: {e}", rec.id),
+            "re-import the prefab",
+        )
+    })?;
     if doc["format"] != PREFAB_FORMAT {
         return Err(bad(
             format!("prefab `{}` is not in format {PREFAB_FORMAT}", rec.id),
@@ -161,7 +164,10 @@ fn instantiate(agent: &mut Agent, input: InstantiateInput) -> Result<Instantiate
         for v in comps.values_mut() {
             rewrite(v, &dir, &mut ids)?;
         }
-        let local = comps.get("Transform").map(Trs::from_json).unwrap_or(Trs::IDENTITY);
+        let local = comps
+            .get("Transform")
+            .map(Trs::from_json)
+            .unwrap_or(Trs::IDENTITY);
         let (world, _) = at.then(&local);
         comps.insert("Transform".into(), world.to_json());
         placed.push((key, name, comps));
@@ -200,8 +206,8 @@ fn instantiate(agent: &mut Agent, input: InstantiateInput) -> Result<Instantiate
     };
     let mut out_entities = Vec::new();
     let (scene, diff) = apply(agent, &target, |s, _| {
-        let mut next = s.entities.iter().map(|e| e.id).max().unwrap_or(0) + 1;
-        for (key, name, comps) in &placed {
+        let first = s.entities.iter().map(|e| e.id).max().unwrap_or(0) + 1;
+        for (next, (key, name, comps)) in (first..).zip(&placed) {
             s.entities.push(SceneEntity {
                 id: next,
                 name: Some(name.clone()),
@@ -212,7 +218,6 @@ fn instantiate(agent: &mut Agent, input: InstantiateInput) -> Result<Instantiate
                 name: name.clone(),
                 key: *key,
             });
-            next += 1;
         }
         Ok(())
     })?;

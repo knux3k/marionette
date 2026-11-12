@@ -49,7 +49,7 @@ fn glb() -> Vec<u8> {
                         "min": [0, 0, 0], "max": [1, 1, 0] }]
     });
     let mut json = serde_json::to_vec(&doc).unwrap();
-    while json.len() % 4 != 0 {
+    while !json.len().is_multiple_of(4) {
         json.push(b' ');
     }
     let total = 12 + 8 + json.len() + 8 + bin.len();
@@ -315,10 +315,25 @@ fn project(base: &Path) -> (PathBuf, PathBuf) {
          - _BaseColor: {{r: 1, g: 0, b: 0, a: 1}}\n"
     );
     asset(&p, "Assets/Materials/Red.mat", MAT, mat.as_bytes());
-    asset(&p, "Assets/Scripts/Spin.cs", SCRIPT, b"public class Spin : MonoBehaviour { public float speed; }");
-    asset(&p, "Assets/Prefabs/Crate.prefab", CRATE, crate_prefab().as_bytes());
+    asset(
+        &p,
+        "Assets/Scripts/Spin.cs",
+        SCRIPT,
+        b"public class Spin : MonoBehaviour { public float speed; }",
+    );
+    asset(
+        &p,
+        "Assets/Prefabs/Crate.prefab",
+        CRATE,
+        crate_prefab().as_bytes(),
+    );
     asset(&p, "Assets/Prefabs/Cart.prefab", CART, cart_prefab().as_bytes());
-    asset(&p, "Assets/Prefabs/Crate Variant.prefab", VARIANT, variant_prefab().as_bytes());
+    asset(
+        &p,
+        "Assets/Prefabs/Crate Variant.prefab",
+        VARIANT,
+        variant_prefab().as_bytes(),
+    );
     asset(&p, "Assets/Prefabs/Loop.prefab", LOOP, loop_prefab().as_bytes());
     asset(
         &p,
@@ -375,7 +390,11 @@ fn close(v: &Value, want: f64) -> bool {
 
 fn translation(e: &Value) -> [f64; 3] {
     let t = &e["components"]["Transform"]["translation"];
-    [t["x"].as_f64().unwrap(), t["y"].as_f64().unwrap(), t["z"].as_f64().unwrap()]
+    [
+        t["x"].as_f64().unwrap(),
+        t["y"].as_f64().unwrap(),
+        t["z"].as_f64().unwrap(),
+    ]
 }
 
 fn setup(tag: &str) -> (PathBuf, Library, PathBuf, PathBuf) {
@@ -463,7 +482,10 @@ fn nested_prefabs_and_models_follow_their_overrides() {
     // The model instance: library model, root override applied, half turn for Unity's mirror.
     let wheel = entity(&doc, "Cart/Front Wheel");
     let model = wheel["components"]["Model"]["asset"].as_str().unwrap();
-    assert!(model.starts_with("library:wheel-") && model.ends_with("/model.glb"), "{model}");
+    assert!(
+        model.starts_with("library:wheel-") && model.ends_with("/model.glb"),
+        "{model}"
+    );
     assert_eq!(translation(wheel), [-2.0, 0.0, 0.0]);
     let rot = &wheel["components"]["Transform"]["rotation"];
     assert!(close(&rot["y"], 1.0) && close(&rot["w"], 0.0), "{rot}");
@@ -492,7 +514,10 @@ fn variants_remove_components_and_override_materials() {
     assert_eq!(c["Model"]["asset"], "primitive:cube");
     // Without a body, the lamp's sphere collider is a fixed collider of its own.
     let lamp = entity(&doc, "Light Crate/Lamp");
-    assert!(close(&lamp["components"]["Collider"]["shape"]["Ball"]["radius"], 0.25));
+    assert!(close(
+        &lamp["components"]["Collider"]["shape"]["Ball"]["radius"],
+        0.25
+    ));
 }
 
 #[test]
@@ -515,7 +540,12 @@ fn broken_recursive_and_unlicensed_prefabs_are_reported() {
     // Scanning a Unity project only reads Assets/, so the stray file is not even seen; a plain
     // folder source shows the license rule instead.
     let loose = base.join("Loose");
-    asset(&loose, "Stray.prefab", "abababababababababababababababab", crate_prefab().as_bytes());
+    asset(
+        &loose,
+        "Stray.prefab",
+        "abababababababababababababababab",
+        crate_prefab().as_bytes(),
+    );
     let mut o = ImportOptions::new(&loose);
     o.declarations = Vec::new();
     let r = import(&lib, &o).unwrap();

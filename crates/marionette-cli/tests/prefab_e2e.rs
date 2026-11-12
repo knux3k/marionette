@@ -116,12 +116,18 @@ fn import_list_and_place_a_unity_prefab() {
         &unity.join("Assets/Gem.glb"),
         &std::fs::read(repo.join("examples/assets/gem.glb")).unwrap(),
     );
-    write(&unity.join("Assets/Gem.glb.meta"), format!("guid: {GEM}\n").as_bytes());
+    write(
+        &unity.join("Assets/Gem.glb.meta"),
+        format!("guid: {GEM}\n").as_bytes(),
+    );
     write(
         &unity.join("Assets/Ship.prefab"),
         SHIP_PREFAB.replace("GEM", GEM).as_bytes(),
     );
-    write(&unity.join("Assets/Ship.prefab.meta"), format!("guid: {SHIP}\n").as_bytes());
+    write(
+        &unity.join("Assets/Ship.prefab.meta"),
+        format!("guid: {SHIP}\n").as_bytes(),
+    );
     // Written by the test standing in for the person who bought the pack.
     write(
         &base.join("ShipPack.license.json"),
@@ -139,12 +145,20 @@ fn import_list_and_place_a_unity_prefab() {
     assert!(ok, "{v:#}");
     assert_eq!(v["result"]["counts"]["imported"], 2, "{v:#}");
 
-    let (ok, v) = op(&project, "library_list", &json!({ "kind": "prefab", "library": lib }));
+    let (ok, v) = op(
+        &project,
+        "library_list",
+        &json!({ "kind": "prefab", "library": lib }),
+    );
     assert!(ok, "{v:#}");
     let id = v["result"]["assets"][0]["id"].as_str().unwrap().to_string();
     assert!(id.starts_with("ship-"));
 
-    let (ok, v) = op(&project, "scene_create", &json!({ "scene": "level.scene.json", "template": "basic" }));
+    let (ok, v) = op(
+        &project,
+        "scene_create",
+        &json!({ "scene": "level.scene.json", "template": "basic" }),
+    );
     assert!(ok, "{v:#}");
 
     let (ok, v) = op(
@@ -158,7 +172,12 @@ fn import_list_and_place_a_unity_prefab() {
     // Ship and the gem model; the inactive child is left out.
     assert_eq!(r["entities"].as_array().unwrap().len(), 2, "{r:#}");
     assert_eq!(r["inactive_left_out"], 1);
-    let copied: Vec<&str> = r["copied"].as_array().unwrap().iter().map(|c| c.as_str().unwrap()).collect();
+    let copied: Vec<&str> = r["copied"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c.as_str().unwrap())
+        .collect();
     assert_eq!(copied.len(), 1, "{copied:?}");
     assert!(copied[0].starts_with("library/gem-") && copied[0].ends_with("/model.glb"));
     assert!(project.join(copied[0]).is_file());
@@ -185,12 +204,25 @@ fn import_list_and_place_a_unity_prefab() {
         .unwrap();
     let t = &gem2["components"]["Transform"]["translation"];
     assert_eq!((t["x"].as_f64(), t["y"].as_f64()), (Some(4.0), Some(4.0)));
-    assert!(gem2["components"]["Model"]["asset"].as_str().unwrap().starts_with("library/gem-"));
-    let (ok, v) = op(&project, "scene_run", &json!({ "scene": "level.scene.json", "ticks": 60, "seed": 1 }));
+    assert!(
+        gem2["components"]["Model"]["asset"]
+            .as_str()
+            .unwrap()
+            .starts_with("library/gem-")
+    );
+    let (ok, v) = op(
+        &project,
+        "scene_run",
+        &json!({ "scene": "level.scene.json", "ticks": 60, "seed": 1 }),
+    );
     assert!(ok, "{v:#}");
 
     // Only prefabs can be placed.
-    let (ok, v) = op(&project, "library_list", &json!({ "kind": "model", "library": lib }));
+    let (ok, v) = op(
+        &project,
+        "library_list",
+        &json!({ "kind": "model", "library": lib }),
+    );
     assert!(ok);
     let model = v["result"]["assets"][0]["id"].clone();
     let (ok, v) = op(

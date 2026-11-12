@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -157,8 +157,19 @@ Line 8, owned library and Unity import (W2, decision 0018):
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
   false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
   (decision 0027); skinning in
-  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+  the renderer (skinned FBX models draw in bind pose), Unity scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
+- Unity prefabs (decision 0040): `crates/marionette-import/tests/prefab.rs`
+  (`a_prefab_becomes_entities_with_mapped_components`,
+  `nested_prefabs_and_models_follow_their_overrides`,
+  `variants_remove_components_and_override_materials`,
+  `broken_recursive_and_unlicensed_prefabs_are_reported`,
+  `conversion_is_deterministic_and_dry_runs_write_nothing`); unit tests in `src/unity_yaml.rs` and
+  `src/prefab.rs`; `crates/marionette-cli/tests/prefab_e2e.rs`
+  (`import_list_and_place_a_unity_prefab`: import, `library_list` kind `prefab`,
+  `prefab_instantiate` twice, `scene_run`). Not covered: sub-mesh selection inside a model,
+  overrides on model parts, point/spot lights, audio sources, physic materials, X/Z capsules,
+  compound bodies, Unity `.unity` scenes (same reader would serve them).
 
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
@@ -189,6 +200,11 @@ draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
 ## UNVERIFIED
+
+- Unity prefab import (decision 0040) is tested only on hand-written prefab files in Unity's text
+  format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
+  rule, the nested file-id rule and the half turn for converted models are from knowledge of
+  Unity's serializer, not checked in the editor.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
@@ -247,3 +263,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |

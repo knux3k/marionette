@@ -387,7 +387,11 @@ impl Builder<'_> {
                 stack.push(guid.to_string());
                 let t = match self.build(&r, &text, stack) {
                     Ok(t) => t,
-                    Err(e) => self.placeholder("unreadable prefab", format!("nested prefab `{r}` not read: {e}"), rel),
+                    Err(e) => self.placeholder(
+                        "unreadable prefab",
+                        format!("nested prefab `{r}` not read: {e}"),
+                        rel,
+                    ),
                 };
                 stack.pop();
                 t
@@ -473,7 +477,10 @@ impl Builder<'_> {
         }
 
         // 4. Own transforms and components.
-        for d in docs.iter().filter(|d| !d.stripped && !matches!(d.class_id, 1 | 1001)) {
+        for d in docs
+            .iter()
+            .filter(|d| !d.stripped && !matches!(d.class_id, 1 | 1001))
+        {
             let Some(go) = ref_file_id(&d.body["m_GameObject"]) else {
                 continue;
             };
@@ -514,7 +521,9 @@ impl Builder<'_> {
             };
             let mut skipped: BTreeSet<String> = BTreeSet::new();
             for x in &mods {
-                let Some(c) = ref_file_id(&x["target"]) else { continue };
+                let Some(c) = ref_file_id(&x["target"]) else {
+                    continue;
+                };
                 let path = str_of(&x["propertyPath"]);
                 let value = match object_ref(&x["objectReference"]) {
                     Some((id, g)) if id != 0 || g.is_some() => x["objectReference"].clone(),
@@ -585,16 +594,19 @@ impl Builder<'_> {
             {
                 match tree.ids.get(&p).copied() {
                     Some(Target::Go(pn) | Target::Tr(pn)) => tree.nodes[root].parent = Some(pn),
-                    _ => tree
-                        .notes
-                        .push(format!("parent {p} of a nested prefab is unknown; placed at the root")),
+                    _ => tree.notes.push(format!(
+                        "parent {p} of a nested prefab is unknown; placed at the root"
+                    )),
                 }
             }
             let _ = inst.shift;
         }
 
         // 6. Own hierarchy.
-        for d in docs.iter().filter(|d| matches!(d.class_id, 4 | 224) && !d.stripped) {
+        for d in docs
+            .iter()
+            .filter(|d| matches!(d.class_id, 4 | 224) && !d.stripped)
+        {
             let Some(Target::Tr(n)) = tree.ids.get(&d.file_id).copied() else {
                 continue;
             };
@@ -628,7 +640,9 @@ impl Builder<'_> {
             .or_else(|| {
                 insts
                     .iter()
-                    .filter(|i| ref_file_id(&i.doc.body["m_Modification"]["m_TransformParent"]).unwrap_or(0) == 0)
+                    .filter(|i| {
+                        ref_file_id(&i.doc.body["m_Modification"]["m_TransformParent"]).unwrap_or(0) == 0
+                    })
                     .find_map(|i| i.root)
             });
         if tree.root.is_none() {
@@ -774,9 +788,9 @@ fn map_node(
                     model = Some((library_ref(&id, &main), true));
                 }
                 Resolved::Refused(why) => out.notes.push(format!("mesh not used: {why}")),
-                _ => out
-                    .notes
-                    .push(format!("mesh source {g} is not in this source or the owned library")),
+                _ => out.notes.push(format!(
+                    "mesh source {g} is not in this source or the owned library"
+                )),
             },
             _ => {
                 if r.class_id == 137 || comps.iter().any(|c| c.class_id == 33) {
@@ -808,7 +822,10 @@ fn map_node(
                 refs.len()
             ));
         }
-        if let Some((_, g)) = refs.first().filter(|(_, g)| g != BUILTIN_DEFAULT && g != BUILTIN_EXTRA) {
+        if let Some((_, g)) = refs
+            .first()
+            .filter(|(_, g)| g != BUILTIN_DEFAULT && g != BUILTIN_EXTRA)
+        {
             match env.material(g) {
                 Some(m) => {
                     uses.insert(m.id.clone());
@@ -844,9 +861,8 @@ fn map_node(
         } else {
             out.components.insert("Model".into(), m);
             if *turn {
-                out.notes.push(
-                    "half turn about Y added: Unity mirrors imported models on X".into(),
-                );
+                out.notes
+                    .push("half turn about Y added: Unity mirrors imported models on X".into());
             }
         }
     }
@@ -873,16 +889,21 @@ fn map_node(
             65 => {
                 let s = v3(&b["m_Size"], 1.0);
                 (
-                    Some(json!({"Cuboid": {"half_extents": {"x": s[0] / 2.0, "y": s[1] / 2.0, "z": s[2] / 2.0}}})),
+                    Some(
+                        json!({"Cuboid": {"half_extents": {"x": s[0] / 2.0, "y": s[1] / 2.0, "z": s[2] / 2.0}}}),
+                    ),
                     None,
                 )
             }
             135 => {
                 let r = b.get("m_Radius").and_then(num).unwrap_or(0.5);
-                let uniform = (world.s[0] - world.s[1]).abs() < 1e-6 && (world.s[1] - world.s[2]).abs() < 1e-6;
+                let uniform =
+                    (world.s[0] - world.s[1]).abs() < 1e-6 && (world.s[1] - world.s[2]).abs() < 1e-6;
                 (
                     Some(json!({"Ball": {"radius": r}})),
-                    (!uniform).then(|| "sphere collider under non-uniform scale: Unity uses the largest axis".into()),
+                    (!uniform).then(|| {
+                        "sphere collider under non-uniform scale: Unity uses the largest axis".into()
+                    }),
                 )
             }
             136 => {
@@ -895,7 +916,12 @@ fn map_node(
                         None,
                     )
                 } else {
-                    (None, Some(format!("capsule along axis {dir} (Marionette capsules run along Y)")))
+                    (
+                        None,
+                        Some(format!(
+                            "capsule along axis {dir} (Marionette capsules run along Y)"
+                        )),
+                    )
                 }
             }
             64 => {
@@ -908,12 +934,18 @@ fn map_node(
                         }
                         _ => None,
                     },
-                    _ => model.as_ref().map(|(a, _)| a.clone()).filter(|a| a.starts_with("library:")),
+                    _ => model
+                        .as_ref()
+                        .map(|(a, _)| a.clone())
+                        .filter(|a| a.starts_with("library:")),
                 };
                 match asset {
                     Some(a) if convex => (Some(json!({"ConvexHull": {"model": a}})), None),
                     Some(a) => (Some(json!({"TriMesh": {"model": a}})), None),
-                    None => (None, Some("mesh collider whose mesh is not a library model".into())),
+                    None => (
+                        None,
+                        Some("mesh collider whose mesh is not a library model".into()),
+                    ),
                 }
             }
             _ => (None, None),
@@ -929,7 +961,9 @@ fn map_node(
         }
         let Some(shape) = shape else { continue };
         if c.class_id == 64 {
-            out.notes.push("mesh collider: the converted model's half turn is not applied to the collider shape".into());
+            out.notes.push(
+                "mesh collider: the converted model's half turn is not applied to the collider shape".into(),
+            );
         }
         let collider = json!({
             "shape": shape,
@@ -938,8 +972,12 @@ fn map_node(
             "density": 1.0,
             "sensor": b.get("m_IsTrigger").and_then(num).unwrap_or(0.0) != 0.0,
         });
-        if b.get("m_Material").and_then(object_ref).is_some_and(|(f, _)| f != 0) {
-            out.notes.push("physic material not mapped; Unity default friction 0.6 and bounciness 0 used".into());
+        if b.get("m_Material")
+            .and_then(object_ref)
+            .is_some_and(|(f, _)| f != 0)
+        {
+            out.notes
+                .push("physic material not mapped; Unity default friction 0.6 and bounciness 0 used".into());
         }
         let offset = center.iter().any(|v| v.abs() > 1e-9);
         if first_collider && !offset && !out.components.contains_key("Collider") {
@@ -973,17 +1011,22 @@ fn map_node(
             let constraints = bb.get("m_Constraints").and_then(num).unwrap_or(0.0) as i64;
             let lock_rot = constraints & 112 == 112;
             if constraints & 112 != 0 && !lock_rot {
-                out.notes.push("only some rotation axes frozen; Marionette locks all or none".into());
+                out.notes
+                    .push("only some rotation axes frozen; Marionette locks all or none".into());
             }
             if constraints & 14 != 0 {
                 out.unmapped.push("Rigidbody position constraints".into());
             }
             let mass = bb.get("m_Mass").and_then(num).unwrap_or(1.0);
             let volume = shape_volume(&col["shape"], world.s);
-            if volume > 1e-9 && !col["shape"].get("TriMesh").is_some() && !col["shape"].get("ConvexHull").is_some() {
+            if volume > 1e-9
+                && !col["shape"].get("TriMesh").is_some()
+                && !col["shape"].get("ConvexHull").is_some()
+            {
                 col["density"] = json!(mass / volume);
             } else {
-                out.notes.push(format!("Unity mass {mass} kg not converted to a density"));
+                out.notes
+                    .push(format!("Unity mass {mass} kg not converted to a density"));
             }
             out.components.insert(
                 "RigidBody".into(),
@@ -996,7 +1039,8 @@ fn map_node(
                 }),
             );
         } else {
-            out.unmapped.push("Rigidbody without a usable collider on the same object".into());
+            out.unmapped
+                .push("Rigidbody without a usable collider on the same object".into());
         }
     }
 
@@ -1037,18 +1081,22 @@ fn map_node(
                         2 => "Point",
                         _ => "Area",
                     };
-                    out.unmapped.push(format!("{name} light (Marionette has directional and ambient light)"));
+                    out.unmapped.push(format!(
+                        "{name} light (Marionette has directional and ambient light)"
+                    ));
                 }
             }
             81 => {
-                out.components.insert("AudioListener".into(), json!({"volume": 1.0}));
+                out.components
+                    .insert("AudioListener".into(), json!({"volume": 1.0}));
             }
             82 => {
                 let clip = object_ref(&b["m_audioClip"])
                     .and_then(|(_, g)| g)
                     .and_then(|g| env.asset_path(&g))
                     .unwrap_or_else(|| "no clip".into());
-                out.unmapped.push(format!("AudioSource `{clip}` (audio import is not built yet)"));
+                out.unmapped
+                    .push(format!("AudioSource `{clip}` (audio import is not built yet)"));
             }
             114 => {
                 let script = object_ref(&b["m_Script"])
@@ -1132,9 +1180,10 @@ fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Out {
         let key = out.entities.len() as u64 + 1;
         let mut components = mapped.components;
         let mut t = world.from_unity();
-        if components.get("Model").is_some_and(|m| {
-            m["asset"].as_str().is_some_and(|a| a.starts_with("library:"))
-        }) {
+        if components
+            .get("Model")
+            .is_some_and(|m| m["asset"].as_str().is_some_and(|a| a.starts_with("library:")))
+        {
             t.r = qnorm(qmul(t.r, HALF_TURN_Y));
         }
         if components
@@ -1143,7 +1192,9 @@ fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Out {
         {
             t.s = [t.s[0] * 10.0, t.s[1], t.s[2] * 10.0];
             if components.contains_key("Collider") {
-                out.notes.push(format!("`{path}`: plane scaled 10x for Unity's 10 m plane; its collider is scaled too"));
+                out.notes.push(format!(
+                    "`{path}`: plane scaled 10x for Unity's 10 m plane; its collider is scaled too"
+                ));
             }
         }
         components.insert("Transform".into(), t.to_json());

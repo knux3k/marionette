@@ -53,6 +53,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 
 ## `project_init`
 
@@ -1143,4 +1144,33 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `prefab_instantiate`
+
+Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets_dir` | string \| null |  | Folder, relative to the scene file, that receives copied library files. Default `library`. |
+| `at` | any |  | Where the prefab root goes: a `Transform` value (translation, rotation, scale). Default: the origin. |
+| `include_inactive` | boolean |  | Also place objects that were inactive in Unity. |
+| `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
+| `name` | string \| null |  | Name for the root entity; child names keep their paths under it. |
+| `prefab` | string | yes | Library id of the prefab (see `library_list` with kind `prefab`). |
+| `scene` | string | yes | Scene file to add the entities to. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `copied` | array of string | yes | Files copied beside the scene (relative to the scene file); files already there with the same content are not listed. |
+| `diff` | Diff | yes |  |
+| `entities` | array of PlacedEntity | yes |  |
+| `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
+| `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
+| `scene` | string | yes |  |
 

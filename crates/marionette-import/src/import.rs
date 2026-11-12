@@ -3,9 +3,9 @@
 
 use crate::codes;
 use crate::fbx;
-use crate::prefab::{self, MaterialInfo, PrefabEnv, Resolved};
 use crate::library::{AssetKind, AssetRecord, FileRecord, Library, RECORD_FORMAT, SourceRecord, slug};
 use crate::license::{self, LicenseRecord, LoadedDeclaration, YesNo};
+use crate::prefab::{self, MaterialInfo, PrefabEnv, Resolved};
 use crate::sha256_hex;
 use crate::tar::Limits;
 use crate::unity::{self, BadEntry, MetalLayout, SourceEntry, Staging};
@@ -125,8 +125,7 @@ fn classify(rel: &str) -> Class {
             Class::Unsupported("code and shaders are not imported")
         }
         "prefab" => Class::Prefab,
-        "unity" | "asset" | "controller" | "anim" | "overridecontroller" | "mask"
-        | "physicmaterial" => {
+        "unity" | "asset" | "controller" | "anim" | "overridecontroller" | "mask" | "physicmaterial" => {
             Class::Unsupported("Unity scenes and editor data are not imported yet")
         }
         "wav" | "ogg" | "mp3" | "aif" | "aiff" | "flac" => {
@@ -1136,9 +1135,7 @@ impl PrefabEnv for PrefabSources<'_> {
                             name,
                         }
                     } else {
-                        Resolved::Refused(format!(
-                            "model `{id}` is not engine-ready (see its record notes)"
-                        ))
+                        Resolved::Refused(format!("model `{id}` is not engine-ready (see its record notes)"))
                     }
                 }
                 Some((kind, ..)) => Resolved::Refused(format!("`{id}` is a {kind:?}, not a model")),

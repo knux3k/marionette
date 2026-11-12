@@ -35,8 +35,8 @@ pub fn parse(text: &str) -> Result<Vec<UnityDoc>, String> {
     let mut body: Vec<&str> = Vec::new();
     let mut flush = |header: Option<(u32, i64, bool)>, body: &mut Vec<&str>| -> Result<(), String> {
         if let Some((class_id, file_id, stripped)) = header {
-            let (type_name, value) = parse_body(body)
-                .map_err(|e| format!("object &{file_id} (class {class_id}): {e}"))?;
+            let (type_name, value) =
+                parse_body(body).map_err(|e| format!("object &{file_id} (class {class_id}): {e}"))?;
             docs.push(UnityDoc {
                 class_id,
                 file_id,
@@ -177,7 +177,9 @@ fn split_key(text: &str) -> Option<(&str, &str)> {
     if text.starts_with(['{', '[', '\'', '"']) || text.starts_with("- ") || text == "-" {
         return None;
     }
-    let pos = text.find(": ").or_else(|| text.ends_with(':').then(|| text.len() - 1))?;
+    let pos = text
+        .find(": ")
+        .or_else(|| text.ends_with(':').then(|| text.len() - 1))?;
     let key = &text[..pos];
     if key.is_empty() || key.contains(['{', '[', '"', '\'']) {
         return None;
@@ -399,7 +401,9 @@ impl Flow<'_> {
             }
             self.pos += 1;
         }
-        String::from_utf8_lossy(&self.s[start..self.pos]).trim().to_string()
+        String::from_utf8_lossy(&self.s[start..self.pos])
+            .trim()
+            .to_string()
     }
 }
 
@@ -448,7 +452,10 @@ mod tests {
         assert_eq!((docs[0].class_id, docs[0].file_id), (1, 100));
         assert_eq!(docs[0].type_name, "GameObject");
         assert_eq!(docs[0].body["m_Name"], "Crate 'A'");
-        assert_eq!(ref_file_id(&docs[0].body["m_Component"][1]["component"]), Some(500));
+        assert_eq!(
+            ref_file_id(&docs[0].body["m_Component"][1]["component"]),
+            Some(500)
+        );
         assert_eq!(num(&docs[1].body["m_LocalRotation"]["w"]), Some(0.70710677));
         assert_eq!(ref_file_id(&docs[1].body["m_Children"][0]), Some(401));
         let mb = &docs[2].body;
