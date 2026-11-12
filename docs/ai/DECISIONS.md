@@ -44,3 +44,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0050 | Proof scenes are small original games built from operation recipes and tested by play | accepted |
 | 0060 | Four standing focuses (modularity, token use, performance, graphics) in FOCUSES.md | accepted |
 | 0061 | Small always-read docs with a size test; selectable and lean MCP tool listings | accepted |
+| 0063 | Opt-in looks: shadows, point and spot lights, sky light, emissive, tone mapping, fog | accepted |

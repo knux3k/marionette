@@ -117,6 +117,8 @@ pub(crate) struct SkinnedCall<'a> {
 
 pub(crate) struct Skinning {
     pub pipeline: wgpu::RenderPipeline,
+    /// Depth-only pass from the shadow-casting light (decision 0063).
+    pub shadow_pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
     palettes: wgpu::Buffer,
     weights: wgpu::Buffer,
@@ -182,7 +184,7 @@ impl Skinning {
         let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
         let instance_attrs = wgpu::vertex_attr_array![
             3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
-            7 => Float32x4, 8 => Float32x4, 9 => Uint32x4
+            7 => Float32x4, 8 => Float32x4, 12 => Float32x4, 9 => Uint32x4
         ];
         let skin_attrs = wgpu::vertex_attr_array![10 => Uint16x4, 11 => Float32x4];
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -229,12 +231,50 @@ impl Skinning {
             multiview_mask: None,
             cache: None,
         });
+        let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("pbr skinned shadow"),
+            bind_group_layouts: &[Some(groups[0]), None, None, Some(&layout)],
+            immediate_size: 0,
+        });
+        let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("pbr skinned shadow"),
+            layout: Some(&shadow_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_skinned_shadow"),
+                compilation_options: Default::default(),
+                buffers: &[
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: mesh_stride,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &mesh_attrs,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<SkinnedInstance>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &instance_attrs,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<SkinVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &skin_attrs,
+                    }),
+                ],
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: Some(crate::renderer::shadow_depth_state()),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: None,
+            multiview_mask: None,
+            cache: None,
+        });
         let palettes = storage_buffer(device, "joint palettes", 64 * MAT_SIZE);
         let weights = storage_buffer(device, "morph weights", 256);
         let no_deltas = storage_buffer(device, "no morph deltas", 16);
         let plain = Self::bind(device, &layout, &palettes, &weights, &no_deltas);
         Self {
             pipeline,
+            shadow_pipeline,
             layout,
             palettes,
             weights,
@@ -402,6 +442,7 @@ pub(crate) fn build<'a>(
                         model: draw.world.to_cols_array_2d(),
                         base_color,
                         params,
+                        emissive: draw.emissive.extend(0.0).to_array(),
                     },
                     deform: [base, weight_base, count, deform.vertex_count],
                 });
