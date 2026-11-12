@@ -40,15 +40,16 @@ for a person to approve its reference image.
 
 | Game | Recipes | Use once built |
 | --- | --- | --- |
-| Crystal Ward | `warden`, `crawler`, `crystal` (models, each from a `*_ref` image) | `Model` on the warden, the spawned crawlers and the crystal |
-| Dust Circuit | `car`, `rival_car` (models from `*_ref` images) | `Model` on the two cars |
-| Signal Yard | `drone` (model from `drone_ref`) | `Model` on spawned drones |
-| Cloudstep | `hero` (model from `hero_ref`) | `Model` on the hero |
+| Crystal Ward | `warden`, `crawler`, `crystal`, `pillar`, `ward_wall` (models, each from a `*_ref` image) | `Model` on the warden, the spawned crawlers, the crystal, pillars and walls |
+| Dust Circuit | `car`, `rival_car`, `tyre_stack`, `grandstand`, `marker_tower` (models from `*_ref` images) | `Model` on the two cars, trackside props |
+| Signal Yard | `drone`, `crate`, `pylon`, `relay` (models from `*_ref` images) | `Model` on spawned drones and the yard's cover and mast |
+| Cloudstep | `hero`, `island`, `seed`, `beacon`, `spring` (models from `*_ref` images) | `Model` on the hero, islands, seeds, the beacon and the spring |
 | Ember Run | `runner`, `ember` (sprites), `rooftops` (background) | `Sprite.image` |
 | Lantern Keeper | `keeper`, `lantern`, `ghost` (sprites), `hedge` (tileable texture) | `Sprite.image` |
 
-Estimate from `generate_plan`: 14 images at about $0.05 each and 7 models at about $0.40 each
-(about $2.80 of Tripo's cap). The swap is a build-recipe change per game (plus scripts that
+Estimate from `generate_plan`: 26 images at about $0.05 each and 19 models at about $0.40 each
+(about $1.30 and $7.60). The owner lifted the Qwen and Tripo caps (the account balance is the
+limit), so props are generated too, not only the characters. The swap is a build-recipe change per game (plus scripts that
 spawn models), and the pinned state hashes change with it.
 
 ## Engine gaps found

@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "pylon",
+  "output": "model",
+  "from": "pylon_ref",
+  "model": {
+    "height_m": 6.0,
+    "max_triangles": 6000
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "beacon",
+  "output": "model",
+  "from": "beacon_ref",
+  "model": {
+    "height_m": 5.0,
+    "max_triangles": 10000
+  }
+}

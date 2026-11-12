@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "tyre_stack",
+  "output": "model",
+  "from": "tyre_stack_ref",
+  "model": {
+    "height_m": 0.9,
+    "max_triangles": 4000
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "ward_wall",
+  "output": "model",
+  "from": "ward_wall_ref",
+  "model": {
+    "height_m": 2.0,
+    "max_triangles": 6000
+  }
+}
