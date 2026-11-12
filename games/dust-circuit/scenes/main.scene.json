@@ -1,0 +1,3786 @@
+{
+  "entities": [
+    {
+      "components": {
+        "AudioListener": {
+          "volume": 2.0
+        },
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.12,
+            "g": 0.05,
+            "r": 0.06
+          },
+          "projection": {
+            "Perspective": {
+              "far": 300.0,
+              "fov_y_degrees": 60.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 13.5
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -13.0,
+            "y": 4.0,
+            "z": 13.5
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.5,
+            "g": 0.75,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.5,
+            "y": -0.6,
+            "z": -0.4
+          },
+          "illuminance": 1.2
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Script": {
+          "path": "scripts/race.ts"
+        }
+      },
+      "id": 3,
+      "name": "race"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "TopLeft",
+          "layer": 1,
+          "offset": {
+            "x": 12.0,
+            "y": 10.0
+          },
+          "size": {
+            "x": 700.0,
+            "y": 16.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.7,
+            "g": 0.9,
+            "r": 1.0
+          },
+          "size": 16.0,
+          "text": "LAP 0/3  POS 1/2  TIME 0.0  0 KM/H"
+        }
+      },
+      "id": 4,
+      "name": "hud"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": -80.0
+          },
+          "size": {
+            "x": 600.0,
+            "y": 28.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.85,
+            "r": 1.0
+          },
+          "size": 28.0,
+          "text": ""
+        }
+      },
+      "id": 5,
+      "name": "banner"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.035,
+            "g": 0.06,
+            "r": 0.09
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 140.0,
+            "y": 1.0,
+            "z": 90.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": -0.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 6,
+      "name": "ground"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 2.0,
+            "z": 10.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 12.0
+          }
+        }
+      },
+      "id": 20,
+      "name": "cp0"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 10.0,
+            "y": 2.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 32.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 21,
+      "name": "cp1"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 2.0,
+            "z": 10.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": -12.0
+          }
+        }
+      },
+      "id": 22,
+      "name": "cp2"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": true,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 10.0,
+            "y": 2.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -32.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 23,
+      "name": "cp3"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 20.0,
+          "jump": "none",
+          "jump_speed": 0.0,
+          "mass": 800.0,
+          "move_forward": "none",
+          "move_x": "none",
+          "speed": 0.0
+        },
+        "CharacterInput": {
+          "jump": false,
+          "move_forward": 0.0,
+          "move_x": 0.0
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "RoundCuboid": {
+              "border": 0.1,
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.7,
+            "g": 0.25,
+            "r": 0.05
+          },
+          "metallic": 0.6,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Script": {
+          "path": "scripts/car.ts"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": -0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 0.6,
+            "z": 2.6
+          },
+          "translation": {
+            "x": -4.0,
+            "y": 0.32,
+            "z": 13.5
+          }
+        }
+      },
+      "id": 30,
+      "name": "player"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 20.0,
+          "jump": "none",
+          "jump_speed": 0.0,
+          "mass": 800.0,
+          "move_forward": "none",
+          "move_x": "none",
+          "speed": 0.0
+        },
+        "CharacterInput": {
+          "jump": false,
+          "move_forward": 0.0,
+          "move_x": 0.0
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.0,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "RoundCuboid": {
+              "border": 0.1,
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.25,
+            "r": 0.7
+          },
+          "metallic": 0.6,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Script": {
+          "path": "scripts/rival.ts"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": -0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 0.6,
+            "z": 2.6
+          },
+          "translation": {
+            "x": -8.0,
+            "y": 0.32,
+            "z": 10.5
+          }
+        }
+      },
+      "id": 31,
+      "name": "rival"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.03,
+            "g": 0.08,
+            "r": 0.16
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 40.0,
+            "y": 0.01,
+            "z": 14.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.005,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 101,
+      "name": "infield"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 40.0,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.6,
+            "z": 17.5
+          }
+        }
+      },
+      "id": 102,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.13,
+            "g": 0.12,
+            "r": 0.12
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 40.0,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.6,
+            "z": -17.5
+          }
+        }
+      },
+      "id": 103,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 40.0,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.4,
+            "z": 6.75
+          }
+        }
+      },
+      "id": 104,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 40.0,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.4,
+            "z": -6.75
+          }
+        }
+      },
+      "id": 105,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.998795,
+            "x": 0.0,
+            "y": -0.049068,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 21.7153,
+            "y": 0.6,
+            "z": -17.4157
+          }
+        }
+      },
+      "id": 106,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.989177,
+            "x": 0.0,
+            "y": -0.14673,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 25.08,
+            "y": 0.6,
+            "z": -16.7465
+          }
+        }
+      },
+      "id": 107,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.970031,
+            "x": 0.0,
+            "y": -0.24298,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 28.2494,
+            "y": 0.6,
+            "z": -15.4336
+          }
+        }
+      },
+      "id": 108,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.941544,
+            "x": 0.0,
+            "y": -0.33689,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 31.1019,
+            "y": 0.6,
+            "z": -13.5277
+          }
+        }
+      },
+      "id": 109,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.903989,
+            "x": 0.0,
+            "y": -0.427555,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 33.5277,
+            "y": 0.6,
+            "z": -11.1019
+          }
+        }
+      },
+      "id": 110,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.857729,
+            "x": 0.0,
+            "y": -0.514103,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 35.4336,
+            "y": 0.6,
+            "z": -8.2494
+          }
+        }
+      },
+      "id": 111,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.803208,
+            "x": 0.0,
+            "y": -0.595699,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 36.7465,
+            "y": 0.6,
+            "z": -5.08
+          }
+        }
+      },
+      "id": 112,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.740951,
+            "x": 0.0,
+            "y": -0.671559,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 37.4157,
+            "y": 0.6,
+            "z": -1.7153
+          }
+        }
+      },
+      "id": 113,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.671559,
+            "x": 0.0,
+            "y": -0.740951,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 37.4157,
+            "y": 0.6,
+            "z": 1.7153
+          }
+        }
+      },
+      "id": 114,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.595699,
+            "x": 0.0,
+            "y": -0.803208,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 36.7465,
+            "y": 0.6,
+            "z": 5.08
+          }
+        }
+      },
+      "id": 115,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.514103,
+            "x": 0.0,
+            "y": -0.857729,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 35.4336,
+            "y": 0.6,
+            "z": 8.2494
+          }
+        }
+      },
+      "id": 116,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.427555,
+            "x": 0.0,
+            "y": -0.903989,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 33.5277,
+            "y": 0.6,
+            "z": 11.1019
+          }
+        }
+      },
+      "id": 117,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.33689,
+            "x": 0.0,
+            "y": -0.941544,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 31.1019,
+            "y": 0.6,
+            "z": 13.5277
+          }
+        }
+      },
+      "id": 118,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.24298,
+            "x": 0.0,
+            "y": -0.970031,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 28.2494,
+            "y": 0.6,
+            "z": 15.4336
+          }
+        }
+      },
+      "id": 119,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.14673,
+            "x": 0.0,
+            "y": -0.989177,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 25.08,
+            "y": 0.6,
+            "z": 16.7465
+          }
+        }
+      },
+      "id": 120,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.049068,
+            "x": 0.0,
+            "y": -0.998795,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 21.7153,
+            "y": 0.6,
+            "z": 17.4157
+          }
+        }
+      },
+      "id": 121,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.995185,
+            "x": 0.0,
+            "y": -0.098017,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 21.3169,
+            "y": 0.4,
+            "z": -6.6203
+          }
+        }
+      },
+      "id": 122,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.95694,
+            "x": 0.0,
+            "y": -0.290285,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 23.7501,
+            "y": 0.4,
+            "z": -5.6124
+          }
+        }
+      },
+      "id": 123,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.881921,
+            "x": 0.0,
+            "y": -0.471397,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 25.6124,
+            "y": 0.4,
+            "z": -3.7501
+          }
+        }
+      },
+      "id": 124,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.77301,
+            "x": 0.0,
+            "y": -0.634393,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 26.6203,
+            "y": 0.4,
+            "z": -1.3169
+          }
+        }
+      },
+      "id": 125,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.634393,
+            "x": 0.0,
+            "y": -0.77301,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 26.6203,
+            "y": 0.4,
+            "z": 1.3169
+          }
+        }
+      },
+      "id": 126,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.471397,
+            "x": 0.0,
+            "y": -0.881921,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 25.6124,
+            "y": 0.4,
+            "z": 3.7501
+          }
+        }
+      },
+      "id": 127,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.290285,
+            "x": 0.0,
+            "y": -0.95694,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 23.7501,
+            "y": 0.4,
+            "z": 5.6124
+          }
+        }
+      },
+      "id": 128,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.098017,
+            "x": 0.0,
+            "y": -0.995185,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": 21.3169,
+            "y": 0.4,
+            "z": 6.6203
+          }
+        }
+      },
+      "id": 129,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.049068,
+            "x": 0.0,
+            "y": -0.998795,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -21.7153,
+            "y": 0.6,
+            "z": 17.4157
+          }
+        }
+      },
+      "id": 130,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.14673,
+            "x": 0.0,
+            "y": -0.989177,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -25.08,
+            "y": 0.6,
+            "z": 16.7465
+          }
+        }
+      },
+      "id": 131,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.24298,
+            "x": 0.0,
+            "y": -0.970031,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -28.2494,
+            "y": 0.6,
+            "z": 15.4336
+          }
+        }
+      },
+      "id": 132,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.33689,
+            "x": 0.0,
+            "y": -0.941544,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -31.1019,
+            "y": 0.6,
+            "z": 13.5277
+          }
+        }
+      },
+      "id": 133,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.427555,
+            "x": 0.0,
+            "y": -0.903989,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -33.5277,
+            "y": 0.6,
+            "z": 11.1019
+          }
+        }
+      },
+      "id": 134,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.514103,
+            "x": 0.0,
+            "y": -0.857729,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -35.4336,
+            "y": 0.6,
+            "z": 8.2494
+          }
+        }
+      },
+      "id": 135,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.595699,
+            "x": 0.0,
+            "y": -0.803208,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -36.7465,
+            "y": 0.6,
+            "z": 5.08
+          }
+        }
+      },
+      "id": 136,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.671559,
+            "x": 0.0,
+            "y": -0.740951,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -37.4157,
+            "y": 0.6,
+            "z": 1.7153
+          }
+        }
+      },
+      "id": 137,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.740951,
+            "x": 0.0,
+            "y": -0.671559,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -37.4157,
+            "y": 0.6,
+            "z": -1.7153
+          }
+        }
+      },
+      "id": 138,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.803208,
+            "x": 0.0,
+            "y": -0.595699,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -36.7465,
+            "y": 0.6,
+            "z": -5.08
+          }
+        }
+      },
+      "id": 139,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.857729,
+            "x": 0.0,
+            "y": -0.514103,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -35.4336,
+            "y": 0.6,
+            "z": -8.2494
+          }
+        }
+      },
+      "id": 140,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.903989,
+            "x": 0.0,
+            "y": -0.427555,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -33.5277,
+            "y": 0.6,
+            "z": -11.1019
+          }
+        }
+      },
+      "id": 141,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.941544,
+            "x": 0.0,
+            "y": -0.33689,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -31.1019,
+            "y": 0.6,
+            "z": -13.5277
+          }
+        }
+      },
+      "id": 142,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.970031,
+            "x": 0.0,
+            "y": -0.24298,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -28.2494,
+            "y": 0.6,
+            "z": -15.4336
+          }
+        }
+      },
+      "id": 143,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.989177,
+            "x": 0.0,
+            "y": -0.14673,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -25.08,
+            "y": 0.6,
+            "z": -16.7465
+          }
+        }
+      },
+      "id": 144,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.998795,
+            "x": 0.0,
+            "y": -0.049068,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 3.5806,
+            "y": 1.2,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -21.7153,
+            "y": 0.6,
+            "z": -17.4157
+          }
+        }
+      },
+      "id": 145,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.098017,
+            "x": 0.0,
+            "y": -0.995185,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -21.3169,
+            "y": 0.4,
+            "z": 6.6203
+          }
+        }
+      },
+      "id": 146,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.290285,
+            "x": 0.0,
+            "y": -0.95694,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -23.7501,
+            "y": 0.4,
+            "z": 5.6124
+          }
+        }
+      },
+      "id": 147,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.471397,
+            "x": 0.0,
+            "y": -0.881921,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -25.6124,
+            "y": 0.4,
+            "z": 3.7501
+          }
+        }
+      },
+      "id": 148,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.634393,
+            "x": 0.0,
+            "y": -0.77301,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -26.6203,
+            "y": 0.4,
+            "z": 1.3169
+          }
+        }
+      },
+      "id": 149,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.77301,
+            "x": 0.0,
+            "y": -0.634393,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -26.6203,
+            "y": 0.4,
+            "z": -1.3169
+          }
+        }
+      },
+      "id": 150,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.881921,
+            "x": 0.0,
+            "y": -0.471397,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -25.6124,
+            "y": 0.4,
+            "z": -3.7501
+          }
+        }
+      },
+      "id": 151,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.02,
+            "g": 0.04,
+            "r": 0.5
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.95694,
+            "x": 0.0,
+            "y": -0.290285,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -23.7501,
+            "y": 0.4,
+            "z": -5.6124
+          }
+        }
+      },
+      "id": 152,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.55,
+            "g": 0.58,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": -0.995185,
+            "x": 0.0,
+            "y": -0.098017,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.7837,
+            "y": 0.8,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -21.3169,
+            "y": 0.4,
+            "z": -6.6203
+          }
+        }
+      },
+      "id": 153,
+      "name": "wall"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.8,
+            "g": 0.8,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.02,
+            "z": 10.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.01,
+            "z": 12.0
+          }
+        }
+      },
+      "id": 154,
+      "name": "start-line"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.1,
+            "r": 0.14
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 3.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": -24.0,
+            "y": 1.5,
+            "z": 22.0
+          }
+        }
+      },
+      "id": 155,
+      "name": "stand"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.1,
+            "r": 0.14
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 3.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": -8.0,
+            "y": 1.5,
+            "z": 22.0
+          }
+        }
+      },
+      "id": 156,
+      "name": "stand"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.1,
+            "r": 0.14
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 3.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 8.0,
+            "y": 1.5,
+            "z": 22.0
+          }
+        }
+      },
+      "id": 157,
+      "name": "stand"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.09,
+            "g": 0.1,
+            "r": 0.14
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 3.0,
+            "z": 4.0
+          },
+          "translation": {
+            "x": 24.0,
+            "y": 1.5,
+            "z": 22.0
+          }
+        }
+      },
+      "id": 158,
+      "name": "stand"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.2,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 44.0,
+            "y": 4.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 159,
+      "name": "tower"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.2,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": -44.0,
+            "y": 4.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 160,
+      "name": "tower"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.2,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 4.0,
+            "z": -24.0
+          }
+        }
+      },
+      "id": 161,
+      "name": "tower"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.2,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 30.0,
+            "y": 4.0,
+            "z": -22.0
+          }
+        }
+      },
+      "id": 162,
+      "name": "tower"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.2,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.2,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 8.0,
+            "z": 1.2
+          },
+          "translation": {
+            "x": -30.0,
+            "y": 4.0,
+            "z": -22.0
+          }
+        }
+      },
+      "id": 163,
+      "name": "tower"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 0.4,
+        "g": 0.45,
+        "r": 0.55
+      },
+      "intensity": 0.4
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "main.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": -9.81,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}

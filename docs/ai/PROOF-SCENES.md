@@ -13,7 +13,7 @@ that play the game with scripted input. Decision 0050. Proof test:
 | Ember Run | 2D side-scroller | `games/ember-run/` | done: wins with scripted input (14 of 15 embers, two hits); running into the first gap loses all lives |
 | Cloudstep | 3D platformer | `games/cloudstep/` | done: reaches the beacon in about 11 s with scripted input, no falls; walking straight ahead falls again and again |
 | Crystal Ward | top-down 3D | `games/crystal-ward/` | done: survives five waves with scripted input (crystal at 5 of 10); idle loses in wave 3 |
-| (planned) | racing | - | not started |
+| Dust Circuit | racing | `games/dust-circuit/` | done: three laps against an AI rival; the scripted drive (analog steering) wins in about 24.6 s with no wall contact; idle loses to the rival |
 | (planned) | first-person shooter | - | not started |
 
 ## Recipe for a new proof game
@@ -36,7 +36,10 @@ that play the game with scripted input. Decision 0050. Proof test:
 Fixed while building (decision 0050 lists why): operations for scene resources; `batch_run`;
 `engine.raycast`; characters face their rotation; `CharacterInput`; `engine.emit` without a
 detail threw; scenario paths into `ScriptState.data`; event counts in assertions; `input` on
-observe operations.
+observe operations; sensors report every body type and do not block characters; scripts
+teleport bodies through `Transform`; script messages (`engine.send`); the `RoundCuboid`
+collider (a sharp `Cuboid` character snags on flat ground and covers about a third of its
+distance; Dust Circuit's cars use rounded boxes).
 
 Open (not fixed here; each names the cheapest fix seen):
 
@@ -55,3 +58,6 @@ Open (not fixed here; each names the cheapest fix seen):
 | G11 | A character carried sideways by a moving platform keeps the drift after it leaves (contact pushes it); jumps need correcting. | Cloudstep | Part of G7. |
 | G12 | A spawned entity cannot be given starting script state; its first `start` sees `{}` (Crystal Ward sends bolts their heading as a message). | Crystal Ward | An optional `state` argument to `engine.spawn`. |
 | G13 | Script files cannot `import` each other; small helpers (yaw to quaternion) are copied into each script. | Crystal Ward | Module imports between scripts in the same project. |
+| G14 | A character with a sharp `Cuboid` collider drags on flat ground (Rapier's character controller keeps hitting the ground face). `RoundCuboid` fixes it, but nothing warns about the plain box. | Dust Circuit | `scene_validate` warns when a `CharacterController` entity has a `Cuboid` collider. |
+| G15 | Curves are built from many straight boxes (48 wall segments in Dust Circuit); there is no curved or spline mesh, and the track surface is the ground. | Dust Circuit | A swept-profile mesh along a path (walls, roads, rails) built from a recipe operation. |
+| G16 | A car is one box: without parenting (G4) wheels and a cabin would each need a script copying the body's pose, one tick late. | Dust Circuit | Part of G4; or a generated car model (G6). |

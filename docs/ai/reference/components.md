@@ -111,7 +111,7 @@ Rust type: `marionette_physics::components::Collider`.
 | `friction` | number | yes |  |
 | `restitution` | number | yes |  |
 | `sensor` | boolean | yes | Detects overlaps (collision events) without pushing. |
-| `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
+| `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {RoundCuboid: object {border, half_extents}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
 
 ### `DestroyAt`
 

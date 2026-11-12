@@ -278,6 +278,15 @@ type Collider = {
       };
     };
   } | {
+    RoundCuboid: {
+      border: number;
+      half_extents: {
+        x: number;
+        y: number;
+        z: number;
+      };
+    };
+  } | {
     Ball: {
       radius: number;
     };

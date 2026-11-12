@@ -387,3 +387,42 @@ export function update(self: Entity): void {
     call(&mut a, "session_step", json!({ "session": id, "ticks": 1 }));
     assert_eq!(inbox(&mut a), "[]", "delivered and emptied");
 }
+
+#[test]
+fn box_shaped_characters_with_rounded_edges_slide_over_flat_ground() {
+    let d = project("roundbox");
+    let mut a = Agent::new(&d, false);
+    // Walk forward for 40 ticks at 3 m/s: 2 m on open, flat ground.
+    arena(
+        &mut a,
+        r#"export function update(self: Entity): void {
+  self.set("CharacterInput", { move_x: 0, move_forward: engine.tick < 40 ? 1 : 0, jump: false });
+  self.state.z = self.get("Transform")!.translation.z;
+}
+"#,
+    );
+    let hero = |shape: Value| {
+        json!({ "scene": "arena.scene.json", "id": 4, "component": "Collider",
+                "value": { "shape": shape, "density": 1, "friction": 0, "restitution": 0, "sensor": false } })
+    };
+    call(
+        &mut a,
+        "component_set",
+        hero(json!({ "RoundCuboid": { "half_extents": { "x": 0.4, "y": 0.9, "z": 0.6 }, "border": 0.1 } })),
+    );
+    let z = state(&mut a, 60)["z"].as_f64().unwrap();
+    assert!((z + 2.0).abs() < 0.1, "a rounded box walks the full 2 m: z = {z}");
+    // 2D physics builds it too.
+    call(
+        &mut a,
+        "resource_set",
+        json!({ "scene": "arena.scene.json", "resource": "PhysicsSettings",
+                "value": { "mode": "Dim2", "gravity": { "x": 0, "y": -9.81, "z": 0 } } }),
+    );
+    let s = call(
+        &mut a,
+        "observe_entity",
+        json!({ "scene": "arena.scene.json", "seed": 1, "ticks": 5, "id": 4 }),
+    );
+    assert!(s["components"]["Transform"].is_object(), "{s}");
+}

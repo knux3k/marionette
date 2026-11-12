@@ -46,6 +46,7 @@ the games needed (listed below).
 | A script that changes the `Transform` of a dynamic body or a character teleports it | Respawning at a checkpoint. Physics compares the Transform with what it wrote back last tick; untouched bodies are equal bit for bit, so existing results are unchanged. |
 | `Entity.name` in scripts | Telling pickups, hazards and checkpoints apart in a trigger hook. |
 | `engine.send(target, kind, detail)` and the `onMessage(self, message)` hook; waiting messages live in the `ScriptInbox` component | Enemies report breaches and projectiles report kills to a director, and a spawner gives a new projectile its heading. Kept as a component, so messages are in the state hash and in snapshots. Delivered at the start of the target's next turn, after contact hooks and before timers: the same tick if the target runs later in id order, otherwise the next tick. |
+| `RoundCuboid { half_extents, border }` collider shape (3D and 2D) | Dust Circuit's cars are box-shaped characters. With a sharp `Cuboid` the character controller snagged on the flat ground and moved about a third of the distance it should; a ball moved freely but does not fit a car. Rounding the edges keeps the box's outer size (the border is cut from the inside) and slides cleanly. A new variant, so existing scenes and hashes are unchanged. |
 
 ## Why
 

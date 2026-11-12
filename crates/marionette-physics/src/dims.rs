@@ -58,6 +58,14 @@ pub mod d3 {
                 ColliderShape::Cuboid { half_extents: h } => {
                     ColliderBuilder::cuboid(h.x * k[0], h.y * k[1], h.z * k[2])
                 }
+                ColliderShape::RoundCuboid {
+                    half_extents: h,
+                    border,
+                } => {
+                    let b = border.max(0.0);
+                    let inner = |v: f32| (v - b).max(0.0);
+                    ColliderBuilder::round_cuboid(inner(h.x * k[0]), inner(h.y * k[1]), inner(h.z * k[2]), b)
+                }
                 ColliderShape::Ball { radius } => ColliderBuilder::ball(radius * k[0].max(k[1]).max(k[2])),
                 ColliderShape::Capsule { half_height, radius } => {
                     ColliderBuilder::capsule_y(half_height * k[1], radius * k[0].max(k[2]))
@@ -151,6 +159,14 @@ pub mod d2 {
         pub fn shape(s: &ColliderShape, k: [f32; 3], _dir: &Path) -> Result<ColliderBuilder, String> {
             Ok(match s {
                 ColliderShape::Cuboid { half_extents: h } => ColliderBuilder::cuboid(h.x * k[0], h.y * k[1]),
+                ColliderShape::RoundCuboid {
+                    half_extents: h,
+                    border,
+                } => {
+                    let b = border.max(0.0);
+                    let inner = |v: f32| (v - b).max(0.0);
+                    ColliderBuilder::round_cuboid(inner(h.x * k[0]), inner(h.y * k[1]), b)
+                }
                 ColliderShape::Ball { radius } => ColliderBuilder::ball(radius * k[0].max(k[1])),
                 ColliderShape::Capsule { half_height, radius } => {
                     ColliderBuilder::capsule_y(half_height * k[1], radius * k[0])
