@@ -35,7 +35,8 @@ Date: 2026-11-12. Status: accepted.
   record, or a copy by hash) as not admissible; the pool's admission check calls it.
 - **Approval (rule 15).** A model made from an image with a paid 3D provider needs
   `<image>.approval.json` binding the image's SHA-256. Only `marionette generate approve <name>`
-  writes it, after a person types the name at an interactive terminal. No operation writes it
+  writes it, after a person types the name at an interactive terminal (or `--all`, which lists every
+  waiting reference image under the project and asks the person to type `yes` once). No operation writes it
   and every write helper refuses the name (`generate.approval_write_refused`). Changing the image
   voids the approval. Like the cap, this guards against an agent approving its own spending by
   accident; it is not a boundary against a program that writes files directly.
