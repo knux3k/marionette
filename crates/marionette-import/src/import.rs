@@ -742,7 +742,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
     }
 
     // Unpacked archives go in the process's run folder: removed when `staging` drops, and by
-    // the next engine start if this process dies first (decision 0029).
+    // the next engine start if this process dies first (decision 0032).
     let mut staging = None;
     let (entries, bad): (Vec<SourceEntry>, Vec<BadEntry>) = match importer {
         "unitypackage" => {

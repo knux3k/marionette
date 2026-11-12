@@ -159,7 +159,7 @@ impl Sim {
         self.schedule.run(&mut self.world);
         // bevy_ecs records every removed component (resources are entities, so taking a
         // resource out counts) until trackers are cleared; a bevy App does this once per
-        // frame. Without it that record grows every tick forever (decision 0029). Nothing in
+        // frame. Without it that record grows every tick forever (decision 0032). Nothing in
         // the engine reads removal records, so this does not change behavior or hashes.
         self.world.clear_trackers();
     }

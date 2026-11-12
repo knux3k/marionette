@@ -1,4 +1,4 @@
-//! What the engine holds from the operating system, and how it gives it back (decision 0029).
+//! What the engine holds from the operating system, and how it gives it back (decision 0032).
 //!
 //! The rule: when an engine process ends, normally or by a crash or a kill, the operating
 //! system must be able to reclaim everything it held. Memory, file handles, sockets and GPU

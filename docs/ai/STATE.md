@@ -94,7 +94,7 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `mcp_read_only_refuses_mutations_with_structured_error`,
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
-Memory and crash hygiene (decision 0029, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
+Memory and crash hygiene (decision 0032, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
 - `crates/marionette-agent/tests/leaks.rs` (`memory_stays_flat_under_repeated_work`: session
   load/unload, a long run past the event-log bound, script hot reload, entity churn,
   screenshots; heap growth under 64 KB per scenario, counted by `marionette_host::alloc`).
@@ -311,4 +311,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
 | 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
-| 2026-11-12 | Memory and crash hygiene (decision 0029): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |
+| 2026-11-12 | Memory and crash hygiene (decision 0032): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |

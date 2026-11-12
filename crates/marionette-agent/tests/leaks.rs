@@ -1,4 +1,4 @@
-//! Leak checks (decision 0029): repeated work must give its memory back. Every scenario runs
+//! Leak checks (decision 0032): repeated work must give its memory back. Every scenario runs
 //! a warm-up (caches, lazily built tables), takes a baseline of live heap bytes from the
 //! counting allocator, repeats the work many more times and requires the growth to stay
 //! under a small fixed allowance. A leak of even a few bytes per round fails, because the

@@ -15,7 +15,7 @@ use std::process::ExitCode;
 mod render;
 
 /// Counted heap, so `live_bytes` is available to memory checks on every platform (decision
-/// 0029); the cost is a few relaxed atomic adds per allocation.
+/// 0032); the cost is a few relaxed atomic adds per allocation.
 #[global_allocator]
 static ALLOC: marionette_host::alloc::Counting = marionette_host::alloc::Counting;
 
@@ -178,7 +178,7 @@ fn main() -> ExitCode {
     // Parsing may print help and exit; nothing is held yet at that point.
     let cli = Cli::parse();
     // Tie child processes to this process and remove what crashed engine processes left
-    // behind; this process's own run folder is removed on the way out (decision 0029). A
+    // behind; this process's own run folder is removed on the way out (decision 0032). A
     // panic or kill skips `shutdown`; the next start's sweep covers that.
     marionette_host::init();
     let _ = marionette_host::run_dir();

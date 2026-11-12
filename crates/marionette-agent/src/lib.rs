@@ -188,7 +188,7 @@ impl Agent {
         let ops = std::sync::Arc::clone(&self.ops);
         let session = input.get("session").and_then(Value::as_str).map(str::to_string);
         // A panic is an engine bug, but it must not take down the process (an MCP server
-        // serves many calls); decision 0029.
+        // serves many calls); decision 0032.
         let result =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (ops[index].handler)(self, input)));
         result.unwrap_or_else(|payload| {

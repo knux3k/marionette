@@ -531,7 +531,7 @@ impl Renderer {
 
     /// Frees cached GPU models and textures that `frame` does not draw; returns how many
     /// were freed. The cache only grows while the same assets are drawn, so call this after
-    /// switching scenes (decision 0029). Freed assets load again if a later frame needs them.
+    /// switching scenes (decision 0032). Freed assets load again if a later frame needs them.
     pub fn trim(&mut self, frame: &FrameData) -> usize {
         let models: std::collections::BTreeSet<&str> = frame
             .meshes

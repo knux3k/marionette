@@ -65,7 +65,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, valgrind)
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev valgrind
-      # Decision 0029: the C script runtime (QuickJS) and the crates that own OS resources
+      # Decision 0032: the C script runtime (QuickJS) and the crates that own OS resources
       # run under valgrind; any definitely-lost block fails the job. The Rust heap, GPU
       # objects and kill tests run in the normal test job (counting allocator).
       - name: Tests under valgrind

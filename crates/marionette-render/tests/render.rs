@@ -124,7 +124,7 @@ fn loads_the_example_gltf() {
     assert!(!model.images[m.normal_texture.unwrap()].srgb);
 }
 
-/// Repeated offscreen setups and scene switches give every GPU object back (decision 0029).
+/// Repeated offscreen setups and scene switches give every GPU object back (decision 0032).
 #[test]
 fn gpu_objects_come_back_after_repeated_setups_and_trims() {
     let Some(gpu) = gpu() else { return };

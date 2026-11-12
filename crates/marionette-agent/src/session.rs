@@ -76,7 +76,7 @@ pub struct Session {
     pub scene: String,
     pub seed: u64,
     /// The most recent log entries (at most `LOG_KEEP`; older ones are dropped so a
-    /// long-lived session keeps steady memory, decision 0029).
+    /// long-lived session keeps steady memory, decision 0032).
     pub logs: std::collections::VecDeque<LogEntry>,
     /// Entries ever logged; the next entry's `seq`.
     pub logged: usize,

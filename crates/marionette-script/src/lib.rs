@@ -58,7 +58,7 @@ pub mod codes {
 }
 
 /// Most memory the script heap of one world may use. Past it, allocations throw inside the
-/// script (a `script_error` event), and the engine goes on (decision 0029).
+/// script (a `script_error` event), and the engine goes on (decision 0032).
 pub const MEMORY_LIMIT: usize = 64 << 20;
 
 /// Most work one script call (module load, or one entity's hooks in a tick) may do, in
@@ -316,7 +316,7 @@ impl ScriptHost {
         }
 
         let rt = Runtime::new().map_err(engine_error)?;
-        // Runaway scripts fail as data instead of taking the engine down (decision 0029):
+        // Runaway scripts fail as data instead of taking the engine down (decision 0032):
         // bounded heap, bounded stack, bounded work per call.
         rt.set_memory_limit(MEMORY_LIMIT);
         rt.set_max_stack_size(STACK_LIMIT);

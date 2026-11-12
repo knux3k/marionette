@@ -101,7 +101,7 @@ pub struct EngineEvent {
     pub detail: serde_json::Value,
 }
 
-/// Recent events, oldest first. Bounded so long runs keep steady memory (decision 0029): a
+/// Recent events, oldest first. Bounded so long runs keep steady memory (decision 0032): a
 /// ring of at most `EventLog::KEEP` events; each push past that drops the oldest event and
 /// counts it in `dropped`. The trim depends only on the event count, so it is
 /// deterministic. Readers that keep a position use absolute positions: event `i` of

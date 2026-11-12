@@ -1,4 +1,4 @@
-//! Killing the engine mid-run leaves nothing that outlives the next start (decision 0029).
+//! Killing the engine mid-run leaves nothing that outlives the next start (decision 0032).
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};

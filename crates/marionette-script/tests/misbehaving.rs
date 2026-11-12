@@ -1,4 +1,4 @@
-//! Misbehaving scripts fail as data and never take the engine down (decision 0029).
+//! Misbehaving scripts fail as data and never take the engine down (decision 0032).
 
 use marionette_core::module::{Modules, registry_with};
 use marionette_core::{Errors, Registry, Sim};

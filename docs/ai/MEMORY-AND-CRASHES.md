@@ -1,6 +1,6 @@
 # Memory and crashes
 
-Normative rules (decision 0029). Two promises to the project owner:
+Normative rules (decision 0032). Two promises to the project owner:
 
 1. **No leaks.** Repeated work (loading and unloading scenes, hot-reloading scripts, spawning
    and destroying entities, loading assets, rendering, long runs) gives its memory back. Memory

@@ -77,7 +77,7 @@ impl Gpu {
     }
 
     /// Live GPU objects the application holds, counted by wgpu. Leak tests compare these
-    /// before and after repeated work (decision 0029). `None` on backends without counts.
+    /// before and after repeated work (decision 0032). `None` on backends without counts.
     pub fn live_objects(&self) -> Option<GpuObjects> {
         let hub = self.instance.generate_report()?.hub;
         Some(GpuObjects {

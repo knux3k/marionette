@@ -1,4 +1,4 @@
-# 0029: Memory and crash hygiene
+# 0032: Memory and crash hygiene
 
 Date: 2026-11-12. Status: accepted.
 
