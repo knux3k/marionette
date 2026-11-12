@@ -204,6 +204,7 @@ fn three_recipes(root: &Path) {
             texture: Some(TextureOptions {
                 resize: None,
                 tileable: true,
+                remove_background: false,
             }),
             ..recipe("bricks", OutputKind::Texture)
         },
@@ -380,6 +381,7 @@ fn a_paid_image_is_paid_once_and_then_comes_from_the_cache() {
             texture: Some(TextureOptions {
                 resize: Some([64, 64]),
                 tileable: false,
+                remove_background: false,
             }),
             prompt: Some("mossy stone".into()),
             size: Some([128, 128]),
@@ -433,6 +435,7 @@ fn a_paid_image_is_paid_once_and_then_comes_from_the_cache() {
             texture: Some(TextureOptions {
                 resize: Some([32, 32]),
                 tileable: true,
+                remove_background: false,
             }),
             prompt: Some("mossy stone".into()),
             size: Some([128, 128]),
@@ -604,7 +607,8 @@ fn bad_recipes_are_refused() {
         code(&bad(Recipe {
             texture: Some(TextureOptions {
                 resize: Some([100, 64]),
-                tileable: false
+                tileable: false,
+                remove_background: false,
             }),
             ..Recipe {
                 output: OutputKind::Texture,
