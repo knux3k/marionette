@@ -132,18 +132,9 @@ pub fn resample(rgba: &[u8], w: u32, h: u32, tw: u32, th: u32) -> Vec<u8> {
     if th == h {
         return horiz;
     }
-    // Vertical: lines are columns, pixels advance by one row. `resample_axis` writes the
-    // result column-major for this case; transpose back to row-major.
-    let cols = resample_axis(&horiz, tw, h, th, 4, tw as usize * 4);
-    let mut out = vec![0u8; (tw * th * 4) as usize];
-    for x in 0..tw as usize {
-        for y in 0..th as usize {
-            let s = (x * th as usize + y) * 4;
-            let d = (y * tw as usize + x) * 4;
-            out[d..d + 4].copy_from_slice(&cols[s..s + 4]);
-        }
-    }
-    out
+    // Vertical: lines are columns, pixels advance by one row. `resample_axis` writes output
+    // pixel (row `x`, column `l`) at `x * tw + l`, which is already row-major.
+    resample_axis(&horiz, tw, h, th, 4, tw as usize * 4)
 }
 
 /// Distance from the key colour (largest channel difference) at which a pixel starts to show,
@@ -396,6 +387,30 @@ mod tests {
             }
         }
         assert!(worst <= 12, "largest neighbour step {worst}");
+    }
+
+    #[test]
+    fn resampling_keeps_orientation() {
+        // 2 x 4, every pixel distinct: value = 10 * row + column.
+        let (w, h) = (2u32, 4u32);
+        let mut img = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let v = (10 * y + x) as u8;
+                img.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        let px = |t: &[u8], tw: u32, x: u32, y: u32| t[((y * tw + x) * 4) as usize];
+        // Height only: rows 0-1 and 2-3 average; columns stay apart.
+        let t = resample(&img, w, h, 2, 2);
+        assert_eq!(
+            [px(&t, 2, 0, 0), px(&t, 2, 1, 0), px(&t, 2, 0, 1), px(&t, 2, 1, 1)],
+            [5, 6, 25, 26]
+        );
+        // Both axes, to a wide image: the top stays on top.
+        let t = resample(&img, w, h, 4, 2);
+        assert!(px(&t, 4, 0, 0) < px(&t, 4, 0, 1));
+        assert!(px(&t, 4, 0, 0) <= px(&t, 4, 3, 0));
     }
 
     #[test]
