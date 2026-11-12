@@ -137,6 +137,15 @@ draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
 `cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
+## Job TypeScript (workstream WJ)
+
+Proofs: `cargo test -p marionette-jobs-ts` (same hash on 1, 2, 3 and 8 threads; pinned hash
+`994155611f9d326a5f21b3676f2604afef1d4afb291c268990b8cc6644b73f0a` in `pinned_hash`;
+bit-identical to the Rust job body and to the QuickJS interpreter; errors with code, line,
+column and fix; index trap; time limit; hot reload); `cargo test -p marionette-cli --test
+jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`
+(decision 0030). Guide: `docs/ai/JOBS-TS.md`. Not yet usable from scenes or scripts (WJ next).
+
 ## UNVERIFIED
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
@@ -145,6 +154,10 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   match; GPU tests skipped there.
 - `marionette-script` (rquickjs/QuickJS-ng and oxc) on Windows MSVC: see the CI run of the
   scripting merge; not built on the owner's desktop yet.
+- `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
+  Linux are expected from CI on the job TypeScript branch; not yet observed.
+- Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
+  container measured).
 - Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.
@@ -182,3 +195,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | WJ: job TypeScript, crate `marionette-jobs-ts` (TS subset to WebAssembly, wasmtime runtime on `marionette-jobs`, safety levels, `JobLibrary` hot reload), operations `jobs_check`/`jobs_run`/`jobs_types`, `examples/jobs/particles.job.ts`, benchmark, decision 0030, `docs/ai/JOBS-TS.md`. Drift hash unchanged. | branch `claude/project-thread-p3he01` |

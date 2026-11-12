@@ -20,6 +20,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
+| WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | part 1 done, scene/script use next | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
 
@@ -120,7 +121,21 @@ Follow-ups listed under line 4 in STATE.md.
 - Owns: `crates/marionette-jobs`, `crates/marionette-factory`, `crates/marionette-agent/src/perf.rs`,
   `crates/marionette-cli/tests/perf_proofs.rs`, `crates/marionette-cli/tests/perf_budgets.rs`.
 - Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
-  a typed TypeScript subset compiled to WASM for job bodies (own workstream, after W7).
+  a typed TypeScript subset compiled to WASM for job bodies (now WJ).
+
+## WJ: job TypeScript
+
+- Done (decision 0030, `docs/ai/JOBS-TS.md`): crate `crates/marionette-jobs-ts` (compiler,
+  runtime, `JobLibrary` hot reload), operations `jobs_check`, `jobs_run`, `jobs_types`,
+  `examples/jobs/particles.job.ts`, benchmark example `jobs_ts_bench`.
+- Owns: `crates/marionette-jobs-ts`, `crates/marionette-agent/src/jobs_ts.rs`,
+  `crates/marionette-cli/tests/jobs_ts_e2e.rs`, `examples/jobs/`, `docs/ai/JOBS-TS.md`.
+- Next: run job files from scenes and scripts without Rust (a component naming a job file and
+  the component fields it reads and writes, gathered into arrays per tick; and/or a script API
+  passing typed arrays to a job); loop versioning to drop index checks in counted loops; SIMD
+  for simple loops; zero-copy arrays in shared WebAssembly memory.
+- Acceptance for the next step: a scene whose per-tick hot loop is a job file, same state hash
+  on 1 and N threads, documented in JOBS-TS.md.
 
 ## W9: later (line 10)
 

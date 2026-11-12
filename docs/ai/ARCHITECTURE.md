@@ -15,6 +15,7 @@
 | `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend cap and ledger | core, assets, sha2, schemars | render, input, physics, audio, any HTTP client (decision 0019) |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, rquickjs, oxc, libm | render, input, physics, audio, agent |
+| `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts` | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
@@ -102,7 +103,9 @@ Forbidden in simulation code (systems and anything they call):
 - reading files during a tick (load in `Module::init`).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
-math, `**` rewritten to `Math.pow` (decision 0022).
+math, `**` rewritten to `Math.pow` (decision 0022). Job TypeScript files (`*.job.ts`) are
+deterministic by construction: WebAssembly arithmetic, canonical NaNs at stores, `libm` math,
+chunks from the data, results in chunk order (decision 0030, `docs/ai/JOBS-TS.md`).
 
 Rapier runs with `enhanced-determinism`. Test: same scene, seed, ticks and input give the same
 hash (`crates/marionette-core/tests/acceptance.rs`, `crates/marionette-cli/tests/agent_e2e.rs`).

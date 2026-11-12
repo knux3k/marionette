@@ -9,6 +9,7 @@
 pub mod docs;
 pub mod edit;
 pub mod engine;
+pub mod jobs_ts;
 pub mod library;
 pub mod mcp;
 pub mod observe;
@@ -121,6 +122,7 @@ impl Agent {
             scenario::ops(),
             library::ops(),
             perf::ops(),
+            jobs_ts::ops(),
             providers::ops(),
             script::ops(),
         ]

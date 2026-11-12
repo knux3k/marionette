@@ -15,6 +15,7 @@ marionette-audio = { path = "../marionette-audio" }
 marionette-import = { path = "../marionette-import" }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
+marionette-jobs-ts = { path = "../marionette-jobs-ts" }
 marionette-providers = { path = "../marionette-providers" }
 marionette-script = { path = "../marionette-script" }
 serde.workspace = true

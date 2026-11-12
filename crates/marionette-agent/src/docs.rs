@@ -165,3 +165,8 @@ pub fn components(agent: &Agent) -> String {
 pub fn script_typings(agent: &Agent) -> String {
     marionette_script::typings::typings(agent.registry())
 }
+
+/// `docs/ai/reference/jobs.d.ts`: the job TypeScript prelude (same text as `jobs_types`).
+pub fn job_typings() -> String {
+    marionette_jobs_ts::PRELUDE_DTS.to_string()
+}

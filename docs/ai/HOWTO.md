@@ -71,6 +71,16 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 5. In a live session, `script_reload` swaps in the edited file; load errors come back as
    `script.*` diagnostics with line and column, runtime throws as `script_error` events.
 6. Add a test that runs the scene twice with the same seed and compares the state hash.
+## Add a job (hot loop in TypeScript)
+
+1. Write `name.job.ts` with exported functions over `Float32Array`/`Float64Array`/`Int32Array`
+   parameters (rules: `docs/ai/JOBS-TS.md`).
+2. `marionette op jobs_check '{"path":"name.job.ts"}'` until `ok` is true; apply each `fix`.
+3. Try it on data: `marionette op jobs_run '{"path":"name.job.ts","function":"f","args":[...]}'`.
+4. From Rust: `JobProgram::load(path)?.run(&jobs, "f", len, chunk, &mut [Arg::F32(&mut a), ...])`,
+   or keep a `JobLibrary` for hot reload.
+5. Test it: same output with `Jobs::inline()` and `Jobs::with_threads(n)`.
+
 ## Add an AI provider
 
 1. Add `crates/marionette-providers/src/<name>.rs` with a unit struct implementing `Provider`:
