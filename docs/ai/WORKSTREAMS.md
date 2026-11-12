@@ -22,6 +22,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | WA | Skeletal animation (skins, clips, GPU skinning, blend shapes) | done, follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
+| W10 | Porting Unity and Unreal code | done (decision 0020) | any |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
 
 After W0: push (with the owner's approval), run CI, verify the drift hash on Linux, update the
@@ -114,6 +115,16 @@ Follow-ups listed under line 4 in STATE.md.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its
   tests pass twice with identical results, uses pooled CC0 or recipe-generated assets, holds
   90 frames per second on a mid-range desktop GPU.
+
+## W10: porting Unity and Unreal code
+
+Status: done (decision 0020). Guide: PORTING.md.
+
+- Scope: scan Unity C# and Unreal C++/Blueprint-text gameplay code, map every engine concept to
+  Marionette with a status, write TypeScript skeletons, convert coordinates.
+- Owns: `crates/marionette-port/`, `crates/marionette-agent/src/port.rs`,
+  `docs/ai/PORTING.md`.
+- Follow-up: keep the tables in step with the script API (flip gaps when features land).
 
 ## WP: performance
 

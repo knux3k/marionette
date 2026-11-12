@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 exclude = ["spikes"]
-members = ["crates/marionette-core", "crates/marionette-jobs", "crates/marionette-factory", "crates/marionette-assets", "crates/marionette-render", "crates/marionette-input", "crates/marionette-physics", "crates/marionette-audio", "crates/marionette-import", "crates/marionette-anim", "crates/marionette-providers", "crates/marionette-script", "crates/marionette-agent", "crates/marionette-cli"]
+members = ["crates/marionette-core", "crates/marionette-jobs", "crates/marionette-factory", "crates/marionette-assets", "crates/marionette-render", "crates/marionette-input", "crates/marionette-physics", "crates/marionette-audio", "crates/marionette-import", "crates/marionette-anim", "crates/marionette-providers", "crates/marionette-script", "crates/marionette-port", "crates/marionette-agent", "crates/marionette-cli"]
 
 [workspace.package]
 version = "0.1.0"
