@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "crawler_ref",
+  "output": "image",
+  "file": "crawler_ref.png",
+  "sha256": "b0bf021e1e8a72e3e3c68d7f98886a03ce827e47cda4475a32e4db1f069966ea",
+  "recipe": "crawler_ref.recipe.json",
+  "recipe_sha256": "5dc43f7bae0e4acf48be9d3118cf5e20daae9f598dd697f3dc1bc27e1b502867",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a low six-legged shadow beetle creature with glowing violet cracks on its shell, single object, three-quarter front view, centred, full body in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "5a1cc55a3bf282f0e232b2bf927a65a71b337582e0ee4d5c60cbb7288650f291",
+    "raw_sha256": "4425c838046a42a64c242ebc764703e763a4fdbb2e51ac776166608e10b018ab",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

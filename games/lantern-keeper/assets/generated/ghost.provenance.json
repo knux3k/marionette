@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "ghost",
+  "output": "image",
+  "file": "ghost.png",
+  "sha256": "b41aa297eb7ce2d619c97d4dcafa5aee51b64b8bc69c82f5d45be7349ab26513",
+  "recipe": "ghost.recipe.json",
+  "recipe_sha256": "4631626bc9591986ddf5728259367c5791e657829a2913ab4111ae0513310dbc",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a soft pale blue drifting ghost wisp, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "593b41d116a3b206e477240f8e8dbc375de64637830716166c61c7e7e4a71c7a",
+    "raw_sha256": "bbd9a59ad5bb2b2dd5a4c7cf3f3f27302f9cbe67146feaaea80e1647fc9882c4",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

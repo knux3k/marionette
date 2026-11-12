@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "rival_car_ref",
+  "output": "image",
+  "file": "rival_car_ref.png",
+  "sha256": "1d1c4b29f786fd79b3beb370cfe9340719cb96dfd844f7ee92cca5b9fb1ce112",
+  "recipe": "rival_car_ref.recipe.json",
+  "recipe_sha256": "21ae3ee6d3f9a3966d3f18e4933cbe4e2a35212340bb56a6325d126e9cd3b518",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a compact desert rally buggy painted burnt orange with black stripes, roll cage, chunky tyres, single object, three-quarter front view, centred, full body in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "c03b7a94f1b11b733ecfd95f74ae90d7375a37e3dccb05d9d11259ac42ffc925",
+    "raw_sha256": "d7f5e50e1971549fdb756af1fea261083bf7a6735e0afe2023ca0c70299287e3",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

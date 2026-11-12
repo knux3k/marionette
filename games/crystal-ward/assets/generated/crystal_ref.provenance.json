@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "crystal_ref",
+  "output": "image",
+  "file": "crystal_ref.png",
+  "sha256": "4d58b7e47572349a3a9048b0c33f2244741954f95c85f5756fe20bf8fd1f3701",
+  "recipe": "crystal_ref.recipe.json",
+  "recipe_sha256": "d122ac94c775f253856b760f4a0f84e4661f262678a03d01e68f3a2c35e5c375",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a tall faceted cyan crystal growing from a carved stone plinth, single object, three-quarter front view, centred, full body in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "83b57b598a004ad9fc36d839e300d8ba4b047a344c3f0e70354678dafc42b84e",
+    "raw_sha256": "f4d735819f025a7936e253a26cb1ee11ae01c0f5f36d42f924d105cae63bf4f0",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
