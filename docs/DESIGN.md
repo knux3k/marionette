@@ -12,7 +12,8 @@ in what order it is built. Current status and how to continue: `docs/ai/START-HE
 5. AI jobs: Claude designs, writes and checks. Qwen makes images only. Tripo makes 3D models. Rigging: Tripo auto-rig first for humanoids and common animals, Claude-scripted Blender for the rest and for repairs; the engine checks every rig by numbers.
 6. Providers: cloud APIs by default, each user brings their own keys, local models allowed. One config file and one command switch any provider, by the person or by the AI.
 7. AI while playing: off by default. A game can turn it on as an optional module with budgets and a scripted fallback.
-8. Assets: before generating, search the project's CC0 pool, then known free CC0 libraries online (Poly Haven, ambientCG, Kenney, Quaternius), and only then spend credits. Only CC0 goes in the pool, with the source recorded.
+8. Assets: search in this order: the project's own files, the user's owned library (a per-user folder shared across projects), the CC0 pool, known free CC0 libraries online (Poly Haven, ambientCG, Kenney, Quaternius), and only then generate with Qwen and Tripo (spending credits). Only CC0 goes in the pool, with the source recorded. (Updated 2026-11-11.)
+8a. Importing owned assets: an importer brings in assets the user owns from Unity and Unreal projects. Unity first, by reading project files and `.unitypackage` archives; Unreal through the Unreal Editor's glTF/FBX export. Imported assets record their license, stay private to the user, and are blocked from the CC0 pool. (Added 2026-11-11.)
 9. Platforms and builds: Windows and Linux. Builds and headless tests on every change. Graphics-card and headset checks run on a desktop machine with a real GPU. Other coding agents help wherever they can do the work at the same quality.
 10. Name and license: Marionette. MIT OR Apache-2.0 (both offered). Asset pool is CC0. Two future repositories: the engine repository and the assets repository. The bare `marionette` crate name belongs to Mozilla, so crates are named `marionette-*` (for example `marionette-core`, `marionette-cli`).
 11. Proof, part 1: six small playable scenes built by Claude with no hand edits: an FPS, a racing game, a platformer, a top-down game in 3D, a top-down game in 2D and a side-scroller in 2D.
@@ -27,7 +28,7 @@ in what order it is built. Current status and how to continue: `docs/ai/START-HE
 5. Agent interface. CLI and MCP server share one set of operations; repo carries CLAUDE.md, AGENTS.md and the user's protocol file. Proof: a CLI-only session creates, runs, screenshots and tests a scene.
 6. Physics, input, sound, UI. Rapier, recorded input, kira, minimal UI. Proof: replaying recorded input gives the same state hash.
 7. Providers. Language, image and 3D interfaces with Claude, Qwen and Tripo plug-ins, one config file, one switch command, a spend cap. Proof: one command swaps a provider; the engine builds and passes tests with none configured.
-8. Assets. Recipe: search pool, search CC0 libraries, generate via Qwen and Tripo, post-process, validate, import. Proof: three assets rebuilt from recipes, each with license and source recorded.
+8. Assets. Recipe: search project files, the owned library, the pool, CC0 libraries, then generate via Qwen and Tripo; post-process, validate, import. The local import path (owned library, Unity project files and `.unitypackage`, Unreal glTF/FBX exports) is built before the generation step. Proof: three assets rebuilt from recipes, each with license and source recorded; one owned asset imported with its license recorded and refused by the pool.
 9. Proof scenes. The six scenes in brief line 11.
 10. Later. OpenXR module, optional AI-while-playing module, read-only inspector.
 
@@ -51,7 +52,7 @@ in what order it is built. Current status and how to continue: `docs/ai/START-HE
 - `marionette-script`: scripting host and typings generator (language decided by the spike).
 - `marionette-physics`, `marionette-audio`, `marionette-input`: Rapier, kira, live/scripted/recorded input.
 - `marionette-agent`: the operation set shared by CLI and MCP server: project, edit, run, observe, test, assets.
-- `marionette-assets`: recipes, cache, post-processing, validation, import, CC0 pool and library search.
+- `marionette-assets`: recipes, cache, post-processing, validation, import (including owned Unity and Unreal assets into a per-user library, never into the pool), CC0 pool and library search.
 - `marionette-providers`: language, image and 3D traits; Claude, Qwen, Tripo behind feature flags; keys from env only.
 - `marionette-ai-runtime`: optional, off by default.
 - `marionette-cli`: the single binary, named `marionette`. Every command accepts `--json`.
