@@ -5,9 +5,9 @@
         "Camera": {
           "clear_color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.03,
-            "r": 0.03
+            "b": 0.01,
+            "g": 0.004,
+            "r": 0.004
           },
           "projection": {
             "Orthographic": {
@@ -44,9 +44,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.1,
-            "g": 0.065,
-            "r": 0.06
+            "b": 0.025,
+            "g": 0.014,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 0,

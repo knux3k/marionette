@@ -11,6 +11,6 @@
     { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
     { "field": { "entity": 3, "path": "ScriptState.data.lives", "op": "eq", "value": 3 } },
     { "count": { "with": ["Sprite"], "equals": 109 } },
-    { "state_hash": "2f25c6411e0d5eff07da239b35150404b119621eeac3f53ea1605b7ed9965e52" }
+    { "state_hash": "0fab931fad098f3fbdc6c8dabd858821baf666545fd32d2ac75440b45117d097" }
   ]
 }
