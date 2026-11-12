@@ -29,7 +29,7 @@ use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
-use marionette_core::module::{EventLog, Module, SceneDir, Stage};
+use marionette_core::module::{EventLog, Module, RayCaster, RayFilter, SceneDir, Stage};
 use marionette_core::rng::SimRng;
 use marionette_core::scene::{SceneId, SceneName};
 use marionette_core::{Diagnostic, Errors, Kind, Registry};
@@ -825,6 +825,34 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
                     let at = world.get::<DestroyAt>(e).map_or(at, |d| d.tick.min(at));
                     world.entity_mut(e).insert(DestroyAt { tick: at });
                     Ok(())
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "raycast",
+        Function::new(
+            ctx.clone(),
+            move |o: Vec<f64>, d: Vec<f64>, max: f64, exclude: Option<f64>| -> Option<String> {
+                with_world(&b, |world, _| {
+                    let caster = world.get_resource::<RayCaster>().copied()?;
+                    let v = |a: &[f64]| [0, 1, 2].map(|i| a.get(i).copied().unwrap_or(0.0) as f32);
+                    let filter = RayFilter {
+                        exclude: exclude.map(|e| e as u64),
+                        skip_sensors: true,
+                    };
+                    let hit = (caster.0)(world, v(&o), v(&d), max as f32, filter)?;
+                    let p = |a: [f32; 3]| serde_json::json!({ "x": a[0], "y": a[1], "z": a[2] });
+                    Some(
+                        serde_json::json!({
+                            "entity": hit.entity,
+                            "distance": hit.distance,
+                            "point": p(hit.point),
+                            "normal": p(hit.normal),
+                        })
+                        .to_string(),
+                    )
                 })
             },
         )?,

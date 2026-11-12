@@ -7,6 +7,7 @@
 //! and produce them.
 
 pub mod anim;
+pub mod batch;
 pub mod docs;
 pub mod edit;
 pub mod engine;
@@ -109,7 +110,7 @@ pub struct Agent {
     root: PathBuf,
     read_only: bool,
     registry: Registry,
-    ops: Vec<Op>,
+    ops: std::sync::Arc<Vec<Op>>,
     pub(crate) sessions: BTreeMap<String, Session>,
     pub(crate) next_session: u64,
     gpu: Option<Gpu>,
@@ -130,10 +131,12 @@ impl Agent {
             anim::ops(),
             script::ops(),
             port::ops(),
+            batch::ops(),
         ]
         .into_iter()
         .flatten()
-        .collect();
+        .collect::<Vec<Op>>()
+        .into();
         Self {
             root: root.into(),
             read_only,
@@ -180,14 +183,14 @@ impl Agent {
             .fix("use observe_*, scene_validate, scene_run or test_run, or restart without --read-only")
             .into());
         }
-        // Temporarily take the handler out so it can borrow the agent mutably.
-        let ops = std::mem::take(&mut self.ops);
+        // A shared handle to the table lets the handler borrow the agent mutably (and lets
+        // `batch_run` call other operations).
+        let ops = std::sync::Arc::clone(&self.ops);
         let session = input.get("session").and_then(Value::as_str).map(str::to_string);
         // A panic is an engine bug, but it must not take down the process (an MCP server
-        // serves many calls) or leave the operation table empty (decision 0029).
+        // serves many calls); decision 0029.
         let result =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (ops[index].handler)(self, input)));
-        self.ops = ops;
         result.unwrap_or_else(|payload| {
             let msg = payload
                 .downcast_ref::<&str>()
@@ -311,7 +314,9 @@ mod panic_tests {
     fn a_panicking_operation_is_an_error_and_the_agent_keeps_serving() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
         let mut agent = Agent::new(root, false);
-        agent.ops.push(op("boom", "test only", true, boom));
+        std::sync::Arc::get_mut(&mut agent.ops)
+            .unwrap()
+            .push(op("boom", "test only", true, boom));
         let started = agent
             .call("session_start", json!({ "scene": "drift.scene.json", "seed": 1 }))
             .unwrap();
@@ -326,7 +331,7 @@ mod panic_tests {
             agent.sessions.is_empty(),
             "the possibly broken session was closed"
         );
-        // Every operation is still there and works.
+        // The server keeps working.
         assert!(agent.call("session_list", json!({})).is_ok());
         assert!(
             agent

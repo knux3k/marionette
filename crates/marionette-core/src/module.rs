@@ -60,6 +60,33 @@ pub type Modules = Arc<Vec<Box<dyn Module>>>;
 #[derive(Resource, Debug, Clone, Default)]
 pub struct SceneDir(pub PathBuf);
 
+/// A ray hit: the entity, distance along the ray, hit point and surface normal.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct RayHit {
+    pub entity: u64,
+    pub distance: f32,
+    pub point: [f32; 3],
+    pub normal: [f32; 3],
+}
+
+/// Which colliders a ray may hit.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct RayFilter {
+    /// Skip this entity's collider (the shooter itself).
+    pub exclude: Option<u64>,
+    /// Skip sensors (trigger volumes).
+    pub skip_sensors: bool,
+}
+
+/// A ray query offered by a module (physics) to code that must not depend on it (scripts).
+/// The module inserts this resource in its `init`; it is not simulation state. Arguments:
+/// origin, direction (need not be unit length), maximum distance, filter.
+#[derive(Resource, Clone, Copy)]
+pub struct RayCaster(pub RayFn);
+
+/// The signature of a [`RayCaster`]: world, origin, direction, maximum distance, filter.
+pub type RayFn = fn(&World, [f32; 3], [f32; 3], f32, RayFilter) -> Option<RayHit>;
+
 /// Something that happened during a tick (a collision, a jump, a sound). Not simulation
 /// state: it is a record for observation and tests, and is not part of the state hash.
 #[derive(Debug, Clone, PartialEq, Serialize)]

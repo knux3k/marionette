@@ -1,0 +1,50 @@
+# Proof scenes (plan line 9, W8)
+
+Six small original games that prove the engine end to end, built the way an agent builds a
+game: scenes through operations (a recipe in `build.ops.json`), gameplay in TypeScript, tests
+that play the game with scripted input. Decision 0050. Proof test:
+`crates/marionette-cli/tests/proof_scenes.rs`.
+
+## Games
+
+| Game | Genre | Directory | Status |
+| --- | --- | --- | --- |
+| Lantern Keeper | top-down 2D | `games/lantern-keeper/` | done: wins with scripted input; idle run loses all lives |
+| (planned) | 2D side-scroller | - | not started |
+| (planned) | 3D platformer | - | not started |
+| (planned) | top-down 3D | - | not started |
+| (planned) | racing | - | not started |
+| (planned) | first-person shooter | - | not started |
+
+## Recipe for a new proof game
+
+1. `marionette op project_init '{"path": "games/<name>"}'`, keep `marionette.json`, remove the
+   template scene and test.
+2. Write `build.ops.json` (format `marionette.ops`): `scene_create`, `resource_set`
+   (`FixedStep`, `InputConfig`, `PhysicsSettings`, `AmbientLight`), `entity_create` per entity,
+   last `scene_validate`. Run it: `marionette --project games/<name> op batch_run '{"file": "build.ops.json"}'`.
+   To change the scene later, change the recipe and rebuild (delete the scene file first), or
+   run edit operations and add them to the recipe.
+3. Gameplay in `scenes/scripts/*.ts`; keep changing state in `self.state`.
+4. Play it: write `tests/play.inputs.json`, check what happened with `observe_events`
+   (`"input": "tests/play.inputs.json"`), then write `tests/*.test.json` with event counts,
+   `ScriptState.data.*` fields and the `state_hash`.
+5. Add the name to `GAMES` in `proof_scenes.rs`, a row above, and a stability mode.
+
+## Engine gaps found
+
+Fixed while building (decision 0050 lists why): operations for scene resources; `batch_run`;
+`engine.raycast`; characters face their rotation; `CharacterInput`; `engine.emit` without a
+detail threw; scenario paths into `ScriptState.data`; event counts in assertions; `input` on
+observe operations.
+
+Open (not fixed here; each names the cheapest fix seen):
+
+| # | Gap | Seen in | Possible fix |
+| --- | --- | --- | --- |
+| G1 | No tile map: a tile game spawns one sprite entity per wall (about 100 in Lantern Keeper). | Lantern Keeper | A `TileMap` component (text rows plus a palette) drawn as one batch. |
+| G2 | A script cannot read another entity's `self.state`: `engine.find(..).state` is empty; the only way is parsing `get("ScriptState").data`. | Lantern Keeper (one controller script owns the ghosts for this reason) | Make `Entity.state` of other entities a read-only parsed copy, or add `engine.send(entity, message)`. |
+| G3 | `entity.set` replaces the whole component; changing one sprite color repeats image, size and layer. | Lantern Keeper | `entity.patch(name, partial)` merging fields. |
+| G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
+| G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
+| G6 | No CC0 pool or generated assets yet; games use built-in primitives and images. | all | W3 pool and W4 generation (Qwen images, Tripo models), then swap through the recipes. |

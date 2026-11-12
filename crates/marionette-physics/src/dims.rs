@@ -35,6 +35,23 @@ pub mod d3 {
         pub fn walk(dx: f32, dforward: f32, dy: f32) -> Vector {
             Vector::new(dx, dy, -dforward)
         }
+        /// Turns horizontal movement by the character's facing (its rotation, normally a yaw
+        /// set by a script), keeping its length; vertical movement is unchanged.
+        pub fn face(q: [f32; 4], v: Vector) -> Vector {
+            if q == [0.0, 0.0, 0.0, 1.0] {
+                return v;
+            }
+            let h = Rotation::from_xyzw(q[0], q[1], q[2], q[3]).normalize() * Vector::new(v.x, 0.0, v.z);
+            let (len_in, len) = ((v.x * v.x + v.z * v.z).sqrt(), (h.x * h.x + h.z * h.z).sqrt());
+            if len < 1e-6 {
+                return v;
+            }
+            Vector::new(h.x / len * len_in, v.y, h.z / len * len_in)
+        }
+        /// A character's body takes its rotation from `Transform` (scripts turn it).
+        pub fn turn(body: &mut RigidBody, q: [f32; 4]) {
+            body.set_next_kinematic_rotation(Rotation::from_xyzw(q[0], q[1], q[2], q[3]).normalize());
+        }
 
         pub fn shape(s: &ColliderShape, k: [f32; 3], dir: &Path) -> Result<ColliderBuilder, String> {
             Ok(match s {
@@ -124,6 +141,12 @@ pub mod d2 {
         pub fn walk(dx: f32, _dforward: f32, dy: f32) -> Vector {
             Vector::new(dx, dy)
         }
+        /// 2D characters move in X only; facing does not turn movement.
+        pub fn face(_q: [f32; 4], v: Vector) -> Vector {
+            v
+        }
+        /// 2D character bodies keep their rotation.
+        pub fn turn(_body: &mut RigidBody, _q: [f32; 4]) {}
 
         pub fn shape(s: &ColliderShape, k: [f32; 3], _dir: &Path) -> Result<ColliderBuilder, String> {
             Ok(match s {
