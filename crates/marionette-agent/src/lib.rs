@@ -11,18 +11,26 @@ pub mod batch;
 pub mod docs;
 pub mod edit;
 pub mod engine;
+#[cfg(feature = "generate")]
 pub mod generate;
+#[cfg(feature = "jobs-ts")]
 pub mod jobs_ts;
+#[cfg(feature = "import")]
 pub mod library;
 pub mod mcp;
 pub mod observe;
 pub mod perf;
+#[cfg(feature = "pool")]
 pub mod pool;
+#[cfg(feature = "port")]
 pub mod port;
+#[cfg(feature = "import")]
 pub mod prefab;
 pub mod project;
+#[cfg(feature = "generate")]
 pub mod providers;
 pub mod scenario;
+#[cfg(feature = "script")]
 pub mod script;
 pub mod session;
 pub mod stability;
@@ -36,6 +44,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
+pub use engine::{Engine, EngineBuilder};
 pub use session::Session;
 
 /// Stable error codes added by this crate.
@@ -52,6 +61,10 @@ pub mod codes {
     /// An operation hit an engine bug (a Rust panic). The process keeps serving; a live
     /// session the operation named is closed, because its state may be half-updated.
     pub const PANIC: &str = "agent.panic";
+    /// Two modules or two operations of an engine share a name.
+    pub const DUPLICATE: &str = "agent.duplicate";
+    /// An operation name is not `lower_snake_case`.
+    pub const BAD_NAME: &str = "agent.bad_name";
 }
 
 type Handler = Box<dyn Fn(&mut Agent, Value) -> Result<Value, Errors> + Send + Sync>;
@@ -67,12 +80,17 @@ pub struct OpInfo {
     pub output_schema: Value,
 }
 
-struct Op {
+/// One operation: its description, schemas and handler. Make it with [`op`].
+pub struct Op {
     info: OpInfo,
     handler: Handler,
 }
 
-fn op<I, O>(
+/// Makes an operation from a handler. `I` and `O` derive `Deserialize`/`Serialize` and
+/// `JsonSchema`; their doc comments become the schema descriptions. `mutating` means the
+/// operation writes files or changes a session (refused in read-only mode). A game passes its
+/// operations to [`EngineBuilder::op`].
+pub fn op<I, O>(
     name: &'static str,
     description: &'static str,
     mutating: bool,
@@ -110,11 +128,61 @@ where
     }
 }
 
+/// The optional engine parts (cargo features) compiled into this build (decision 0062).
+pub const FEATURES: &[&str] = &[
+    #[cfg(feature = "script")]
+    "script",
+    #[cfg(feature = "import")]
+    "import",
+    #[cfg(feature = "pool")]
+    "pool",
+    #[cfg(feature = "generate")]
+    "generate",
+    #[cfg(feature = "port")]
+    "port",
+    #[cfg(feature = "jobs-ts")]
+    "jobs-ts",
+    #[cfg(feature = "net")]
+    "net",
+];
+
+/// Every built-in operation compiled into this build, in a stable order.
+pub(crate) fn builtin_ops() -> Vec<Op> {
+    let groups: Vec<Vec<Op>> = vec![
+        project::ops(),
+        edit::ops(),
+        session::ops(),
+        observe::ops(),
+        scenario::ops(),
+        #[cfg(feature = "import")]
+        library::ops(),
+        perf::ops(),
+        #[cfg(feature = "jobs-ts")]
+        jobs_ts::ops(),
+        #[cfg(feature = "generate")]
+        providers::ops(),
+        anim::ops(),
+        #[cfg(feature = "generate")]
+        generate::ops(),
+        #[cfg(feature = "script")]
+        script::ops(),
+        stability::ops(),
+        #[cfg(feature = "pool")]
+        pool::ops(),
+        #[cfg(feature = "port")]
+        port::ops(),
+        #[cfg(feature = "import")]
+        prefab::ops(),
+        batch::ops(),
+    ];
+    groups.into_iter().flatten().collect()
+}
+
 /// Holds the project root, live sessions and (lazily) the GPU between calls.
 pub struct Agent {
     root: PathBuf,
     read_only: bool,
-    registry: Registry,
+    engine: Engine,
     ops: std::sync::Arc<Vec<Op>>,
     pub(crate) sessions: BTreeMap<String, Session>,
     pub(crate) next_session: u64,
@@ -124,38 +192,24 @@ pub struct Agent {
 impl Agent {
     /// `root` is the project directory; relative paths in operations resolve against it.
     pub fn new(root: impl Into<PathBuf>, read_only: bool) -> Self {
-        let ops = [
-            project::ops(),
-            edit::ops(),
-            session::ops(),
-            observe::ops(),
-            scenario::ops(),
-            library::ops(),
-            perf::ops(),
-            jobs_ts::ops(),
-            providers::ops(),
-            anim::ops(),
-            generate::ops(),
-            script::ops(),
-            stability::ops(),
-            pool::ops(),
-            port::ops(),
-            prefab::ops(),
-            batch::ops(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<Op>>()
-        .into();
+        Self::with_engine(root, read_only, Engine::standard())
+    }
+
+    /// An agent running a game's engine (its own modules and operations added).
+    pub fn with_engine(root: impl Into<PathBuf>, read_only: bool, engine: Engine) -> Self {
         Self {
             root: root.into(),
             read_only,
-            registry: engine::registry(),
-            ops,
+            ops: engine.ops(),
+            engine,
             sessions: BTreeMap::new(),
             next_session: 1,
             gpu: None,
         }
+    }
+
+    pub fn engine(&self) -> &Engine {
+        &self.engine
     }
 
     pub fn read_only(&self) -> bool {
@@ -167,7 +221,30 @@ impl Agent {
     }
 
     pub fn registry(&self) -> &Registry {
-        &self.registry
+        self.engine.registry()
+    }
+
+    /// Loads a scene (path relative to the project root) with this agent's engine.
+    pub fn load_sim(&self, scene: &str, seed: u64) -> Result<marionette_core::Sim, Errors> {
+        let path = self.resolve(scene)?;
+        self.engine.load_file(&path, scene, seed)
+    }
+
+    /// The simulation of a live session (for a game's own operations).
+    pub fn session_sim(&mut self, session: &str) -> Result<&mut marionette_core::Sim, Errors> {
+        session::get_mut(self, session).map(|s| &mut s.sim)
+    }
+
+    /// Writes a project file atomically. Refuses files only a person may write.
+    pub fn write_file(&self, path: &str, bytes: &[u8]) -> Result<(), Errors> {
+        if self.read_only {
+            return Err(
+                Diagnostic::error(codes::READ_ONLY, format!("cannot write `{path}`: read-only"))
+                    .fix("restart without --read-only")
+                    .into(),
+            );
+        }
+        write_atomic(&self.resolve(path)?, path, bytes)
     }
 
     /// Every operation, in a stable order.
@@ -275,19 +352,13 @@ pub(crate) fn write_atomic(path: &Path, shown: &str, bytes: &[u8]) -> Result<(),
             .file(shown),
         )
     };
-    // Only a person may write a license declaration (ASSETS-AND-LICENSES.md rule 9).
-    if path
+    // Only a person may write a license declaration (ASSETS-AND-LICENSES.md rule 9) or
+    // approve an image for paid 3D generation (decision 0045).
+    if let Some(refusal) = path
         .file_name()
-        .is_some_and(|n| marionette_import::is_declaration_file_name(&n.to_string_lossy()))
+        .and_then(|n| marionette_core::person_only::refuse_write(&n.to_string_lossy(), shown))
     {
-        return Err(marionette_import::declaration_write_refused(shown).into());
-    }
-    // Only a person approves an image for paid 3D generation (decision 0045).
-    if path
-        .file_name()
-        .is_some_and(|n| marionette_generate::approval::is_approval_file_name(&n.to_string_lossy()))
-    {
-        return Err(marionette_generate::approval::write_refused(shown).into());
+        return Err(refusal.into());
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
@@ -299,6 +370,7 @@ pub(crate) fn write_atomic(path: &Path, shown: &str, bytes: &[u8]) -> Result<(),
 
 /// Reads an environment variable, falling back to the person's keys file (outside the
 /// project) for provider keys and the spend cap (decision 0045).
+#[cfg(feature = "generate")]
 pub(crate) fn env_lookup(root: &Path) -> impl Fn(&str) -> Option<String> + use<> {
     let root = root.to_path_buf();
     move |name| marionette_providers::keys::lookup(&|n| std::env::var(n).ok(), &root, name)
@@ -337,10 +409,11 @@ mod panic_tests {
     #[test]
     fn a_panicking_operation_is_an_error_and_the_agent_keeps_serving() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
-        let mut agent = Agent::new(root, false);
-        std::sync::Arc::get_mut(&mut agent.ops)
-            .unwrap()
-            .push(op("boom", "test only", true, boom));
+        let engine = Engine::builder()
+            .op(op("boom", "test only", true, boom))
+            .build()
+            .unwrap();
+        let mut agent = Agent::with_engine(root, false, engine);
         let started = agent
             .call("session_start", json!({ "scene": "drift.scene.json", "seed": 1 }))
             .unwrap();

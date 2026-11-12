@@ -1,5 +1,6 @@
 //! Job TypeScript through the operation table (the code the CLI and MCP server run): check a
 //! file, run a function on JSON data with any thread count, report errors as data.
+#![cfg(feature = "jobs-ts")]
 
 use marionette_agent::Agent;
 use serde_json::{Value, json};

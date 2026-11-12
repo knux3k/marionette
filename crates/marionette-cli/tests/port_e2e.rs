@@ -1,5 +1,6 @@
 //! Porting operations through the CLI (decision 0020): scan, map lookup, scaffold (with the
 //! no-overwrite rule and dry run), coordinate conversion, and read-only refusal.
+#![cfg(feature = "port")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

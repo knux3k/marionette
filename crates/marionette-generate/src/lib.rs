@@ -44,7 +44,7 @@ pub mod codes {
     /// Only a person at an interactive terminal may approve an image.
     pub const APPROVAL_NEEDS_PERSON: &str = "generate.approval_needs_person";
     /// A tool tried to write an approval file.
-    pub const APPROVAL_WRITE_REFUSED: &str = "generate.approval_write_refused";
+    pub const APPROVAL_WRITE_REFUSED: &str = marionette_core::person_only::APPROVAL_WRITE_REFUSED;
     /// An offline run needs a provider call that is not in the cache.
     pub const NOT_CACHED: &str = "generate.not_cached";
     /// A cache entry is damaged.

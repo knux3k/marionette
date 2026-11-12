@@ -8,6 +8,7 @@ pub mod builtin;
 pub mod error;
 pub mod json_span;
 pub mod module;
+pub mod person_only;
 pub mod registry;
 pub mod rng;
 pub mod scene;

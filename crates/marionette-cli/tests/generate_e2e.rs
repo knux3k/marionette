@@ -2,6 +2,7 @@
 //! written by an operation build into engine-ready assets on the mock with no key or
 //! network; a paid provider with no cap is refused with a clear reason; only a person can
 //! approve an image, never an operation or a piped command.
+#![cfg(feature = "generate")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

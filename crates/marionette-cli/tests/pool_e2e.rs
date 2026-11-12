@@ -1,6 +1,7 @@
 //! The CC0 pool through the CLI (workstream W3, decision 0041): info, list, search in the
 //! required order, fetch into a project, add a made asset, refuse an owned one, write the index.
 //! No network: online steps are not requested.
+#![cfg(feature = "pool")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

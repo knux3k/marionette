@@ -2283,6 +2283,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-example-rust-module"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-agent",
+ "marionette-cli",
+ "marionette-core",
+ "marionette-host",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "marionette-factory"
 version = "0.1.0"
 dependencies = [

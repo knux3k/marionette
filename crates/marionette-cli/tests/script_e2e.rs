@@ -1,6 +1,7 @@
 //! Plan line 4 proofs through the operation table (the code the CLI and MCP server run):
 //! the scripted example is deterministic, a script change shows in a live session in under
 //! one second, typings are written, and physics contacts reach script hooks.
+#![cfg(feature = "script")]
 
 use marionette_agent::Agent;
 use serde_json::{Value, json};

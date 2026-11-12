@@ -4,7 +4,7 @@ Each workstream is one thread of work for one fresh session. Start with START-HE
 docs listed. "Owns" lists what the workstream may edit; touching another workstream's files
 needs care (small, additive edits only, mentioned in the session log). Shared files that several
 workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per new ops module),
-`crates/marionette-agent/src/engine.rs` (one line per new module), root `Cargo.toml` (members),
+`crates/marionette-agent/src/engine.rs` (one line per new module in `EngineBuilder::standard`), root `Cargo.toml` (members),
 `docs/ai/STATE.md`, `docs/ai/DECISIONS.md`, `docs/ai/reference/` (regenerated).
 
 ## Order and parallelism

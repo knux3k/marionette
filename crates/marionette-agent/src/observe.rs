@@ -544,7 +544,10 @@ fn stats(agent: &mut Agent, input: crate::session::SessionInput) -> Result<Stats
         step_ms_max: r(st.max_ms),
         step_ms_last: r(st.last_ms),
         render_ms_last: st.last_render_ms,
+        #[cfg(feature = "script")]
         script_heap_bytes: marionette_script::heap_bytes(&s.sim.world),
+        #[cfg(not(feature = "script"))]
+        script_heap_bytes: None,
         events_held: s.sim.events().events.len(),
         process_heap_bytes: Some(marionette_host::alloc::stats().live_bytes).filter(|b| *b > 0),
     })
