@@ -13,8 +13,8 @@ refer to `docs/DESIGN.md`.
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). |
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
-| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
+| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | In progress (W8, decision 0050): 3 of 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -175,8 +175,44 @@ Line 8, owned library and Unity import (W2, decision 0018):
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
   false`); FBX blend shape in-betweens and normal offsets, vertex colors, extra UV sets, FBX 6.x
   (decision 0027); skinning in
-  the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
+  the renderer (skinned FBX models draw in bind pose), Unity scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
+- Unity prefabs (decision 0040): `crates/marionette-import/tests/prefab.rs`
+  (`a_prefab_becomes_entities_with_mapped_components`,
+  `nested_prefabs_and_models_follow_their_overrides`,
+  `variants_remove_components_and_override_materials`,
+  `broken_recursive_and_unlicensed_prefabs_are_reported`,
+  `conversion_is_deterministic_and_dry_runs_write_nothing`); unit tests in `src/unity_yaml.rs` and
+  `src/prefab.rs`; `crates/marionette-cli/tests/prefab_e2e.rs`
+  (`import_list_and_place_a_unity_prefab`: import, `library_list` kind `prefab`,
+  `prefab_instantiate` twice, `scene_run`). Not covered: sub-mesh selection inside a model,
+  overrides on model parts, point/spot lights, audio sources, physic materials, X/Z capsules,
+  compound bodies, Unity `.unity` scenes (same reader would serve them).
+- CC0 pool (W3, decision 0041): `cargo test -p marionette-pool`:
+  `crates/marionette-pool/tests/pool.rs` (`seed_pool_matches_its_generator`,
+  `made_assets_need_a_method_and_cc0_license_files`, `generated_assets_need_a_persons_dedication`,
+  `owned_assets_and_copies_of_them_are_refused`,
+  `online_assets_need_a_known_library_its_domain_and_license_file`,
+  `poly_haven_textures_and_models_are_ingested_with_checks`,
+  `ambientcg_materials_are_ingested_from_their_archives`, `search_follows_the_required_order`);
+  unit tests in `src/net.rs` (MD5) and `src/zip.rs`; `crates/marionette-cli/tests/pool_e2e.rs`
+  (`pool_operations_search_fetch_add_and_refuse`). Seed set in `pool/` rebuilt by
+  `cargo run -p marionette-pool --example make_seed -- <folder>`. Operations `asset_search`,
+  `pool_info`, `pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`.
+  The pool moves to its own repository once one exists; until then `pool/` is the pool.
+
+Line 8, Unreal importer (W6, decision 0029):
+- `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
+  (project with exported FBX, PNG, TGA, T3D material instance and material graph, Starter
+  Content, mannequins, an Epic plugin, packages, a `.pak`, code, generated folders),
+  `unreal_assets_follow_the_license_rules`, `a_content_folder_from_a_vault_cache_is_an_unreal_source`;
+  `unreal_convention_fbx_lands_in_meters_y_up` in `tests/fbx.rs` (fixture
+  `tests/fixtures/unreal/crate_unreal_cm.fbx`, made by `make_fixtures.py` there); unit tests in
+  `src/unreal.rs`.
+- Not covered yet: reading `.uasset`/`.umap` (diagnosed only, by design), levels and actor
+  placement, Blueprints (port_scan reads their text), audio, material graphs beyond direct
+  connections, material functions, zip downloads (unzip first), separate roughness and
+  metallic textures (listed, not packed).
 
 Porting Unity and Unreal code (W10, decision 0020, guide `docs/ai/PORTING.md`):
 - `cargo test -p marionette-port`: `crates/marionette-port/tests/port.rs`
@@ -243,7 +279,35 @@ draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
 `cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
+Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
+- `crates/marionette-generate/tests/generate.rs`: `three_assets_rebuild_identically_from_recipes`
+  (image, tileable texture, model from the image; rebuilt from the cache offline and from
+  scratch with identical bytes; license and source recorded; pool blocked),
+  `engine_formats_textures_are_powers_of_two_and_models_stand_on_the_ground`,
+  `zero_cap_refuses_before_anything_is_sent`, `a_paid_image_is_paid_once_and_then_comes_from_the_cache`,
+  `a_paid_model_needs_a_person_to_approve_its_image`, `a_run_over_budget_is_refused_up_front`,
+  `unusable_provider_output_is_refused_and_not_written`, `bad_recipes_are_refused`,
+  `generated_assets_and_their_copies_are_blocked_from_the_pool`,
+  `per_provider_caps_unlimited_images_and_a_capped_model_provider`; unit tests in
+  `src/texture.rs`.
+- `crates/marionette-cli/tests/generate_e2e.rs`: `recipes_build_rebuild_and_list_through_the_cli`,
+  `paid_generation_without_a_cap_is_refused_clearly`, `only_a_person_approves_an_image`.
+- Providers: `a_provider_can_have_its_own_cap_or_none` in `crates/marionette-providers/tests/providers.rs`;
+  unit tests in `src/keys.rs`; `cargo test -p marionette-providers --features net --test network`
+  (transport against a server on the same machine).
+- Not covered yet: live calls (formats `verified: false`), Tripo auto-rig and rig checks,
+  decimation, extra texture maps, a cache shared across projects.
+
 ## UNVERIFIED
+
+- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
+  are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
+  build machine's network blocks those sites, so no live search or download has run.
+
+- Unity prefab import (decision 0040) is tested only on hand-written prefab files in Unity's text
+  format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
+  rule, the nested file-id rule and the half turn for converted models are from knowledge of
+  Unity's serializer, not checked in the editor.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
@@ -272,6 +336,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
   those engines, not checked against their current documentation. The skeletons type-check
   against the generated script typings (decision 0022) only in tests with `tsc` installed.
+- Generation sample answers (`crates/marionette-generate/tests/recorded/`) and the Tripo upload
+  endpoint are hand-written from documentation; the network transport has only talked to a
+  server on the same machine. Built with `--features net` only in Linux CI and the container.
 - Provider plug-ins (`claude`, `qwen`, `tripo`): request and answer formats are written from
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
@@ -291,6 +358,11 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 - Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
   runs have no memory check (resident size is read on Linux only) until the counting allocator
   from the memory work is installed as the probe.
+- Unreal importer on real files: nothing from a real Unreal project has been imported. T3D
+  material text is hand-written from knowledge of the editor's export format; the package
+  class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
+  is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
+  check: a dry run over a project the owner has, with their permission.
 
 ## Session log
 
@@ -316,3 +388,7 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |
 | 2026-11-12 | Line 9 started (W8): `games/lantern-keeper`, proof harness, operations `resource_set`/`resource_remove`/`batch_run`, `engine.raycast`, facing-relative characters, `CharacterInput`, emit fix, scenario paths into script state and event counts, observe with input, decision 0050. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/ember-run` (2D side-scroller), `games/cloudstep` (3D platformer); sensors report every body type and do not block characters, scripts teleport characters and dynamic bodies via `Transform`, `Entity.name`. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
+| 2026-11-12 | Line 8 part (W6): Unreal importer in `marionette-import` (`src/unreal.rs`: project, plugin and content folders, engine-content rules, package diagnosis, T3D materials with ORM and normal-map handling; shared material writer; BMP textures), decision 0029. Drift hash unchanged. | branch `claude/project-thread-iag2pq` |
+| 2026-11-12 | Line 8 part (W4): `marionette-generate` crate (recipes, request-keyed cache, provenance, person-only image approval, PNG and GLB post-processing), operations `generate_recipe`/`generate_plan`/`generate_run`/`generate_list`, `marionette generate`, providers: Tripo local-image upload, `net` feature transport, keys files, per-provider caps; decision 0045, `docs/ai/GENERATION.md`. Drift hash unchanged. | branch `claude/project-thread-3n87gn` |
+| 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
+| 2026-11-12 | Line 8 part (W3): `marionette-pool` crate (pool layout and per-asset proof, admission rules, owned gate, generated-asset dedication gate, Poly Haven and ambientCG adapters, archive ingest for Kenney and Quaternius, ordered asset search), eight pool operations, seed set in `pool/`, decision 0041. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |

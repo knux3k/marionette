@@ -2,7 +2,8 @@
 //!
 //! Flow: `POST {BASE}/api/v1/services/aigc/text2image/image-synthesis` with
 //! `Authorization: Bearer <DASHSCOPE_API_KEY>` and `X-DashScope-Async: enable`, body
-//! `{model, input: {prompt}, parameters: {size: "W*H", n: 1}}`; answer `output.task_id`. Then
+//! `{model, input: {prompt}, parameters: {size: "W*H", n: 1, watermark: false,
+//! prompt_extend: false}}`; answer `output.task_id`. Then
 //! `GET {BASE}/api/v1/tasks/<id>` until `output.task_status` is `SUCCEEDED` (or `FAILED`,
 //! `CANCELED`, `UNKNOWN`), and download `output.results[0].url`. The image must be PNG.
 //!
@@ -36,7 +37,13 @@ pub fn build_submit(model: &str, key: &str, prompt: &str, width: u32, height: u3
     let body = json!({
         "model": model,
         "input": { "prompt": prompt },
-        "parameters": { "size": format!("{width}*{height}"), "n": 1 },
+        // No watermark on game assets; no prompt rewriting, so a recipe's prompt is what runs.
+        "parameters": {
+            "size": format!("{width}*{height}"),
+            "n": 1,
+            "watermark": false,
+            "prompt_extend": false,
+        },
     });
     HttpRequest::post_json(
         format!("{BASE}/api/v1/services/aigc/text2image/image-synthesis"),

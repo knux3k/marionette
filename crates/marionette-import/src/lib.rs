@@ -6,8 +6,12 @@
 //!   content rules and the pasted-license-text check.
 //! - [`unity`]: reading Unity project folders and `.unitypackage` archives, `.meta` files and
 //!   `.mat` materials (mapped to glTF-style PBR).
+//! - [`unreal`]: reading Unreal project, plugin and content folders, diagnosing `.uasset`
+//!   packages (not read) and T3D material exports (mapped to glTF-style PBR) (decision 0029).
 //! - [`fbx`]: FBX (2011+, binary or ASCII) to binary glTF conversion (decision 0027).
 //! - [`import`]: the import pipeline that applies every rule and writes the import report.
+//! - [`prefab`]: Unity prefabs (text YAML, nested prefabs, variants) to Marionette prefabs
+//!   (decision 0040); [`unity_yaml`] reads Unity's text serialization.
 //! - [`pool`]: the admission gate the CC0 pool must call; it refuses owned assets.
 //!
 //! The rules are normative in `docs/ai/ASSETS-AND-LICENSES.md`; the design is decision 0018.
@@ -17,8 +21,11 @@ pub mod import;
 pub mod library;
 pub mod license;
 pub mod pool;
+pub mod prefab;
 pub mod tar;
 pub mod unity;
+pub mod unity_yaml;
+pub mod unreal;
 
 pub use import::{ImportOptions, ImportReport, import};
 pub use library::Library;
@@ -70,6 +77,11 @@ pub mod codes {
     pub const SKIPPED_COMPANION: &str = "import.companion_file";
     /// A Unity file saved in binary serialization, which this importer does not read.
     pub const SKIPPED_BINARY_SERIALIZED: &str = "import.binary_serialized";
+    /// An Unreal editor package (`.uasset`, `.umap`): not read; the reason names its asset
+    /// class and what to export instead.
+    pub const SKIPPED_UNREAL_PACKAGE: &str = "import.unreal_package";
+    /// Part of a cooked Unreal build (`.pak`, `.utoc`, `.ucas`, `.uexp`, ...): not read.
+    pub const SKIPPED_UNREAL_COOKED: &str = "import.unreal_cooked";
 
     /// Pool admission refused: the candidate is (inside) an owned-library asset.
     pub const POOL_OWNED_ASSET: &str = "pool.owned_asset";

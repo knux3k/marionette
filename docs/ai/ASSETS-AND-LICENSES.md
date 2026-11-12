@@ -19,6 +19,16 @@ the engine.
 4. The public pool (in the assets repository) MUST accept CC0 assets only, each with its source
    recorded.
 5. The pool MUST refuse every imported owned asset and every asset whose license is not CC0.
+5a. Every pooled asset MUST carry proof that it is CC0: made for the project (with how), or
+    from a known CC0 library (Poly Haven, ambientCG, Kenney, Quaternius) with its page, and for
+    archive libraries the archive's own CC0 license file.
+5b. Provider-generated assets MUST be refused unless a PERSON wrote a CC0 dedication
+    (`<name>.cc0.json`, format `marionette.cc0_dedication/1`). An AI agent MUST NOT write it.
+
+Pool layout, record format and rules in code: decision 0041, `crates/marionette-pool`
+(`src/admit.rs`). Operations: `asset_search` (the search order above), `pool_info`,
+`pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`. Seed set:
+`pool/` (made by `crates/marionette-pool/src/seed.rs`).
 
 ## Importing owned Unity and Unreal assets
 
@@ -62,17 +72,31 @@ A person writes one JSON file named `<anything>.license.json` per pack, beside t
 
 ## Where the rules are enforced
 
-`crates/marionette-import` (decision 0018): `src/license.rs` (declarations, engine content,
-license text), `src/import.rs` (refusal order, import report), `src/library.rs` (location
+`crates/marionette-import` (decision 0018; Unreal sources decision 0029): `src/license.rs`
+(declarations, engine content, license text), `src/unreal.rs` (Unreal engine content: `Engine/`,
+template, Starter Content and mannequin folders, plugins whose `.uplugin` says `CreatedBy`
+Epic), `src/import.rs` (refusal order, import report), `src/library.rs` (location
 rules, records with `private: true` and `pool: "blocked"`), `src/pool.rs` (the owned-asset
 gate the pool MUST call). Operations: `library_import`, `library_list`, `library_get`,
-`library_info`, `license_check_text`, `pool_admission_check`. Proofs:
-`crates/marionette-import/tests/import.rs`, `crates/marionette-cli/tests/library_e2e.rs`.
+`library_info`, `license_check_text`, `pool_admission_check`, `prefab_instantiate`. Unity
+prefabs (decision 0040, `src/prefab.rs`) follow the same rules: a prefab needs its own covering
+declaration, a nested prefab is expanded only under the same declaration (rule 12a), and the
+models and materials it uses are separate library assets referenced by id. Proofs:
+`crates/marionette-import/tests/import.rs`, `crates/marionette-import/tests/unreal.rs`,
+`crates/marionette-import/tests/prefab.rs`, `crates/marionette-cli/tests/library_e2e.rs`.
 
 ## Spending
 
 14. Spending API credits MUST have the user's approval and a spend cap.
 15. A generated image MUST be approved before credit is spent on a 3D model made from it.
+
+## Generated assets
+
+15a. Every generated asset MUST have a recipe and a provenance record beside it (provider,
+    model, prompt, reference image, cache key, cost, license status `generated`).
+15b. Generated assets MUST NOT be offered to the CC0 pool (decision 0045).
+15c. Only a person approves an image for paid 3D generation; tools MUST NOT write
+    `*.approval.json` files. Guide: GENERATION.md.
 
 ## Assets in the engine repository
 

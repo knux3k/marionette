@@ -1,0 +1,39 @@
+{
+  "format": "marionette.pool_asset/1",
+  "id": "gray-noise",
+  "kind": "texture",
+  "name": "Gray value noise",
+  "tags": [
+    "gray",
+    "grey",
+    "grunge",
+    "height",
+    "noise",
+    "tileable"
+  ],
+  "license": {
+    "spdx": "CC0-1.0",
+    "proof": [
+      {
+        "kind": "made_for_project",
+        "detail": "made for the Marionette project and dedicated to the public domain under CC0 1.0 by the Marionette Contributors",
+        "at": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    ]
+  },
+  "source": {
+    "origin": "made",
+    "author": "Marionette Contributors",
+    "method": "computed in code: tileable four-octave value noise from a seeded SplitMix64",
+    "generator": "crates/marionette-pool/src/seed.rs"
+  },
+  "files": [
+    {
+      "path": "texture.png",
+      "sha256": "6d9c6b2d17cdfc72b67ea8133096c0a1ed869bfc233b0663ef0b4504c255defc",
+      "bytes": 25198
+    }
+  ],
+  "main": "texture.png",
+  "engine_ready": true
+}

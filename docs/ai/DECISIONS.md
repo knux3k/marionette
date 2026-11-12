@@ -32,5 +32,9 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0026 | Factory simulation module | accepted |
 | 0027 | FBX to glTF conversion inside the importer | accepted |
 | 0028 | Skeletal animation: clips on the fixed tick, GPU skinning and blend shapes | accepted |
+| 0029 | The Unreal importer reads exports (FBX, glTF, images, T3D materials), diagnoses packages | accepted |
 | 0031 | Stability suite per game mode: seeded soak runs, crash reports, every scene registered | accepted |
+| 0040 | Unity prefabs become flat Marionette prefabs in the owned library (`prefab_instantiate`) | accepted |
+| 0041 | The CC0 pool: manifest with provenance and proof, admission rules, online libraries over `curl`, the asset lookup order | accepted |
+| 0045 | Asset generation from recipes, cached by request, gated by a person | accepted |
 | 0050 | Proof scenes are small original games built from operation recipes and tested by play | accepted |

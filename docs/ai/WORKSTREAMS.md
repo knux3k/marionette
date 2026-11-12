@@ -13,10 +13,10 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | --- | --- | --- | --- |
 | W1 | Finish line 6 (input, physics, audio, UI) | done | - |
 | W2 | Assets A: local import path and Unity importer | now | W1, W5, W7 |
-| W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
+| W3 | Assets B: CC0 pool and CC0 library search | done (decision 0041) | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | done | - |
-| W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
+| W6 | Assets D: Unreal importer (glTF/FBX exports) | done (decision 0029) | - |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
@@ -59,6 +59,9 @@ Unity prefabs, scenes, animation clips and audio are not covered and are listed 
 
 ## W3: assets B, CC0 pool and library search
 
+Status: done (decision 0041). Publishing to the assets repository waits for the owner to create
+it; online adapters are tested against scripted answers.
+
 - Scope: the CC0 pool (lives in the assets repository; CC0 only, source recorded), search of
   the project files, owned library and pool in that order, then free CC0 libraries online (Poly
   Haven, ambientCG, Kenney, Quaternius) with license and source recorded.
@@ -70,6 +73,11 @@ Unity prefabs, scenes, animation clips and audio are not covered and are listed 
   `Library::records()` for the owned-library step of the search (decision 0018).
 
 ## W4: assets C, generation
+
+Status: pipeline done offline (decision 0045, guide GENERATION.md): recipes, cache,
+provenance, approval, post-processing, network transport behind `net`, per-provider caps,
+keys files. Next: first approved live calls for the proof scenes, then `verified: true`;
+Tripo auto-rig and rig checks; decimation.
 
 - Scope: recipes (a generated asset is a recipe plus a cached output keyed by content hash),
   Qwen for images only, Tripo for 3D models, rigging (Tripo auto-rig first for humanoids and
@@ -94,6 +102,9 @@ come with W4, after the owner approves spending.
   provider configured and no network.
 
 ## W6: assets D, Unreal importer
+
+Status: done (decision 0029). Packages (`.uasset`) are diagnosed, not read; levels, Blueprints,
+audio and full material graphs are later work (STATE.md).
 
 - Scope: import from the Unreal Editor's glTF/FBX exports with the same license rules as W2.
 - Acceptance: as W2, for an Unreal export.

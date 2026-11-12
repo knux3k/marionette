@@ -5,9 +5,11 @@ use crate::codes;
 use crate::fbx;
 use crate::library::{AssetKind, AssetRecord, FileRecord, Library, RECORD_FORMAT, SourceRecord, slug};
 use crate::license::{self, LicenseRecord, LoadedDeclaration, YesNo};
+use crate::prefab::{self, MaterialInfo, PrefabEnv, Resolved};
 use crate::sha256_hex;
 use crate::tar::Limits;
-use crate::unity::{self, BadEntry, MetalLayout, SourceEntry, Staging};
+use crate::unity::{self, BadEntry, MetalLayout, PbrMapping, SourceEntry, Staging};
+use crate::unreal;
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -18,7 +20,8 @@ use std::path::{Path, PathBuf};
 /// What to import and how.
 #[derive(Debug, Clone)]
 pub struct ImportOptions {
-    /// A `.unitypackage`, a Unity project folder, or a plain owned file or folder.
+    /// A `.unitypackage`, a Unity project folder, an Unreal project, plugin or content folder,
+    /// or a plain owned file or folder.
     pub source: PathBuf,
     /// Declaration files to use, in addition to `<source>.license.json` next to the source.
     pub declarations: Vec<PathBuf>,
@@ -84,7 +87,7 @@ pub struct Counts {
 pub struct ImportReport {
     /// File or folder name of the source.
     pub source_name: String,
-    /// `unitypackage`, `unity_project` or `files`.
+    /// `unitypackage`, `unity_project`, `unreal_project` or `files`.
     pub importer: String,
     pub dry_run: bool,
     pub declarations: Vec<DeclarationSummary>,
@@ -101,6 +104,7 @@ enum Class {
     Texture,
     Model,
     Material,
+    Prefab,
     Companion,
     Unsupported(&'static str),
 }
@@ -122,9 +126,9 @@ fn classify(rel: &str) -> Class {
         "cs" | "js" | "dll" | "shader" | "shadergraph" | "hlsl" | "cginc" | "compute" => {
             Class::Unsupported("code and shaders are not imported")
         }
-        "unity" | "prefab" | "asset" | "controller" | "anim" | "overridecontroller" | "mask"
-        | "physicmaterial" => {
-            Class::Unsupported("Unity scenes, prefabs and editor data are not imported yet")
+        "prefab" => Class::Prefab,
+        "unity" | "asset" | "controller" | "anim" | "overridecontroller" | "mask" | "physicmaterial" => {
+            Class::Unsupported("Unity scenes and editor data are not imported yet")
         }
         "wav" | "ogg" | "mp3" | "aif" | "aiff" | "flac" => {
             Class::Unsupported("audio import is not built yet")
@@ -172,6 +176,8 @@ struct Pending {
     uses: Vec<String>,
     /// glTF models are validated after writing.
     validate_gltf: bool,
+    /// Unreal object path of the file's place in its project.
+    unreal_path: Option<String>,
 }
 
 struct Ctx<'a> {
@@ -234,6 +240,7 @@ impl Ctx<'_> {
                 source_name: self.source_name.clone(),
                 path: p.rel.clone(),
                 unity_guid: p.guid.clone(),
+                unreal_path: p.unreal_path.clone(),
                 sha256: p.original_sha.clone(),
             },
             files,
@@ -292,6 +299,8 @@ fn texture(entry: &SourceEntry, bytes: Vec<u8>) -> Pending {
         "png"
     } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
         "jpeg"
+    } else if bytes.starts_with(b"BM") && ext == "bmp" {
+        "bmp"
     } else {
         ext.as_str()
     };
@@ -318,11 +327,11 @@ fn texture(entry: &SourceEntry, bytes: Vec<u8>) -> Pending {
                 )
             }
         },
-        "jpg" | "jpeg" | "tga" => {
-            let format = if ext == "tga" {
-                image::ImageFormat::Tga
-            } else {
-                image::ImageFormat::Jpeg
+        "jpg" | "jpeg" | "tga" | "bmp" => {
+            let format = match ext.as_str() {
+                "tga" => image::ImageFormat::Tga,
+                "bmp" => image::ImageFormat::Bmp,
+                _ => image::ImageFormat::Jpeg,
             };
             match image::load_from_memory_with_format(&bytes, format) {
                 Ok(img) => {
@@ -362,6 +371,7 @@ fn texture(entry: &SourceEntry, bytes: Vec<u8>) -> Pending {
         notes,
         uses: Vec::new(),
         validate_gltf: false,
+        unreal_path: None,
     }
 }
 
@@ -408,6 +418,7 @@ fn model(
         notes: Vec::new(),
         uses: Vec::new(),
         validate_gltf: false,
+        unreal_path: None,
     };
     match ext.as_str() {
         "glb" => {
@@ -608,7 +619,7 @@ fn fbx_texture(
     })
 }
 
-/// PNG is kept as it is; JPEG and TGA are converted to PNG; other formats are refused.
+/// PNG is kept as it is; JPEG, TGA and BMP are converted to PNG; other formats are refused.
 fn image_for_gltf(bytes: &[u8], shown: &str) -> Result<(Vec<u8>, &'static str), String> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         marionette_assets::decode_png(bytes).map_err(|e| format!("PNG cannot be decoded: {e}"))?;
@@ -618,9 +629,11 @@ fn image_for_gltf(bytes: &[u8], shown: &str) -> Result<(Vec<u8>, &'static str), 
         image::ImageFormat::Jpeg
     } else if ext_of(shown) == "tga" {
         image::ImageFormat::Tga
+    } else if bytes.starts_with(b"BM") {
+        image::ImageFormat::Bmp
     } else {
         return Err(format!(
-            "image format of `{shown}` is not supported in glTF (PNG, JPEG and TGA are)"
+            "image format of `{shown}` is not supported in glTF (PNG, JPEG, TGA and BMP are)"
         ));
     };
     let img = image::load_from_memory_with_format(bytes, format)
@@ -637,13 +650,21 @@ struct Gate<'a> {
     importer: &'static str,
     package_reason: Option<String>,
     decls: &'a [LoadedDeclaration],
+    /// The scan of an Unreal source (plugins made by Epic are engine content).
+    unreal: Option<&'a unreal::Scan>,
 }
 
 impl Gate<'_> {
     /// The index of the declaration that allows the asset at `rel`, or the refusal code and
     /// reason.
     fn decide(&self, rel: &str) -> Result<usize, (&'static str, String)> {
-        if let Some(r) = license::engine_content_reason(rel).filter(|_| self.importer != "files") {
+        let path_reason = match self.importer {
+            "files" => None,
+            "unreal_project" => unreal::engine_content_reason(rel)
+                .or_else(|| self.unreal.and_then(|s| s.prefix_reason(rel)).map(str::to_string)),
+            _ => license::engine_content_reason(rel),
+        };
+        if let Some(r) = path_reason {
             return Err((
                 codes::REFUSED_ENGINE_CONTENT,
                 format!("engine content, refused with no override: {r}"),
@@ -726,13 +747,15 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
             codes::IMPORT_SOURCE,
             format!("source `{source_name}` does not exist"),
         )
-        .fix("pass a .unitypackage, a Unity project folder, or an owned file or folder")
+        .fix("pass a .unitypackage, a Unity project folder, an Unreal project or content folder, or an owned file or folder")
         .into());
     }
     let importer: &'static str = if source.is_file() && ext_of(&source_name) == "unitypackage" {
         "unitypackage"
     } else if source.is_dir() && unity::is_unity_project(source) {
         "unity_project"
+    } else if unreal::is_unreal_source(source) {
+        "unreal_project"
     } else {
         "files"
     };
@@ -756,9 +779,16 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
     }
 
     let staging = Staging(temp_staging());
+    let mut unreal_scan: Option<unreal::Scan> = None;
     let (entries, bad): (Vec<SourceEntry>, Vec<BadEntry>) = match importer {
         "unitypackage" => unity::stage_package(source, &staging.0, opts.limits)?,
         "unity_project" => (unity::scan_project(source), Vec::new()),
+        "unreal_project" => {
+            let mut scan = unreal::scan(source);
+            let entries = std::mem::take(&mut scan.entries);
+            unreal_scan = Some(scan);
+            (entries, Vec::new())
+        }
         _ => (unity::scan_files(source), Vec::new()),
     };
 
@@ -803,6 +833,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
         importer,
         package_reason,
         decls: &decls,
+        unreal: unreal_scan.as_ref(),
     };
     // License gate for every entry; returns the declaration that allows it.
     let gate_report = |ctx: &mut Ctx, e: &SourceEntry| -> Option<usize> {
@@ -816,8 +847,56 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
     };
 
     let mut materials: Vec<(&SourceEntry, usize)> = Vec::new();
+    let mut prefabs: Vec<(&SourceEntry, usize)> = Vec::new();
+    let mut unreal_materials: Vec<(&SourceEntry, usize)> = Vec::new();
     let mut by_guid: BTreeMap<String, String> = BTreeMap::new();
+    // Unreal object path (lowercase) to library id, and texture file stem to ids.
+    let mut by_unreal_path: BTreeMap<String, String> = BTreeMap::new();
+    let mut by_stem: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for e in &entries {
+        if unreal_scan.is_some() {
+            match unreal::kind(&e.rel) {
+                unreal::Kind::Package => {
+                    let cooked = by_rel.contains_key(
+                        &format!(
+                            "{}.uexp",
+                            e.rel.rsplit_once('.').map_or(e.rel.as_str(), |(s, _)| s)
+                        )
+                        .to_ascii_lowercase(),
+                    );
+                    let info = unreal::inspect_package_file(&e.data).unwrap_or_default();
+                    ctx.skip(
+                        &e.rel,
+                        codes::SKIPPED_UNREAL_PACKAGE,
+                        unreal::package_advice(&info, cooked),
+                    );
+                    continue;
+                }
+                unreal::Kind::Cooked => {
+                    ctx.skip(
+                        &e.rel,
+                        codes::SKIPPED_UNREAL_COOKED,
+                        "part of a cooked Unreal build (built for one engine version and platform, often encrypted); not read; import the editor project's exported files instead",
+                    );
+                    continue;
+                }
+                unreal::Kind::Code => {
+                    ctx.skip(
+                        &e.rel,
+                        codes::SKIPPED_UNSUPPORTED,
+                        "code and project settings are not imported; port_scan reads Unreal C++ (docs/ai/PORTING.md)",
+                    );
+                    continue;
+                }
+                unreal::Kind::ObjectText => {
+                    if let Some(i) = gate_report(&mut ctx, e) {
+                        unreal_materials.push((e, i));
+                    }
+                    continue;
+                }
+                unreal::Kind::Other => {}
+            }
+        }
         match classify(&e.rel) {
             Class::Unsupported(why) => ctx.skip(&e.rel, codes::SKIPPED_UNSUPPORTED, why),
             Class::Companion => ctx.skip(
@@ -830,19 +909,40 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
                     materials.push((e, i));
                 }
             }
+            Class::Prefab => {
+                if let Some(i) = gate_report(&mut ctx, e) {
+                    prefabs.push((e, i));
+                }
+            }
             class @ (Class::Texture | Class::Model) => {
                 let Some(i) = gate_report(&mut ctx, e) else {
                     continue;
                 };
                 let bytes = read(&e.data, &e.rel)?;
-                let p = if matches!(class, Class::Texture) {
+                let is_texture = matches!(class, Class::Texture);
+                let mut p = if is_texture {
                     texture(e, bytes)
                 } else {
                     model(e, bytes, &by_rel, &gate, i, opts.limits)?
                 };
+                if let Some(scan) = &unreal_scan {
+                    p.unreal_path = scan.object_path(&e.rel);
+                    if is_texture {
+                        p.notes.extend(unreal::texture_name_notes(&e.rel));
+                    }
+                }
                 let id = ctx.put(p, &decls[i])?;
                 if let Some(g) = e.guid() {
-                    by_guid.insert(g, id);
+                    by_guid.insert(g, id.clone());
+                }
+                if is_texture && let Some(scan) = &unreal_scan {
+                    if let Some(path) = scan.object_path(&e.rel) {
+                        by_unreal_path.insert(path, id.clone());
+                    }
+                    by_stem
+                        .entry(stem(&e.rel).to_ascii_lowercase())
+                        .or_default()
+                        .push(id);
                 }
             }
         }
@@ -850,7 +950,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
 
     // Materials last, so their textures resolve to library ids (this import first, then any
     // earlier import that recorded the same Unity GUID).
-    if !materials.is_empty() {
+    if !materials.is_empty() || !prefabs.is_empty() {
         for r in library.records() {
             if let Some(g) = r.source.unity_guid {
                 by_guid.entry(g).or_insert(r.id);
@@ -872,6 +972,122 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
             }
         };
         let pending = material(&ctx, e, &bytes, &m, &by_guid, &entries);
+        let id = ctx.put(pending, &decls[i])?;
+        if let Some(g) = e.guid() {
+            by_guid.insert(g, id);
+        }
+    }
+
+    // Prefabs after everything they can refer to (decision 0040).
+    for (e, i) in prefabs {
+        let bytes = read(&e.data, &e.rel)?;
+        let text = String::from_utf8_lossy(&bytes).into_owned();
+        let env = PrefabSources {
+            library,
+            dry_run: opts.dry_run,
+            gate: &gate,
+            decl: i,
+            entries: &entries,
+            by_guid: &by_guid,
+            report: &ctx.report,
+        };
+        match prefab::convert(&e.rel, &text, &env) {
+            Ok(c) => {
+                let mut notes = vec![format!("converted from a Unity prefab: {} entities", c.entities)];
+                notes.extend(c.notes.iter().cloned());
+                let pending = Pending {
+                    kind: AssetKind::Prefab,
+                    name: stem(&e.rel),
+                    rel: e.rel.clone(),
+                    guid: e.guid(),
+                    original_sha: sha256_hex(&bytes),
+                    files: vec![
+                        (
+                            "prefab.json".to_string(),
+                            serde_json::to_vec_pretty(&c.doc).expect("json"),
+                        ),
+                        ("source.prefab".to_string(), bytes),
+                    ],
+                    main: Some("prefab.json".into()),
+                    engine_ready: true,
+                    notes,
+                    uses: c.uses,
+                    validate_gltf: false,
+                    unreal_path: None,
+                };
+                ctx.put(pending, &decls[i])?;
+            }
+            Err(why) => ctx.skip(
+                &e.rel,
+                codes::SKIPPED_BINARY_SERIALIZED,
+                format!("prefab not read: {why}"),
+            ),
+        }
+    }
+
+    if !unreal_materials.is_empty() {
+        for r in library.records() {
+            if r.kind == AssetKind::Texture
+                && let Some(p) = r.source.unreal_path
+            {
+                by_unreal_path.entry(p).or_insert(r.id);
+            }
+        }
+    }
+    for (e, i) in unreal_materials {
+        let bytes = read(&e.data, &e.rel)?;
+        let text = String::from_utf8_lossy(&bytes);
+        let text = text.trim_start_matches('\u{feff}');
+        let m = match unreal::parse_material(text) {
+            Ok(m) => m,
+            Err(why) => {
+                ctx.skip(
+                    &e.rel,
+                    codes::SKIPPED_UNSUPPORTED,
+                    format!("Unreal object text not imported: {why}"),
+                );
+                continue;
+            }
+        };
+        let mapped = unreal::map_pbr(&m);
+        // Object path first (this import, then earlier ones), then a texture file of the same
+        // name, if exactly one was imported here (exported files often sit outside Content/).
+        let resolve = |path: &str| -> Option<String> {
+            by_unreal_path.get(path).cloned().or_else(|| {
+                let name = path.rsplit('/').next().unwrap_or(path);
+                match by_stem.get(name).map(Vec::as_slice) {
+                    Some([one]) => Some(one.clone()),
+                    _ => None,
+                }
+            })
+        };
+        let mut notes = vec![format!(
+            "mapped from an Unreal {} exported as object text",
+            if m.class == "Material" {
+                "material graph (direct connections only)"
+            } else {
+                "material instance (by parameter names)"
+            }
+        )];
+        notes.extend(mapped.notes);
+        let spec = MaterialSpec {
+            name: if m.name.is_empty() {
+                stem(&e.rel)
+            } else {
+                m.name.clone()
+            },
+            map: mapped.pbr,
+            resolve: &resolve,
+            flip_normal_green: true,
+            double_sided: Some(m.two_sided),
+            engine: (
+                "unreal",
+                json!({ "class": m.class, "parent": m.parent, "unmapped": m.unmapped }),
+            ),
+            notes,
+        };
+        let mut pending = material_from(&ctx, e, &bytes, spec);
+        pending.unreal_path = unreal_scan.as_ref().and_then(|s| s.object_path(&e.rel));
         ctx.put(pending, &decls[i])?;
     }
 
@@ -886,6 +1102,21 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
     Ok(ctx.report)
 }
 
+/// One material to write, from either engine: the PBR mapping with texture keys (Unity GUIDs
+/// or Unreal object paths) and how to resolve them to library ids.
+struct MaterialSpec<'a> {
+    name: String,
+    map: PbrMapping,
+    resolve: &'a dyn Fn(&str) -> Option<String>,
+    /// The normal map is DirectX style (Unreal): write a green-flipped copy for glTF.
+    flip_normal_green: bool,
+    /// Written as `double_sided` when known.
+    double_sided: Option<bool>,
+    /// Engine-specific block: key and value (its unmapped and unresolved lists are added).
+    engine: (&'static str, Value),
+    notes: Vec<String>,
+}
+
 fn material(
     ctx: &Ctx,
     e: &SourceEntry,
@@ -895,16 +1126,58 @@ fn material(
     entries: &[SourceEntry],
 ) -> Pending {
     let map = unity::map_pbr(m);
-    let mut uses = Vec::new();
+    let shader = map.shader.map(str::to_string).or_else(|| {
+        entries
+            .iter()
+            .find(|x| x.guid().as_deref() == Some(m.shader_guid.as_str()))
+            .map(|x| format!("{} (from the source)", stem(&x.rel)))
+    });
+    let note = match &shader {
+        Some(s) => format!("mapped from Unity shader `{s}`"),
+        None => "shader not recognized; mapped by common property names".into(),
+    };
+    let resolve = |g: &str| by_guid.get(g).cloned();
+    let spec = MaterialSpec {
+        name: if m.name.is_empty() {
+            stem(&e.rel)
+        } else {
+            m.name.clone()
+        },
+        map,
+        resolve: &resolve,
+        flip_normal_green: false,
+        double_sided: None,
+        engine: ("unity", json!({ "shader": shader, "shader_guid": m.shader_guid })),
+        notes: vec![note],
+    };
+    material_from(ctx, e, bytes, spec)
+}
+
+/// Reads a library texture's PNG, changes its pixels and returns the new PNG.
+fn convert_library_png(ctx: &Ctx, id: &str, f: impl FnOnce(&mut [u8])) -> Result<Vec<u8>, String> {
+    let png = ctx.library.asset_dir(id).join("texture.png");
+    let mut img = std::fs::read(&png)
+        .map_err(|e| e.to_string())
+        .and_then(|b| marionette_assets::decode_png(&b))?;
+    f(&mut img.rgba);
+    Ok(marionette_assets::encode_png(img.width, img.height, &img.rgba))
+}
+
+fn material_from(ctx: &Ctx, e: &SourceEntry, bytes: &[u8], spec: MaterialSpec) -> Pending {
+    let map = &spec.map;
+    let mut uses: Vec<String> = Vec::new();
     let mut unresolved = Vec::new();
     let mut notes = Vec::new();
-    let mut tex_ref = |slot: &str, guid: &Option<String>| -> Value {
-        let Some(g) = guid else { return Value::Null };
-        match by_guid.get(g) {
+    let use_id = |uses: &mut Vec<String>, id: &String| {
+        if !uses.contains(id) {
+            uses.push(id.clone());
+        }
+    };
+    let mut tex_ref = |uses: &mut Vec<String>, slot: &str, key: &Option<String>| -> Value {
+        let Some(k) = key else { return Value::Null };
+        match (spec.resolve)(k) {
             Some(id) => {
-                if !uses.contains(id) {
-                    uses.push(id.clone());
-                }
+                use_id(uses, &id);
                 json!({ "asset": id })
             }
             None => {
@@ -913,32 +1186,33 @@ fn material(
             }
         }
     };
-    let base = tex_ref("base_color_texture", &map.base_color_texture);
-    let normal = tex_ref("normal_texture", &map.normal_texture);
-    let mut occlusion = tex_ref("occlusion_texture", &map.occlusion_texture);
-    let emissive = tex_ref("emissive_texture", &map.emissive_texture);
+    let base = tex_ref(&mut uses, "base_color_texture", &map.base_color_texture);
+    let mut normal = tex_ref(&mut uses, "normal_texture", &map.normal_texture);
+    let mut occlusion = tex_ref(&mut uses, "occlusion_texture", &map.occlusion_texture);
+    let emissive = tex_ref(&mut uses, "emissive_texture", &map.emissive_texture);
 
-    // Unity packs metallic and smoothness differently from glTF; convert into this folder.
     let mut files = Vec::new();
     let mut metal_ref = Value::Null;
-    if let Some((guid, layout)) = &map.metal_texture {
-        match by_guid.get(guid) {
+    if let Some((key, layout)) = &map.metal_texture {
+        match (spec.resolve)(key) {
+            // Already the glTF packing: reference it as it is.
+            Some(id) if *layout == MetalLayout::Gltf => {
+                metal_ref = json!({ "asset": id });
+                use_id(&mut uses, &id);
+                notes.push(
+                    "ORM texture used as glTF metallic-roughness (B metallic, G roughness) and occlusion (R)"
+                        .into(),
+                );
+            }
+            // Unity packs metallic and smoothness differently from glTF; convert into this folder.
             Some(id) if !ctx.dry_run => {
-                let png = ctx.library.asset_dir(id).join("texture.png");
-                match std::fs::read(&png)
-                    .map_err(|e| e.to_string())
-                    .and_then(|b| marionette_assets::decode_png(&b))
-                {
-                    Ok(mut img) => {
-                        unity::convert_metal_texture(&mut img.rgba, *layout, map.smoothness_scale);
-                        files.push((
-                            "metallic_roughness.png".to_string(),
-                            marionette_assets::encode_png(img.width, img.height, &img.rgba),
-                        ));
+                match convert_library_png(ctx, &id, |px| {
+                    unity::convert_metal_texture(px, *layout, map.smoothness_scale)
+                }) {
+                    Ok(png) => {
+                        files.push(("metallic_roughness.png".to_string(), png));
                         metal_ref = json!({ "file": "metallic_roughness.png" });
-                        if !uses.contains(id) {
-                            uses.push(id.clone());
-                        }
+                        use_id(&mut uses, &id);
                         if *layout == MetalLayout::HdrpMask && occlusion.is_null() {
                             occlusion = metal_ref.clone();
                         }
@@ -954,16 +1228,27 @@ fn material(
             None => unresolved.push("metallic_roughness_texture".into()),
         }
     }
-    let shader = map.shader.map(str::to_string).or_else(|| {
-        entries
-            .iter()
-            .find(|x| x.guid().as_deref() == Some(m.shader_guid.as_str()))
-            .map(|x| format!("{} (from the source)", stem(&x.rel)))
-    });
-    match &shader {
-        Some(s) => notes.push(format!("mapped from Unity shader `{s}`")),
-        None => notes.push("shader not recognized; mapped by common property names".into()),
+    // Unreal normal maps are DirectX style (green down); glTF wants green up.
+    if spec.flip_normal_green
+        && let Some(id) = normal.get("asset").and_then(Value::as_str).map(str::to_string)
+    {
+        if ctx.dry_run {
+            notes.push("normal map flip skipped in a dry run".into());
+        } else {
+            match convert_library_png(ctx, &id, unreal::flip_green) {
+                Ok(png) => {
+                    files.push(("normal.png".to_string(), png));
+                    normal = json!({ "file": "normal.png" });
+                    notes.push(
+                        "normal map converted from DirectX (Unreal, green down) to glTF (green up) as normal.png"
+                            .into(),
+                    );
+                }
+                Err(err) => notes.push(format!("normal map not converted: {err}")),
+            }
+        }
     }
+    notes.extend(spec.notes);
     if !unresolved.is_empty() {
         notes.push(format!("textures not in the library: {}", unresolved.join(", ")));
     }
@@ -974,9 +1259,12 @@ fn material(
         ));
     }
     notes.push("material.json is mapped data; the renderer does not load it yet".into());
-    let doc = json!({
+    let (engine_key, mut engine) = spec.engine;
+    engine["unmapped_textures"] = json!(map.unmapped_textures);
+    engine["unresolved_textures"] = json!(unresolved);
+    let mut doc = json!({
         "format": "marionette.material/1",
-        "name": if m.name.is_empty() { stem(&e.rel) } else { m.name.clone() },
+        "name": spec.name,
         "base_color_factor": map.base_color_factor,
         "base_color_texture": base,
         "metallic_factor": map.metallic_factor,
@@ -992,13 +1280,11 @@ fn material(
         "alpha_cutoff": map.alpha_cutoff,
         "uv_scale": map.uv_scale,
         "uv_offset": map.uv_offset,
-        "unity": {
-            "shader": shader,
-            "shader_guid": m.shader_guid,
-            "unmapped_textures": map.unmapped_textures,
-            "unresolved_textures": unresolved,
-        }
     });
+    if let Some(d) = spec.double_sided {
+        doc["double_sided"] = json!(d);
+    }
+    doc[engine_key] = engine;
     files.insert(
         0,
         (
@@ -1018,5 +1304,104 @@ fn material(
         notes,
         uses,
         validate_gltf: false,
+        unreal_path: None,
+    }
+}
+
+/// What a prefab being converted may refer to: files of the same source (nested prefabs only
+/// under the prefab's own declaration, rule 12a) and library assets by Unity GUID.
+struct PrefabSources<'a> {
+    library: &'a Library,
+    dry_run: bool,
+    gate: &'a Gate<'a>,
+    decl: usize,
+    entries: &'a [SourceEntry],
+    by_guid: &'a BTreeMap<String, String>,
+    report: &'a ImportReport,
+}
+
+impl PrefabSources<'_> {
+    fn entry(&self, guid: &str) -> Option<&SourceEntry> {
+        self.entries.iter().find(|e| e.guid().as_deref() == Some(guid))
+    }
+
+    /// The record of a library asset, also during a dry run (from the report).
+    fn record(&self, id: &str) -> Option<(AssetKind, Option<String>, bool, String)> {
+        if let Ok(r) = self.library.get(id) {
+            return Some((r.kind, r.main, r.engine_ready, r.name));
+        }
+        self.report
+            .imported
+            .iter()
+            .find(|a| a.id == id)
+            .map(|a| (a.kind, None, a.engine_ready, stem(&a.path)))
+    }
+}
+
+impl PrefabEnv for PrefabSources<'_> {
+    fn resolve(&self, guid: &str) -> Resolved {
+        if let Some(e) = self.entry(guid)
+            && ext_of(&e.rel) == "prefab"
+        {
+            if let Some(why) = self.gate.dependency_refusal(&e.rel, self.decl) {
+                return Resolved::Refused(format!("nested prefab not expanded: {why}"));
+            }
+            return match std::fs::read(&e.data) {
+                Ok(b) => Resolved::Prefab {
+                    rel: e.rel.clone(),
+                    text: String::from_utf8_lossy(&b).into_owned(),
+                },
+                Err(err) => Resolved::Refused(format!("cannot read `{}`: {err}", e.rel)),
+            };
+        }
+        if let Some(id) = self.by_guid.get(guid) {
+            return match self.record(id) {
+                Some((AssetKind::Model, main, ready, name)) => {
+                    let main = main.unwrap_or_else(|| "model.glb".into());
+                    if ready || self.dry_run {
+                        Resolved::Model {
+                            id: id.clone(),
+                            main,
+                            name,
+                        }
+                    } else {
+                        Resolved::Refused(format!("model `{id}` is not engine-ready (see its record notes)"))
+                    }
+                }
+                Some((kind, ..)) => Resolved::Refused(format!("`{id}` is a {kind:?}, not a model")),
+                None => Resolved::Unknown,
+            };
+        }
+        match self.entry(guid) {
+            Some(e) => match self.report.refused.iter().find(|r| r.path == e.rel) {
+                Some(r) => Resolved::Refused(format!("`{}` was refused ({}): {}", e.rel, r.code, r.reason)),
+                None => Resolved::Refused(format!("`{}` was not imported as a model", e.rel)),
+            },
+            None => Resolved::Unknown,
+        }
+    }
+
+    fn material(&self, guid: &str) -> Option<MaterialInfo> {
+        let id = self.by_guid.get(guid)?;
+        let r = self.library.get(id).ok()?;
+        if r.kind != AssetKind::Material {
+            return None;
+        }
+        let bytes = std::fs::read(self.library.asset_dir(id).join("material.json")).ok()?;
+        let doc: Value = serde_json::from_slice(&bytes).ok()?;
+        let f = |k: &str, d: f64| doc[k].as_f64().unwrap_or(d) as f32;
+        let c = &doc["base_color_factor"];
+        let ci = |i: usize| c.get(i).and_then(Value::as_f64).unwrap_or(1.0) as f32;
+        Some(MaterialInfo {
+            id: id.clone(),
+            name: doc["name"].as_str().unwrap_or(&r.name).to_string(),
+            base_color: [ci(0), ci(1), ci(2), ci(3)],
+            metallic: f("metallic_factor", 0.0),
+            roughness: f("roughness_factor", 0.5),
+        })
+    }
+
+    fn asset_path(&self, guid: &str) -> Option<String> {
+        self.entry(guid).map(|e| e.rel.clone())
     }
 }

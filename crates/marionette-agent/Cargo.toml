@@ -16,9 +16,11 @@ marionette-import = { path = "../marionette-import" }
 marionette-anim = { path = "../marionette-anim" }
 bevy_ecs.workspace = true
 marionette-assets = { path = "../marionette-assets" }
+marionette-pool = { path = "../marionette-pool" }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-providers = { path = "../marionette-providers" }
+marionette-generate = { path = "../marionette-generate" }
 marionette-script = { path = "../marionette-script" }
 marionette-port = { path = "../marionette-port" }
 serde.workspace = true
@@ -27,3 +29,7 @@ sha2.workspace = true
 schemars = "1.2"
 rmcp = { version = "3.9.0", default-features = false, features = ["server", "transport-io"] }
 tokio = { version = "1", features = ["rt"] }
+
+[features]
+# Network transport for paid providers (off by default; decision 0045).
+net = ["marionette-providers/net"]

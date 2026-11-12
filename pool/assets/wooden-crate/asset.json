@@ -1,0 +1,38 @@
+{
+  "format": "marionette.pool_asset/1",
+  "id": "wooden-crate",
+  "kind": "model",
+  "name": "Wooden crate",
+  "tags": [
+    "box",
+    "crate",
+    "cube",
+    "prop",
+    "wood"
+  ],
+  "license": {
+    "spdx": "CC0-1.0",
+    "proof": [
+      {
+        "kind": "made_for_project",
+        "detail": "made for the Marionette project and dedicated to the public domain under CC0 1.0 by the Marionette Contributors",
+        "at": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    ]
+  },
+  "source": {
+    "origin": "made",
+    "author": "Marionette Contributors",
+    "method": "computed in code: a 1 m box with one brown PBR material (marionette-providers box_glb)",
+    "generator": "crates/marionette-pool/src/seed.rs"
+  },
+  "files": [
+    {
+      "path": "model.glb",
+      "sha256": "db298d0869c852d0ed220226d025a1d1bb6cd67f254aebefe5459025b6e73dee",
+      "bytes": 1604
+    }
+  ],
+  "main": "model.glb",
+  "engine_ready": true
+}

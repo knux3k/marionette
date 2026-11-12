@@ -38,7 +38,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
-| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
+| `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
 | `library_list` | no | Lists owned library assets (id, kind, name, license, engine readiness), sorted by id, paged. |
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
@@ -54,13 +54,26 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_blend` | yes | Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing. |
 | `anim_stop` | yes | Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds. |
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
+| `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
+| `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
+| `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
+| `generate_list` | no | Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked). |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 | `stability_run` | no | Run the stability suite (default `stability/suite.json`): every game mode for `fast` or `long` length with seeded random input. Checks no panic, no hang, same hash on replay and after a snapshot/restore, time budgets and memory growth. Failures come back as data with seed, tick, backtrace and a reproduce command. |
+| `asset_search` | no | Finds an asset in the required order: (1) project files, (2) the owned library, (3) the CC0 pool, (4) online CC0 libraries (Poly Haven, ambientCG; only with `online: true`), (5) generation (a pointer to generate_plan). Stops at the first step with results unless `all_steps` is set. Read-only. |
+| `pool_info` | no | Where the CC0 pool is (operation input, MARIONETTE_POOL, or cc0_pool in the user config file), how many assets it holds, and the CC0 libraries it knows with their license pages. |
+| `pool_list` | no | Lists pooled CC0 assets (id, kind, name, tags, origin), sorted by id, paged. |
+| `pool_get` | no | Reads one pooled asset's record: files with SHA-256, source, and the proof that it is CC0. |
+| `pool_add` | yes | Adds an asset made for the project (origin `made`, with `method`) or a library archive a person downloaded (origin `online`, with `library` and `page`) to the CC0 pool. Every rule runs: owned-asset gate, generated-asset gate, license files must say CC0, proof of origin, files must load. `dry_run` checks without writing. |
+| `pool_ingest` | yes | Downloads an asset from an online CC0 library and adds it to the pool with its source and proof: Poly Haven or ambientCG by `source_id` (from asset_search), Kenney or Quaternius by archive `url` on the library's site. Downloads are checked (size, and MD5 where published). Needs network (the system curl). |
+| `pool_fetch` | yes | Copies a pooled CC0 asset into the project (default folder `assets/pool/<id>/`) and returns the path of its main file. |
+| `pool_index` | yes | Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 
 ## `project_init`
@@ -796,7 +809,7 @@ Output:
 
 ## `library_import`
 
-Imports owned assets from a .unitypackage, a Unity project folder or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
+Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason.
 
 Mutating: yes.
 
@@ -807,7 +820,7 @@ Input:
 | `declarations` | array of string |  | Declaration files (written by a person) to use besides `<source>.license.json`. |
 | `dry_run` | boolean |  | Report what would be imported and refused without writing anything. |
 | `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
-| `source` | string | yes | A .unitypackage file, a Unity project folder, or an owned file or folder. |
+| `source` | string | yes | A .unitypackage file, a Unity project folder, an Unreal project, plugin or content folder, or an owned file or folder. |
 
 Output:
 
@@ -818,7 +831,7 @@ Output:
 | `declarations` | array of DeclarationSummary | yes |  |
 | `dry_run` | boolean | yes |  |
 | `imported` | array of ImportedAsset | yes |  |
-| `importer` | string | yes | `unitypackage`, `unity_project` or `files`. |
+| `importer` | string | yes | `unitypackage`, `unity_project`, `unreal_project` or `files`. |
 | `refused` | array of NotImported | yes | Refused for license or engine-content reasons. |
 | `skipped` | array of NotImported | yes | Not imported for other reasons (unsupported type, binary serialization, ...). |
 | `source_name` | string | yes | File or folder name of the source. |
@@ -1004,7 +1017,9 @@ Output:
 | --- | --- | --- | --- |
 | `cap` | SpendCap | yes |  |
 | `config_file` | boolean | yes | `providers.json` exists (otherwise every kind uses mock). |
+| `keys_file_found` | boolean \| null |  | The person's keys file (decision 0045): absent when none is configured, `true` when it exists, `false` when it is configured but missing. Its values are never shown. |
 | `kinds` | array of KindStatus | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps the project owner set for single providers (decision 0045). |
 | `spent_usd` | number | yes | Total of the project's spend ledger, US dollars. |
 
 ## `provider_use`
@@ -1192,6 +1207,106 @@ Output:
 | `nodes` | array of NodePose | yes |  |
 | `tick` | integer | yes |  |
 
+## `generate_recipe`
+
+Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `from` | string \| null |  | Model only: name of the image or texture recipe to build the model from. |
+| `model` | ModelOptions \| null |  |  |
+| `name` | string | yes | Lowercase letters, digits, `_` and `-`; the file stem of the recipe and its output. |
+| `notes` | string \| null |  |  |
+| `output` | OutputKind | yes |  |
+| `prompt` | string \| null |  |  |
+| `provider` | Choice \| null |  | Pin a provider (and model) for this recipe; default: providers.json. |
+| `replace` | boolean |  | Overwrite an existing recipe of the same name. |
+| `size` | array \| null |  | Image and texture: requested size `[width, height]` (default 1024 x 1024). |
+| `texture` | TextureOptions \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plan` | Plan | yes | What a run of this recipe would do now. |
+| `recipe` | string | yes | The recipe file written. |
+
+## `generate_plan`
+
+Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `before_generating` | array of string | yes | Generation is the last step of the lookup order; these come first. |
+| `cap` | SpendCap | yes |  |
+| `dir` | string | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps set for single providers (they replace the total cap for that provider). |
+| `spent_usd` | number | yes | Ledger total so far. |
+| `steps` | array of StepPlan | yes |  |
+| `total_estimate_usd` | number | yes | Sum of the estimates of every step that needs a provider call now (blocked or not). |
+| `within_cap` | boolean | yes | Every step that needs a paid call fits under the cap that applies to its provider, counting the run's earlier steps. |
+
+## `generate_run`
+
+Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `names` | array of string |  |  |
+| `offline` | boolean |  | Use cached provider outputs only; refuse any step that would call a provider. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `blocked` | array of Blocked | yes |  |
+| `built` | array of Built | yes |  |
+| `calls` | integer | yes | Provider calls made (free or paid). |
+| `cost_usd` | number | yes | Spent by this run. |
+| `dir` | string | yes |  |
+| `spent_usd` | number | yes | Ledger total after the run. |
+
+## `generate_list`
+
+Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `recipes` | array of Listed | yes |  |
+
 ## `script_reload`
 
 Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running.
@@ -1265,6 +1380,223 @@ Output:
 | `results` | array of ModeResult | yes |  |
 | `suite` | string | yes |  |
 | `timing_enforced` | boolean | yes |  |
+
+## `asset_search`
+
+Finds an asset in the required order: (1) project files, (2) the owned library, (3) the CC0 pool, (4) online CC0 libraries (Poly Haven, ambientCG; only with `online: true`), (5) generation (a pointer to generate_plan). Stops at the first step with results unless `all_steps` is set. Read-only.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `all_steps` | boolean |  | Search every step instead of stopping at the first with results. |
+| `kind` | PoolKind \| null |  | Only this kind: texture, model, material, sound or other. |
+| `library` | string \| null |  |  |
+| `limit` | integer \| null |  | Results per step; default 20, at most 100. |
+| `online` | boolean |  | Also search online CC0 libraries (step 4). Default false. |
+| `pool` | string \| null |  |  |
+| `query` | string | yes | Words to look for (all must match the name, path, tags or id). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `found_in` | string \| null |  | The first step with results, if any. |
+| `query` | string | yes |  |
+| `steps` | array of Step | yes |  |
+
+## `pool_info`
+
+Where the CC0 pool is (operation input, MARIONETTE_POOL, or cc0_pool in the user config file), how many assets it holds, and the CC0 libraries it knows with their license pages.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pool` | string \| null |  | The pool folder (a checkout of the assets repository); defaults to MARIONETTE_POOL, then cc0_pool in the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
+| `configured_from` | PoolFrom \| null |  |  |
+| `exists` | boolean | yes |  |
+| `libraries` | array of KnownLibrary | yes |  |
+| `path` | string \| null |  |  |
+| `problem` | string \| null |  | Why no pool is available, if none is. |
+
+## `pool_list`
+
+Lists pooled CC0 assets (id, kind, name, tags, origin), sorted by id, paged.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | PoolKind \| null |  |  |
+| `limit` | integer \| null |  | Default 50, at most 500. |
+| `offset` | integer |  |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | array of Summary | yes |  |
+| `next` | integer \| null |  |  |
+| `total` | integer | yes |  |
+
+## `pool_get`
+
+Reads one pooled asset's record: files with SHA-256, source, and the proof that it is CC0.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | yes |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes | True when `main` loads in the engine today. |
+| `files` | array of PoolFile | yes |  |
+| `format` | string | yes | Always `marionette.pool_asset/1`. |
+| `id` | string | yes |  |
+| `kind` | PoolKind | yes |  |
+| `license` | PoolLicense | yes |  |
+| `main` | string \| null |  | The file the engine loads, if any. |
+| `name` | string | yes |  |
+| `notes` | array of string |  |  |
+| `source` | Provenance | yes |  |
+| `tags` | array of string |  |  |
+
+## `pool_add`
+
+Adds an asset made for the project (origin `made`, with `method`) or a library archive a person downloaded (origin `online`, with `library` and `page`) to the CC0 pool. Every rule runs: owned-asset gate, generated-asset gate, license files must say CC0, proof of origin, files must load. `dry_run` checks without writing.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `author` | string \| null |  | Online: creator as credited by the library. |
+| `dry_run` | boolean |  |  |
+| `generated_dirs` | array of string |  | Extra folders of generated assets to compare contents with; the project's `assets/generated/` is always checked (decision 0045). |
+| `generator` | string \| null |  | Made: the program in the engine repository that makes it (repo-relative path). |
+| `id` | string \| null |  | Asset id; default `<name slug>-<content hash>`. |
+| `include` | array of string |  | For a .zip `path`: path prefixes inside the archive to keep (license files are always kept). |
+| `kind` | PoolKind | yes |  |
+| `library` | string \| null |  | Online: library id (polyhaven, ambientcg, kenney, quaternius). |
+| `main` | string \| null |  | The file the engine loads; default by kind (first PNG, GLB/glTF, WAV/OGG). |
+| `method` | string \| null |  | Made: how it was made. |
+| `name` | string | yes |  |
+| `origin` | Origin | yes | `made` (made for the project) or `online` (an archive or files from a known CC0 library). |
+| `owned_library` | string \| null |  | Owned library to compare contents with; defaults to the configured one, if any. |
+| `page` | string \| null |  | Online: the asset's page on the library's site. |
+| `path` | string | yes | A file or folder holding the asset's files. |
+| `pool` | string \| null |  |  |
+| `tags` | array of string |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes |  |
+| `files` | array of string | yes |  |
+| `id` | string | yes |  |
+| `notes` | array of string | yes |  |
+| `proof` | array of Proof | yes |  |
+| `status` | string | yes | `added`, `already_in_pool` or `checked` (dry run). |
+
+## `pool_ingest`
+
+Downloads an asset from an online CC0 library and adds it to the pool with its source and proof: Poly Haven or ambientCG by `source_id` (from asset_search), Kenney or Quaternius by archive `url` on the library's site. Downloads are checked (size, and MD5 where published). Needs network (the system curl).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dry_run` | boolean |  |  |
+| `include` | array of string |  | Kenney or Quaternius: path prefixes inside the archive to keep. |
+| `kind` | PoolKind \| null |  | Kenney or Quaternius: what the asset is, its name and tags. |
+| `library` | string | yes | polyhaven, ambientcg, kenney or quaternius. |
+| `main` | string \| null |  |  |
+| `name` | string \| null |  |  |
+| `owned_library` | string \| null |  |  |
+| `page` | string \| null |  | Kenney or Quaternius: the pack's page. |
+| `pool` | string \| null |  |  |
+| `resolution` | string \| null |  | Texture or model resolution: Poly Haven `1k`/`2k`/`4k`/`8k`, ambientCG `1K`/`2K`/... Default 1k. |
+| `source_id` | string \| null |  | Poly Haven or ambientCG asset id (from asset_search). |
+| `tags` | array of string |  |  |
+| `url` | string \| null |  | Kenney or Quaternius: the archive URL on the library's site. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes |  |
+| `files` | array of string | yes |  |
+| `id` | string | yes |  |
+| `notes` | array of string | yes |  |
+| `proof` | array of Proof | yes |  |
+| `status` | string | yes | `added`, `already_in_pool` or `checked` (dry run). |
+
+## `pool_fetch`
+
+Copies a pooled CC0 asset into the project (default folder `assets/pool/<id>/`) and returns the path of its main file.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string \| null |  | Project folder to copy into; default `assets/pool`. The asset lands in `<dir>/<id>/`. |
+| `id` | string | yes |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `copied` | array of string | yes | Files written (project-relative); files already there with the same content are skipped. |
+| `id` | string | yes |  |
+| `license` | string | yes |  |
+| `main` | string \| null |  | Project-relative path of the main file, if any. |
+
+## `pool_index`
+
+Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pool` | string \| null |  | The pool folder (a checkout of the assets repository); defaults to MARIONETTE_POOL, then cc0_pool in the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
+| `path` | string | yes |  |
 
 ## `port_scan`
 
@@ -1362,6 +1694,35 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `prefab_instantiate`
+
+Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets_dir` | string \| null |  | Folder, relative to the scene file, that receives copied library files. Default `library`. |
+| `at` | any |  | Where the prefab root goes: a `Transform` value (translation, rotation, scale). Default: the origin. |
+| `include_inactive` | boolean |  | Also place objects that were inactive in Unity. |
+| `library` | string \| null |  | Absolute path of the owned library; defaults to MARIONETTE_LIBRARY, then the user config file. |
+| `name` | string \| null |  | Name for the root entity; child names keep their paths under it. |
+| `prefab` | string | yes | Library id of the prefab (see `library_list` with kind `prefab`). |
+| `scene` | string | yes | Scene file to add the entities to. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `copied` | array of string | yes | Files copied beside the scene (relative to the scene file); files already there with the same content are not listed. |
+| `diff` | Diff | yes |  |
+| `entities` | array of PlacedEntity | yes |  |
+| `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
+| `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
+| `scene` | string | yes |  |
 
 ## `batch_run`
 

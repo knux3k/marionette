@@ -14,6 +14,7 @@ be checked against a repo-relative path, a command or a test name. Read in this 
    [PERFORMANCE.md](PERFORMANCE.md) (budgets and how to measure),
    [GLOSSARY.md](GLOSSARY.md), [PORTING.md](PORTING.md) (bringing Unity or Unreal code over),
    [STABILITY.md](STABILITY.md) (stability suite per game mode),
+   [GENERATION.md](GENERATION.md) (generating images, textures and models),
    [PROOF-SCENES.md](PROOF-SCENES.md) (the six proof games and the engine gaps they found),
    and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),
