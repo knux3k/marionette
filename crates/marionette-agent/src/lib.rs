@@ -7,13 +7,14 @@
 //! and produce them.
 
 pub mod edit;
+pub mod engine;
 pub mod mcp;
 pub mod observe;
 pub mod project;
 pub mod scenario;
 pub mod session;
 
-use marionette_core::{Diagnostic, Errors, Registry, default_registry};
+use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -120,7 +121,7 @@ impl Agent {
         Self {
             root: root.into(),
             read_only,
-            registry: default_registry(),
+            registry: engine::registry(),
             ops,
             sessions: BTreeMap::new(),
             next_session: 1,

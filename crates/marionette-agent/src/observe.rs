@@ -47,6 +47,19 @@ pub(crate) fn ops() -> Vec<Op> {
             false,
             stats,
         ),
+        op(
+            "observe_raycast",
+            "Cast a ray through the physics scene; returns the first entity hit, distance, point and normal.",
+            false,
+            raycast,
+        ),
+        op(
+            "observe_events",
+            "Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. \
+             Sounds carry gain and pan: this is the headless audio log.",
+            false,
+            events,
+        ),
     ]
 }
 
@@ -507,5 +520,94 @@ fn stats(agent: &mut Agent, input: crate::session::SessionInput) -> Result<Stats
         step_ms_max: r(st.max_ms),
         step_ms_last: r(st.last_ms),
         render_ms_last: st.last_render_ms,
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct RaycastInput {
+    #[serde(flatten)]
+    pub target: WorldTarget,
+    pub origin: [f32; 3],
+    pub direction: [f32; 3],
+    /// Default 1000.
+    pub max_distance: Option<f32>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct RaycastOutput {
+    pub tick: u64,
+    /// The hit, or null when the ray hits nothing (or the scene has no physics).
+    pub hit: Option<RaycastHit>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct RaycastHit {
+    pub entity: u64,
+    pub distance: f32,
+    pub point: [f32; 3],
+    pub normal: [f32; 3],
+}
+
+fn raycast(agent: &mut Agent, input: RaycastInput) -> Result<RaycastOutput, Errors> {
+    with_world(agent, &input.target, |_, sim, _| {
+        let hit = marionette_physics::raycast(
+            &sim.world,
+            input.origin,
+            input.direction,
+            input.max_distance.unwrap_or(1000.0),
+        )
+        .map(|h| RaycastHit {
+            entity: h.entity,
+            distance: h.distance,
+            point: h.point,
+            normal: h.normal,
+        });
+        Ok(RaycastOutput {
+            tick: sim.tick(),
+            hit,
+        })
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct EventsInput {
+    #[serde(flatten)]
+    pub target: WorldTarget,
+    /// Only this kind (e.g. `sound`).
+    pub kind: Option<String>,
+    /// Only events at or after this tick.
+    pub since_tick: Option<u64>,
+    #[serde(default)]
+    pub offset: usize,
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct EventsOutput {
+    pub tick: u64,
+    pub total: usize,
+    #[schemars(with = "Vec<Value>")]
+    pub events: Vec<marionette_core::EngineEvent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_offset: Option<usize>,
+}
+
+fn events(agent: &mut Agent, input: EventsInput) -> Result<EventsOutput, Errors> {
+    with_world(agent, &input.target, |_, sim, _| {
+        let all: Vec<marionette_core::EngineEvent> = sim
+            .events()
+            .events
+            .iter()
+            .filter(|e| input.kind.as_ref().is_none_or(|k| &e.kind == k))
+            .filter(|e| input.since_tick.is_none_or(|t| e.tick >= t))
+            .cloned()
+            .collect();
+        let (events, next_offset) = page(&all, input.offset, input.limit);
+        Ok(EventsOutput {
+            tick: sim.tick(),
+            total: all.len(),
+            events,
+            next_offset,
+        })
     })
 }

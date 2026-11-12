@@ -26,6 +26,24 @@ pub(crate) fn ops() -> Vec<Op> {
         op("session_stop", "Discard a live session.", true, stop),
         op("session_list", "List live sessions.", false, list),
         op(
+            "session_snapshot",
+            "Keep a complete copy of a live session's state (including physics and input) under a name.",
+            true,
+            snapshot,
+        ),
+        op(
+            "session_restore",
+            "Return a live session to a snapshot taken with session_snapshot.",
+            true,
+            restore,
+        ),
+        op(
+            "session_record_save",
+            "Write every input action change of a live session so far as a replayable *.inputs.json file.",
+            true,
+            record_save,
+        ),
+        op(
             "session_save",
             "Write a live session's current world to a scene file (default: the file it was loaded from).",
             true,
@@ -54,6 +72,7 @@ pub struct Stats {
 
 pub struct Session {
     pub sim: Sim,
+    pub snapshots: std::collections::BTreeMap<String, marionette_core::SimSnapshot>,
     pub scene: String,
     pub seed: u64,
     pub logs: Vec<LogEntry>,
@@ -109,6 +128,8 @@ pub struct StartInput {
     /// Ticks to simulate before returning (default 0).
     #[serde(default)]
     pub ticks: u64,
+    /// Scripted input or a recording to replay (relative to the project root).
+    pub input: Option<String>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -119,11 +140,13 @@ pub struct StepOutput {
 }
 
 fn start(agent: &mut Agent, input: StartInput) -> Result<StepOutput, Errors> {
-    let sim = crate::project::load_sim(agent, &input.scene, input.seed)?;
+    let mut sim = crate::project::load_sim(agent, &input.scene, input.seed)?;
+    crate::engine::feed(agent, &mut sim, input.input.as_deref(), &[])?;
     let id = format!("s{}", agent.next_session);
     agent.next_session += 1;
     let mut session = Session {
         sim,
+        snapshots: Default::default(),
         scene: input.scene.clone(),
         seed: input.seed,
         logs: Vec::new(),
@@ -148,10 +171,16 @@ fn start(agent: &mut Agent, input: StartInput) -> Result<StepOutput, Errors> {
 pub struct StepInput {
     pub session: String,
     pub ticks: u64,
+    /// Input events to apply during these ticks (absolute tick numbers, not in the past).
+    #[serde(default)]
+    pub events: Vec<marionette_input::InputEvent>,
 }
 
 fn step(agent: &mut Agent, input: StepInput) -> Result<StepOutput, Errors> {
     let s = get_mut(agent, &input.session)?;
+    if !input.events.is_empty() {
+        marionette_input::feed(&mut s.sim.world, &input.events)?;
+    }
     s.step(input.ticks);
     s.log("step", format!("stepped {} ticks", input.ticks));
     Ok(StepOutput {
@@ -237,5 +266,92 @@ fn save(agent: &mut Agent, input: SaveInput) -> Result<SaveOutput, Errors> {
         session: input.session,
         scene,
         tick,
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SnapshotInput {
+    pub session: String,
+    /// Name to store it under (default: `t<tick>`).
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct SnapshotOutput {
+    pub session: String,
+    pub snapshot: String,
+    pub tick: u64,
+    pub state_hash: String,
+}
+
+fn snapshot(agent: &mut Agent, input: SnapshotInput) -> Result<SnapshotOutput, Errors> {
+    let s = get_mut(agent, &input.session)?;
+    let snap = s.sim.save_state();
+    let name = input.name.unwrap_or_else(|| format!("t{}", snap.tick));
+    let tick = snap.tick;
+    s.snapshots.insert(name.clone(), snap);
+    s.log("snapshot", format!("saved snapshot {name} at tick {tick}"));
+    Ok(SnapshotOutput {
+        session: input.session,
+        snapshot: name,
+        tick,
+        state_hash: s.sim.state_hash(),
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RestoreInput {
+    pub session: String,
+    pub snapshot: String,
+}
+
+fn restore(agent: &mut Agent, input: RestoreInput) -> Result<StepOutput, Errors> {
+    let s = get_mut(agent, &input.session)?;
+    let Some(snap) = s.snapshots.get(&input.snapshot).cloned() else {
+        let names: Vec<String> = s.snapshots.keys().cloned().collect();
+        return Err(
+            Diagnostic::error(codes::NOT_FOUND, format!("no snapshot `{}`", input.snapshot))
+                .fix(format!("snapshots: {}", names.join(", ")))
+                .into(),
+        );
+    };
+    s.sim.restore(&snap)?;
+    s.log(
+        "restore",
+        format!("restored snapshot {} (tick {})", input.snapshot, snap.tick),
+    );
+    Ok(StepOutput {
+        session: input.session,
+        tick: s.sim.tick(),
+        state_hash: s.sim.state_hash(),
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecordSaveInput {
+    pub session: String,
+    /// Output file, e.g. `tests/walk.inputs.json`.
+    pub path: String,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct RecordSaveOutput {
+    pub path: String,
+    pub events: usize,
+}
+
+fn record_save(agent: &mut Agent, input: RecordSaveInput) -> Result<RecordSaveOutput, Errors> {
+    let file = {
+        let s = get_mut(agent, &input.session)?;
+        marionette_input::recording(&s.sim.world)
+    };
+    let path = agent.resolve(&input.path)?;
+    write_atomic(&path, &input.path, file.to_text().as_bytes())?;
+    Ok(RecordSaveOutput {
+        path: input.path,
+        events: file.events.len(),
     })
 }

@@ -432,6 +432,13 @@ pub struct RunInput {
     pub seed: u64,
     #[serde(default)]
     pub ticks: u64,
+    /// Scripted input or a recording to replay (`*.inputs.json`, relative to the project root).
+    pub input: Option<String>,
+    /// Extra input events (absolute ticks).
+    #[serde(default)]
+    pub events: Vec<marionette_input::InputEvent>,
+    /// Write the recording of every action change to this file.
+    pub record: Option<String>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -440,21 +447,31 @@ pub struct RunOutput {
     pub seed: u64,
     pub ticks: u64,
     pub state_hash: String,
+    /// Number of action changes recorded (only with `record`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recorded_events: Option<usize>,
 }
 
 pub(crate) fn load_sim(agent: &Agent, scene: &str, seed: u64) -> Result<Sim, Errors> {
     let path = agent.resolve(scene)?;
     let text = read_text(&path, scene)?;
-    Sim::from_text(&text, Some(scene), marionette_core::default_registry(), seed)
+    let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    Sim::with_modules(&text, Some(scene), seed, crate::engine::modules(), dir)
 }
 
 fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
     let mut sim = load_sim(agent, &input.scene, input.seed)?;
+    crate::engine::feed(agent, &mut sim, input.input.as_deref(), &input.events)?;
     sim.run(input.ticks);
+    let recorded_events = match &input.record {
+        Some(out) => Some(crate::engine::write_recording(agent, &sim, out)?),
+        None => None,
+    };
     Ok(RunOutput {
         scene: input.scene,
         seed: input.seed,
         ticks: input.ticks,
         state_hash: sim.state_hash(),
+        recorded_events,
     })
 }

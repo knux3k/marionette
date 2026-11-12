@@ -57,6 +57,14 @@ pub enum Assertion {
     },
     /// The exact state hash after `ticks`.
     StateHash(String),
+    /// An engine event happened (`kind` such as `sound`, `jump`, `collision_started`),
+    /// optionally at `tick`, for `entity`, and for sounds with this `sound`.
+    Event {
+        kind: String,
+        tick: Option<u64>,
+        entity: Option<u64>,
+        sound: Option<String>,
+    },
 }
 
 #[derive(Deserialize, JsonSchema, Clone, Debug)]
@@ -82,6 +90,8 @@ pub struct Scenario {
     #[serde(default)]
     pub assertions: Vec<Assertion>,
     pub image: Option<ImageCheck>,
+    /// Scripted input or a recording to replay (relative to the project root).
+    pub input: Option<String>,
 }
 
 pub(crate) fn load_file(_agent: &Agent, path: &Path, shown: &str) -> Result<Scenario, Errors> {
@@ -199,6 +209,7 @@ type Outcome = (String, Vec<AssertionResult>, Option<ImageResult>);
 
 fn run_one(agent: &mut Agent, s: &Scenario) -> Result<Outcome, Errors> {
     let mut sim = crate::project::load_sim(agent, &s.scene, s.seed)?;
+    crate::engine::feed(agent, &mut sim, s.input.as_deref(), &[])?;
     sim.run(s.ticks);
     let hash = sim.state_hash();
     let scene = sim.snapshot();
@@ -230,6 +241,23 @@ fn run_one(agent: &mut Agent, s: &Scenario) -> Result<Outcome, Errors> {
             } => {
                 let n = matching(&scene, with, predicates).len();
                 (n == *equals, format!("{n} matching entities; expected {equals}"))
+            }
+            Assertion::Event {
+                kind,
+                tick,
+                entity,
+                sound,
+            } => {
+                let n = sim
+                    .events()
+                    .events
+                    .iter()
+                    .filter(|e| &e.kind == kind)
+                    .filter(|e| tick.is_none_or(|t| e.tick == t))
+                    .filter(|e| entity.is_none_or(|id| e.entity == Some(id)))
+                    .filter(|e| sound.as_ref().is_none_or(|s| e.detail["sound"] == s.as_str()))
+                    .count();
+                (n > 0, format!("{n} matching `{kind}` events"))
             }
             Assertion::StateHash(expected) => (
                 &hash == expected,
