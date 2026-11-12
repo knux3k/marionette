@@ -1,0 +1,504 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.05,
+            "g": 0.02,
+            "r": 0.02
+          },
+          "projection": {
+            "Orthographic": {
+              "far": 100.0,
+              "height": 10.0,
+              "near": 0.1
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 10.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 0.3,
+            "g": 0.25,
+            "r": 0.25
+          },
+          "image": "builtin:checker",
+          "layer": 0,
+          "size": {
+            "x": 16.0,
+            "y": 10.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 2,
+      "name": "background"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 1,
+          "size": {
+            "x": 2.0,
+            "y": 2.0
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 0,
+          "y": 32
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -3.0,
+            "y": -3.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "tile-red"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 1,
+          "size": {
+            "x": 2.0,
+            "y": 2.0
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 32,
+          "y": 32
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -1.0,
+            "y": -3.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 11,
+      "name": "tile-green"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 1,
+          "size": {
+            "x": 2.0,
+            "y": 2.0
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 64,
+          "y": 32
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 1.0,
+            "y": -3.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 12,
+      "name": "tile-blue"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 1,
+          "size": {
+            "x": 2.0,
+            "y": 2.0
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 96,
+          "y": 32
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 3.0,
+            "y": -3.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 13,
+      "name": "tile-yellow"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": -3.0,
+          "y": 1.0,
+          "z": 0.0
+        },
+        "RandomImpulse": {
+          "strength": 0.2
+        },
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 2,
+          "size": {
+            "x": 1.5,
+            "y": 1.5
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 0,
+          "y": 0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "Velocity": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 20,
+      "name": "ball-red"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": -1.0,
+          "y": 1.5,
+          "z": 0.0
+        },
+        "RandomImpulse": {
+          "strength": 0.2
+        },
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 2,
+          "size": {
+            "x": 1.5,
+            "y": 1.5
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 32,
+          "y": 0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": -0.3,
+          "z": 0.0
+        }
+      },
+      "id": 21,
+      "name": "ball-green"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 2,
+          "size": {
+            "x": 1.5,
+            "y": 1.5
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 64,
+          "y": 0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9238795,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.3826834
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 22,
+      "name": "ball-blue"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 1.0,
+            "r": 1.0
+          },
+          "image": "builtin:atlas",
+          "layer": 2,
+          "size": {
+            "x": 1.5,
+            "y": 1.5
+          }
+        },
+        "SpriteRegion": {
+          "height": 32,
+          "width": 32,
+          "x": 96,
+          "y": 0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 3.0,
+            "y": 1.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 23,
+      "name": "ball-yellow"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 0.45,
+            "b": 1.0,
+            "g": 0.9,
+            "r": 0.6
+          },
+          "image": "builtin:circle",
+          "layer": 3,
+          "size": {
+            "x": 2.5,
+            "y": 2.5
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 2.0,
+            "y": 1.2,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 30,
+      "name": "glass"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}

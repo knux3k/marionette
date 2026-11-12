@@ -1,0 +1,242 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.75,
+            "g": 0.5,
+            "r": 0.35
+          },
+          "projection": {
+            "Perspective": {
+              "far": 100.0,
+              "fov_y_degrees": 50.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.6,
+            "z": 0.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.5,
+            "z": 6.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.4,
+            "y": -1.0,
+            "z": -0.5
+          },
+          "illuminance": 1.1
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.38,
+            "g": 0.36,
+            "r": 0.35
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:plane"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 12.0,
+            "y": 1.0,
+            "z": 12.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "ground"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.1,
+            "g": 0.12,
+            "r": 0.7
+          },
+          "metallic": 0.0,
+          "roughness": 0.55
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9659258,
+            "x": 0.0,
+            "y": 0.258819,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -1.8,
+            "y": 0.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 4,
+      "name": "crate"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.33,
+            "g": 0.76,
+            "r": 1.0
+          },
+          "metallic": 1.0,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Position": {
+          "x": 1.8,
+          "y": 0.6,
+          "z": 0.0
+        },
+        "RandomImpulse": {
+          "strength": 0.05
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 1.2,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 1.8,
+            "y": 0.6,
+            "z": 0.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 5,
+      "name": "ball"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "assets/gem.glb"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9238795,
+            "x": 0.0,
+            "y": 0.3826834,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.3,
+            "y": 1.3,
+            "z": 1.3
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.9,
+            "z": -0.6
+          }
+        }
+      },
+      "id": 6,
+      "name": "gem"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 1.0,
+        "g": 0.7,
+        "r": 0.6
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    }
+  },
+  "version": 1
+}
