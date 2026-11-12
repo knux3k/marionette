@@ -60,6 +60,14 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `generate_list` | no | Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked). |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
+| `asset_search` | no | Finds an asset in the required order: (1) project files, (2) the owned library, (3) the CC0 pool, (4) online CC0 libraries (Poly Haven, ambientCG; only with `online: true`), (5) generation (a pointer to generate_plan). Stops at the first step with results unless `all_steps` is set. Read-only. |
+| `pool_info` | no | Where the CC0 pool is (operation input, MARIONETTE_POOL, or cc0_pool in the user config file), how many assets it holds, and the CC0 libraries it knows with their license pages. |
+| `pool_list` | no | Lists pooled CC0 assets (id, kind, name, tags, origin), sorted by id, paged. |
+| `pool_get` | no | Reads one pooled asset's record: files with SHA-256, source, and the proof that it is CC0. |
+| `pool_add` | yes | Adds an asset made for the project (origin `made`, with `method`) or a library archive a person downloaded (origin `online`, with `library` and `page`) to the CC0 pool. Every rule runs: owned-asset gate, generated-asset gate, license files must say CC0, proof of origin, files must load. `dry_run` checks without writing. |
+| `pool_ingest` | yes | Downloads an asset from an online CC0 library and adds it to the pool with its source and proof: Poly Haven or ambientCG by `source_id` (from asset_search), Kenney or Quaternius by archive `url` on the library's site. Downloads are checked (size, and MD5 where published). Needs network (the system curl). |
+| `pool_fetch` | yes | Copies a pooled CC0 asset into the project (default folder `assets/pool/<id>/`) and returns the path of its main file. |
+| `pool_index` | yes | Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
@@ -1337,6 +1345,222 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `bytes` | integer | yes |  |
+| `path` | string | yes |  |
+
+## `asset_search`
+
+Finds an asset in the required order: (1) project files, (2) the owned library, (3) the CC0 pool, (4) online CC0 libraries (Poly Haven, ambientCG; only with `online: true`), (5) generation (a pointer to generate_plan). Stops at the first step with results unless `all_steps` is set. Read-only.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `all_steps` | boolean |  | Search every step instead of stopping at the first with results. |
+| `kind` | PoolKind \| null |  | Only this kind: texture, model, material, sound or other. |
+| `library` | string \| null |  |  |
+| `limit` | integer \| null |  | Results per step; default 20, at most 100. |
+| `online` | boolean |  | Also search online CC0 libraries (step 4). Default false. |
+| `pool` | string \| null |  |  |
+| `query` | string | yes | Words to look for (all must match the name, path, tags or id). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `found_in` | string \| null |  | The first step with results, if any. |
+| `query` | string | yes |  |
+| `steps` | array of Step | yes |  |
+
+## `pool_info`
+
+Where the CC0 pool is (operation input, MARIONETTE_POOL, or cc0_pool in the user config file), how many assets it holds, and the CC0 libraries it knows with their license pages.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pool` | string \| null |  | The pool folder (a checkout of the assets repository); defaults to MARIONETTE_POOL, then cc0_pool in the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
+| `configured_from` | PoolFrom \| null |  |  |
+| `exists` | boolean | yes |  |
+| `libraries` | array of KnownLibrary | yes |  |
+| `path` | string \| null |  |  |
+| `problem` | string \| null |  | Why no pool is available, if none is. |
+
+## `pool_list`
+
+Lists pooled CC0 assets (id, kind, name, tags, origin), sorted by id, paged.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | PoolKind \| null |  |  |
+| `limit` | integer \| null |  | Default 50, at most 500. |
+| `offset` | integer |  |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | array of Summary | yes |  |
+| `next` | integer \| null |  |  |
+| `total` | integer | yes |  |
+
+## `pool_get`
+
+Reads one pooled asset's record: files with SHA-256, source, and the proof that it is CC0.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | yes |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes | True when `main` loads in the engine today. |
+| `files` | array of PoolFile | yes |  |
+| `format` | string | yes | Always `marionette.pool_asset/1`. |
+| `id` | string | yes |  |
+| `kind` | PoolKind | yes |  |
+| `license` | PoolLicense | yes |  |
+| `main` | string \| null |  | The file the engine loads, if any. |
+| `name` | string | yes |  |
+| `notes` | array of string |  |  |
+| `source` | Provenance | yes |  |
+| `tags` | array of string |  |  |
+
+## `pool_add`
+
+Adds an asset made for the project (origin `made`, with `method`) or a library archive a person downloaded (origin `online`, with `library` and `page`) to the CC0 pool. Every rule runs: owned-asset gate, generated-asset gate, license files must say CC0, proof of origin, files must load. `dry_run` checks without writing.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `author` | string \| null |  | Online: creator as credited by the library. |
+| `dry_run` | boolean |  |  |
+| `generator` | string \| null |  | Made: the program in the engine repository that makes it (repo-relative path). |
+| `id` | string \| null |  | Asset id; default `<name slug>-<content hash>`. |
+| `include` | array of string |  | For a .zip `path`: path prefixes inside the archive to keep (license files are always kept). |
+| `kind` | PoolKind | yes |  |
+| `library` | string \| null |  | Online: library id (polyhaven, ambientcg, kenney, quaternius). |
+| `main` | string \| null |  | The file the engine loads; default by kind (first PNG, GLB/glTF, WAV/OGG). |
+| `method` | string \| null |  | Made: how it was made. |
+| `name` | string | yes |  |
+| `origin` | Origin | yes | `made` (made for the project) or `online` (an archive or files from a known CC0 library). |
+| `owned_library` | string \| null |  | Owned library to compare contents with; defaults to the configured one, if any. |
+| `page` | string \| null |  | Online: the asset's page on the library's site. |
+| `path` | string | yes | A file or folder holding the asset's files. |
+| `pool` | string \| null |  |  |
+| `tags` | array of string |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes |  |
+| `files` | array of string | yes |  |
+| `id` | string | yes |  |
+| `notes` | array of string | yes |  |
+| `proof` | array of Proof | yes |  |
+| `status` | string | yes | `added`, `already_in_pool` or `checked` (dry run). |
+
+## `pool_ingest`
+
+Downloads an asset from an online CC0 library and adds it to the pool with its source and proof: Poly Haven or ambientCG by `source_id` (from asset_search), Kenney or Quaternius by archive `url` on the library's site. Downloads are checked (size, and MD5 where published). Needs network (the system curl).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dry_run` | boolean |  |  |
+| `include` | array of string |  | Kenney or Quaternius: path prefixes inside the archive to keep. |
+| `kind` | PoolKind \| null |  | Kenney or Quaternius: what the asset is, its name and tags. |
+| `library` | string | yes | polyhaven, ambientcg, kenney or quaternius. |
+| `main` | string \| null |  |  |
+| `name` | string \| null |  |  |
+| `owned_library` | string \| null |  |  |
+| `page` | string \| null |  | Kenney or Quaternius: the pack's page. |
+| `pool` | string \| null |  |  |
+| `resolution` | string \| null |  | Texture or model resolution: Poly Haven `1k`/`2k`/`4k`/`8k`, ambientCG `1K`/`2K`/... Default 1k. |
+| `source_id` | string \| null |  | Poly Haven or ambientCG asset id (from asset_search). |
+| `tags` | array of string |  |  |
+| `url` | string \| null |  | Kenney or Quaternius: the archive URL on the library's site. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine_ready` | boolean | yes |  |
+| `files` | array of string | yes |  |
+| `id` | string | yes |  |
+| `notes` | array of string | yes |  |
+| `proof` | array of Proof | yes |  |
+| `status` | string | yes | `added`, `already_in_pool` or `checked` (dry run). |
+
+## `pool_fetch`
+
+Copies a pooled CC0 asset into the project (default folder `assets/pool/<id>/`) and returns the path of its main file.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string \| null |  | Project folder to copy into; default `assets/pool`. The asset lands in `<dir>/<id>/`. |
+| `id` | string | yes |  |
+| `pool` | string \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `copied` | array of string | yes | Files written (project-relative); files already there with the same content are skipped. |
+| `id` | string | yes |  |
+| `license` | string | yes |  |
+| `main` | string \| null |  | Project-relative path of the main file, if any. |
+
+## `pool_index`
+
+Writes the pool's index.json (one entry per asset, sorted) for publishing the assets repository.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pool` | string \| null |  | The pool folder (a checkout of the assets repository); defaults to MARIONETTE_POOL, then cc0_pool in the user config file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | integer | yes |  |
 | `path` | string | yes |  |
 
 ## `port_scan`

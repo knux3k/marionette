@@ -1,0 +1,19 @@
+[package]
+name = "marionette-pool"
+description = "Marionette CC0 asset pool: manifest with per-asset provenance and CC0 proof, admission rules, the asset lookup order, and ingestion from online CC0 libraries."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-assets = { path = "../marionette-assets" }
+marionette-import = { path = "../marionette-import" }
+marionette-providers = { path = "../marionette-providers" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+schemars = "1.2"
+flate2 = "1.1"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }

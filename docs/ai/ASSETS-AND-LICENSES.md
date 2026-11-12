@@ -19,6 +19,16 @@ the engine.
 4. The public pool (in the assets repository) MUST accept CC0 assets only, each with its source
    recorded.
 5. The pool MUST refuse every imported owned asset and every asset whose license is not CC0.
+5a. Every pooled asset MUST carry proof that it is CC0: made for the project (with how), or
+    from a known CC0 library (Poly Haven, ambientCG, Kenney, Quaternius) with its page, and for
+    archive libraries the archive's own CC0 license file.
+5b. Provider-generated assets MUST be refused unless a PERSON wrote a CC0 dedication
+    (`<name>.cc0.json`, format `marionette.cc0_dedication/1`). An AI agent MUST NOT write it.
+
+Pool layout, record format and rules in code: decision 0041, `crates/marionette-pool`
+(`src/admit.rs`). Operations: `asset_search` (the search order above), `pool_info`,
+`pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`. Seed set:
+`pool/` (made by `crates/marionette-pool/src/seed.rs`).
 
 ## Importing owned Unity and Unreal assets
 

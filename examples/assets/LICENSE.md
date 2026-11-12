@@ -9,6 +9,9 @@ FBX test fixtures in `crates/marionette-import/tests/fixtures/fbx/` (`*.fbx`, `*
 `checker.png`) were made for this project with Blender and Assimp by `make_fixtures.py` in that
 folder (geometry, rig, animation and texture defined in the script); CC0 1.0.
 
+The seed CC0 pool in `pool/` (textures, a model and a sound) is computed by
+`crates/marionette-pool/src/seed.rs`; each asset's `asset.json` records this; CC0 1.0.
+
 No third-party assets are included. Built-in sprite images (`builtin:white`, `builtin:circle`,
 `builtin:checker`, `builtin:atlas`, `builtin:font`) and primitive shapes are generated at run time by
 `crates/marionette-assets/src/lib.rs`; the 5x7 bitmap font in `crates/marionette-assets/src/font.rs`

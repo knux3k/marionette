@@ -1,0 +1,5 @@
+{
+  "format": "marionette.cc0_pool/1",
+  "license": "CC0-1.0",
+  "note": "Public CC0 asset pool of the Marionette engine. Every asset folder holds asset.json with its source and proof that it is CC0. Owned or non-CC0 assets are never accepted."
+}
