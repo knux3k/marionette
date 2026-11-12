@@ -468,6 +468,7 @@ fn generated(agent: &Agent) -> Vec<(&'static str, String)> {
         ("porting-map.md", marionette_agent::docs::porting_map()),
         ("cli.md", cli.replace("marionette.exe", "marionette")),
         ("marionette.d.ts", marionette_agent::docs::script_typings(agent)),
+        ("jobs.d.ts", marionette_agent::docs::job_typings()),
     ]
 }
 

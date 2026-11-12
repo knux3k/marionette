@@ -298,6 +298,14 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   (transport against a server on the same machine).
 - Not covered yet: live calls (formats `verified: false`), Tripo auto-rig and rig checks,
   decimation, extra texture maps, a cache shared across projects.
+## Job TypeScript (workstream WJ)
+
+Proofs: `cargo test -p marionette-jobs-ts` (same hash on 1, 2, 3 and 8 threads; pinned hash
+`994155611f9d326a5f21b3676f2604afef1d4afb291c268990b8cc6644b73f0a` in `pinned_hash`;
+bit-identical to the Rust job body and to the QuickJS interpreter; errors with code, line,
+column and fix; index trap; time limit; hot reload); `cargo test -p marionette-cli --test
+jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`
+(decision 0030). Guide: `docs/ai/JOBS-TS.md`. Not yet usable from scenes or scripts (WJ next).
 
 ## UNVERIFIED
 
@@ -316,6 +324,10 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
   match; GPU tests skipped there.
 - `marionette-script` (rquickjs/QuickJS-ng and oxc) on Windows MSVC: see the CI run of the
   scripting merge; not built on the owner's desktop yet.
+- `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
+  Linux are expected from CI on the job TypeScript branch; not yet observed.
+- Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
+  container measured).
 - Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.
@@ -394,6 +406,7 @@ Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
 | 2026-11-12 | Line 8 part: Unity prefab import (Unity YAML reader, nested prefabs, variants, overrides, component mapping, library kind `prefab`, `prefab_instantiate`), decision 0040. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | Line 8 part (W3): `marionette-pool` crate (pool layout and per-asset proof, admission rules, owned gate, generated-asset dedication gate, Poly Haven and ambientCG adapters, archive ingest for Kenney and Quaternius, ordered asset search), eight pool operations, seed set in `pool/`, decision 0041. Drift hash unchanged. | branch `claude/project-thread-3xcar0` |
 | 2026-11-12 | W4 follow-up: first live Qwen check on the owner's PC got HTTP 401 at the international address (nothing charged); the Qwen plug-in now finds the key's region (international, China, US). | branch `claude/project-thread-3n87gn` |
+| 2026-11-12 | WJ: job TypeScript, crate `marionette-jobs-ts` (TS subset to WebAssembly, wasmtime runtime on `marionette-jobs`, safety levels, `JobLibrary` hot reload), operations `jobs_check`/`jobs_run`/`jobs_types`, `examples/jobs/particles.job.ts`, benchmark, decision 0030, `docs/ai/JOBS-TS.md`. Drift hash unchanged. | branch `claude/project-thread-p3he01` |
 | 2026-11-12 | W8: `games/crystal-ward` (top-down 3D); script messages (`engine.send`, `onMessage`, `ScriptInbox`); porting map points Raycast, SendMessage and CharacterController.Move at the script API. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/dust-circuit` (racing, AI rival); `RoundCuboid` collider shape for box-shaped characters. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W8: `games/signal-yard` (first-person shooter, played and recorded through MCP sessions); mouse axes `axis:MouseX`/`axis:MouseY` from the window. Existing hashes unchanged. | branch `claude/project-thread-2vp8na` |
