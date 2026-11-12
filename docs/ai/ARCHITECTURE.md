@@ -11,11 +11,12 @@
 | `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
 | `crates/marionette-audio` | Sound triggers, headless sound log, kira player | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
+| `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend cap and ledger | core, assets, sha2, schemars | render, input, physics, audio, any HTTP client (decision 0019) |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
-Planned crates (not created yet): marionette-script (line 4), marionette-providers (line 7),
-marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipeline (line 8).
+Planned crates (not created yet): marionette-script (line 4), marionette-ai-runtime (line 10).
+`marionette-assets` will grow the asset pipeline (line 8).
 
 ## One tick
 
