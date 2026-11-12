@@ -14,3 +14,4 @@ serde_json.workspace = true
 rquickjs = { version = "0.14", features = ["parallel"] }
 oxc = { version = "0.158", features = ["transformer", "codegen", "semantic"] }
 libm = "0.2"
+marionette-anim = { path = "../marionette-anim" }
