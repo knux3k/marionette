@@ -360,3 +360,34 @@ fn skinned_draw_calls_stay_flat_as_the_crowd_grows() {
     assert_eq!(stats.draw_calls, 4, "{stats:?}");
     assert_eq!(stats.instances, 1 + 64 * 3, "{stats:?}");
 }
+
+#[test]
+fn morph_targets_change_the_mesh() {
+    let Some(gpu) = gpu() else { return };
+    let scene = repo().join(SCENE);
+    let mut sim = engine::load_file(&scene, "animation", 1).unwrap();
+    sim.run(15); // the wave clip drives the `squash` blend shape to 0.6 at 0.25 s
+    let frame = extract(&sim.world);
+    let waver = frame.meshes.iter().position(|m| m.entity == 5).unwrap();
+    let pose = frame.meshes[waver].pose.clone().expect("animated");
+    let body = pose.morph_weights.iter().position(|w| !w.is_empty()).unwrap();
+    assert!(
+        (pose.morph_weights[body][0] - 0.6).abs() < 1e-5,
+        "{:?}",
+        pose.morph_weights[body]
+    );
+    let draw = |frame: &marionette_render::FrameData| {
+        let mut off = Offscreen::new(&gpu, 160, 90, 1, scene.parent().unwrap().to_path_buf());
+        off.render(&gpu, frame, None).unwrap();
+        off.read_pixels(&gpu).unwrap()
+    };
+    let squashed = draw(&frame);
+    let mut flat = frame.clone();
+    let mut p = (*pose).clone();
+    p.morph_weights[body][0] = 0.0;
+    flat.meshes[waver].pose = Some(std::sync::Arc::new(p));
+    assert!(
+        squashed != draw(&flat),
+        "the blend shape weight changes the image"
+    );
+}

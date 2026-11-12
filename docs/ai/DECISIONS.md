@@ -28,3 +28,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0024 | Deterministic data-parallel jobs | accepted |
 | 0025 | Instanced, multi-view renderer and bulk draws | accepted |
 | 0026 | Factory simulation module | accepted |
+| 0028 | Skeletal animation: clips on the fixed tick, GPU skinning and blend shapes | accepted |

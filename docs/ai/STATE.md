@@ -129,6 +129,22 @@ Line 8, owned library and Unity import (W2, decision 0018):
   false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+## Animation (decision 0028)
+
+- `cargo run -q -p marionette-cli -- run examples/animation.scene.json --headless --ticks 600 --seed 1`
+  prints `f409e570ea3b9d3c1e92a01adc3070dbbd49b39d147b0dd97caa39297dba6d13` (twice in a row).
+- Reference image `examples/reference/animation.png` (320x180, 15 ticks, seed 1, MSAA 4).
+- Tests: `crates/marionette-cli/tests/animation.rs` (recorded hash twice, snapshot mid-clip
+  and restore, bones move and loop exactly, cross-fade and `anim_finished`, unknown clips
+  refused, script `playClip` equals `anim_play`, clip listing, reference image, 64 skinned
+  characters in 4 draw calls, morph targets change the mesh); `crates/marionette-anim/tests/puppet.rs`;
+  unit tests in `crates/marionette-anim/src/lib.rs`, `crates/marionette-anim/src/sample.rs` and `crates/marionette-assets/src/rig.rs`.
+- Test character `examples/assets/puppet.glb` (CC0, made by
+  `cargo run -p marionette-anim --example make_puppet -- examples/assets/puppet.glb`,
+  byte-identical every run).
+- Not yet: root motion, additive layers, bone masks, animation events, IK; FBX blend shapes
+  (the FBX converter of the FBX branch writes skins and clips; blend shapes not yet).
+
 ## Performance (workstream WP)
 
 Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
@@ -164,6 +180,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Skinned and morphed characters have been rendered only on Mesa lavapipe (Linux container);
+  never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
+  export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
   Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 
@@ -182,3 +201,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | Animation: `marionette-anim` crate (`Animator`, cross-fades, deterministic sampling, `Pose`), glTF rigs/skins/clips/morph targets in `marionette-assets`, GPU skinning and blend shapes in the instanced renderer, `anim_*` operations, script `playClip`/`blendClip`/`stopClip`, `examples/animation.scene.json`, self-made `puppet.glb`, reference image, decision 0028. Drift hash unchanged. | branch `claude/project-thread-9hibpc` |

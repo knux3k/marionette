@@ -99,9 +99,9 @@ pub(crate) struct GpuPart {
     pub transform: Mat4,
     /// The glTF node the part hangs from; an animated pose moves it.
     pub node: Option<usize>,
-    /// Skin index and per-vertex joints and weights, for skinned parts (drawn by
-    /// `skinning.rs`, not the static path).
-    pub skin: Option<(usize, wgpu::Buffer)>,
+    /// Skin and morph target data for parts the GPU deforms (drawn by `skinning.rs`, not
+    /// the static path).
+    pub deform: Option<crate::skinning::Deform>,
 }
 
 pub(crate) struct GpuModel {
@@ -111,6 +111,8 @@ pub(crate) struct GpuModel {
     pub skins: Vec<crate::skinning::GpuSkin>,
     /// Model-space rest matrix of every node (used when an entity has no pose).
     pub rest: Vec<Mat4>,
+    /// Default morph target weights per node (used when an entity has no pose).
+    pub rest_morph: Vec<Vec<f32>>,
 }
 
 /// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
@@ -632,20 +634,7 @@ impl Renderer {
                     material: p.material,
                     transform: p.transform,
                     node: p.node,
-                    skin: p.skin.filter(|&s| s < model.rig.skins.len()).map(|s| {
-                        let skin_vertices: Vec<crate::skinning::SkinVertex> = (0..p.mesh.positions.len())
-                            .map(|i| crate::skinning::SkinVertex {
-                                joints: p.mesh.joints[i],
-                                weights: p.mesh.weights[i],
-                            })
-                            .collect();
-                        let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("skin vertices"),
-                            contents: bytemuck::cast_slice(&skin_vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
-                        (s, buffer)
-                    }),
+                    deform: crate::skinning::Deform::upload(&self.device, p, model.rig.skins.len()),
                 }
             })
             .collect();
@@ -665,6 +654,7 @@ impl Renderer {
             materials,
             skins,
             rest,
+            rest_morph: model.rig.morph_weights.clone(),
         }
     }
 
@@ -761,8 +751,8 @@ impl Renderer {
                 },
             };
             for (p, part) in model.parts.iter().enumerate() {
-                if part.skin.is_some() {
-                    continue; // drawn by the skinned pass
+                if part.deform.is_some() {
+                    continue; // skinned or morphed: drawn by the deforming pass
                 }
                 // An animated pose moves parts hanging from animated nodes (props on bones).
                 let local = match (&draw.pose, part.node) {
@@ -880,10 +870,16 @@ impl Renderer {
         }
 
         // Skinned parts: their own instanced draws, one joint palette per character.
-        let (palettes, skinned, skinned_calls) =
-            crate::skinning::build(frame, &self.models, &self.plain_material);
-        self.skinning
-            .upload(&self.device, &self.queue, &palettes, &skinned);
+        let built = crate::skinning::build(frame, &self.models, &self.plain_material);
+        let skinned_calls = built.calls;
+        let deform_groups = self.skinning.upload(
+            &self.device,
+            &self.queue,
+            &built.palettes,
+            &built.morph_weights,
+            &built.instances,
+            &skinned_calls,
+        );
         for call in &skinned_calls {
             let n = call.instances.end - call.instances.start;
             stats.instances += n;
@@ -1093,15 +1089,15 @@ impl Renderer {
                 pass.set_pipeline(&self.skinning.pipeline);
                 pass.set_bind_group(0, &self.view_group, &[world_offset]);
                 pass.set_bind_group(1, &self.lights_group, &[]);
-                pass.set_bind_group(3, &self.skinning.group, &[]);
                 pass.set_vertex_buffer(1, ib.slice(..));
-                for call in &skinned_calls {
-                    let Some((_, skin_vertices)) = &call.part.skin else {
+                for (call, group) in skinned_calls.iter().zip(&deform_groups) {
+                    let Some(deform) = &call.part.deform else {
                         continue;
                     };
                     pass.set_bind_group(2, call.material, &[]);
+                    pass.set_bind_group(3, group, &[]);
                     pass.set_vertex_buffer(0, call.part.vertices.slice(..));
-                    pass.set_vertex_buffer(2, skin_vertices.slice(..));
+                    pass.set_vertex_buffer(2, deform.skin_vertices.slice(..));
                     pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
                     stats.draw_calls += 1;
@@ -1140,6 +1136,7 @@ impl Renderer {
         }
         drop(calls);
         drop(skinned_calls);
+        drop(deform_groups);
         self.scratch = (raw, gid, instances);
         stats
     }
