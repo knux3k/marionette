@@ -398,3 +398,82 @@ pub fn load_events(path: &Path, shown: &str) -> Result<Vec<InputEvent>> {
     })?;
     parse_events(&text, shown)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn map_error(text: &str) -> marionette_core::Diagnostic {
+        let e = parse_map(text, "a.actions.json").expect_err("must be refused");
+        assert_eq!(e.0.len(), 1);
+        e.0[0].clone()
+    }
+
+    #[test]
+    fn a_valid_map_parses_with_default_scale() {
+        let m = parse_map(
+            r#"{"format":"marionette.input-map","version":1,"actions":{"jump":{"bindings":[{"input":"key:Space"}]}}}"#,
+            "a.actions.json",
+        )
+        .unwrap();
+        assert_eq!(m.actions["jump"].bindings[0].scale, 1.0);
+    }
+
+    #[test]
+    fn broken_json_reports_its_position() {
+        let d =
+            map_error("{\n  \"format\": \"marionette.input-map\",\n  \"version\": 1,\n  \"actions\": {,}\n}");
+        assert_eq!(d.code, codes::MAP);
+        assert_eq!(d.file.as_deref(), Some("a.actions.json"));
+        assert_eq!(d.line, Some(4));
+    }
+
+    #[test]
+    fn wrong_format_or_version_is_refused() {
+        let d = map_error(r#"{"format":"something-else","version":1,"actions":{}}"#);
+        assert!(d.message.contains("not a version 1 action map"), "{}", d.message);
+        let d = map_error(r#"{"format":"marionette.input-map","version":2,"actions":{}}"#);
+        assert!(d.message.contains("not a version 1 action map"), "{}", d.message);
+    }
+
+    #[test]
+    fn unknown_fields_and_inputs_are_refused() {
+        let d = map_error(r#"{"format":"marionette.input-map","version":1,"actions":{},"extra":1}"#);
+        assert!(d.message.contains("unknown field"), "{}", d.message);
+        let d = map_error(
+            r#"{"format":"marionette.input-map","version":1,"actions":{"fire":{"bindings":[{"input":"joystick:Trigger"}]}}}"#,
+        );
+        assert!(
+            d.message
+                .contains("action `fire`: unknown input `joystick:Trigger`"),
+            "{}",
+            d.message
+        );
+    }
+
+    #[test]
+    fn events_need_exactly_one_target_and_a_finite_value() {
+        let both = InputEvent {
+            tick: 0,
+            input: Some("key:KeyA".into()),
+            action: Some("left".into()),
+            value: 1.0,
+        };
+        let e = check_events(&[both]).unwrap_err();
+        assert_eq!(e.0[0].pointer.as_deref(), Some("/events/0"));
+        let nan = InputEvent {
+            tick: 0,
+            input: Some("key:KeyA".into()),
+            action: None,
+            value: f32::NAN,
+        };
+        let e = check_events(&[nan]).unwrap_err();
+        assert_eq!(e.0[0].pointer.as_deref(), Some("/events/0/value"));
+        let e = parse_events(
+            r#"{"format":"marionette.input-events","version":3,"events":[]}"#,
+            "x.inputs.json",
+        )
+        .unwrap_err();
+        assert_eq!(e.0[0].code, codes::EVENTS);
+    }
+}
