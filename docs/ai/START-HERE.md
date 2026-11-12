@@ -13,6 +13,7 @@ be checked against a repo-relative path, a command or a test name. Read in this 
    [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) (normative asset rules),
    [MEMORY-AND-CRASHES.md](MEMORY-AND-CRASHES.md) (normative: child processes, temp files,
    bounded logs, script limits, leak tests),
+   [PERFORMANCE.md](PERFORMANCE.md) (budgets and how to measure),
    [GLOSSARY.md](GLOSSARY.md), [PORTING.md](PORTING.md) (bringing Unity or Unreal code over),
    and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),

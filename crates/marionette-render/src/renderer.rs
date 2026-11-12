@@ -1,10 +1,12 @@
 //! The wgpu renderer: a forward PBR pass for models, then a batched sprite pass.
 //!
 //! Frame structure (stereo-ready): bind group 0 holds per-view data (view-projection, eye),
-//! group 1 per-frame lights, group 2 material textures, group 3 per-draw data (transform and
-//! material factors, one dynamic-offset uniform buffer for the whole frame). A view is a
-//! value passed to [`Renderer::render`], never renderer state, so a later OpenXR module can
-//! render two eyes by calling it twice (or with multiview) with different views.
+//! group 1 per-frame lights, group 2 material textures. Per-object data (transform and
+//! material factors) is a per-instance vertex buffer: every (model, part, material source)
+//! is one instanced draw, however many entities use it. Views are values passed to
+//! [`Renderer::render_views`], never renderer state: one call draws every view of a frame
+//! (two eyes for stereo) from one set of per-frame buffers, each view picking its slot of
+//! the view uniform buffer by dynamic offset.
 
 use crate::assets::{self, Image, MaterialData, ModelData};
 use crate::extract::{FrameData, View};
@@ -19,7 +21,10 @@ use wgpu::util::DeviceExt;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
 /// Dynamic uniform offsets must be multiples of this (WebGPU minimum alignment).
-const DRAW_STRIDE: u64 = 256;
+const VIEW_STRIDE: u64 = 256;
+/// Most views one [`Renderer::render_views`] call can draw (two for stereo; more for
+/// split screen or mirrors).
+pub const MAX_VIEWS: usize = 8;
 
 pub mod codes {
     pub const ASSET: &str = "render.asset";
@@ -45,14 +50,29 @@ struct LightsUniform {
     count: [u32; 4],
 }
 
+/// Per-instance vertex data: one per drawn copy of a mesh part.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-struct DrawUniform {
+struct InstanceData {
+    /// World matrix; the shader derives the normal matrix from it.
     model: [[f32; 4]; 4],
-    normal: [[f32; 4]; 4],
     base_color: [f32; 4],
     /// metallic, roughness, normal_scale, has_normal_map (0/1)
     params: [f32; 4],
+}
+
+/// What one frame cost in GPU work, counted on the CPU. Deterministic for a given frame,
+/// so tests can hold it to a budget (decision 0023).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
+pub struct RenderStats {
+    /// Views drawn (render passes).
+    pub views: u32,
+    /// Draw calls over all views.
+    pub draw_calls: u32,
+    /// Mesh instances per view.
+    pub instances: u32,
+    /// Mesh triangles per view (sprites and UI not counted).
+    pub triangles: u64,
 }
 
 #[repr(C)]
@@ -112,10 +132,9 @@ pub struct Renderer {
     view_group: wgpu::BindGroup,
     lights_buffer: wgpu::Buffer,
     lights_group: wgpu::BindGroup,
-    draw_buffer: wgpu::Buffer,
-    draw_group: wgpu::BindGroup,
-    draw_capacity: u64,
-    draw_layout: wgpu::BindGroupLayout,
+    instance_buffer: Option<wgpu::Buffer>,
+    /// Reused per-frame arrays: instances in frame order, their group, instances by group.
+    scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
     material_layout: wgpu::BindGroupLayout,
     sprite_tex_layout: wgpu::BindGroupLayout,
     pbr_pipeline: wgpu::RenderPipeline,
@@ -130,8 +149,6 @@ pub struct Renderer {
     sprite_vertices: Option<wgpu::Buffer>,
     sprite_indices: Option<wgpu::Buffer>,
     ui_pipeline: wgpu::RenderPipeline,
-    ui_view_buffer: wgpu::Buffer,
-    ui_view_group: wgpu::BindGroup,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
@@ -202,7 +219,6 @@ impl Renderer {
         let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
         let view_size = size_of::<ViewUniform>() as u64;
         let lights_size = size_of::<LightsUniform>() as u64;
-        let draw_size = size_of::<DrawUniform>() as u64;
 
         let layout = |label, entries: &[wgpu::BindGroupLayoutEntry]| {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -210,7 +226,7 @@ impl Renderer {
                 entries,
             })
         };
-        let view_layout = layout("view", &[uniform_entry(0, vf, false, view_size)]);
+        let view_layout = layout("view", &[uniform_entry(0, vf, true, view_size)]);
         let lights_layout = layout(
             "lights",
             &[uniform_entry(0, wgpu::ShaderStages::FRAGMENT, false, lights_size)],
@@ -224,7 +240,6 @@ impl Renderer {
                 sampler_entry(4),
             ],
         );
-        let draw_layout = layout("draw", &[uniform_entry(0, vf, true, draw_size)]);
         let sprite_tex_layout = layout("sprite texture", &[texture_entry(0), sampler_entry(1)]);
 
         let buffer = |label, size| {
@@ -235,10 +250,8 @@ impl Renderer {
                 mapped_at_creation: false,
             })
         };
-        let view_buffer = buffer("view", view_size);
+        let view_buffer = buffer("views", VIEW_STRIDE * 2 * MAX_VIEWS as u64);
         let lights_buffer = buffer("lights", lights_size);
-        let draw_capacity = 64;
-        let draw_buffer = buffer("draws", draw_capacity * DRAW_STRIDE);
         let group = |label, layout: &wgpu::BindGroupLayout, res| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some(label),
@@ -250,18 +263,11 @@ impl Renderer {
             })
         };
         let view_group = group("view", &view_layout, buffer_resource(&view_buffer, view_size));
-        let ui_view_buffer = buffer("ui view", view_size);
-        let ui_view_group = group(
-            "ui view",
-            &view_layout,
-            buffer_resource(&ui_view_buffer, view_size),
-        );
         let lights_group = group(
             "lights",
             &lights_layout,
             buffer_resource(&lights_buffer, lights_size),
         );
-        let draw_group = group("draws", &draw_layout, buffer_resource(&draw_buffer, draw_size));
 
         let depth_stencil = |write: bool| wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
@@ -282,15 +288,14 @@ impl Renderer {
         });
         let pbr_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("pbr"),
-            bind_group_layouts: &[
-                Some(&view_layout),
-                Some(&lights_layout),
-                Some(&material_layout),
-                Some(&draw_layout),
-            ],
+            bind_group_layouts: &[Some(&view_layout), Some(&lights_layout), Some(&material_layout)],
             immediate_size: 0,
         });
         let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+        let instance_attrs = wgpu::vertex_attr_array![
+            3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
+            7 => Float32x4, 8 => Float32x4
+        ];
         let pbr_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr"),
             layout: Some(&pbr_layout),
@@ -298,11 +303,18 @@ impl Renderer {
                 module: &pbr_shader,
                 entry_point: Some("vs_main"),
                 compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: size_of::<MeshVertex>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &mesh_attrs,
-                })],
+                buffers: &[
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<MeshVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &mesh_attrs,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<InstanceData>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &instance_attrs,
+                    }),
+                ],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode: Some(wgpu::Face::Back),
@@ -419,10 +431,8 @@ impl Renderer {
             view_group,
             lights_buffer,
             lights_group,
-            draw_buffer,
-            draw_group,
-            draw_capacity,
-            draw_layout,
+            instance_buffer: None,
+            scratch: Default::default(),
             material_layout,
             sprite_tex_layout,
             pbr_pipeline,
@@ -436,8 +446,6 @@ impl Renderer {
             sprite_vertices: None,
             sprite_indices: None,
             ui_pipeline,
-            ui_view_buffer,
-            ui_view_group,
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
@@ -482,8 +490,12 @@ impl Renderer {
     /// were freed. The cache only grows while the same assets are drawn, so call this after
     /// switching scenes (decision 0029). Freed assets load again if a later frame needs them.
     pub fn trim(&mut self, frame: &FrameData) -> usize {
-        let models: std::collections::BTreeSet<&str> =
-            frame.meshes.iter().map(|d| d.asset.as_str()).collect();
+        let models: std::collections::BTreeSet<&str> = frame
+            .meshes
+            .iter()
+            .map(|d| &*d.asset)
+            .chain(frame.bulk.iter().map(|b| b.asset.as_str()))
+            .collect();
         let images: std::collections::BTreeSet<&str> = frame
             .sprites
             .iter()
@@ -505,11 +517,11 @@ impl Renderer {
     pub fn prepare(&mut self, frame: &FrameData) -> Vec<Diagnostic> {
         let mut errors = Vec::new();
         for draw in &frame.meshes {
-            if !self.models.contains_key(&draw.asset) {
+            if !self.models.contains_key(&*draw.asset) {
                 let loaded = assets::load_model(&draw.asset, &self.base_dir).map(|m| self.upload_model(&m));
-                self.models.insert(draw.asset.clone(), loaded);
+                self.models.insert(draw.asset.to_string(), loaded);
             }
-            if let Some(Err(msg)) = self.models.get(&draw.asset) {
+            if let Some(Err(msg)) = self.models.get(&*draw.asset) {
                 errors.push(
                     Diagnostic::error(codes::ASSET, msg.clone())
                         .entity(draw.entity)
@@ -517,6 +529,19 @@ impl Renderer {
                         .fix(
                             "check the path (relative to the scene file) or use primitive:cube|sphere|plane",
                         ),
+                );
+            }
+        }
+        for bulk in &frame.bulk {
+            if !self.models.contains_key(&bulk.asset) {
+                let loaded = assets::load_model(&bulk.asset, &self.base_dir).map(|m| self.upload_model(&m));
+                self.models.insert(bulk.asset.clone(), loaded);
+            }
+            if let Some(Err(msg)) = self.models.get(&bulk.asset) {
+                errors.push(
+                    Diagnostic::error(codes::ASSET, msg.clone()).fix(
+                        "check the model path a module draws in bulk, or use primitive:cube|sphere|plane",
+                    ),
                 );
             }
         }
@@ -598,45 +623,55 @@ impl Renderer {
         GpuModel { parts, materials }
     }
 
-    fn ensure_draw_capacity(&mut self, draws: u64) {
-        if draws <= self.draw_capacity {
-            return;
-        }
-        self.draw_capacity = draws.next_power_of_two();
-        self.draw_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("draws"),
-            size: self.draw_capacity * DRAW_STRIDE,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let size = size_of::<DrawUniform>() as u64;
-        self.draw_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("draws"),
-            layout: &self.draw_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer_resource(&self.draw_buffer, size),
-            }],
-        });
-    }
-
     /// Records one view of the frame into `encoder`. Call [`Renderer::prepare`] first.
-    /// Uploads per-view data with `queue.write_buffer`, so submit before rendering the next
-    /// view.
+    /// Uploads with `queue.write_buffer`, so submit before rendering the next frame.
     pub fn render(
         &mut self,
         frame: &FrameData,
         view: &View,
         target: &Target,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
-        // Per-view data.
-        let vu = ViewUniform {
-            view_proj: mat(view.proj * view.view),
-            eye: view.eye.extend(1.0).to_array(),
+    ) -> RenderStats {
+        self.render_views(frame, &[(*view, target)], encoder)
+    }
+
+    /// Records every view of the frame (two for stereo) into `encoder`, one render pass per
+    /// view. Per-frame work (instance data, sprite and UI geometry, lights) is done once and
+    /// shared by all views; only the view uniforms differ. Call [`Renderer::prepare`] first,
+    /// and submit before rendering the next frame. At most [`MAX_VIEWS`] views.
+    pub fn render_views(
+        &mut self,
+        frame: &FrameData,
+        views: &[(View, &Target)],
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> RenderStats {
+        assert!(views.len() <= MAX_VIEWS, "at most {MAX_VIEWS} views per frame");
+        let mut stats = RenderStats {
+            views: views.len() as u32,
+            ..Default::default()
         };
-        self.queue
-            .write_buffer(&self.view_buffer, 0, bytemuck::bytes_of(&vu));
+
+        // Per-view data: world view in slot 2i, UI (screen pixels) in slot 2i+1.
+        let mut view_bytes = vec![0u8; (views.len() * 2) * VIEW_STRIDE as usize];
+        for (i, (view, target)) in views.iter().enumerate() {
+            let vu = ViewUniform {
+                view_proj: mat(view.proj * view.view),
+                eye: view.eye.extend(1.0).to_array(),
+            };
+            let (sw, sh) = (target.width as f32, target.height as f32);
+            let ui_proj = glam::camera::rh::proj::directx::orthographic(0.0, sw, sh, 0.0, -1.0, 1.0);
+            let uvu = ViewUniform {
+                view_proj: mat(ui_proj),
+                eye: [0.0, 0.0, 0.0, 1.0],
+            };
+            let at = 2 * i * VIEW_STRIDE as usize;
+            view_bytes[at..at + size_of::<ViewUniform>()].copy_from_slice(bytemuck::bytes_of(&vu));
+            let at = at + VIEW_STRIDE as usize;
+            view_bytes[at..at + size_of::<ViewUniform>()].copy_from_slice(bytemuck::bytes_of(&uvu));
+        }
+        if !view_bytes.is_empty() {
+            self.queue.write_buffer(&self.view_buffer, 0, &view_bytes);
+        }
 
         // Per-frame lights.
         let mut lu = LightsUniform::zeroed();
@@ -649,58 +684,159 @@ impl Renderer {
         self.queue
             .write_buffer(&self.lights_buffer, 0, bytemuck::bytes_of(&lu));
 
-        // Per-draw transforms, in a fixed order.
+        // Instances, grouped by (model, part, material source) so every group is one
+        // instanced draw. Groups are kept in a stable order (BTreeMap key) and instances
+        // within a group in entity order, so frames are reproducible.
+        // Pass 1 writes every instance once, in frame order, with its group number; pass 2
+        // scatters them into one buffer ordered by group key. The model lookup and the group
+        // lookup are skipped while the key repeats (entities come sorted by id, so runs of
+        // the same model are the common case).
+        type Key<'k> = (&'k str, usize, bool);
+        let mut group_of: BTreeMap<Key, u32> = BTreeMap::new();
+        // Scratch arrays live across frames: fresh multi-megabyte allocations every frame
+        // cost more in page faults than filling them does.
+        let (mut raw, mut gid, mut instances) = std::mem::take(&mut self.scratch);
+        raw.clear();
+        gid.clear();
+        let mut last_model: Option<(&str, &GpuModel)> = None;
+        let mut last_key: Option<(Key, u32)> = None;
+        for draw in &frame.meshes {
+            let model = match last_model {
+                Some((name, m))
+                    if std::ptr::eq(name.as_ptr(), draw.asset.as_ptr()) || name == &*draw.asset =>
+                {
+                    m
+                }
+                _ => match self.models.get(&*draw.asset) {
+                    Some(Ok(m)) => {
+                        last_model = Some((&*draw.asset, m));
+                        m
+                    }
+                    _ => continue,
+                },
+            };
+            for (p, part) in model.parts.iter().enumerate() {
+                let model_m = draw.world * part.transform;
+                let (base_color, params) = match draw.material {
+                    Some(m) => {
+                        let c = m.base_color;
+                        ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
+                    }
+                    None => {
+                        let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
+                        let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
+                        (
+                            md.base_color,
+                            [md.metallic, md.roughness, md.normal_scale, has_normal],
+                        )
+                    }
+                };
+                let key = (&*draw.asset, p, draw.material.is_some());
+                let g = match last_key {
+                    Some((k, g)) if k == key => g,
+                    _ => {
+                        let n = group_of.len() as u32;
+                        let g = *group_of.entry(key).or_insert(n);
+                        last_key = Some((key, g));
+                        g
+                    }
+                };
+                raw.push(InstanceData {
+                    model: mat(model_m),
+                    base_color,
+                    params,
+                });
+                gid.push(g);
+            }
+        }
+        for bulk in &frame.bulk {
+            let Some(Ok(model)) = self.models.get(&bulk.asset) else {
+                continue;
+            };
+            for (p, part) in model.parts.iter().enumerate() {
+                let (base_color, params) = match bulk.material {
+                    Some(m) => {
+                        let c = m.base_color;
+                        ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
+                    }
+                    None => {
+                        let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
+                        let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
+                        (
+                            md.base_color,
+                            [md.metallic, md.roughness, md.normal_scale, has_normal],
+                        )
+                    }
+                };
+                let key = (bulk.asset.as_str(), p, bulk.material.is_some());
+                let n = group_of.len() as u32;
+                let g = *group_of.entry(key).or_insert(n);
+                let identity = part.transform == Mat4::IDENTITY;
+                raw.reserve(bulk.transforms.len());
+                gid.reserve(bulk.transforms.len());
+                for t in &bulk.transforms {
+                    let world = Mat4::from_cols_array(&[
+                        t[0], t[1], t[2], 0.0, t[3], t[4], t[5], 0.0, t[6], t[7], t[8], 0.0, t[9], t[10],
+                        t[11], 1.0,
+                    ]);
+                    raw.push(InstanceData {
+                        model: mat(if identity { world } else { world * part.transform }),
+                        base_color,
+                        params,
+                    });
+                    gid.push(g);
+                }
+            }
+        }
         struct DrawCall<'a> {
             part: &'a GpuPart,
             material: &'a wgpu::BindGroup,
+            instances: std::ops::Range<u32>,
         }
-        let mut uniforms: Vec<u8> = Vec::new();
-        let mut count = 0u64;
-        for draw in &frame.meshes {
-            if let Some(Ok(model)) = self.models.get(&draw.asset) {
-                for part in &model.parts {
-                    let model_m = draw.world * part.transform;
-                    let (base_color, params) = match draw.material {
-                        Some(m) => {
-                            let c = m.base_color;
-                            ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
-                        }
-                        None => {
-                            let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-                            let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
-                            (
-                                md.base_color,
-                                [md.metallic, md.roughness, md.normal_scale, has_normal],
-                            )
-                        }
-                    };
-                    let du = DrawUniform {
-                        model: mat(model_m),
-                        normal: mat(model_m.inverse().transpose()),
-                        base_color,
-                        params,
-                    };
-                    uniforms.extend_from_slice(bytemuck::bytes_of(&du));
-                    uniforms.resize(((count + 1) * DRAW_STRIDE) as usize, 0);
-                    count += 1;
-                }
-            }
+        // Group order = key order; counts give each group's start in the final buffer.
+        let mut counts = vec![0u32; group_of.len()];
+        for &g in &gid {
+            counts[g as usize] += 1;
         }
-        self.ensure_draw_capacity(count.max(1));
-        if !uniforms.is_empty() {
-            self.queue.write_buffer(&self.draw_buffer, 0, &uniforms);
+        let mut start_of = vec![0u32; group_of.len()];
+        let mut calls = Vec::with_capacity(group_of.len());
+        let mut at = 0u32;
+        for (&(asset, p, overridden), &g) in &group_of {
+            let Some(Ok(model)) = self.models.get(asset) else {
+                continue;
+            };
+            let part = &model.parts[p];
+            let material = if overridden {
+                &self.plain_material
+            } else {
+                &model.materials[part.material.min(model.materials.len() - 1)].0
+            };
+            let n = counts[g as usize];
+            start_of[g as usize] = at;
+            stats.instances += n;
+            stats.triangles += (part.index_count / 3) as u64 * n as u64;
+            calls.push(DrawCall {
+                part,
+                material,
+                instances: at..at + n,
+            });
+            at += n;
         }
-        let mut calls = Vec::new();
-        for draw in &frame.meshes {
-            if let Some(Ok(model)) = self.models.get(&draw.asset) {
-                for part in &model.parts {
-                    let material = match draw.material {
-                        Some(_) => &self.plain_material,
-                        None => &model.materials[part.material.min(model.materials.len() - 1)].0,
-                    };
-                    calls.push(DrawCall { part, material });
-                }
-            }
+        instances.clear();
+        instances.resize(raw.len(), InstanceData::zeroed());
+        let mut next = start_of;
+        for (inst, &g) in raw.iter().zip(&gid) {
+            instances[next[g as usize] as usize] = *inst;
+            next[g as usize] += 1;
+        }
+        if !instances.is_empty() {
+            write_growable(
+                &self.device,
+                &self.queue,
+                &mut self.instance_buffer,
+                &instances,
+                wgpu::BufferUsages::VERTEX,
+            );
         }
 
         // Sprites: build one vertex/index buffer, batch consecutive sprites by image.
@@ -762,80 +898,78 @@ impl Renderer {
             );
         }
 
-        // UI: quads in screen pixels (y down), batched by texture like sprites.
-        let (sw, sh) = (target.width as f32, target.height as f32);
-        let ui_proj = glam::camera::rh::proj::directx::orthographic(0.0, sw, sh, 0.0, -1.0, 1.0);
-        let uvu = ViewUniform {
-            view_proj: mat(ui_proj),
-            eye: [0.0, 0.0, 0.0, 1.0],
-        };
-        self.queue
-            .write_buffer(&self.ui_view_buffer, 0, bytemuck::bytes_of(&uvu));
+        // UI: quads in screen pixels (y down), batched by texture like sprites. Layout depends
+        // on the target size, so each view gets its own batches in one shared buffer.
         let mut uv: Vec<SpriteVertex> = Vec::new();
         let mut ui_idx: Vec<u32> = Vec::new();
-        let mut ui_batches: Vec<(&str, std::ops::Range<u32>)> = Vec::new();
-        for u in &frame.ui {
-            let image = u.look.image();
-            let Some(Ok(tex)) = self.sprite_textures.get(image) else {
-                continue;
-            };
-            let (x, y, w, h) = marionette_core::ui::layout(&u.node, sw, sh);
-            let start = ui_idx.len() as u32;
-            let mut quad =
-                |x0: f32, y0: f32, x1: f32, y1: f32, uv0: [f32; 2], uv1: [f32; 2], color: [f32; 4]| {
-                    let base = uv.len() as u32;
-                    for (px, py, tu, tv) in [
-                        (x0, y0, uv0[0], uv0[1]),
-                        (x1, y0, uv1[0], uv0[1]),
-                        (x1, y1, uv1[0], uv1[1]),
-                        (x0, y1, uv0[0], uv1[1]),
-                    ] {
-                        uv.push(SpriteVertex {
-                            position: [px, py, 0.0],
-                            uv: [tu, tv],
-                            color,
-                        });
-                    }
-                    ui_idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+        let mut ui_batches: Vec<Vec<(&str, std::ops::Range<u32>)>> = Vec::with_capacity(views.len());
+        for (_, target) in views {
+            let (sw, sh) = (target.width as f32, target.height as f32);
+            let mut view_batches: Vec<(&str, std::ops::Range<u32>)> = Vec::new();
+            for u in &frame.ui {
+                let image = u.look.image();
+                let Some(Ok(tex)) = self.sprite_textures.get(image) else {
+                    continue;
                 };
-            match &u.look {
-                crate::extract::UiLook::Rect { color } | crate::extract::UiLook::Image { color, .. } => {
-                    quad(x, y, x + w, y + h, [0.0, 0.0], [1.0, 1.0], *color)
-                }
-                crate::extract::UiLook::Text { text, size, color } => {
-                    use assets::font::{CELL_H, CELL_W, cell};
-                    let k = size / CELL_H as f32;
-                    let (tw, th) = (tex.width as f32, tex.height as f32);
-                    let (mut cx, mut cy) = (x, y);
-                    for ch in text.chars() {
-                        if ch == '\n' {
-                            cx = x;
-                            cy += CELL_H as f32 * k;
-                            continue;
+                let (x, y, w, h) = marionette_core::ui::layout(&u.node, sw, sh);
+                let start = ui_idx.len() as u32;
+                let mut quad =
+                    |x0: f32, y0: f32, x1: f32, y1: f32, uv0: [f32; 2], uv1: [f32; 2], color: [f32; 4]| {
+                        let base = uv.len() as u32;
+                        for (px, py, tu, tv) in [
+                            (x0, y0, uv0[0], uv0[1]),
+                            (x1, y0, uv1[0], uv0[1]),
+                            (x1, y1, uv1[0], uv1[1]),
+                            (x0, y1, uv0[0], uv1[1]),
+                        ] {
+                            uv.push(SpriteVertex {
+                                position: [px, py, 0.0],
+                                uv: [tu, tv],
+                                color,
+                            });
                         }
-                        if ch != ' ' {
-                            let (gx, gy) = cell(ch);
-                            let uv0 = [gx as f32 / tw, gy as f32 / th];
-                            let uv1 = [(gx + CELL_W) as f32 / tw, (gy + CELL_H) as f32 / th];
-                            quad(
-                                cx,
-                                cy,
-                                cx + CELL_W as f32 * k,
-                                cy + CELL_H as f32 * k,
-                                uv0,
-                                uv1,
-                                *color,
-                            );
+                        ui_idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+                    };
+                match &u.look {
+                    crate::extract::UiLook::Rect { color } | crate::extract::UiLook::Image { color, .. } => {
+                        quad(x, y, x + w, y + h, [0.0, 0.0], [1.0, 1.0], *color)
+                    }
+                    crate::extract::UiLook::Text { text, size, color } => {
+                        use assets::font::{CELL_H, CELL_W, cell};
+                        let k = size / CELL_H as f32;
+                        let (tw, th) = (tex.width as f32, tex.height as f32);
+                        let (mut cx, mut cy) = (x, y);
+                        for ch in text.chars() {
+                            if ch == '\n' {
+                                cx = x;
+                                cy += CELL_H as f32 * k;
+                                continue;
+                            }
+                            if ch != ' ' {
+                                let (gx, gy) = cell(ch);
+                                let uv0 = [gx as f32 / tw, gy as f32 / th];
+                                let uv1 = [(gx + CELL_W) as f32 / tw, (gy + CELL_H) as f32 / th];
+                                quad(
+                                    cx,
+                                    cy,
+                                    cx + CELL_W as f32 * k,
+                                    cy + CELL_H as f32 * k,
+                                    uv0,
+                                    uv1,
+                                    *color,
+                                );
+                            }
+                            cx += CELL_W as f32 * k;
                         }
-                        cx += CELL_W as f32 * k;
                     }
                 }
+                let end = ui_idx.len() as u32;
+                match view_batches.last_mut() {
+                    Some((img, range)) if *img == image => range.end = end,
+                    _ => view_batches.push((image, start..end)),
+                }
             }
-            let end = ui_idx.len() as u32;
-            match ui_batches.last_mut() {
-                Some((img, range)) if *img == image => range.end = end,
-                _ => ui_batches.push((image, start..end)),
-            }
+            ui_batches.push(view_batches);
         }
         if !uv.is_empty() {
             write_growable(
@@ -854,77 +988,90 @@ impl Renderer {
             );
         }
 
-        let c = view.clear;
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("main"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: target.color,
-                depth_slice: None,
-                resolve_target: target.resolve,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: c[0] as f64,
-                        g: c[1] as f64,
-                        b: c[2] as f64,
-                        a: c[3] as f64,
-                    }),
-                    store: if target.resolve.is_some() {
-                        wgpu::StoreOp::Discard
-                    } else {
-                        wgpu::StoreOp::Store
+        for (i, (view, target)) in views.iter().enumerate() {
+            let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
+            let ui_offset = world_offset + VIEW_STRIDE as u32;
+            let c = view.clear;
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("main"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target.color,
+                    depth_slice: None,
+                    resolve_target: target.resolve,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: c[0] as f64,
+                            g: c[1] as f64,
+                            b: c[2] as f64,
+                            a: c[3] as f64,
+                        }),
+                        store: if target.resolve.is_some() {
+                            wgpu::StoreOp::Discard
+                        } else {
+                            wgpu::StoreOp::Store
+                        },
                     },
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: target.depth,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: wgpu::StoreOp::Discard,
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: target.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
                 }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
 
-        if !calls.is_empty() {
-            pass.set_pipeline(&self.pbr_pipeline);
-            pass.set_bind_group(0, &self.view_group, &[]);
-            pass.set_bind_group(1, &self.lights_group, &[]);
-            for (i, call) in calls.iter().enumerate() {
-                pass.set_bind_group(2, call.material, &[]);
-                pass.set_bind_group(3, &self.draw_group, &[(i as u64 * DRAW_STRIDE) as u32]);
-                pass.set_vertex_buffer(0, call.part.vertices.slice(..));
-                pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..call.part.index_count, 0, 0..1);
+            if let (Some(ib), false) = (&self.instance_buffer, calls.is_empty()) {
+                pass.set_pipeline(&self.pbr_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[world_offset]);
+                pass.set_bind_group(1, &self.lights_group, &[]);
+                pass.set_vertex_buffer(1, ib.slice(..));
+                for call in &calls {
+                    pass.set_bind_group(2, call.material, &[]);
+                    pass.set_vertex_buffer(0, call.part.vertices.slice(..));
+                    pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
+                    stats.draw_calls += 1;
+                }
             }
-        }
-        if let (Some(vb), Some(ib), false) = (&self.sprite_vertices, &self.sprite_indices, batches.is_empty())
-        {
-            pass.set_pipeline(&self.sprite_pipeline);
-            pass.set_bind_group(0, &self.view_group, &[]);
-            pass.set_vertex_buffer(0, vb.slice(..));
-            pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
-            for (image, range) in batches {
-                if let Some(Ok(tex)) = self.sprite_textures.get(image) {
-                    pass.set_bind_group(1, &tex.bind_group, &[]);
-                    pass.draw_indexed(range, 0, 0..1);
+            if let (Some(vb), Some(ib), false) =
+                (&self.sprite_vertices, &self.sprite_indices, batches.is_empty())
+            {
+                pass.set_pipeline(&self.sprite_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[world_offset]);
+                pass.set_vertex_buffer(0, vb.slice(..));
+                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                for (image, range) in &batches {
+                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
+                        pass.set_bind_group(1, &tex.bind_group, &[]);
+                        pass.draw_indexed(range.clone(), 0, 0..1);
+                        stats.draw_calls += 1;
+                    }
+                }
+            }
+            if let (Some(vb), Some(ib), false) =
+                (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
+            {
+                pass.set_pipeline(&self.ui_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[ui_offset]);
+                pass.set_vertex_buffer(0, vb.slice(..));
+                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                for (image, range) in &ui_batches[i] {
+                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
+                        pass.set_bind_group(1, &tex.bind_group, &[]);
+                        pass.draw_indexed(range.clone(), 0, 0..1);
+                        stats.draw_calls += 1;
+                    }
                 }
             }
         }
-        if let (Some(vb), Some(ib), false) = (&self.ui_vertices, &self.ui_indices, ui_batches.is_empty()) {
-            pass.set_pipeline(&self.ui_pipeline);
-            pass.set_bind_group(0, &self.ui_view_group, &[]);
-            pass.set_vertex_buffer(0, vb.slice(..));
-            pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
-            for (image, range) in ui_batches {
-                if let Some(Ok(tex)) = self.sprite_textures.get(image) {
-                    pass.set_bind_group(1, &tex.bind_group, &[]);
-                    pass.draw_indexed(range, 0, 0..1);
-                }
-            }
-        }
+        drop(calls);
+        self.scratch = (raw, gid, instances);
+        stats
     }
 }
 

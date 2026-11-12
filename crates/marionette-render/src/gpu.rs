@@ -1,7 +1,7 @@
 //! GPU setup and offscreen rendering with readback.
 
-use crate::extract::{CameraData, FrameData};
-use crate::renderer::{self, DEPTH_FORMAT, Renderer, Target};
+use crate::extract::{CameraData, FrameData, View};
+use crate::renderer::{self, DEPTH_FORMAT, RenderStats, Renderer, Target};
 use marionette_core::{Diagnostic, Errors};
 use std::path::PathBuf;
 
@@ -122,9 +122,20 @@ pub fn pick_camera(frame: &FrameData, camera: Option<u64>) -> Result<CameraData,
     })
 }
 
+/// Where the time of one offscreen render went (wall clock, milliseconds).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FrameTiming {
+    /// CPU: prepare, build per-frame data, record and submit commands.
+    pub record_ms: f64,
+    /// Waiting for the GPU to finish after submit.
+    pub gpu_wait_ms: f64,
+}
+
 /// Renders frames into textures with no window and reads them back.
 pub struct Offscreen {
     pub renderer: Renderer,
+    /// Wall-clock split of the last render, for benchmarks.
+    pub last_timing: FrameTiming,
     width: u32,
     height: u32,
     msaa: Option<wgpu::TextureView>,
@@ -177,6 +188,7 @@ impl Offscreen {
         let resolve_view = resolve.create_view(&Default::default());
         Self {
             renderer,
+            last_timing: FrameTiming::default(),
             width,
             height,
             msaa,
@@ -204,14 +216,35 @@ impl Offscreen {
 
     /// Renders the frame from the camera with stable id `camera` (or the first camera) and
     /// waits for the GPU to finish. Asset problems and a missing camera come back as data.
-    pub fn render(&mut self, gpu: &Gpu, frame: &FrameData, camera: Option<u64>) -> Result<(), Errors> {
+    pub fn render(
+        &mut self,
+        gpu: &Gpu,
+        frame: &FrameData,
+        camera: Option<u64>,
+    ) -> Result<RenderStats, Errors> {
+        self.render_eyes(gpu, frame, camera, 1, 0.0)
+    }
+
+    /// Like [`Offscreen::render`], with `eyes` views of the camera spread `ipd` meters apart
+    /// along its right axis (two for a stereo headset), all recorded in one call. Each eye
+    /// is a full render pass into the same target (the last eye is what stays in the image),
+    /// so the GPU and CPU cost matches a stereo frame at this per-eye size.
+    pub fn render_eyes(
+        &mut self,
+        gpu: &Gpu,
+        frame: &FrameData,
+        camera: Option<u64>,
+        eyes: u32,
+        ipd: f32,
+    ) -> Result<RenderStats, Errors> {
+        let started = std::time::Instant::now();
         let cam = pick_camera(frame, camera)?;
         let errors = self.renderer.prepare(frame);
         if !errors.is_empty() {
             return Err(Errors(errors));
         }
-        let view = cam.view(self.width as f32 / self.height as f32);
-        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        let base = cam.view(self.width as f32 / self.height as f32);
+        let eyes = eyes.clamp(1, crate::MAX_VIEWS as u32);
         let target = Target {
             color: self.msaa.as_ref().unwrap_or(&self.resolve_view),
             resolve: self.msaa.as_ref().map(|_| &self.resolve_view),
@@ -219,12 +252,39 @@ impl Offscreen {
             width: self.width,
             height: self.height,
         };
-        self.renderer.render(frame, &view, &target, &mut encoder);
+        let views: Vec<(View, &Target)> = (0..eyes)
+            .map(|i| {
+                // Eye offset in view space: -ipd/2 .. +ipd/2 along x.
+                let k = if eyes == 1 {
+                    0.0
+                } else {
+                    i as f32 / (eyes - 1) as f32 - 0.5
+                };
+                let shift = glam::Mat4::from_translation(glam::Vec3::new(-k * ipd, 0.0, 0.0));
+                let view = shift * base.view;
+                (
+                    View {
+                        view,
+                        eye: view.inverse().w_axis.truncate(),
+                        ..base
+                    },
+                    &target,
+                )
+            })
+            .collect();
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        let stats = self.renderer.render_views(frame, &views, &mut encoder);
         gpu.queue.submit([encoder.finish()]);
+        let submitted = std::time::Instant::now();
         gpu.device
             .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|e| device_error(format!("GPU wait failed: {e}")))?;
-        Ok(())
+        // Measurement only (benchmarks); never read by the simulation.
+        self.last_timing = FrameTiming {
+            record_ms: (submitted - started).as_secs_f64() * 1000.0,
+            gpu_wait_ms: submitted.elapsed().as_secs_f64() * 1000.0,
+        };
+        Ok(stats)
     }
 
     /// Copies the last rendered image to the CPU as tightly packed RGBA8 (sRGB).

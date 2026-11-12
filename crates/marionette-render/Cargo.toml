@@ -15,4 +15,5 @@ winit = "0.30.13"
 bytemuck = { version = "1.25", features = ["derive"] }
 glam = "0.34"
 pollster = "1.0.1"
+serde.workspace = true
 serde_json.workspace = true
