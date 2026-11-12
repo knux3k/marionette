@@ -1,0 +1,22 @@
+# Decisions index
+
+Files are in `docs/decisions/`. Add a line here with every new record.
+
+| # | Decision | Status |
+| --- | --- | --- |
+| 0001 | ECS is `bevy_ecs` standalone; schema from `bevy_reflect` | accepted |
+| 0002 | Scene files are canonical JSON | accepted |
+| 0003 | SplitMix64 RNG and SHA-256 state hash | accepted |
+| 0004 | Render data components live in core; renderer is a separate crate | accepted |
+| 0005 | Renderer architecture: wgpu forward PBR, batched sprites, per-view data | accepted |
+| 0006 | Reference images and their tolerance | accepted |
+| 0007 | Exact line and column for scene diagnostics | accepted |
+| 0008 | MCP server on the official Rust SDK (`rmcp`) | accepted |
+| 0009 | Live sessions and scene files are separate targets | accepted |
+| 0010 | One operation table for CLI and MCP | accepted |
+| 0011 | Engine modules and fixed stages | accepted |
+| 0012 | Physics on Rapier with written-back state | accepted, proofs pending |
+| 0013 | Input as actions, recorded at action level | accepted |
+| 0014 | Audio decided in the simulation, played by the presentation layer | accepted |
+| 0015 | Minimal UI as components, built-in bitmap font | accepted |
+| 0016 | No identifying details in the repository | accepted, permanent |

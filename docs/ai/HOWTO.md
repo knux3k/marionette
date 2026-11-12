@@ -1,0 +1,75 @@
+# How-to recipes
+
+Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo test` after each.
+
+## Add a component (or resource)
+
+1. Define it with `#[derive(Component, Reflect, Debug, Clone, PartialEq)]` (resources:
+   `Resource`) and a doc comment; the comment becomes the schema description. Core data goes in
+   `crates/marionette-core/src/` (for example `spatial.rs`); module data goes in that module's
+   crate (for example `crates/marionette-physics/src/components.rs`).
+2. Register it: core types in `register_builtins` (`crates/marionette-core/src/builtin.rs`),
+   module types in the module's `Module::register`.
+3. All fields are required in scene files; keep field names short and units in the doc comment.
+4. A reference to another entity uses `SceneRef` so the validator reports dangling ids.
+5. Run `cargo run -q -p marionette-cli -- docs` and commit `docs/ai/reference/components.md`.
+
+## Add a simulation system
+
+1. Write it in the owning crate. Follow the determinism list in ARCHITECTURE.md.
+2. Add it to a stage: built-ins in `add_builtin_systems` (`crates/marionette-core/src/builtin.rs`),
+   module systems in `Module::add_systems` with `.in_set(Stage::...)`.
+3. If it keeps state outside components, implement `Module::save` and `Module::load`.
+4. Add a test that runs a scene twice with the same seed and compares `Sim::state_hash`.
+
+## Add an operation
+
+1. Pick the module in `crates/marionette-agent/src/` (`project.rs`, `edit.rs`, `session.rs`,
+   `observe.rs`, `scenario.rs`).
+2. Write input and output structs deriving `Deserialize`/`Serialize` and `JsonSchema`, with doc
+   comments; add `#[serde(deny_unknown_fields)]` on inputs without flattened fields.
+3. Write `fn name(agent: &mut Agent, input: In) -> Result<Out, Errors>`; return diagnostics with
+   stable codes, never panic on input.
+4. Register it in that module's `ops()` with `op("group_verb", "description", mutating, name)`.
+   Mutating means it writes files or changes a session.
+5. Extend `crates/marionette-cli/tests/agent_e2e.rs` (CLI and, if relevant, MCP).
+6. Run `cargo run -q -p marionette-cli -- docs` and commit `docs/ai/reference/`.
+
+## Add a crate
+
+1. Create `crates/marionette-<name>/` with `Cargo.toml` using `version.workspace`,
+   `edition.workspace`, `license.workspace`, `rust-version.workspace`.
+2. Add it to `members` in the root `Cargo.toml`.
+3. If it adds simulation behavior, implement `marionette_core::Module` and add it to
+   `marionette_agent::engine::modules()` (`crates/marionette-agent/src/engine.rs`).
+4. Add it to the crate map in ARCHITECTURE.md with its forbidden dependencies.
+5. Record why in a decision.
+
+## Add an example scene with a reference image
+
+1. Write the scene as JSON under `examples/`, then canonicalize:
+   `cargo run -q -p marionette-cli -- scene fmt examples/<name>.scene.json`.
+2. Use only CC0 or self-made assets; list each file in `examples/assets/LICENSE.md`.
+3. Add the name to the lists in `crates/marionette-render/tests/render.rs`
+   (`same_inputs_give_identical_images`, `matches_reference_images`).
+4. Create the reference: `MARIONETTE_UPDATE_REFERENCES=1 cargo test -p marionette-render --test render matches_reference`,
+   look at `examples/reference/<name>.png`, and check that `git status` shows no other changed
+   reference.
+5. Add the name to `every_example_is_valid_and_canonical` in `crates/marionette-cli/tests/cli.rs`.
+6. Record the reference hash in STATE.md.
+
+## Add a decision record
+
+1. Next number in `docs/decisions/` (four digits), file `NNNN-short-title.md`.
+2. Sections: title line `# NNNN: Title`, `Date`, `Status`, `Decision`, `Why`, and optional
+   `Consequences`, `Rejected`, `Not done yet`.
+3. Add one line to DECISIONS.md.
+
+## Add a test scenario (game project)
+
+1. In a project created by `project_init`, add `tests/<name>.test.json`: `scene`, `seed`,
+   `ticks`, optional `input` (an `*.inputs.json` file), `assertions` (`field`, `count`,
+   `state_hash`, `event`), optional `image` reference.
+2. Run `marionette op test_run '{}' --json`; results are data (`passed`, `failed`, per assertion).
+3. Format: the module docs at the top of `crates/marionette-agent/src/scenario.rs` and the
+   `test_run` entry in `docs/ai/reference/operations.md`.

@@ -3,7 +3,7 @@
 An open source game engine built to be driven by coding AIs. Everything is text, it runs
 with no window, it describes itself as JSON Schema, and it reports errors as data.
 
-Status: early. Plan lines 1 to 3 of [`docs/DESIGN.md`](docs/DESIGN.md) are in place: an ECS
+Status: early. Plan lines 1, 2, 3 and 5 of [`docs/DESIGN.md`](docs/DESIGN.md) are in place and line 6 (input, physics, audio, UI) is in progress: an ECS
 world, a schema registry, a canonical JSON scene format with a validator, a deterministic
 fixed-step loop, a wgpu renderer (glTF PBR models and 2D sprites) with offscreen screenshots,
 and the `marionette` CLI.
@@ -69,6 +69,8 @@ call the same operations with `marionette op <name> '<json>' --json`.
 | `marionette scene fmt <scene> [--check]` | Rewrites a scene in canonical form |
 
 ## For agents
+
+Start at [`docs/ai/START-HERE.md`](docs/ai/START-HERE.md).
 
 Read [`AGENTS.md`](AGENTS.md) (same as [`CLAUDE.md`](CLAUDE.md)) for build steps, design
 principles and determinism rules. Decisions are recorded in [`docs/decisions/`](docs/decisions/).
