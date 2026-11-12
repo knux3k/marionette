@@ -334,6 +334,18 @@ type DirectionalLight = {
   illuminance: number;
 };
 
+/** Light a model gives off by itself (screens, lava, lit windows), added on top of its lit color. Not a light source: it does not light other objects. With `ToneMapping`, intensities above 1 stay bright instead of clipping. */
+type Emissive = {
+  /** Linear RGBA color, each channel 0..1. */
+  color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  intensity: number;
+};
+
 /** A belt from one machine's output to another machine's input. */
 type FactoryBelt = {
   /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
@@ -438,6 +450,19 @@ type FixedStep = {
   dt: number;
 };
 
+/** Turns on distance fog for models: surfaces fade toward `color` with distance from the camera (exponential squared). Set the camera's `clear_color` to the same color so the horizon matches. */
+type Fog = {
+  /** Linear RGBA color, each channel 0..1. */
+  color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  /** Higher is thicker; about 2 / density meters is where fog is nearly opaque. */
+  density: number;
+};
+
 /** Accelerates toward `target` with acceleration `gain * offset`. */
 type Follow = {
   gain: number;
@@ -493,6 +518,21 @@ type PhysicsSettings = {
   mode: "Dim3" | "Dim2";
 };
 
+/** A light at the entity's position shining in every direction (a lamp, a torch, a glowing crystal). Brightness falls off with the square of the distance and reaches zero at `range`. The renderer uses the first 16 point and spot lights by entity id. */
+type PointLight = {
+  /** Linear RGBA color, each channel 0..1. */
+  color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  /** Brightness at 1 m (same scale as `DirectionalLight::illuminance`). */
+  intensity: number;
+  /** Distance in meters where the light has faded to nothing. */
+  range: number;
+};
+
 /** World-space position in meters. */
 type Position = {
   x: number;
@@ -535,9 +575,59 @@ type ScriptTimers = {
   data: string;
 };
 
+/** Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed. */
+type Shadows = {
+  /** Half the width of the shadowed area around the camera, in meters. */
+  distance: number;
+  /** Shadow map size in texels (256 to 4096; 2048 is a good default). */
+  resolution: number;
+  /** Edge blur in texels (0 = hard edges, 1 to 2 = soft). */
+  softness: number;
+};
+
+/** Replaces flat `AmbientLight` with sky light: surfaces facing up get `sky`, surfaces facing down get `ground`, blended by the surface direction, times `intensity`. */
+type SkyLight = {
+  /** Linear RGBA color, each channel 0..1. */
+  ground: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  intensity: number;
+  /** Linear RGBA color, each channel 0..1. */
+  sky: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+};
+
 /** The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity. */
 type SpawnIds = {
   next: number;
+};
+
+/** A cone of light from the entity's position along `direction` (a flashlight, a street lamp). Full brightness inside `inner_angle_degrees` from the axis, fading to zero at `outer_angle_degrees`. Shares the 16-light limit with `PointLight`. */
+type SpotLight = {
+  /** Linear RGBA color, each channel 0..1. */
+  color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  direction: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  inner_angle_degrees: number;
+  /** Brightness at 1 m on the axis. */
+  intensity: number;
+  outer_angle_degrees: number;
+  range: number;
 };
 
 /** A textured, camera-independent quad in the XY plane at the entity's translation. `image` is a PNG file relative to the scene file or a built-in image (`builtin:white`, `builtin:circle`, `builtin:checker`, `builtin:atlas`). Higher `layer` draws on top; equal layers draw in entity-id order. */
@@ -564,6 +654,11 @@ type SpriteRegion = {
   width: number;
   x: number;
   y: number;
+};
+
+/** Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0. */
+type ToneMapping = {
+  exposure: number;
 };
 
 /** Placement of an entity: translation, rotation, scale. If the entity also has a `Position` (moved by the simulation), `Position` is used as the translation. */
@@ -663,12 +758,14 @@ interface Components {
   Collider: Collider;
   DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;
+  Emissive: Emissive;
   FactoryBelt: FactoryBelt;
   FactoryMachine: FactoryMachine;
   Follow: Follow;
   LookAt: LookAt;
   Material: Material;
   Model: Model;
+  PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;
   RigidBody: RigidBody;
@@ -676,6 +773,7 @@ interface Components {
   ScriptInbox: ScriptInbox;
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
+  SpotLight: SpotLight;
   Sprite: Sprite;
   SpriteRegion: SpriteRegion;
   Transform: Transform;
@@ -694,7 +792,11 @@ interface Resources {
   FactoryRecipes: FactoryRecipes;
   FactoryState: FactoryState;
   FixedStep: FixedStep;
+  Fog: Fog;
   InputConfig: InputConfig;
   PhysicsSettings: PhysicsSettings;
+  Shadows: Shadows;
+  SkyLight: SkyLight;
   SpawnIds: SpawnIds;
+  ToneMapping: ToneMapping;
 }

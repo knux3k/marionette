@@ -135,6 +135,17 @@ Rust type: `marionette_core::spatial::DirectionalLight`.
 | `direction` | object {x, y, z} | yes |  |
 | `illuminance` | number | yes | Brightness multiplier (1.0 = a bright, unclipped sun on a white surface). |
 
+### `Emissive`
+
+Light a model gives off by itself (screens, lava, lit windows), added on top of its lit color. Not a light source: it does not light other objects. With `ToneMapping`, intensities above 1 stay bright instead of clipping.
+
+Rust type: `marionette_core::spatial::Emissive`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `intensity` | number | yes |  |
+
 ### `FactoryBelt`
 
 A belt from one machine's output to another machine's input.
@@ -202,6 +213,18 @@ Rust type: `marionette_core::spatial::Model`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `asset` | string | yes |  |
+
+### `PointLight`
+
+A light at the entity's position shining in every direction (a lamp, a torch, a glowing crystal). Brightness falls off with the square of the distance and reaches zero at `range`. The renderer uses the first 16 point and spot lights by entity id.
+
+Rust type: `marionette_core::spatial::PointLight`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `intensity` | number | yes | Brightness at 1 m (same scale as `DirectionalLight::illuminance`). |
+| `range` | number | yes | Distance in meters where the light has faded to nothing. |
 
 ### `Position`
 
@@ -278,6 +301,21 @@ Rust type: `marionette_script::ScriptTimers`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `data` | string | yes |  |
+
+### `SpotLight`
+
+A cone of light from the entity's position along `direction` (a flashlight, a street lamp). Full brightness inside `inner_angle_degrees` from the axis, fading to zero at `outer_angle_degrees`. Shares the 16-light limit with `PointLight`.
+
+Rust type: `marionette_core::spatial::SpotLight`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `direction` | object {x, y, z} | yes |  |
+| `inner_angle_degrees` | number | yes |  |
+| `intensity` | number | yes | Brightness at 1 m on the axis. |
+| `outer_angle_degrees` | number | yes |  |
+| `range` | number | yes |  |
 
 ### `Sprite`
 
@@ -446,6 +484,17 @@ Rust type: `marionette_core::builtin::FixedStep`.
 | --- | --- | --- | --- |
 | `dt` | number | yes |  |
 
+### `Fog`
+
+Turns on distance fog for models: surfaces fade toward `color` with distance from the camera (exponential squared). Set the camera's `clear_color` to the same color so the horizon matches.
+
+Rust type: `marionette_core::spatial::Fog`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `density` | number | yes | Higher is thicker; about 2 / density meters is where fog is nearly opaque. |
+
 ### `InputConfig`
 
 Turns input on for a scene: the action map file, relative to the scene file.
@@ -467,6 +516,30 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
 
+### `Shadows`
+
+Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed.
+
+Rust type: `marionette_core::spatial::Shadows`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `distance` | number | yes | Half the width of the shadowed area around the camera, in meters. |
+| `resolution` | integer | yes | Shadow map size in texels (256 to 4096; 2048 is a good default). |
+| `softness` | number | yes | Edge blur in texels (0 = hard edges, 1 to 2 = soft). |
+
+### `SkyLight`
+
+Replaces flat `AmbientLight` with sky light: surfaces facing up get `sky`, surfaces facing down get `ground`, blended by the surface direction, times `intensity`.
+
+Rust type: `marionette_core::spatial::SkyLight`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ground` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `intensity` | number | yes |  |
+| `sky` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+
 ### `SpawnIds`
 
 The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity.
@@ -476,4 +549,14 @@ Rust type: `marionette_script::SpawnIds`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `next` | integer | yes |  |
+
+### `ToneMapping`
+
+Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0.
+
+Rust type: `marionette_core::spatial::ToneMapping`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `exposure` | number | yes |  |
 

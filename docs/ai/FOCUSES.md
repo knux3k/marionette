@@ -56,9 +56,9 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | --- | --- | --- |
 | Tokens | START-HERE read order loaded about 75 KB (STATE.md alone 40 KB) before any task | done: 18.7 KB always-read set, budget test (decision 0061) |
 | Tokens | `marionette mcp` listed all 72 operations with input and output schemas (158 KB) | done: `--tools core --lean` is 27.6 KB (decision 0061) |
-| Graphics | No shadows; directional lights only (no point or spot lights) | open |
-| Graphics | No HDR or tone mapping (colors clamp at 1.0); no emissive materials; no bloom | open |
-| Graphics | No sky, environment lighting or fog (ambient is a flat color) | open |
+| Graphics | No shadows; directional lights only (no point or spot lights) | done: `Shadows`, `PointLight`, `SpotLight` (decision 0063); shadows from local lights and cascades open |
+| Graphics | No HDR or tone mapping (colors clamp at 1.0); no emissive materials; no bloom | done: `ToneMapping`, `Emissive` (decision 0063); bloom, glTF emissive open |
+| Graphics | No sky, environment lighting or fog (ambient is a flat color) | done: `SkyLight`, `Fog` (decision 0063); image-based lighting, sky background open |
 | Modularity | The module set and operation table are fixed in `marionette-agent`: a game cannot add a Rust module or operation without editing the engine | open |
 | Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | open |
 | Modularity | Job TypeScript cannot be called from scenes or scripts yet (WJ next) | open |
