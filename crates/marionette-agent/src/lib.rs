@@ -14,6 +14,7 @@ pub mod mcp;
 pub mod observe;
 pub mod port;
 pub mod project;
+pub mod providers;
 pub mod scenario;
 pub mod script;
 pub mod session;
@@ -119,6 +120,7 @@ impl Agent {
             observe::ops(),
             scenario::ops(),
             library::ops(),
+            providers::ops(),
             script::ops(),
             port::ops(),
         ]

@@ -111,6 +111,11 @@ enum Command {
         /// Input as a JSON object (default `{}`).
         input: Option<String>,
     },
+    /// AI providers: list them, show this project's choices and spending, switch one.
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommand,
+    },
     /// Serve every operation as an MCP tool over stdio.
     Mcp,
     /// Write the generated reference docs (operations, components, CLI help).
@@ -121,6 +126,24 @@ enum Command {
         /// Do not write; fail if the committed files differ from what the code generates.
         #[arg(long)]
         check: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProviderCommand {
+    /// Every provider, the kinds it offers and whether its key is set (operation `provider_list`).
+    List,
+    /// Provider and model per kind, readiness, spending and cap (operation `provider_status`).
+    Status,
+    /// Switch one kind to a provider: `marionette provider use image qwen` (operation `provider_use`).
+    Use {
+        /// language, image or model3d.
+        kind: String,
+        /// Provider name, e.g. mock, claude, qwen, tripo.
+        provider: String,
+        /// Model name (default: the provider's default model).
+        #[arg(long)]
+        model: Option<String>,
     },
 }
 
@@ -217,6 +240,27 @@ fn main() -> ExitCode {
             size,
             msaa,
         } => render::bench(&scene, frames, seed, camera, &size, msaa),
+        Command::Provider { command } => match command {
+            ProviderCommand::List => agent
+                .call("provider_list", json!({}))
+                .map(|v| merge("provider_list", v)),
+            ProviderCommand::Status => agent
+                .call("provider_status", json!({}))
+                .map(|v| merge("provider_status", v)),
+            ProviderCommand::Use {
+                kind,
+                provider,
+                model,
+            } => {
+                let mut input = json!({ "kind": kind, "provider": provider });
+                if let Some(m) = model {
+                    input["model"] = json!(m);
+                }
+                agent
+                    .call("provider_use", input)
+                    .map(|v| merge("provider_use", v))
+            }
+        },
         Command::Scene {
             command: SceneCommand::Fmt { scene, check: false },
         } => agent
@@ -377,6 +421,55 @@ fn human(value: &Value) -> String {
         ),
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),
+        Some("provider_use") => format!(
+            "{} now uses {} (model {}; was {}); readiness: {}",
+            s("kind"),
+            s("provider"),
+            s("model"),
+            value["previous"]["provider"].as_str().unwrap_or(""),
+            s("readiness")
+        ),
+        Some("provider_status") => value["kinds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|k| {
+                format!(
+                    "{}: {} ({}), {}",
+                    k["kind"].as_str().unwrap_or(""),
+                    k["provider"].as_str().unwrap_or(""),
+                    k["model"].as_str().unwrap_or(""),
+                    k["readiness"].as_str().unwrap_or("")
+                )
+            })
+            .chain([format!(
+                "spent ${} of cap ${} ({})",
+                s("spent_usd"),
+                value["cap"]["usd"],
+                value["cap"]["source"].as_str().unwrap_or("")
+            )])
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some("provider_list") => value["providers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|p| {
+                format!(
+                    "{}: {} [{}]",
+                    p["name"].as_str().unwrap_or(""),
+                    p["kinds"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Value::as_str)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    p["readiness"].as_str().unwrap_or("")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
         _ => value.to_string(),
     }
 }
