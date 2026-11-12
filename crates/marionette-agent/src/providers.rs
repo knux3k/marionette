@@ -8,8 +8,8 @@
 use crate::{Agent, Op, op};
 use marionette_core::{Diagnostic, Errors};
 use marionette_providers::{
-    self as providers, Choice, Env, ImageRequest, Kind, ModelRequest, NoNetwork, Output, ProvidersConfig,
-    Readiness, Request, SpendCap, TextRequest, Usage, config, spend,
+    self as providers, Choice, Env, ImageRequest, Kind, ModelRequest, Output, ProvidersConfig, Readiness,
+    Request, SpendCap, TextRequest, Usage, config, spend,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -43,8 +43,9 @@ pub(crate) fn ops() -> Vec<Op> {
     ]
 }
 
-fn env_var(name: &str) -> Option<String> {
-    std::env::var(name).ok()
+/// The network transport of this build (none unless built with the `net` feature).
+fn transport() -> Box<dyn providers::Transport> {
+    providers::http::default_transport()
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -77,7 +78,8 @@ struct ListOutput {
     providers: Vec<ProviderEntry>,
 }
 
-fn list(_: &mut Agent, _: ListInput) -> Result<ListOutput, Errors> {
+fn list(agent: &mut Agent, _: ListInput) -> Result<ListOutput, Errors> {
+    let env_var = crate::env_lookup(agent.root());
     let providers = providers::all()
         .iter()
         .map(|p| {
@@ -91,7 +93,7 @@ fn list(_: &mut Agent, _: ListInput) -> Result<ListOutput, Errors> {
                     .key_env
                     .is_some_and(|v| env_var(v).is_some_and(|k| !k.trim().is_empty())),
                 network: info.network,
-                readiness: providers::readiness(info, &env_var, &NoNetwork),
+                readiness: providers::readiness(info, &env_var, transport().as_ref()),
                 default_models: info
                     .default_models
                     .iter()
@@ -125,9 +127,14 @@ struct StatusOutput {
     /// Total of the project's spend ledger, US dollars.
     spent_usd: f64,
     cap: SpendCap,
+    /// The person's keys file (decision 0045): absent when none is configured, `true` when it
+    /// exists, `false` when it is configured but missing. Its values are never shown.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keys_file_found: Option<bool>,
 }
 
 fn status(agent: &mut Agent, _: StatusInput) -> Result<StatusOutput, Errors> {
+    let env_var = crate::env_lookup(agent.root());
     let (cfg, exists) = ProvidersConfig::load(agent.root())?;
     let mut kinds = Vec::new();
     for kind in Kind::ALL {
@@ -136,7 +143,7 @@ fn status(agent: &mut Agent, _: StatusInput) -> Result<StatusOutput, Errors> {
             kind,
             provider: provider.info().name.to_string(),
             model,
-            readiness: providers::readiness(provider.info(), &env_var, &NoNetwork),
+            readiness: providers::readiness(provider.info(), &env_var, transport().as_ref()),
         });
     }
     Ok(StatusOutput {
@@ -144,6 +151,7 @@ fn status(agent: &mut Agent, _: StatusInput) -> Result<StatusOutput, Errors> {
         kinds,
         spent_usd: spend::total(&agent.root().join(spend::LEDGER_PATH))?,
         cap: spend::resolve_cap(&env_var)?,
+        keys_file_found: providers::keys::status(&|n| std::env::var(n).ok(), agent.root())?,
     })
 }
 
@@ -170,6 +178,7 @@ struct UseOutput {
 }
 
 fn use_provider(agent: &mut Agent, input: UseInput) -> Result<UseOutput, Errors> {
+    let env_var = crate::env_lookup(agent.root());
     let (mut cfg, _) = ProvidersConfig::load(agent.root())?;
     let previous = cfg.choice(input.kind);
     if let Some(m) = &input.model
@@ -197,7 +206,7 @@ fn use_provider(agent: &mut Agent, input: UseInput) -> Result<UseOutput, Errors>
         provider: provider.info().name.to_string(),
         model,
         previous,
-        readiness: providers::readiness(provider.info(), &env_var, &NoNetwork),
+        readiness: providers::readiness(provider.info(), &env_var, transport().as_ref()),
         file: config::FILE_NAME,
     })
 }
@@ -251,6 +260,7 @@ struct GenerateOutput {
 }
 
 fn generate(agent: &mut Agent, input: GenerateInput) -> Result<GenerateOutput, Errors> {
+    let env_var = crate::env_lookup(agent.root());
     let prompt = input.prompt.clone().unwrap_or_default();
     let request = match input.kind {
         Kind::Language => Request::Text(TextRequest {
@@ -266,6 +276,7 @@ fn generate(agent: &mut Agent, input: GenerateInput) -> Result<GenerateOutput, E
         Kind::Model3d => Request::Model(ModelRequest {
             prompt: input.prompt.clone(),
             image_url: input.image_url.clone(),
+            ..Default::default()
         }),
     };
     let out = match (input.kind, &input.out) {
@@ -284,9 +295,10 @@ fn generate(agent: &mut Agent, input: GenerateInput) -> Result<GenerateOutput, E
     let (cfg, _) = ProvidersConfig::load(agent.root())?;
     let ledger = agent.root().join(spend::LEDGER_PATH);
     let wait = |_: u32| std::thread::sleep(std::time::Duration::from_secs(3));
+    let transport = transport();
     let env = Env {
         var: &env_var,
-        transport: &NoNetwork,
+        transport: transport.as_ref(),
         ledger: &ledger,
         cap: spend::resolve_cap(&env_var)?,
         max_polls: 200,

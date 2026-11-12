@@ -123,6 +123,7 @@ fn model(prompt: &str) -> Request {
     Request::Model(ModelRequest {
         prompt: Some(prompt.into()),
         image_url: None,
+        ..Default::default()
     })
 }
 
@@ -527,6 +528,7 @@ fn tripo_text_and_image_jobs() {
     let req = Request::Model(ModelRequest {
         prompt: None,
         image_url: Some("https://files.example/ref.JPG?x=1".into()),
+        ..Default::default()
     });
     run(
         &config(Kind::Model3d, "tripo", Some("v9")),

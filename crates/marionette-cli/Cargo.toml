@@ -10,10 +10,15 @@ rust-version.workspace = true
 name = "marionette"
 path = "src/main.rs"
 
+[features]
+# Network transport for paid providers (off by default; decision 0045).
+net = ["marionette-agent/net"]
+
 [dependencies]
 marionette-core.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent" }
+marionette-generate = { path = "../marionette-generate" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
