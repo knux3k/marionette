@@ -49,7 +49,7 @@ fn unity_classes_roles_hooks_and_components() {
     assert_eq!(hook("Start").as_deref(), Some("start"));
     assert_eq!(hook("Update").as_deref(), Some("update"));
     assert_eq!(hook("OnTriggerEnter").as_deref(), Some("onTriggerEnter"));
-    assert_eq!(hook("OnDestroy"), None);
+    assert_eq!(hook("OnDestroy").as_deref(), Some("onDestroy"));
     assert!(p.methods.iter().find(|m| m.name == "Blink").unwrap().coroutine);
     // Invoke("Respawn") and StartCoroutine(Blink()) bind their methods.
     assert_eq!(
@@ -110,11 +110,19 @@ fn unity_api_uses_actions_gaps_and_hazards() {
     assert_eq!(uses(&r, "Mathf.Sin").map(|u| u.0), Some(Status::Hazard));
     assert_eq!(uses(&r, "DateTime.Now").map(|u| u.0), Some(Status::Hazard));
     assert_eq!(uses(&r, "AddForce").map(|u| u.0), Some(Status::Gap));
-    assert_eq!(uses(&r, "Destroy").map(|u| u.0), Some(Status::Gap));
+    assert_eq!(uses(&r, "Destroy").map(|u| u.0), Some(Status::Script));
+    assert_eq!(uses(&r, "Invoke").map(|u| u.0), Some(Status::Script));
     assert_eq!(uses(&r, "StartCoroutine").map(|u| u.0), Some(Status::Rewrite));
     assert_eq!(uses(&r, "GameObject.Find").map(|u| u.0), Some(Status::Script));
     assert_eq!(r.summary.actions, ["Horizontal", "Jump"]);
-    assert!(r.summary.top_gaps.iter().any(|g| g.contains("OnDestroy")));
+    assert!(
+        !r.summary
+            .top_gaps
+            .iter()
+            .any(|g| g.contains("OnDestroy") || g.contains("Destroy (")),
+        "{:?}",
+        r.summary.top_gaps
+    );
     let loc = &r.api.iter().find(|u| u.name == "Mathf.Sin").unwrap().locations[0];
     assert_eq!(
         (loc.file.as_str(), loc.within.as_deref()),
@@ -187,10 +195,10 @@ fn unreal_classes_definitions_and_bindings() {
     );
 
     assert_eq!(uses(&r, "FMath.Sin").map(|u| u.0), Some(Status::Hazard));
-    assert_eq!(uses(&r, "GetWorld.SpawnActor").map(|u| u.0), Some(Status::Gap));
+    assert_eq!(uses(&r, "GetWorld.SpawnActor").map(|u| u.0), Some(Status::Script));
     assert_eq!(
         uses(&r, "GetTimerManager.SetTimer").map(|u| u.0),
-        Some(Status::Rewrite)
+        Some(Status::Script)
     );
     assert_eq!(uses(&r, "GetActorLocation").map(|u| u.1), Some(2));
     assert_eq!(r.summary.actions, ["Fire", "MoveForward"]);
@@ -251,6 +259,11 @@ fn skeletons_keep_every_original_line_and_annotate_calls() {
     assert!(ts.contains("self.state.speed = self.state.speed ?? 5;"));
     assert!(ts.contains("-> Input.GetAxis \"Horizontal\": engine.action(\"Horizontal\") [script]"));
     assert!(ts.contains("-> GetComponent<Rigidbody>: self.get(\"RigidBody\") [script]"));
+    // OnDestroy has a hook; Invoke and coroutine targets are exported timer callbacks.
+    assert!(ts.contains("export function onDestroy(self: Entity): void {"));
+    assert!(ts.contains("export function Respawn(self: Entity"));
+    assert!(ts.contains("export function Blink(self: Entity"));
+    assert!(ts.contains("engine.after(seconds, fn) [script]"), "{ts}");
     // Awake goes before Start inside start().
     assert!(ts.find("--- Awake").unwrap() < ts.find("--- Start").unwrap());
     let src = std::fs::read_to_string(fixture("unity/Assets/Scripts/PlayerController.cs")).unwrap();
@@ -262,7 +275,9 @@ fn skeletons_keep_every_original_line_and_annotate_calls() {
     }
 }
 
-/// Generated skeletons type-check with `tsc --strict` against the generated script typings. Skipped when `tsc` is not installed.
+/// Generated skeletons type-check with `tsc --strict` against the script API typings that
+/// `marionette docs` generates (`docs/ai/reference/marionette.d.ts`). Skipped when `tsc` is
+/// not installed.
 #[test]
 fn skeletons_type_check_with_tsc() {
     let Ok(out) = std::process::Command::new("tsc").arg("--version").output() else {
