@@ -14,6 +14,7 @@ pub mod mcp;
 pub mod observe;
 pub mod project;
 pub mod scenario;
+pub mod script;
 pub mod session;
 
 use marionette_core::{Diagnostic, Errors, Registry};
@@ -117,6 +118,7 @@ impl Agent {
             observe::ops(),
             scenario::ops(),
             library::ops(),
+            script::ops(),
         ]
         .into_iter()
         .flatten()

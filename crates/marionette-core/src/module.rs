@@ -18,6 +18,8 @@ use std::sync::Arc;
 pub enum Stage {
     /// Turn input events into action state.
     Input,
+    /// Game scripts (`marionette-script`): read actions, change components.
+    Script,
     /// Game logic and built-in systems (random impulses, follow, integrate).
     Logic,
     /// Physics: character controllers, the physics step, writing results back.
