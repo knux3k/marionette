@@ -1,0 +1,22 @@
+{
+  "format": "marionette.input-events",
+  "version": 1,
+  "events": [
+    {"tick":30,"input":"key:KeyD","value":1},
+    {"tick":150,"input":"key:Space","value":1},
+    {"tick":156,"input":"key:Space","value":0},
+    {"tick":220,"input":"key:KeyD","value":0},
+    {"tick":260,"input":"key:KeyA","value":1},
+    {"tick":300,"input":"key:Space","value":1},
+    {"tick":306,"input":"key:Space","value":0},
+    {"tick":400,"input":"key:KeyA","value":0},
+    {"tick":450,"input":"key:KeyD","value":1},
+    {"tick":560,"input":"key:Space","value":1},
+    {"tick":566,"input":"key:Space","value":0},
+    {"tick":700,"input":"key:KeyD","value":0},
+    {"tick":750,"input":"key:KeyA","value":1},
+    {"tick":780,"input":"key:Space","value":1},
+    {"tick":786,"input":"key:Space","value":0},
+    {"tick":900,"input":"key:KeyA","value":0}
+  ]
+}

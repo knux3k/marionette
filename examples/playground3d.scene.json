@@ -1,0 +1,535 @@
+{
+  "entities": [
+    {
+      "components": {
+        "AudioListener": {
+          "volume": 4.0
+        },
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.75,
+            "g": 0.5,
+            "r": 0.35
+          },
+          "projection": {
+            "Perspective": {
+              "far": 200.0,
+              "fov_y_degrees": 55.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.5,
+            "z": -3.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 6.0,
+            "z": 10.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.4,
+            "y": -1.0,
+            "z": -0.5
+          },
+          "illuminance": 1.1
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.38,
+            "g": 0.36,
+            "r": 0.35
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 20.0,
+            "y": 1.0,
+            "z": 20.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": -0.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "floor"
+    },
+    {
+      "components": {
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:jump",
+          "trigger": "OnJump",
+          "volume": 1.0
+        },
+        "CharacterController": {
+          "gravity": 18.0,
+          "jump": "jump",
+          "jump_speed": 6.0,
+          "mass": 80.0,
+          "move_forward": "move_forward",
+          "move_x": "move_x",
+          "speed": 4.0
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.95,
+            "g": 0.9,
+            "r": 0.9
+          },
+          "metallic": 0.0,
+          "roughness": 0.4
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 1.6,
+            "z": 0.6
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 2.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "player"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:thud",
+          "trigger": "OnCollision",
+          "volume": 0.8
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.35,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.5,
+            "z": -1.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 20,
+      "name": "box-1"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:thud",
+          "trigger": "OnCollision",
+          "volume": 0.8
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.6,
+            "r": 0.25
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.2,
+            "y": 1.6,
+            "z": -1.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 21,
+      "name": "box-2"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:thud",
+          "trigger": "OnCollision",
+          "volume": 0.8
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.75,
+            "r": 0.9
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -1.2,
+            "y": 0.5,
+            "z": -2.5
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 22,
+      "name": "box-3"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "AudioSource": {
+          "looping": false,
+          "sound": "builtin:thud",
+          "trigger": "OnCollision",
+          "volume": 0.8
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.6,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.35,
+            "g": 0.75,
+            "r": 0.4
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 1.3,
+            "y": 2.5,
+            "z": -2.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 23,
+      "name": "box-4"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 1.0,
+        "g": 0.7,
+        "r": 0.6
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "playground3d.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": -9.81,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}
