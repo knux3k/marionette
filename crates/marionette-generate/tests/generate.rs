@@ -7,6 +7,7 @@
 use marionette_core::Errors;
 use marionette_generate::recipe::{ModelOptions, OutputKind, Recipe, TextureOptions};
 use marionette_generate::{self as generate, Env, StepStatus, Target, approval, codes, provenance};
+use marionette_providers::ProviderCaps;
 use marionette_providers::http::{HttpRequest, HttpResponse, Transport};
 use marionette_providers::{
     self as providers, CapSource, Choice, ImageRequest, ModelRequest, NoNetwork, Output, ProvidersConfig,
@@ -18,6 +19,7 @@ use std::path::{Path, PathBuf};
 
 const FAKE_KEY: &str = "test-key-not-real-0123456789";
 const DIR: &str = "assets/generated";
+static PCAPS: std::sync::LazyLock<ProviderCaps> = std::sync::LazyLock::new(ProviderCaps::default);
 
 fn temp_project(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("marionette-gen-{tag}-{}", std::process::id()));
@@ -79,6 +81,7 @@ fn mock_bytes(request: Request) -> Vec<u8> {
         transport: &NoNetwork,
         ledger: &dir.join("l.jsonl"),
         cap: SpendCap::ZERO,
+        provider_caps: &PCAPS,
         max_polls: 1,
         wait: &|_| {},
     };
@@ -131,6 +134,7 @@ fn env<'a>(var: &'a dyn Fn(&str) -> Option<String>, t: &'a dyn Transport, cap: S
         var,
         transport: t,
         cap,
+        provider_caps: &PCAPS,
         max_polls: 5,
         wait: &|_| {},
     }
@@ -689,4 +693,66 @@ fn generated_assets_and_their_copies_are_blocked_from_the_pool() {
     let listed = generate::list(&target(&root, &[])).unwrap();
     assert_eq!(listed[0].state, "built");
     assert_eq!(listed[0].pool, "blocked");
+}
+
+#[test]
+fn per_provider_caps_unlimited_images_and_a_capped_model_provider() {
+    let root = temp_project("pcaps");
+    write(
+        &root,
+        &Recipe {
+            provider: pin("qwen"),
+            ..image_recipe("ref", "a beacon", [64, 64])
+        },
+    );
+    let mut caps = ProviderCaps::default();
+    caps.0.insert(
+        "qwen".into(),
+        providers::ProviderCap {
+            limit: providers::Limit::Unlimited,
+            source: CapSource::UserConfig,
+        },
+    );
+    caps.0.insert(
+        "tripo".into(),
+        providers::ProviderCap {
+            limit: providers::Limit::Usd(0.0),
+            source: CapSource::UserConfig,
+        },
+    );
+    let t = Scripted::new(vec![
+        recorded("qwen_submit.json"),
+        recorded("qwen_status_succeeded.json"),
+        bytes(mock_png(64, 64)),
+    ]);
+    let k = keys();
+    let e = Env {
+        var: &k,
+        transport: &t,
+        cap: SpendCap::ZERO,
+        provider_caps: &caps,
+        max_polls: 5,
+        wait: &|_| {},
+    };
+    // Qwen is unlimited: allowed with a zero total cap.
+    let r = generate::run(&target(&root, &[]), &e, false).unwrap();
+    assert_eq!(r.calls, 1);
+    // Tripo has its own cap of zero: a model is refused by that cap, after approval.
+    write(
+        &root,
+        &Recipe {
+            from: Some("ref".into()),
+            provider: pin("tripo"),
+            ..recipe("beacon", OutputKind::Model)
+        },
+    );
+    let dir = root.join(DIR);
+    let (_, file, sha) = generate::approvable(&target(&root, &[]), "ref").unwrap();
+    approval::approve_by_person(&dir, "ref", &file, &sha, true).unwrap();
+    let t2 = Scripted::new(vec![]);
+    let e2 = Env { transport: &t2, ..e };
+    let err = generate::run(&target(&root, &[]), &e2, false).unwrap_err();
+    assert_eq!(code(&err), providers::codes::SPEND_CAP);
+    assert!(err.0[0].message.contains("tripo"));
+    assert!(t2.sent().is_empty());
 }

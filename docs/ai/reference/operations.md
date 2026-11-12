@@ -47,6 +47,10 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
 | `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
 | `provider_generate` | yes | Generates text (language), a PNG (image) or a GLB (model3d) with the configured provider. Paid providers are checked against the spend cap first and every paid call is logged in .marionette/spend.jsonl. |
+| `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
+| `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
+| `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
+| `generate_list` | no | Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked). |
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
@@ -944,7 +948,9 @@ Output:
 | --- | --- | --- | --- |
 | `cap` | SpendCap | yes |  |
 | `config_file` | boolean | yes | `providers.json` exists (otherwise every kind uses mock). |
+| `keys_file_found` | boolean \| null |  | The person's keys file (decision 0045): absent when none is configured, `true` when it exists, `false` when it is configured but missing. Its values are never shown. |
 | `kinds` | array of KindStatus | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps the project owner set for single providers (decision 0045). |
 | `spent_usd` | number | yes | Total of the project's spend ledger, US dollars. |
 
 ## `provider_use`
@@ -1005,6 +1011,106 @@ Output:
 | `spent_usd` | number | yes | Ledger total after this call. |
 | `text` | string \| null |  | Language: the reply. |
 | `usage` | Usage \| null |  |  |
+
+## `generate_recipe`
+
+Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `from` | string \| null |  | Model only: name of the image or texture recipe to build the model from. |
+| `model` | ModelOptions \| null |  |  |
+| `name` | string | yes | Lowercase letters, digits, `_` and `-`; the file stem of the recipe and its output. |
+| `notes` | string \| null |  |  |
+| `output` | OutputKind | yes |  |
+| `prompt` | string \| null |  |  |
+| `provider` | Choice \| null |  | Pin a provider (and model) for this recipe; default: providers.json. |
+| `replace` | boolean |  | Overwrite an existing recipe of the same name. |
+| `size` | array \| null |  | Image and texture: requested size `[width, height]` (default 1024 x 1024). |
+| `texture` | TextureOptions \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plan` | Plan | yes | What a run of this recipe would do now. |
+| `recipe` | string | yes | The recipe file written. |
+
+## `generate_plan`
+
+Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `before_generating` | array of string | yes | Generation is the last step of the lookup order; these come first. |
+| `cap` | SpendCap | yes |  |
+| `dir` | string | yes |  |
+| `provider_caps` | ProviderCaps | yes | Caps set for single providers (they replace the total cap for that provider). |
+| `spent_usd` | number | yes | Ledger total so far. |
+| `steps` | array of StepPlan | yes |  |
+| `total_estimate_usd` | number | yes | Sum of the estimates of every step that needs a provider call now (blocked or not). |
+| `within_cap` | boolean | yes | Every step that needs a paid call fits under the cap that applies to its provider, counting the run's earlier steps. |
+
+## `generate_run`
+
+Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `names` | array of string |  |  |
+| `offline` | boolean |  | Use cached provider outputs only; refuse any step that would call a provider. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `blocked` | array of Blocked | yes |  |
+| `built` | array of Built | yes |  |
+| `calls` | integer | yes | Provider calls made (free or paid). |
+| `cost_usd` | number | yes | Spent by this run. |
+| `dir` | string | yes |  |
+| `spent_usd` | number | yes | Ledger total after the run. |
+
+## `generate_list`
+
+Lists generation recipes and the state of their outputs (built, stale, missing), provider, model, approval and pool status (always blocked).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Recipe folder (default `assets/generated`). |
+| `names` | array of string |  | Recipe names; empty or absent means every recipe in the folder. A model's `from` image is included automatically. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `recipes` | array of Listed | yes |  |
 
 ## `script_reload`
 

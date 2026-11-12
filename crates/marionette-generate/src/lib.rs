@@ -24,8 +24,8 @@ pub mod texture;
 
 use marionette_core::{Diagnostic, Errors};
 use marionette_providers::{
-    self as providers, ImageRequest, Kind, ModelRequest, Output, Provider, ProvidersConfig, Readiness,
-    Request, SpendCap, Transport, spend,
+    self as providers, ImageRequest, Kind, ModelRequest, Output, Provider, ProviderCaps, ProvidersConfig,
+    Readiness, Request, SpendCap, Transport, spend,
 };
 use recipe::{Loaded, OutputKind, Recipe};
 use schemars::JsonSchema;
@@ -100,7 +100,10 @@ pub fn write_file(path: &Path, shown: &str, bytes: &[u8]) -> Result<(), Errors> 
 pub struct Env<'a> {
     pub var: &'a dyn Fn(&str) -> Option<String>,
     pub transport: &'a dyn Transport,
+    /// The total cap (for providers without their own).
     pub cap: SpendCap,
+    /// Caps a person set for single providers.
+    pub provider_caps: &'a ProviderCaps,
     pub max_polls: u32,
     pub wait: &'a dyn Fn(u32),
 }
@@ -201,8 +204,11 @@ pub struct Plan {
     /// Ledger total so far.
     pub spent_usd: f64,
     pub cap: SpendCap,
-    /// `spent + total estimate <= cap`.
+    /// Every step that needs a paid call fits under the cap that applies to its provider,
+    /// counting the run's earlier steps.
     pub within_cap: bool,
+    /// Caps set for single providers (they replace the total cap for that provider).
+    pub provider_caps: ProviderCaps,
     /// Generation is the last step of the lookup order; these come first.
     pub before_generating: Vec<String>,
 }
@@ -384,7 +390,7 @@ fn paid_checks(
     r: &Recipe,
     p: &Prepared,
     estimate: f64,
-    spent: f64,
+    entries: &[spend::Entry],
     pending: f64,
 ) -> Result<(bool, bool), Problem> {
     let needs_approval = estimate > 0.0 && r.from.is_some();
@@ -406,7 +412,14 @@ fn paid_checks(
         ));
     }
     if estimate > 0.0 {
-        if let Err(e) = spend::check(&env.cap, spent + pending, estimate) {
+        if let Err(e) = spend::check_for(
+            &env.cap,
+            env.provider_caps,
+            p.provider.info().name,
+            entries,
+            pending,
+            estimate,
+        ) {
             return Err(Problem::from(&e));
         }
         match providers::readiness(p.provider.info(), env.var, env.transport) {
@@ -440,7 +453,18 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
     let all = recipe::load_dir(&dir, target.dir)?;
     let selected = select(all, target.names, target.dir)?;
     let (base, _) = ProvidersConfig::load(target.root)?;
-    let spent = spend::total(&target.ledger()).unwrap_or(0.0);
+    let entries = spend::entries(&target.ledger()).unwrap_or_default();
+    let spent = entries.iter().fold(0.0, |acc, e| acc + e.cost_usd);
+    // Planned estimates per cap scope: a provider with its own cap, or the shared total ("").
+    let mut scoped: BTreeMap<String, f64> = BTreeMap::new();
+    let scope_of = |name: &str| -> String {
+        if env.provider_caps.0.contains_key(name) {
+            name.to_string()
+        } else {
+            String::new()
+        }
+    };
+    let mut within_cap = true;
     // Processed bytes of images that will exist (on disk, from cache) for model steps.
     let mut images: BTreeMap<String, Option<Vec<u8>>> = BTreeMap::new();
     let mut steps = Vec::new();
@@ -495,16 +519,23 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
         } else {
             let estimate = p.provider.estimate_usd(&p.model, &p.request);
             step.estimate_usd = estimate;
-            match paid_checks(env, &dir, r, &p, estimate, spent, pending) {
+            let scope = scope_of(p.provider.info().name);
+            let in_scope = scoped.get(&scope).copied().unwrap_or(0.0);
+            match paid_checks(env, &dir, r, &p, estimate, &entries, in_scope) {
                 Ok((needs, approved)) => {
                     step.needs_approval = needs;
                     step.approved = approved;
                     pending += estimate;
+                    *scoped.entry(scope).or_default() += estimate;
                 }
                 Err(prob) => {
                     // Counted too, so the whole run's estimate is what the cap is checked
                     // against before anything is sent.
                     pending += estimate;
+                    *scoped.entry(scope).or_default() += estimate;
+                    if prob.code == providers::codes::SPEND_CAP {
+                        within_cap = false;
+                    }
                     step.needs_approval = estimate > 0.0 && r.from.is_some();
                     step.status = StepStatus::Blocked;
                     step.blocked = Some(prob);
@@ -524,9 +555,10 @@ pub fn plan(target: &Target, env: &Env) -> Result<Plan, Errors> {
     Ok(Plan {
         dir: target.dir.into(),
         total_estimate_usd: pending,
-        within_cap: spent + pending <= env.cap.usd,
+        within_cap,
         spent_usd: spent,
         cap: env.cap,
+        provider_caps: env.provider_caps.clone(),
         steps,
         before_generating: lookup_order(),
     })
@@ -585,9 +617,31 @@ pub fn run(target: &Target, env: &Env, offline: bool) -> Result<RunReport, Error
     // Whole-run budget first, so a run never spends half and then stops at the cap.
     if !offline {
         let p = plan(target, env)?;
-        if p.total_estimate_usd > 0.0 && !p.within_cap {
-            let e = spend::check(&env.cap, p.spent_usd, p.total_estimate_usd).unwrap_err();
-            return Err(e);
+        if !p.within_cap {
+            let over: Vec<_> = p
+                .steps
+                .iter()
+                .filter_map(|s| {
+                    s.blocked
+                        .as_ref()
+                        .filter(|b| b.code == providers::codes::SPEND_CAP)
+                        .map(|b| (s, b))
+                })
+                .map(|(s, b)| {
+                    let mut d = Diagnostic::error(
+                        providers::codes::SPEND_CAP,
+                        format!(
+                            "{}: {} (the run's paid steps together would pass the cap, so nothing was sent)",
+                            s.name, b.message
+                        ),
+                    );
+                    if let Some(f) = &b.fix {
+                        d = d.fix(f.clone());
+                    }
+                    d
+                })
+                .collect();
+            return Err(Errors(over));
         }
     }
 
@@ -737,13 +791,14 @@ fn build_one(
                     ));
                 }
                 let estimate = p.provider.estimate_usd(&p.model, &p.request);
-                let spent = spend::total(ledger).map_err(|e| Problem::from(&e))?;
-                paid_checks(env, dir, r, &p, estimate, spent, 0.0)?;
+                let entries = spend::entries(ledger).map_err(|e| Problem::from(&e))?;
+                paid_checks(env, dir, r, &p, estimate, &entries, 0.0)?;
                 let penv = providers::Env {
                     var: env.var,
                     transport: env.transport,
                     ledger,
                     cap: env.cap,
+                    provider_caps: env.provider_caps,
                     max_polls: env.max_polls,
                     wait: env.wait,
                 };

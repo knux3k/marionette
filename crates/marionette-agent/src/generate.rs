@@ -59,6 +59,7 @@ fn with_env<T>(agent: &Agent, f: impl FnOnce(&generate::Env) -> Result<T, Errors
         var: &env_var,
         transport: transport.as_ref(),
         cap: spend::resolve_cap(&env_var)?,
+        provider_caps: &spend::resolve_provider_caps(&env_var)?,
         max_polls: 200,
         wait: &wait,
     };

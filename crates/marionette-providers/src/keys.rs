@@ -4,6 +4,12 @@
 //! holds `spend_cap_usd`). It holds `NAME=value` lines (`#` comments, optional `export`,
 //! optional quotes) or one JSON object of strings.
 //!
+//! A person may also keep one key per file and name the files in the user config file:
+//! `"key_files": {"DASHSCOPE_API_KEY": "<path>", "TRIPO_API_KEY": "<path>"}`. Such a file may
+//! hold `NAME=value` lines, or the key alone, or the key among notes: the engine then takes
+//! the one token with the provider's known key prefix (`sk-` for DashScope, `tsk_` for
+//! Tripo, `sk-ant-` for Anthropic), else the file's only line.
+//!
 //! Only the provider key variables and `MARIONETTE_SPEND_CAP_USD` are read from it. Values are
 //! never printed or returned by any operation. A keys file inside the project folder is
 //! refused, so it cannot be committed by accident. No operation writes it.
@@ -22,6 +28,14 @@ pub fn readable_names() -> Vec<&'static str> {
     names
 }
 
+/// Names the keys file may supply, including per-provider caps.
+fn readable(name: &str) -> bool {
+    readable_names().contains(&name)
+        || crate::all()
+            .iter()
+            .any(|p| p.info().key_env.is_some() && spend::provider_cap_env(p.info().name) == name)
+}
+
 /// The keys file path, if one is configured.
 pub fn keys_file_path(var: &dyn Fn(&str) -> Option<String>) -> Option<PathBuf> {
     if let Some(p) = var(KEYS_FILE_ENV).filter(|p| !p.trim().is_empty()) {
@@ -31,6 +45,45 @@ pub fn keys_file_path(var: &dyn Fn(&str) -> Option<String>) -> Option<PathBuf> {
     let text = std::fs::read_to_string(cfg).ok()?;
     let v: serde_json::Value = serde_json::from_str(&text).ok()?;
     v.get("keys_file")
+        .and_then(serde_json::Value::as_str)
+        .filter(|s| !s.trim().is_empty())
+        .map(PathBuf::from)
+}
+
+/// Key prefixes the services use, to find a key inside a file with other text.
+const KEY_PREFIXES: &[(&str, &str)] = &[
+    ("DASHSCOPE_API_KEY", "sk-"),
+    ("TRIPO_API_KEY", "tsk_"),
+    ("ANTHROPIC_API_KEY", "sk-ant-"),
+];
+
+/// Finds `name`'s key in a one-key file (see the module docs).
+pub fn extract_key(text: &str, name: &str) -> Option<String> {
+    if let Some(v) = parse(text).remove(name).filter(|v| !v.trim().is_empty()) {
+        return Some(v);
+    }
+    let text = text.trim_start_matches('\u{feff}');
+    if let Some((_, prefix)) = KEY_PREFIXES.iter().find(|(n, _)| *n == name) {
+        let found: Vec<&str> = text
+            .split(|c: char| c.is_whitespace() || matches!(c, '=' | ':' | '"' | '\'' | ',' | ';' | '`'))
+            .filter(|t| t.starts_with(prefix) && t.len() > prefix.len() + 8)
+            .collect();
+        if found.len() == 1 {
+            return Some(found[0].to_string());
+        }
+    }
+    let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    match lines.as_slice() {
+        [one] if !one.contains(char::is_whitespace) => Some(one.to_string()),
+        _ => None,
+    }
+}
+
+/// The per-key file for `name`, from `key_files` in the user config file.
+pub fn key_file_path(var: &dyn Fn(&str) -> Option<String>, name: &str) -> Option<PathBuf> {
+    let cfg = spend::user_config_file(var)?;
+    let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(cfg).ok()?).ok()?;
+    v.pointer(&format!("/key_files/{name}"))
         .and_then(serde_json::Value::as_str)
         .filter(|s| !s.trim().is_empty())
         .map(PathBuf::from)
@@ -94,13 +147,19 @@ pub fn lookup(var: &dyn Fn(&str) -> Option<String>, project_root: &Path, name: &
     if let Some(v) = var(name).filter(|v| !v.trim().is_empty()) {
         return Some(v);
     }
-    if !readable_names().contains(&name) {
+    if !readable(name) {
         return None;
     }
-    let path = keys_file_path(var)?;
+    if let Some(path) = keys_file_path(var)
+        && check_location(&path, project_root).is_ok()
+        && let Ok(text) = std::fs::read_to_string(&path)
+        && let Some(v) = parse(&text).remove(name).filter(|v| !v.trim().is_empty())
+    {
+        return Some(v);
+    }
+    let path = key_file_path(var, name)?;
     check_location(&path, project_root).ok()?;
-    let text = std::fs::read_to_string(&path).ok()?;
-    parse(&text).remove(name).filter(|v| !v.trim().is_empty())
+    extract_key(&std::fs::read_to_string(&path).ok()?, name)
 }
 
 /// Whether a keys file is configured, and whether it is usable, without reading values.
@@ -166,6 +225,34 @@ mod tests {
         assert_eq!(code(status(&env3, &project)), codes::KEYS_FILE_IN_PROJECT);
         assert_eq!(status(&env, &project).unwrap(), Some(true));
         assert_eq!(status(&|_| None, &project).unwrap(), None);
+    }
+
+    #[test]
+    fn one_key_files_find_the_key_without_a_name() {
+        let k = "tsk_0123456789abcdefghij";
+        assert_eq!(
+            extract_key(&format!("{k}\n"), "TRIPO_API_KEY").as_deref(),
+            Some(k)
+        );
+        assert_eq!(
+            extract_key(&format!("my tripo key: {k}\nplan: pro\n"), "TRIPO_API_KEY").as_deref(),
+            Some(k)
+        );
+        let d = "sk-0123456789abcdef0123";
+        assert_eq!(
+            extract_key(
+                &format!("Qwen / Model Studio\nAPI key = {d}\n"),
+                "DASHSCOPE_API_KEY"
+            )
+            .as_deref(),
+            Some(d)
+        );
+        assert_eq!(
+            extract_key(&format!("DASHSCOPE_API_KEY={d}"), "DASHSCOPE_API_KEY").as_deref(),
+            Some(d)
+        );
+        // Ambiguous text gives nothing rather than a guess.
+        assert_eq!(extract_key("some notes\nmore notes", "TRIPO_API_KEY"), None);
     }
 
     fn code<T>(r: Result<T, Errors>) -> &'static str {

@@ -31,7 +31,7 @@ use std::path::Path;
 
 pub use config::{Choice, ProvidersConfig};
 pub use http::{HttpRequest, HttpResponse, NoNetwork, Transport};
-pub use spend::{CapSource, SpendCap};
+pub use spend::{CapSource, Limit, ProviderCap, ProviderCaps, SpendCap};
 
 /// Stable error codes added by this crate.
 pub mod codes {
@@ -349,7 +349,10 @@ pub struct Env<'a> {
     pub transport: &'a dyn Transport,
     /// The spend ledger (`<project>/.marionette/spend.jsonl`).
     pub ledger: &'a Path,
+    /// The total cap (for providers without their own).
     pub cap: SpendCap,
+    /// Caps a person set for single providers.
+    pub provider_caps: &'a ProviderCaps,
     pub max_polls: u32,
     pub wait: &'a dyn Fn(u32),
 }
@@ -405,9 +408,9 @@ pub fn generate(config: &ProvidersConfig, env: &Env, request: &Request) -> Resul
     let estimate = provider.estimate_usd(&model, request);
     // Paid calls need a readable ledger; free calls only report its total when they can.
     let spent_before = if estimate > 0.0 {
-        let spent = spend::total(env.ledger)?;
-        spend::check(&env.cap, spent, estimate)?;
-        spent
+        let entries = spend::entries(env.ledger)?;
+        spend::check_for(&env.cap, env.provider_caps, info.name, &entries, 0.0, estimate)?;
+        entries.iter().fold(0.0, |acc, e| acc + e.cost_usd)
     } else {
         spend::total(env.ledger).unwrap_or(0.0)
     };

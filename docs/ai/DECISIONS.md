@@ -31,3 +31,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0025 | Instanced, multi-view renderer and bulk draws | accepted |
 | 0026 | Factory simulation module | accepted |
 | 0027 | FBX to glTF conversion inside the importer | accepted |
+| 0045 | Asset generation from recipes, cached by request, gated by a person | accepted |

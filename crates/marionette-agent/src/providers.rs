@@ -131,6 +131,8 @@ struct StatusOutput {
     /// exists, `false` when it is configured but missing. Its values are never shown.
     #[serde(skip_serializing_if = "Option::is_none")]
     keys_file_found: Option<bool>,
+    /// Caps the project owner set for single providers (decision 0045).
+    provider_caps: providers::ProviderCaps,
 }
 
 fn status(agent: &mut Agent, _: StatusInput) -> Result<StatusOutput, Errors> {
@@ -152,6 +154,7 @@ fn status(agent: &mut Agent, _: StatusInput) -> Result<StatusOutput, Errors> {
         spent_usd: spend::total(&agent.root().join(spend::LEDGER_PATH))?,
         cap: spend::resolve_cap(&env_var)?,
         keys_file_found: providers::keys::status(&|n| std::env::var(n).ok(), agent.root())?,
+        provider_caps: spend::resolve_provider_caps(&env_var)?,
     })
 }
 
@@ -301,6 +304,7 @@ fn generate(agent: &mut Agent, input: GenerateInput) -> Result<GenerateOutput, E
         transport: transport.as_ref(),
         ledger: &ledger,
         cap: spend::resolve_cap(&env_var)?,
+        provider_caps: &spend::resolve_provider_caps(&env_var)?,
         max_polls: 200,
         wait: &wait,
     };

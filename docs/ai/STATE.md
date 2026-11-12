@@ -13,8 +13,8 @@ refer to `docs/DESIGN.md`.
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). |
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
-| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
+| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); pool and search (W3) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -188,6 +188,25 @@ draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
 `cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
+Line 8, generation (W4, decision 0045, guide `docs/ai/GENERATION.md`):
+- `crates/marionette-generate/tests/generate.rs`: `three_assets_rebuild_identically_from_recipes`
+  (image, tileable texture, model from the image; rebuilt from the cache offline and from
+  scratch with identical bytes; license and source recorded; pool blocked),
+  `engine_formats_textures_are_powers_of_two_and_models_stand_on_the_ground`,
+  `zero_cap_refuses_before_anything_is_sent`, `a_paid_image_is_paid_once_and_then_comes_from_the_cache`,
+  `a_paid_model_needs_a_person_to_approve_its_image`, `a_run_over_budget_is_refused_up_front`,
+  `unusable_provider_output_is_refused_and_not_written`, `bad_recipes_are_refused`,
+  `generated_assets_and_their_copies_are_blocked_from_the_pool`,
+  `per_provider_caps_unlimited_images_and_a_capped_model_provider`; unit tests in
+  `src/texture.rs`.
+- `crates/marionette-cli/tests/generate_e2e.rs`: `recipes_build_rebuild_and_list_through_the_cli`,
+  `paid_generation_without_a_cap_is_refused_clearly`, `only_a_person_approves_an_image`.
+- Providers: `a_provider_can_have_its_own_cap_or_none` in `crates/marionette-providers/tests/providers.rs`;
+  unit tests in `src/keys.rs`; `cargo test -p marionette-providers --features net --test network`
+  (transport against a server on the same machine).
+- Not covered yet: live calls (formats `verified: false`), Tripo auto-rig and rig checks,
+  decimation, extra texture maps, a cache shared across projects.
+
 ## UNVERIFIED
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
@@ -217,6 +236,9 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
   those engines, not checked against their current documentation. The skeletons type-check
   against the generated script typings (decision 0022) only in tests with `tsc` installed.
+- Generation sample answers (`crates/marionette-generate/tests/recorded/`) and the Tripo upload
+  endpoint are hand-written from documentation; the network transport has only talked to a
+  server on the same machine. Built with `--features net` only in Linux CI and the container.
 - Provider plug-ins (`claude`, `qwen`, `tripo`): request and answer formats are written from
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
@@ -247,3 +269,4 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | FBX blend shapes to glTF morph targets (default weights, `weights` animation channel), Blender-referenced test, decision 0027 updated. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
 | 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
+| 2026-11-12 | Line 8 part (W4): `marionette-generate` crate (recipes, request-keyed cache, provenance, person-only image approval, PNG and GLB post-processing), operations `generate_recipe`/`generate_plan`/`generate_run`/`generate_list`, `marionette generate`, providers: Tripo local-image upload, `net` feature transport, keys files, per-provider caps; decision 0045, `docs/ai/GENERATION.md`. Drift hash unchanged. | branch `claude/project-thread-3n87gn` |
