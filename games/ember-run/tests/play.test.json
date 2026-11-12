@@ -1,0 +1,18 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 960,
+  "input": "tests/play.inputs.json",
+  "assertions": [
+    { "event": { "kind": "won" } },
+    { "event": { "kind": "ember", "at_least": 14 } },
+    { "event": { "kind": "checkpoint", "at_least": 3, "at_most": 3 } },
+    { "event": { "kind": "jump", "entity": 30, "at_least": 4 } },
+    { "event": { "kind": "hurt", "at_most": 2 } },
+    { "event": { "kind": "sound", "sound": "builtin:jump" } },
+    { "event": { "kind": "script_error", "at_most": 0 } },
+    { "field": { "entity": 30, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
+    { "field": { "entity": 30, "path": "Transform.translation.x", "op": "gt", "value": 77 } },
+    { "state_hash": "7f78e375d553fe3e2452cca19320858d5fe297e27efed32fc2206ee277c75e2a" }
+  ]
+}

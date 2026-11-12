@@ -1,0 +1,12 @@
+{
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 400,
+  "input": "tests/plunge.inputs.json",
+  "assertions": [
+    { "event": { "kind": "fell", "at_least": 3, "at_most": 4 } },
+    { "event": { "kind": "won", "at_most": 0 } },
+    { "field": { "entity": 10, "path": "Transform.translation.z", "op": "gt", "value": -6 } },
+    { "state_hash": "d8887a4a9b2e8bec74f594409c66fdc1115a6efcb72d9e76705ddf6990bcee03" }
+  ]
+}

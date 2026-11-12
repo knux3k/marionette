@@ -62,7 +62,7 @@ export function start(self: Entity): void {
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const c = MAP[y][x];
-      if (c === "#") engine.spawn(sprite(x, y, "builtin:white", color(0.16, 0.2, 0.34), 1, 1), "wall");
+      if (c === "#") engine.spawn(sprite(x, y, "builtin:white", color(0.05, 0.07, 0.16), 1, 1), "wall");
       if (c === "L") {
         const e = engine.spawn(sprite(x, y, "builtin:circle", color(0.35, 0.3, 0.2), 0.5, 2), "lantern");
         s.lanterns.push({ x, y, id: e.id, lit: false });

@@ -8,6 +8,6 @@
     { "event": { "kind": "lost" } },
     { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "lost" } },
     { "field": { "entity": 4, "path": "Transform.translation.x", "op": "eq", "value": -7 } },
-    { "state_hash": "8082adc940b27eed44e56dc15da9ddca2ad6328812cf7f3e53a4cb2bac067ea8" }
+    { "state_hash": "9e08ffc62bc010657b97d612f8a0646f443772133df060aa58903700e48fb505" }
   ]
 }
