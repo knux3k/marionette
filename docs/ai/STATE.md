@@ -94,6 +94,24 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `mcp_read_only_refuses_mutations_with_structured_error`,
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
+Stability suite (decision 0031, `docs/ai/STABILITY.md`):
+- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-one modes
+  (core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d,
+  render-3d-play, render-2d, render-2d-play, render-ui, animation, vr-headset, factory-sim,
+  factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run (each also
+  `-render`),
+  agent-session); `--long --seeds 1` passed for every mode (Linux container, lavapipe, release;
+  factory-vr frame p99 12.4 ms at 256x256 per eye on the software GPU, under the CI scale).
+- Tests: `crates/marionette-cli/tests/stability.rs` (`fast_suite_passes_for_every_mode`,
+  `drift_mode_reaches_the_pinned_drift_hash`, `injected_panic_is_reported_with_tick_and_backtrace`,
+  `injected_hang_is_detected`, `nondeterminism_is_caught_and_the_crash_report_replays`,
+  `budget_miss_is_caught`, `the_cli_writes_crash_reports_and_exits_1`, `memory_growth_is_caught`,
+  `every_scene_has_a_stability_mode`, `bad_suites_and_modes_are_refused_as_data`).
+- CI: job `stability` in `.github/workflows/ci.yml` (fast, release, budgets x2);
+  `.github/workflows/stability-soak.yml` (nightly long soak, 3 seeds).
+- Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670
+  bytes per event); the nightly soak fails on it until the event log is bounded.
+
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
 
@@ -346,6 +364,12 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
+- Stability suite frame budgets: CI has only software GPUs (lavapipe, WARP), so frame budgets
+  are checked only on a hardware GPU; no hardware-GPU run of the suite yet. On WARP the
+  factory-vr frame p99 was 44 ms at 256x256 per eye (software rasterizer).
+- Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
+  runs have no memory check (resident size is read on Linux only) until the counting allocator
+  from the memory work is installed as the probe.
 - Unreal importer on real files: nothing from a real Unreal project has been imported. T3D
   material text is hand-written from knowledge of the editor's export format; the package
   class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
@@ -367,6 +391,7 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
 | 2026-11-12 | W2 follow-up: read-only check against real Unity files; textures typed by content, not extension. | this commit |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
+| 2026-11-12 | Stability suite (decision 0031): `stability_run` operation, `marionette stability`, `stability/suite.json` with twenty-one modes (including VR headset, factory, animation and the first three proof games), crash reports, rule and test that every scene has a mode, CI job and nightly soak, `docs/ai/STABILITY.md`. Drift hash unchanged. | branch `claude/project-thread-wqvnyq` |
 | 2026-11-12 | W10: `marionette-port` crate (C#/C++/Blueprint-text scanner, Unity and Unreal concept tables, TypeScript skeletons, coordinate conversion), four `port_*` operations, `docs/ai/PORTING.md`, generated porting map, decision 0020. Drift hash unchanged. | branch `claude/project-thread-um7abe` |
 | 2026-11-12 | Scripts spawn, clone and destroy entities (`onDestroy`, `DestroyAt`, `SpawnIds`) and set timers (`ScriptTimers`), decision 0021; physics follows spawned and removed bodies; `examples/spawner.scene.json`; porting tables and skeletons map spawning, destroying, timers and coroutine waits. Drift, playground and scripted hashes unchanged. | branch `claude/project-thread-lnrax1` |
 | 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |

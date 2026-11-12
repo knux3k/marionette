@@ -130,7 +130,8 @@ Status: in progress (decision 0050, PROOF-SCENES.md). Games in `games/`; owns `g
   side-scroller, each built through operations only.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its
   tests pass twice with identical results, uses pooled CC0 or recipe-generated assets, holds
-  90 frames per second on a mid-range desktop GPU.
+  90 frames per second on a mid-range desktop GPU, has a `sim` and a `render` mode in
+  `stability/suite.json` that pass fast and long (docs/ai/STABILITY.md).
 
 ## W10: porting Unity and Unreal code
 

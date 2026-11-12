@@ -25,6 +25,7 @@ pub mod providers;
 pub mod scenario;
 pub mod script;
 pub mod session;
+pub mod stability;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -133,6 +134,7 @@ impl Agent {
             anim::ops(),
             generate::ops(),
             script::ops(),
+            stability::ops(),
             pool::ops(),
             port::ops(),
             prefab::ops(),
