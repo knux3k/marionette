@@ -6,6 +6,7 @@
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
 
+pub mod anim;
 pub mod docs;
 pub mod edit;
 pub mod engine;
@@ -126,6 +127,7 @@ impl Agent {
             library::ops(),
             perf::ops(),
             providers::ops(),
+            anim::ops(),
             script::ops(),
             port::ops(),
         ]

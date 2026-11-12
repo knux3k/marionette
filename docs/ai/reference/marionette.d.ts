@@ -14,6 +14,14 @@ interface Entity {
   /** Adds or replaces the component. Throws `script.bad_value` if the value does not fit. */
   set<K extends keyof Components>(name: K, value: Components[K]): void;
   has(name: keyof Components): boolean;
+  /** Plays a clip of this entity's animated `Model`, cross-fading other clips out over
+   *  `fade` seconds (default 0.2). Changes the `Animator` component, like `anim_play`.
+   *  Throws `anim.unknown_clip` for a clip the model does not have. */
+  playClip(clip: string, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Sets one clip's blend weight (e.g. walk 0.7 + run 0.3) without touching other clips. */
+  blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades out one clip, or every clip when `clip` is omitted. */
+  stopClip(clip?: string, options?: { fade?: number }): void;
   /** Same as `engine.destroy(this, seconds)`. */
   destroy(seconds?: number): void;
 }
@@ -125,6 +133,26 @@ type AngularVelocity = {
   x: number;
   y: number;
   z: number;
+};
+
+/** Plays skeletal animation clips of the entity's `Model` (a glTF file with animations), blended by layer weight. Change it through the `anim_play`, `anim_blend` and `anim_stop` operations or by editing the layers directly. An empty list shows the rest pose. */
+type Animator = {
+  layers: Array<{
+    /** Clip name in the model file; `#0`, `#1`, ... pick unnamed clips by position. */
+    clip: string;
+    /** Seconds a full 0 to 1 weight change takes (0 = immediate). */
+    fade: number;
+    /** Wraps around at the end; otherwise holds the last frame (and logs `anim_finished`). */
+    looping: boolean;
+    /** Playback rate: 1 is normal speed, 0 holds, negative plays backwards. */
+    speed: number;
+    /** Weight this layer moves toward. A layer whose weight and target are both 0 is removed. */
+    target_weight: number;
+    /** Seconds into the clip. */
+    time: number;
+    /** Blend weight now (0..1). Layer poses are averaged by weight. */
+    weight: number;
+  }>;
 };
 
 /** Where sounds are heard from (usually on the camera). Pan follows the listener's right (+X) axis; gain falls off as `1 / (1 + distance)`. */
@@ -573,6 +601,7 @@ type Velocity = {
 /** Every component, by the name used in scene files. */
 interface Components {
   AngularVelocity: AngularVelocity;
+  Animator: Animator;
   AudioListener: AudioListener;
   AudioSource: AudioSource;
   Camera: Camera;

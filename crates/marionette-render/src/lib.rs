@@ -9,6 +9,7 @@ pub mod compare;
 pub mod extract;
 pub mod gpu;
 pub mod renderer;
+mod skinning;
 pub mod window;
 
 pub use extract::{FrameData, View, extract, extract_at};
