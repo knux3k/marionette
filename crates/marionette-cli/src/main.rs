@@ -9,6 +9,8 @@ use serde_json::{Value, json};
 use std::path::Path;
 use std::process::ExitCode;
 
+mod render;
+
 #[derive(Parser)]
 #[command(name = "marionette", version, about = "Marionette game engine CLI")]
 struct Cli {
@@ -25,16 +27,58 @@ enum Command {
     Schema,
     /// Check a scene file against the schema.
     Validate { scene: String },
-    /// Simulate a scene and print a hash of the final state.
+    /// Simulate a scene. With --headless, run N ticks and print a hash of the final state;
+    /// otherwise open a window (closes after --ticks if given, or on Escape).
     Run {
         scene: String,
-        /// Run without a window (required: windowed mode does not exist yet).
+        /// Run without a window.
         #[arg(long)]
         headless: bool,
-        #[arg(long, default_value_t = 1000)]
+        /// Ticks to simulate (headless default: 1000; windowed default: until closed).
+        #[arg(long)]
+        ticks: Option<u64>,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Camera entity id (windowed mode; default: the lowest-id camera).
+        #[arg(long)]
+        camera: Option<u64>,
+        /// Window size, e.g. 1280x720.
+        #[arg(long, default_value = "1280x720")]
+        size: String,
+    },
+    /// Simulate N ticks, then render one image with no window and save it as PNG.
+    Screenshot {
+        scene: String,
+        #[arg(long, default_value_t = 0)]
         ticks: u64,
         #[arg(long, default_value_t = 0)]
         seed: u64,
+        /// Camera entity id (default: the lowest-id camera).
+        #[arg(long)]
+        camera: Option<u64>,
+        /// Image size, e.g. 1280x720.
+        #[arg(long, default_value = "1280x720")]
+        size: String,
+        /// Output PNG path.
+        #[arg(long)]
+        out: String,
+        /// MSAA sample count (1 or 4).
+        #[arg(long, default_value_t = 4)]
+        msaa: u32,
+    },
+    /// Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU.
+    Bench {
+        scene: String,
+        #[arg(long, default_value_t = 1000)]
+        frames: u32,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        #[arg(long)]
+        camera: Option<u64>,
+        #[arg(long, default_value = "1920x1080")]
+        size: String,
+        #[arg(long, default_value_t = 4)]
+        msaa: u32,
     },
     /// Scene file tools.
     Scene {
@@ -61,10 +105,36 @@ fn main() -> ExitCode {
         Command::Validate { scene } => validate(&scene),
         Command::Run {
             scene,
-            headless,
+            headless: true,
             ticks,
             seed,
-        } => run(&scene, headless, ticks, seed),
+            ..
+        } => run(&scene, ticks.unwrap_or(1000), seed),
+        Command::Run {
+            scene,
+            headless: false,
+            ticks,
+            seed,
+            camera,
+            size,
+        } => render::windowed(&scene, ticks, seed, camera, &size),
+        Command::Screenshot {
+            scene,
+            ticks,
+            seed,
+            camera,
+            size,
+            out,
+            msaa,
+        } => render::screenshot(&scene, ticks, seed, camera, &size, &out, msaa),
+        Command::Bench {
+            scene,
+            frames,
+            seed,
+            camera,
+            size,
+            msaa,
+        } => render::bench(&scene, frames, seed, camera, &size, msaa),
         Command::Scene {
             command: SceneCommand::Fmt { scene, check },
         } => fmt(&scene, check),
@@ -101,13 +171,30 @@ fn human(value: &Value) -> String {
     match value.get("command").and_then(Value::as_str) {
         Some("validate") => format!("ok: {} ({} entities)", s("file"), s("entities")),
         Some("run") => s("state_hash"),
+        Some("screenshot") => format!(
+            "wrote {} ({}x{}, state {})",
+            s("out"),
+            s("width"),
+            s("height"),
+            s("state_hash")
+        ),
+        Some("bench") => format!(
+            "{} at {}x{}: avg {} ms, p99 {} ms, worst {} ms over {} frames",
+            s("gpu"),
+            s("width"),
+            s("height"),
+            s("avg_ms"),
+            s("p99_ms"),
+            s("max_ms"),
+            s("frames")
+        ),
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("file")),
         Some("fmt") => format!("already canonical: {}", s("file")),
         _ => value.to_string(),
     }
 }
 
-fn read(path: &str) -> Result<String, Errors> {
+pub(crate) fn read(path: &str) -> Result<String, Errors> {
     std::fs::read_to_string(path).map_err(|e| {
         Diagnostic::error(codes::IO_READ, format!("cannot read {path}: {e}"))
             .file(path)
@@ -124,14 +211,7 @@ fn validate(path: &str) -> Result<Value, Errors> {
     Ok(json!({ "ok": true, "command": "validate", "file": path, "entities": parsed.entities.len() }))
 }
 
-fn run(path: &str, headless: bool, ticks: u64, seed: u64) -> Result<Value, Errors> {
-    if !headless {
-        return Err(
-            Diagnostic::error("cli.no_window", "windowed mode is not available yet")
-                .fix("pass --headless")
-                .into(),
-        );
-    }
+fn run(path: &str, ticks: u64, seed: u64) -> Result<Value, Errors> {
     let text = read(path)?;
     let mut sim = Sim::from_text(&text, Some(path), default_registry(), seed)?;
     sim.run(ticks);
