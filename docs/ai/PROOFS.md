@@ -190,7 +190,7 @@ Line 8, owned library and Unity import (W2, decision 0018):
   overrides on model parts, point/spot lights, audio sources, physic materials, X/Z capsules,
   compound bodies, Unity `.unity` scenes (same reader would serve them).
 - CC0 pool (W3, decision 0041): `cargo test -p marionette-pool`:
-  `crates/marionette-pool/tests/pool.rs` (`seed_pool_matches_its_generator`,
+  `crates/marionette-pool/tests/pool.rs` (`the_committed_seed_pool_verifies`, `seed_pool_matches_its_generator`,
   `made_assets_need_a_method_and_cc0_license_files`, `generated_assets_need_a_persons_dedication`,
   `owned_assets_and_copies_of_them_are_refused`,
   `online_assets_need_a_known_library_its_domain_and_license_file`,
@@ -199,8 +199,9 @@ Line 8, owned library and Unity import (W2, decision 0018):
   unit tests in `src/net.rs` (MD5) and `src/zip.rs`; `crates/marionette-cli/tests/pool_e2e.rs`
   (`pool_operations_search_fetch_add_and_refuse`). Seed set in `pool/` rebuilt by
   `cargo run -p marionette-pool --example make_seed -- <folder>`. Operations `asset_search`,
-  `pool_info`, `pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`.
-  The pool moves to its own repository once one exists; until then `pool/` is the pool.
+  `pool_info`, `pool_list`, `pool_get`, `pool_add`, `pool_ingest`, `pool_fetch`, `pool_index`,
+  `pool_verify` (the e2e test also breaks a pool on purpose). The public pool is the repository
+  `knux3k/marionette-assets`, whose CI runs `pool_verify`.
 
 Line 8, Unreal importer (W6, decision 0029):
 - `crates/marionette-import/tests/unreal.rs`: `unreal_project_imports_exports_and_refuses_engine_content`
