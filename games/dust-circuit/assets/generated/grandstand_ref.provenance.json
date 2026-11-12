@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "grandstand_ref",
+  "output": "image",
+  "file": "grandstand_ref.png",
+  "sha256": "9d1900df90f8edec32c26a787559fc0ff6c2b4cd603389898df33463e262c890",
+  "recipe": "grandstand_ref.recipe.json",
+  "recipe_sha256": "ca58f7d9deaa6420fa80562e6f03a491ff092eddf17d130fb10c3bbbe5c76c7e",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small wooden desert race grandstand with three rows of benches and a striped canvas roof, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "91b7d1ebccb997659a203f6708a2ff301658ddee3e1484ef426cf35148471f22",
+    "raw_sha256": "caf744b4631b23bad5a359c1c575b24b94abcafe9c951437bf06f3232da91c86",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

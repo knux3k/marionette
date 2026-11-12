@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pillar_ref",
+  "output": "image",
+  "file": "pillar_ref.png",
+  "sha256": "c9c9340a08097658c6b50b57344f29ed006d3f51ef54a69e7318350f68e1ae87",
+  "recipe": "pillar_ref.recipe.json",
+  "recipe_sha256": "161985f8c9de40aeee9ca1f168d08c9380d67fa6dd28312083e506dd49e341de",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a weathered carved stone pillar with faint glowing violet runes, square base, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "04d11264a510edb4b5d567fca45ab28720215453c10ffb9cf587f2e2c8eed9ad",
+    "raw_sha256": "7ec8e2bcc55fe194249240f6dace2dcc07342b3a3babdeac401e3642314f7a3f",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
