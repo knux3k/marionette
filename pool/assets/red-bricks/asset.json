@@ -1,0 +1,38 @@
+{
+  "format": "marionette.pool_asset/1",
+  "id": "red-bricks",
+  "kind": "texture",
+  "name": "Red bricks",
+  "tags": [
+    "brick",
+    "bricks",
+    "masonry",
+    "red",
+    "wall"
+  ],
+  "license": {
+    "spdx": "CC0-1.0",
+    "proof": [
+      {
+        "kind": "made_for_project",
+        "detail": "made for the Marionette project and dedicated to the public domain under CC0 1.0 by the Marionette Contributors",
+        "at": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    ]
+  },
+  "source": {
+    "origin": "made",
+    "author": "Marionette Contributors",
+    "method": "computed in code: running bond, per-brick shade from a seeded SplitMix64",
+    "generator": "crates/marionette-pool/src/seed.rs"
+  },
+  "files": [
+    {
+      "path": "texture.png",
+      "sha256": "9255b0abf3b6e0ed7b74a59915e1a8366415b4494bd2f24edacd016bec136c8e",
+      "bytes": 1267
+    }
+  ],
+  "main": "texture.png",
+  "engine_ready": true
+}

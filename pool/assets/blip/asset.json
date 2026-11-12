@@ -1,0 +1,38 @@
+{
+  "format": "marionette.pool_asset/1",
+  "id": "blip",
+  "kind": "sound",
+  "name": "Blip",
+  "tags": [
+    "beep",
+    "blip",
+    "pickup",
+    "sfx",
+    "ui"
+  ],
+  "license": {
+    "spdx": "CC0-1.0",
+    "proof": [
+      {
+        "kind": "made_for_project",
+        "detail": "made for the Marionette project and dedicated to the public domain under CC0 1.0 by the Marionette Contributors",
+        "at": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    ]
+  },
+  "source": {
+    "origin": "made",
+    "author": "Marionette Contributors",
+    "method": "computed in code: rising triangle-wave blip, 0.12 s, 16-bit 44.1 kHz WAV",
+    "generator": "crates/marionette-pool/src/seed.rs"
+  },
+  "files": [
+    {
+      "path": "sound.wav",
+      "sha256": "b86b2a45bf0992b8e853dd5e4e5f400afa301e6da8b45612bd77bf7bb8d68e68",
+      "bytes": 10628
+    }
+  ],
+  "main": "sound.wav",
+  "engine_ready": true
+}

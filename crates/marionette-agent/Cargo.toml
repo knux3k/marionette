@@ -16,6 +16,7 @@ marionette-import = { path = "../marionette-import" }
 marionette-anim = { path = "../marionette-anim" }
 bevy_ecs.workspace = true
 marionette-assets = { path = "../marionette-assets" }
+marionette-pool = { path = "../marionette-pool" }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-providers = { path = "../marionette-providers" }

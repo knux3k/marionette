@@ -16,7 +16,7 @@
 
 pub mod claude;
 pub mod config;
-mod glb;
+pub mod glb;
 pub mod http;
 pub mod keys;
 pub mod mock;
