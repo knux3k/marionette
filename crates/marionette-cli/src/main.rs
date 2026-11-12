@@ -54,6 +54,15 @@ enum Command {
         /// Window size, e.g. 1280x720.
         #[arg(long, default_value = "1280x720")]
         size: String,
+        /// Scripted input or a recording to replay (`*.inputs.json`).
+        #[arg(long)]
+        input: Option<String>,
+        /// Write every input action change to this file when the run ends (replayable).
+        #[arg(long)]
+        record: Option<String>,
+        /// Windowed mode: do not open the audio device.
+        #[arg(long)]
+        mute: bool,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -155,11 +164,14 @@ fn main() -> ExitCode {
             headless: true,
             ticks,
             seed,
+            input,
+            record,
             ..
         } => agent
             .call(
                 "scene_run",
-                json!({ "scene": scene, "seed": seed, "ticks": ticks.unwrap_or(1000) }),
+                json!({ "scene": scene, "seed": seed, "ticks": ticks.unwrap_or(1000),
+                        "input": input, "record": record }),
             )
             .map(|v| merge("run", v)),
         Command::Run {
@@ -169,7 +181,19 @@ fn main() -> ExitCode {
             seed,
             camera,
             size,
-        } => render::windowed(&scene, ticks, seed, camera, &size),
+            input,
+            record,
+            mute,
+        } => render::windowed(render::WindowedRun {
+            path: &scene,
+            ticks,
+            seed,
+            camera,
+            size: &size,
+            input: input.as_deref(),
+            record: record.as_deref(),
+            mute,
+        }),
         Command::Screenshot {
             scene,
             ticks,

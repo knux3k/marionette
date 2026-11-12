@@ -2,19 +2,26 @@
 //!
 //! The simulation still advances in fixed ticks; wall-clock time only decides how many
 //! ticks to run before each frame, never what a tick computes.
+//!
+//! This crate knows nothing about input or audio modules. Live keyboard and mouse input,
+//! `UiButton` clicks and per-frame work (playing sounds) reach the caller through
+//! [`WindowHooks`], which queues them for the next tick so they enter the simulation the same
+//! way scripted input does.
 
 use crate::extract::extract;
 use crate::gpu::{Gpu, pick_camera};
 use crate::renderer::{self, DEPTH_FORMAT, Renderer, Target};
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};
+use marionette_core::scene::SceneId;
+use marionette_core::ui::{UiButton, UiNode, layout};
 use marionette_core::{Diagnostic, Errors, Sim};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-use winit::keyboard::{Key, NamedKey};
+use winit::keyboard::{Key, NamedKey, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 /// Options for [`run_windowed`].
@@ -29,6 +36,52 @@ pub struct WindowOptions {
     pub base_dir: PathBuf,
 }
 
+/// What the window hands back to its caller. Every method has a default that does nothing.
+pub trait WindowHooks {
+    /// A device input changed (`key:KeyW`, `mouse:Left`; value 1 pressed, 0 released). Queue
+    /// it for tick `sim.tick()`, the next tick to run.
+    fn device(&mut self, _sim: &mut Sim, _input: &str, _value: f32) {}
+    /// An action is set directly (a `UiButton` click sets it to 1, then to 0 one tick later).
+    fn action(&mut self, _sim: &mut Sim, _tick: u64, _action: &str, _value: f32) {}
+    /// Called once per frame after the simulation caught up (for example to play new sounds).
+    fn after_ticks(&mut self, _sim: &mut Sim) {}
+}
+
+/// Hooks that do nothing (a plain viewer).
+pub struct NoHooks;
+impl WindowHooks for NoHooks {}
+
+/// Input name of a key: `key:` plus winit's key code name (`KeyW`, `Space`, `ArrowLeft`).
+pub fn key_name(key: PhysicalKey) -> Option<String> {
+    match key {
+        PhysicalKey::Code(code) => Some(format!("key:{code:?}")),
+        PhysicalKey::Unidentified(_) => None,
+    }
+}
+
+/// Input name of a mouse button: `mouse:Left`, `mouse:Right`, `mouse:Middle`.
+pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
+    match button {
+        MouseButton::Left => Some("mouse:Left"),
+        MouseButton::Right => Some("mouse:Right"),
+        MouseButton::Middle => Some("mouse:Middle"),
+        _ => None,
+    }
+}
+
+/// The action of the top-most `UiButton` under screen point (`x`, `y`) on a `w` x `h` screen.
+/// Ties on layer go to the higher scene id (drawn later, so on top).
+pub fn button_at(world: &mut bevy_ecs::world::World, x: f32, y: f32, w: f32, h: f32) -> Option<String> {
+    let mut q = world.query::<(&SceneId, &UiNode, &UiButton)>();
+    q.iter(world)
+        .filter(|(_, n, _)| {
+            let (bx, by, bw, bh) = layout(n, w, h);
+            x >= bx && x < bx + bw && y >= by && y < by + bh
+        })
+        .max_by_key(|(id, n, _)| (n.layer, id.0))
+        .map(|(_, _, b)| b.action.clone())
+}
+
 struct Running {
     window: Arc<Window>,
     surface: wgpu::Surface<'static>,
@@ -39,8 +92,10 @@ struct Running {
     depth: wgpu::TextureView,
 }
 
-struct App {
+struct App<'h> {
     sim: Sim,
+    hooks: &'h mut dyn WindowHooks,
+    cursor: (f32, f32),
     opts: WindowOptions,
     running: Option<Running>,
     error: Option<Errors>,
@@ -50,11 +105,13 @@ struct App {
 
 /// Opens a window and runs the simulation until the window closes (or `max_ticks`).
 /// Returns the simulation so callers can report its final state.
-pub fn run_windowed(sim: Sim, opts: WindowOptions) -> Result<Sim, Errors> {
+pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) -> Result<Sim, Errors> {
     let surface_err = |msg: String| Errors::from(Diagnostic::error(renderer::codes::SURFACE, msg));
     let event_loop = EventLoop::new().map_err(|e| surface_err(format!("cannot create event loop: {e}")))?;
     let mut app = App {
         sim,
+        hooks,
+        cursor: (0.0, 0.0),
         opts,
         running: None,
         error: None,
@@ -99,7 +156,7 @@ fn attachments(
     )
 }
 
-impl App {
+impl App<'_> {
     fn start(&mut self, event_loop: &ActiveEventLoop) -> Result<Running, Errors> {
         let surface_err = |msg: String| Errors::from(Diagnostic::error(renderer::codes::SURFACE, msg));
         let attrs = Window::default_attributes()
@@ -170,6 +227,7 @@ impl App {
             self.sim.step();
             self.accumulator -= dt;
         }
+        self.hooks.after_ticks(&mut self.sim);
 
         let frame = extract(&self.sim.world);
         let Some(r) = self.running.as_mut() else { return };
@@ -210,7 +268,7 @@ impl App {
     }
 }
 
-impl ApplicationHandler for App {
+impl ApplicationHandler for App<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.running.is_none() {
             match self.start(event_loop) {
@@ -243,6 +301,40 @@ impl ApplicationHandler for App {
                     (r.msaa, r.depth) = attachments(&r.gpu.device, &r.config, self.opts.sample_count);
                 }
             }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if !event.repeat
+                    && let Some(name) = key_name(event.physical_key)
+                {
+                    let value = if event.state == ElementState::Pressed {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                    self.hooks.device(&mut self.sim, &name, value);
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.cursor = (position.x as f32, position.y as f32);
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                if let Some(name) = mouse_name(button) {
+                    let pressed = state == ElementState::Pressed;
+                    self.hooks
+                        .device(&mut self.sim, name, if pressed { 1.0 } else { 0.0 });
+                    if pressed
+                        && button == MouseButton::Left
+                        && let Some(r) = self.running.as_ref()
+                    {
+                        let (w, h) = (r.config.width as f32, r.config.height as f32);
+                        let (x, y) = self.cursor;
+                        if let Some(action) = button_at(&mut self.sim.world, x, y, w, h) {
+                            let tick = self.sim.tick();
+                            self.hooks.action(&mut self.sim, tick, &action, 1.0);
+                            self.hooks.action(&mut self.sim, tick + 1, &action, 0.0);
+                        }
+                    }
+                }
+            }
             WindowEvent::RedrawRequested => self.frame(event_loop),
             _ => {}
         }
@@ -252,5 +344,64 @@ impl ApplicationHandler for App {
         if let Some(r) = &self.running {
             r.window.request_redraw();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy_ecs::world::World;
+    use marionette_core::spatial::Vec2;
+    use marionette_core::ui::Anchor;
+    use winit::keyboard::KeyCode;
+
+    #[test]
+    fn device_names_match_the_action_map_format() {
+        assert_eq!(
+            key_name(PhysicalKey::Code(KeyCode::KeyW)).as_deref(),
+            Some("key:KeyW")
+        );
+        assert_eq!(
+            key_name(PhysicalKey::Code(KeyCode::Space)).as_deref(),
+            Some("key:Space")
+        );
+        assert_eq!(
+            key_name(PhysicalKey::Code(KeyCode::ArrowLeft)).as_deref(),
+            Some("key:ArrowLeft")
+        );
+        assert_eq!(mouse_name(MouseButton::Left), Some("mouse:Left"));
+        assert_eq!(mouse_name(MouseButton::Back), None);
+    }
+
+    fn button(world: &mut World, id: u64, offset: (f32, f32), layer: i32, action: &str) {
+        world.spawn((
+            SceneId(id),
+            UiNode {
+                anchor: Anchor::TopLeft,
+                offset: Vec2 {
+                    x: offset.0,
+                    y: offset.1,
+                },
+                size: Vec2 { x: 100.0, y: 40.0 },
+                layer,
+            },
+            UiButton {
+                action: action.into(),
+            },
+        ));
+    }
+
+    #[test]
+    fn clicks_hit_the_top_most_button() {
+        let mut world = World::new();
+        button(&mut world, 1, (10.0, 10.0), 0, "start");
+        button(&mut world, 2, (60.0, 30.0), 1, "options");
+        button(&mut world, 3, (300.0, 300.0), 0, "quit");
+        let at = |w: &mut World, x, y| button_at(w, x, y, 800.0, 600.0);
+        assert_eq!(at(&mut world, 20.0, 20.0).as_deref(), Some("start"));
+        assert_eq!(at(&mut world, 80.0, 40.0).as_deref(), Some("options"));
+        assert_eq!(at(&mut world, 350.0, 320.0).as_deref(), Some("quit"));
+        assert_eq!(at(&mut world, 5.0, 5.0), None);
+        assert_eq!(at(&mut world, 110.0, 10.0), None, "right edge is exclusive");
     }
 }

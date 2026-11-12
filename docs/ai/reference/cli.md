@@ -132,6 +132,15 @@ Options:
           
           [default: 1280x720]
 
+      --input <INPUT>
+          Scripted input or a recording to replay (`*.inputs.json`)
+
+      --record <RECORD>
+          Write every input action change to this file when the run ends (replayable)
+
+      --mute
+          Windowed mode: do not open the audio device
+
   -h, --help
           Print help
 

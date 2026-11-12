@@ -1,9 +1,9 @@
 //! CLI commands that use the renderer directly: bench and the windowed run.
 //! (Screenshots go through the shared `observe_screenshot` operation.)
 
-use marionette_core::error::codes;
-use marionette_core::{Diagnostic, Errors, Sim, default_registry};
-use marionette_render::window::{WindowOptions, run_windowed};
+use marionette_agent::engine;
+use marionette_core::{Diagnostic, Errors, Sim};
+use marionette_render::window::{WindowHooks, WindowOptions, run_windowed};
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -41,15 +41,9 @@ fn scene_dir(path: &str) -> PathBuf {
         .unwrap_or_default()
 }
 
+/// Loads a scene with every engine module (input, physics, audio), as `scene_run` does.
 fn load(path: &str, seed: u64) -> Result<Sim, Errors> {
-    let text = std::fs::read_to_string(path).map_err(|e| {
-        Errors::from(
-            Diagnostic::error(codes::IO_READ, format!("cannot read {path}: {e}"))
-                .file(path)
-                .fix("check the path exists and is readable"),
-        )
-    })?;
-    Sim::from_text(&text, Some(path), default_registry(), seed)
+    engine::load_file(Path::new(path), path, seed)
 }
 
 pub fn bench(
@@ -108,15 +102,81 @@ pub fn bench(
     }))
 }
 
-pub fn windowed(
-    path: &str,
-    ticks: Option<u64>,
-    seed: u64,
-    camera: Option<u64>,
-    size: &str,
-) -> Result<Value, Errors> {
+/// Live input and sound for the window. Input problems are kept and reported at the end.
+struct Live {
+    player: Option<engine::SoundPlayer>,
+    problems: Vec<String>,
+}
+
+impl Live {
+    fn note(&mut self, r: Result<(), Errors>) {
+        if let Err(e) = r
+            && self.problems.len() < 20
+        {
+            self.problems.push(e.to_string());
+        }
+    }
+}
+
+impl WindowHooks for Live {
+    fn device(&mut self, sim: &mut Sim, input: &str, value: f32) {
+        let tick = sim.tick();
+        let r = engine::queue_live(sim, tick, input, false, value);
+        self.note(r);
+    }
+    fn action(&mut self, sim: &mut Sim, tick: u64, action: &str, value: f32) {
+        let r = engine::queue_live(sim, tick, action, true, value);
+        self.note(r);
+    }
+    fn after_ticks(&mut self, sim: &mut Sim) {
+        if let Some(p) = self.player.as_mut() {
+            for m in p.play_new(sim.events()) {
+                if self.problems.len() < 20 && !self.problems.contains(&m) {
+                    self.problems.push(m);
+                }
+            }
+        }
+    }
+}
+
+/// Options of the windowed run beyond the shared ones.
+pub struct WindowedRun<'a> {
+    pub path: &'a str,
+    pub ticks: Option<u64>,
+    pub seed: u64,
+    pub camera: Option<u64>,
+    pub size: &'a str,
+    pub input: Option<&'a str>,
+    pub record: Option<&'a str>,
+    pub mute: bool,
+}
+
+pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
+    let WindowedRun {
+        path,
+        ticks,
+        seed,
+        camera,
+        size,
+        input,
+        record,
+        mute,
+    } = run;
     let (width, height) = parse_size(size)?;
-    let sim = load(path, seed)?;
+    let mut sim = load(path, seed)?;
+    if let Some(f) = input {
+        engine::feed_file(&mut sim, Path::new(f), f)?;
+    }
+    let mut live = Live {
+        player: None,
+        problems: Vec::new(),
+    };
+    if !mute {
+        match engine::SoundPlayer::new(scene_dir(path)) {
+            Ok(p) => live.player = Some(p),
+            Err(m) => live.problems.push(m),
+        }
+    }
     let opts = WindowOptions {
         title: format!("Marionette - {path}"),
         width,
@@ -126,8 +186,12 @@ pub fn windowed(
         max_ticks: ticks,
         base_dir: scene_dir(path),
     };
-    let mut sim = run_windowed(sim, opts).map_err(|e| e.with_file(path))?;
-    Ok(json!({
+    let mut sim = run_windowed(sim, opts, &mut live).map_err(|e| e.with_file(path))?;
+    let recorded = match record {
+        Some(out) => Some(engine::save_recording(&sim, Path::new(out), out)?),
+        None => None,
+    };
+    let mut out = json!({
         "ok": true,
         "command": "run",
         "file": path,
@@ -135,5 +199,10 @@ pub fn windowed(
         "ticks": sim.tick(),
         "seed": seed,
         "state_hash": sim.state_hash(),
-    }))
+        "problems": live.problems,
+    });
+    if let Some(n) = recorded {
+        out["recorded_events"] = json!(n);
+    }
+    Ok(out)
 }
