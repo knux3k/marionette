@@ -10,7 +10,7 @@ refer to `docs/DESIGN.md`.
 | 1 | Workspace, CI | Done locally. CI file exists, never run (no remote). |
 | 2 | Core | Done. |
 | 3 | Renderer | Done. |
-| 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0019). |
+| 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). |
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Not started. |
@@ -48,8 +48,8 @@ Line 3 (renderer):
   `b95606f6c44132e9b2fd82caad0e37a7d056da1b267e5e4ec24be117de832c08`, sprites
   `3c90975a249c2cb5a44bb38e83d2116ba77c804b61352db3858c3dc93baaf3d1`.
 
-Line 4 (scripting, decision 0019):
-- Spike numbers and how to rerun them: decision 0019, harness `spikes/script-spike` (not a
+Line 4 (scripting, decision 0022):
+- Spike numbers and how to rerun them: decision 0022, harness `spikes/script-spike` (not a
   workspace member).
 - `cargo run -q -p marionette-cli -- run examples/scripted.scene.json --headless --ticks 1000 --seed 1`
   prints `4450bc3cb97805f59584f11c13b999a13f8ac42ca67752dc7d1cc247575251d3` (script
@@ -148,4 +148,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
-| 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0019 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
+| 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |

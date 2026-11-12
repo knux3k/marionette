@@ -30,5 +30,5 @@
 - **Protocol file**: `PROTOCOL.md` in a game project: the project owner's rules every agent reads
   first (template: `docs/PROTOCOL.md`).
 - **Script**: a TypeScript ES module attached with the `Script` component; its hooks run in
-  `Stage::Script` (decision 0019). Its per-entity state is `self.state` (`ScriptState`).
+  `Stage::Script` (decision 0022). Its per-entity state is `self.state` (`ScriptState`).
 - **Hook**: a function a script exports (`start`, `update`, `onCollisionEnter`, ...).

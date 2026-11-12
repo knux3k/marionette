@@ -27,7 +27,7 @@ marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipelin
    events, updates `DeviceState`, recomputes `ActionState` from the action map, records changes.
 2. `Stage::Script`: `run_scripts` (`crates/marionette-script/src/lib.rs`): for each entity
    with a `Script`, in id order, the module's hooks (`start` once, contact hooks for last
-   tick's collisions, `update`). Decision 0019.
+   tick's collisions, `update`). Decision 0022.
 3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
 4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
@@ -96,7 +96,7 @@ Forbidden in simulation code (systems and anything they call):
 - reading files during a tick (load in `Module::init`).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
-math, `**` rewritten to `Math.pow` (decision 0019).
+math, `**` rewritten to `Math.pow` (decision 0022).
 
 Rapier runs with `enhanced-determinism`. Test: same scene, seed, ticks and input give the same
 hash (`crates/marionette-core/tests/acceptance.rs`, `crates/marionette-cli/tests/agent_e2e.rs`).

@@ -1,6 +1,6 @@
 [package]
 name = "script-spike"
-description = "Line 4 spike: TypeScript (QuickJS + oxc type stripping) against Luau (mlua). Not a workspace member; see docs/decisions/0019-scripting-language.md."
+description = "Line 4 spike: TypeScript (QuickJS + oxc type stripping) against Luau (mlua). Not a workspace member; see docs/decisions/0022-scripting-language.md."
 version = "0.0.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
