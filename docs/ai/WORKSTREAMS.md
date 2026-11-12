@@ -19,6 +19,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | done (decision 0029) | - |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | done | - |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
+| WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
@@ -126,6 +127,14 @@ Status: done (decision 0020). Guide: PORTING.md.
 - Owns: `crates/marionette-port/`, `crates/marionette-agent/src/port.rs`,
   `docs/ai/PORTING.md`.
 - Follow-up: keep the tables in step with the script API (flip gaps when features land).
+
+## WP: performance
+
+- Done: decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`.
+- Owns: `crates/marionette-jobs`, `crates/marionette-factory`, `crates/marionette-agent/src/perf.rs`,
+  `crates/marionette-cli/tests/perf_proofs.rs`, `crates/marionette-cli/tests/perf_budgets.rs`.
+- Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
+  a typed TypeScript subset compiled to WASM for job bodies (own workstream, after W7).
 
 ## W9: later (line 10)
 

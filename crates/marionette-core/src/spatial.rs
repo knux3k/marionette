@@ -168,3 +168,36 @@ pub struct AmbientLight {
     pub color: Color,
     pub intensity: f32,
 }
+
+/// Many copies of one model drawn from a module's own arrays (belt items, crowds,
+/// particles), without one entity per copy. Built at render time by a [`BulkDrawHooks`]
+/// function, so the simulation pays nothing for it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BulkDraw {
+    /// Model asset, as in [`Model::asset`].
+    pub asset: String,
+    /// One material for every copy (`None` uses the model's own).
+    pub material: Option<Material>,
+    /// One affine transform per copy: the first three rows of the column-major world
+    /// matrix, as `[x_axis.xyz, y_axis.xyz, z_axis.xyz, translation.xyz]`.
+    pub transforms: Vec<[f32; 12]>,
+}
+
+/// A function that adds bulk draws for the current world. `alpha` (0..1) is how far the
+/// frame is between the last tick and the next, for smooth motion at display rate.
+pub type BulkDrawHook = fn(&bevy_ecs::world::World, alpha: f32, &mut Vec<BulkDraw>);
+
+/// Bulk draw hooks registered by modules in `Module::init`. Not simulation state: not in
+/// the scene, the schema or the state hash.
+#[derive(bevy_ecs::prelude::Resource, Default, Clone)]
+pub struct BulkDrawHooks(pub Vec<BulkDrawHook>);
+
+impl BulkDrawHooks {
+    /// Adds `hook` to the world's hooks (once).
+    pub fn add(world: &mut bevy_ecs::world::World, hook: BulkDrawHook) {
+        let mut hooks = world.get_resource_or_insert_with(BulkDrawHooks::default);
+        if !hooks.0.iter().any(|h| std::ptr::fn_addr_eq(*h, hook)) {
+            hooks.0.push(hook);
+        }
+    }
+}
