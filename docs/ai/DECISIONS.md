@@ -15,8 +15,9 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0009 | Live sessions and scene files are separate targets | accepted |
 | 0010 | One operation table for CLI and MCP | accepted |
 | 0011 | Engine modules and fixed stages | accepted |
-| 0012 | Physics on Rapier with written-back state | accepted, proofs pending |
+| 0012 | Physics on Rapier with written-back state | accepted, proofs and cost done |
 | 0013 | Input as actions, recorded at action level | accepted |
 | 0014 | Audio decided in the simulation, played by the presentation layer | accepted |
 | 0015 | Minimal UI as components, built-in bitmap font | accepted |
 | 0016 | No identifying details in the repository | accepted, permanent |
+| 0017 | The window hands input and frames to its caller through hooks | accepted |

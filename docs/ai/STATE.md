@@ -12,7 +12,7 @@ refer to `docs/DESIGN.md`.
 | 3 | Renderer | Done. |
 | 4 | Scripting spike (TypeScript vs Luau) | Ready to start (workstream W7). Not started. |
 | 5 | Agent interface (CLI + MCP) | Done. |
-| 6 | Input, physics, audio, UI | In progress (see below). |
+| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Not started. |
 | 8 | Assets (import, pool, generation) | Not started. DESIGN updated with the owned-asset importer. |
 | 9 | Six proof scenes | Not started. |
@@ -56,50 +56,40 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
 
-## Line 6 in progress
-
-Done (committed, builds, all tests pass):
-- Module system and stages: `crates/marionette-core/src/module.rs`, decision 0011.
-- Input: `crates/marionette-input/src/lib.rs` (action maps, events files, recording), decision 0013.
-- Physics: `crates/marionette-physics/` (3D and 2D, character controller, events, raycast,
-  snapshots), decision 0012.
-- Audio: `crates/marionette-audio/src/lib.rs` (triggers, headless sound log, kira player,
-  built-in sounds; 3 unit tests), decision 0014.
-- UI: `crates/marionette-core/src/ui.rs`, UI pass in `crates/marionette-render/src/renderer.rs`,
-  font `crates/marionette-assets/src/font.rs`, scene `examples/ui.scene.json` with reference
-  image, decision 0015.
-- Operations: `session_snapshot`, `session_restore`, `session_record_save`, `observe_raycast`,
-  `observe_events`; `scene_run` takes `input`, `events`, `record`; `session_start` takes `input`;
-  `session_step` takes `events`; scenarios take `input` and an `event` assertion.
-
-Remaining (in this order):
-1. Example scenes: a 3D one (character controller walks on a floor, pushes dynamic boxes, jumps)
-   and a 2D one with the same idea, each with an action map (`*.actions.json`), a scripted input
-   file (`*.inputs.json`) and sounds on jump and collision.
-2. Proof tests: replaying a recorded input file gives the original state hash (both scenes,
-   twice); the 3D physics scene run 1,000 ticks twice gives the same hash; snapshot at tick 500,
-   restore, run to 1,000 equals the uninterrupted run; the sound log lists the expected sounds
-   at the expected ticks.
-3. Window integration in `crates/marionette-render/src/window.rs` and
-   `crates/marionette-cli/src/render.rs`: live keyboard and mouse into the input queue,
-   `--record <file>`, `marionette_audio::Player` playing new sound events, `UiButton` clicks.
-4. Measure the frame-time cost of Rapier's `enhanced-determinism` on the 3D example; record it
-   in decision 0012.
-5. Unit tests for action-map parsing errors and physics build errors.
+Line 6 (input, physics, audio, UI):
+- Example scenes: `examples/playground3d.scene.json` and `examples/playground2d.scene.json`,
+  each with an action map (`*.actions.json`) and a scripted input file (`*.inputs.json`): a
+  character walks, pushes and climbs dynamic boxes, jumps; jump and collision sounds.
+- `cargo run -q -p marionette-cli -- run examples/playground3d.scene.json --headless --ticks 1000 --seed 1 --input examples/playground3d.inputs.json`
+  prints `541b991eb45fe2a436c2ec8c0bea9b490c3a84356b51c8740771aa1083547c44`; the 2D scene with
+  its input prints `1071e11381ec030e587cc2e241fedbafca679becc1ef13a886ea389dc184e8ac`.
+- Tests: `crates/marionette-cli/tests/line6_proofs.rs`
+  (`physics_scenes_give_the_same_hash_twice_and_match_the_recorded_hash`,
+  `replaying_a_recording_gives_the_original_hash`,
+  `snapshot_at_500_then_restore_continues_exactly`,
+  `sound_log_lists_the_expected_sounds_at_the_expected_ticks`);
+  `crates/marionette-physics/tests/build_errors.rs`; unit tests in
+  `crates/marionette-input/src/lib.rs` and `crates/marionette-render/src/window.rs`.
+- UI scene matches its reference image (line 3 proofs).
+- Window: live keyboard and mouse into the input queue, `UiButton` clicks, sound playback,
+  `--input`, `--record`, `--mute` (decision 0017).
+- `enhanced-determinism` cost: within noise (decision 0012, measured with
+  `cargo run --release -p marionette-physics --example step_cost -- 1000`).
+- Modules: decision 0011; input 0013; physics 0012; audio 0014; UI 0015.
 
 ## UNVERIFIED
 
 - CI has never run (no remote); the state hash has never been compared on Linux.
-- Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen.
+- Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
+  live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
+  are untested beyond unit tests.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.
 - Reference-image tolerance on AMD, Intel, Apple GPUs and on Mesa lavapipe.
 - OGG decoding (enabled in kira; no OGG file has been decoded).
-- Physics determinism, snapshot/restore exactness and replay equality: code exists, the proof
-  tests are line 6 remaining work.
+- The playground hashes have only been produced on Windows; Linux equality is unchecked.
 - Live gamepad input (format supported, no backend).
-- Cost of `enhanced-determinism`.
 
 ## Session log
 
@@ -111,3 +101,4 @@ Remaining (in this order):
 | 2026-11-11 | DESIGN asset importer; line 6 partial: modules, input, physics, audio, UI, ops. | `14e592d`..`a3c83b0` |
 | 2026-11-11 | Scrub of identifying details, neutral commit identity, hygiene test, `docs/ai/`, `marionette docs`, decisions 0011 to 0016. | up to the commit adding `docs/ai/` |
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
+| 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |

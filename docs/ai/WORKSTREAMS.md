@@ -11,14 +11,14 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 
 | ID | Workstream | Can start | Runs alongside |
 | --- | --- | --- | --- |
-| W1 | Finish line 6 (input, physics, audio, UI) | now | W2, W5, W7 |
+| W1 | Finish line 6 (input, physics, audio, UI) | done | - |
 | W2 | Assets A: local import path and Unity importer | now | W1, W5, W7 |
 | W3 | Assets B: CC0 pool and CC0 library search | after W2 | W1, W5, W7 |
 | W4 | Assets C: generation with Qwen and Tripo | after W3 and W5 | W6, W7 |
 | W5 | Providers (line 7) | now | W1, W2, W3, W7 |
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | now | any |
-| W8 | Six proof scenes (line 9) | after W1 (assets from W3/W4 help) | W6, W7 |
+| W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
 
