@@ -44,9 +44,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.025,
-            "g": 0.014,
-            "r": 0.012
+            "b": 0.06,
+            "g": 0.035,
+            "r": 0.03
           },
           "image": "builtin:white",
           "layer": 0,
@@ -91,16 +91,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.3,
-            "g": 0.85,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/keeper.png",
           "layer": 4,
           "size": {
             "x": 0.8,
-            "y": 0.8
+            "y": 0.92
           }
+        },
+        "SpriteRegion": {
+          "height": 122,
+          "width": 106,
+          "x": 69,
+          "y": 68
         },
         "Transform": {
           "rotation": {

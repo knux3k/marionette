@@ -34,9 +34,10 @@ that play the game with scripted input. Decision 0050. Proof test:
 ## Generated assets
 
 Each game has generation recipes in `assets/generated/` and a `providers.json` choosing Qwen
-for images and Tripo for models (decision 0045, `docs/ai/GENERATION.md`). Nothing has been
-generated: the paid run happens on the machine that holds the keys, and every 3D model waits
-for a person to approve its reference image.
+for images and Tripo for models (decision 0045, `docs/ai/GENERATION.md`). The paid run happens
+on the machine that holds the keys, and every 3D model waits for a person to approve its
+reference image. The images are built and the two 2D games use them; the models are not built
+yet.
 
 | Game | Recipes | Use once built |
 | --- | --- | --- |
@@ -44,8 +45,8 @@ for a person to approve its reference image.
 | Dust Circuit | `car`, `rival_car`, `tyre_stack`, `grandstand`, `marker_tower` (models from `*_ref` images) | `Model` on the two cars, trackside props |
 | Signal Yard | `drone`, `crate`, `pylon`, `relay` (models from `*_ref` images) | `Model` on spawned drones and the yard's cover and mast |
 | Cloudstep | `hero`, `island`, `seed`, `beacon`, `spring` (models from `*_ref` images) | `Model` on the hero, islands, seeds, the beacon and the spring |
-| Ember Run | `runner`, `ember` (sprites), `rooftops` (background) | `Sprite.image` |
-| Lantern Keeper | `keeper`, `lantern`, `ghost` (sprites), `hedge` (tileable texture) | `Sprite.image` |
+| Ember Run | `runner`, `ember` (sprites), `rooftops` (background) | In use: runner and embers (`Sprite.image` plus a `SpriteRegion` cropping each to its subject), and a `sky` backdrop the level script drifts with the camera. |
+| Lantern Keeper | `keeper`, `lantern`, `ghost` (sprites), `hedge` (tileable texture) | In use: the keeper, lanterns and ghosts (cropped with `SpriteRegion`) and hedge walls. A lit lantern also gets a warm glow sprite on its tile. |
 
 Estimate from `generate_plan`: 26 images at about $0.05 each and 19 models at about $0.40 each
 (about $1.30 and $7.60). The owner lifted the Qwen and Tripo caps (the account balance is the
@@ -72,7 +73,7 @@ Open (not fixed here; each names the cheapest fix seen):
 | G3 | `entity.set` replaces the whole component; changing one sprite color repeats image, size and layer. | Lantern Keeper | `entity.patch(name, partial)` merging fields. |
 | G4 | No parent/child transforms; a camera that follows a body is moved by a script, which runs before physics, so it trails by one tick. | all 3D games | An `Attach { target, offset }` component applied after physics, or a late script hook. |
 | G5 | `marionette screenshot` and `run` (window) take no `--input`; `observe_screenshot` does. | Lantern Keeper | Add `--input` to the CLI command. |
-| G6 | No CC0 pool or generated assets in the games yet; they use built-in primitives and images. Generation recipes are written (see "Generated assets"); the outputs are not built yet. | all | Run the recipes on the machine with the keys, approve the reference images, then swap through the build recipes. |
+| G6 | The 3D games still use built-in primitives: their Tripo models wait for reference-image approval. The 2D games use their generated images. Generated sprites come on a padded square canvas, so each needs a hand-measured `SpriteRegion`. | 3D games | Approve and build the models, then swap through the build recipes; `generate_run` could report each sprite's opaque bounds for the region. |
 | G7 | A character standing on a moving kinematic platform is not carried; the platform slides out from under it. | Ember Run (the lift is a stepping stone) | Add the ground body's velocity to the character's movement in the controller. |
 | G8 | Colors are linear; values picked by eye come out pale on screen (0.2 looks like 0.5). | all | Document it in the component description, or accept sRGB colors in `Sprite`/`Material`/`UiText` behind a flag. |
 | G9 | No shadows; in a 3D platformer it is hard to judge where a jump lands. | Cloudstep | A shadow map for the first directional light (or a blob shadow under characters). |

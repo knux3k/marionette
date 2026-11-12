@@ -9,6 +9,6 @@
     { "event": { "kind": "won", "at_most": 0 } },
     { "field": { "entity": 30, "path": "ScriptState.data.lives", "op": "eq", "value": 0 } },
     { "field": { "entity": 30, "path": "Transform.translation.x", "op": "lt", "value": 1 } },
-    { "state_hash": "8c07f81652a55349161b7627a71e625d0958e6d7a9c0c4d3b2aaaf672569dfb9" }
+    { "state_hash": "dcfc530e21b8bc2ce372d76b373fb03f5183a4b9c3e8b154dc5ead3bdafaa65e" }
   ]
 }

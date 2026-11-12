@@ -15,7 +15,7 @@ refer to `docs/DESIGN.md`.
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); no live call made yet. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done offline (W4, decision 0045: recipes, cache, provenance, approval, PNG/GLB post-processing); CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
-| 9 | Six proof scenes | In progress (W8, decision 0050): all 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`); stability-suite entries and generated assets still to come. Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 9 | Six proof scenes | In progress (W8, decision 0050): all 6 games done (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`); each has stability modes; the 2D games use their generated images, the 3D games wait on their Tripo models. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## Proofs for done lines (rerun these)
@@ -437,3 +437,4 @@ jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jo
 | 2026-11-12 | W4: `marionette generate approve --all` (one typed `yes` approves every waiting reference image); 14 proof-game Qwen images generated on the owner's PC ($0.70). | branch `claude/project-thread-3n87gn` |
 | 2026-11-12 | W8: `texture.remove_background` keys out flat generated sprite backgrounds (gap G20); the five 2D sprite recipes now build 256x256 transparent textures. Needs an offline rebuild on the machine with the cache. | branch `claude/project-thread-2vp8na` |
 | 2026-11-12 | W4: fixed texture resizing that transposed every image whose height changed (found on the first cut-out sprites); new orientation test. Existing resized outputs need a free offline rebuild. | branch `claude/project-thread-3n87gn` |
+| 2026-11-12 | W8: Ember Run and Lantern Keeper use their generated sprites, rooftop backdrop and hedge texture (cropped with `SpriteRegion`; lit lanterns get a glow). Gameplay unchanged; four state hashes and one entity count re-pinned. | branch `claude/project-thread-2vp8na` |

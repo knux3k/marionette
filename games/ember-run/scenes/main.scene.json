@@ -112,9 +112,47 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.9,
+            "g": 0.8,
+            "r": 0.8
+          },
+          "image": "../assets/generated/rooftops.png",
+          "layer": 0,
+          "size": {
+            "x": 24.0,
+            "y": 12.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 6.88,
+            "y": 2.0,
+            "z": -2.0
+          }
+        }
+      },
+      "id": 5,
+      "name": "sky"
+    },
+    {
+      "components": {
+        "Sprite": {
+          "color": {
+            "a": 1.0,
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -150,9 +188,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -188,9 +226,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -226,9 +264,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -264,9 +302,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -302,9 +340,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -340,9 +378,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -378,9 +416,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -416,9 +454,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.06,
-            "g": 0.018,
-            "r": 0.03
+            "b": 0.016,
+            "g": 0.005,
+            "r": 0.006
           },
           "image": "builtin:circle",
           "layer": 0,
@@ -498,16 +536,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.15,
-            "g": 0.55,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:white",
+          "image": "../assets/generated/runner.png",
           "layer": 3,
           "size": {
-            "x": 0.6,
-            "y": 0.9
+            "x": 0.85,
+            "y": 0.97
           }
+        },
+        "SpriteRegion": {
+          "height": 106,
+          "width": 94,
+          "x": 82,
+          "y": 74
         },
         "Transform": {
           "rotation": {
@@ -551,9 +595,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -604,9 +648,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -657,9 +701,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.16,
-            "g": 0.07,
-            "r": 0.12
+            "b": 0.05,
+            "g": 0.02,
+            "r": 0.03
           },
           "image": "builtin:white",
           "layer": 1,
@@ -710,9 +754,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.16,
-            "g": 0.07,
-            "r": 0.12
+            "b": 0.05,
+            "g": 0.02,
+            "r": 0.03
           },
           "image": "builtin:white",
           "layer": 1,
@@ -763,9 +807,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -816,9 +860,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -869,9 +913,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -922,9 +966,9 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.09,
-            "g": 0.04,
-            "r": 0.06
+            "b": 0.022,
+            "g": 0.009,
+            "r": 0.012
           },
           "image": "builtin:white",
           "layer": 1,
@@ -1035,16 +1079,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1088,16 +1138,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1141,16 +1197,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1194,16 +1256,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1247,16 +1315,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1300,16 +1374,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1353,16 +1433,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1406,16 +1492,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1459,16 +1551,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1512,16 +1610,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1565,16 +1669,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1618,16 +1728,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1671,16 +1787,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1724,16 +1846,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {
@@ -1777,16 +1905,22 @@
         "Sprite": {
           "color": {
             "a": 1.0,
-            "b": 0.2,
-            "g": 0.75,
+            "b": 1.0,
+            "g": 1.0,
             "r": 1.0
           },
-          "image": "builtin:circle",
+          "image": "../assets/generated/ember.png",
           "layer": 2,
           "size": {
-            "x": 0.45,
-            "y": 0.45
+            "x": 0.55,
+            "y": 0.56
           }
+        },
+        "SpriteRegion": {
+          "height": 84,
+          "width": 82,
+          "x": 87,
+          "y": 87
         },
         "Transform": {
           "rotation": {

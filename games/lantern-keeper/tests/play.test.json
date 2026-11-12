@@ -10,7 +10,7 @@
     { "event": { "kind": "caught", "at_most": 0 } },
     { "field": { "entity": 3, "path": "ScriptState.data.result", "op": "eq", "value": "won" } },
     { "field": { "entity": 3, "path": "ScriptState.data.lives", "op": "eq", "value": 3 } },
-    { "count": { "with": ["Sprite"], "equals": 109 } },
-    { "state_hash": "0fab931fad098f3fbdc6c8dabd858821baf666545fd32d2ac75440b45117d097" }
+    { "count": { "with": ["Sprite"], "equals": 114 } },
+    { "state_hash": "46d8127c5af8036538c5deade022abbce7032152f8afd8683084cbf209748ce6" }
   ]
 }
