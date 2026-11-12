@@ -491,7 +491,9 @@ pub(crate) mod net {
                 .and_then(|v| error_message(&v))
                 .unwrap_or_default();
             let fix = match resp.status {
-                401 | 403 => "check the provider's key (environment variable or key file) and, for Qwen, the region it was made in",
+                401 | 403 => {
+                    "check the provider's key (environment variable or key file) and, for Qwen, the region it was made in"
+                }
                 429 => "the service is rate limiting; wait and try again",
                 s if s >= 500 => "the service had an error; try again later",
                 _ => "check the request against the provider's documentation",
