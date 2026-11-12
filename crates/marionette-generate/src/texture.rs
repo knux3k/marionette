@@ -166,7 +166,7 @@ pub fn remove_background(rgba: &mut [u8], w: u32, h: u32) {
     for c in 0..3 {
         key[c] = (corners.iter().map(|&i| rgba[i * 4 + c] as u32).sum::<u32>() + 2) / 4;
     }
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         let d = (0..3).map(|c| (px[c] as u32).abs_diff(key[c])).max().unwrap_or(0);
         let a = if d <= KEY_LO {
             0
@@ -218,7 +218,7 @@ fn unmix_edge_spill(rgba: &mut [u8], w: usize, h: usize, key: [u32; 3]) {
         return;
     }
     // Distance (in pixels, Chebyshev) to the nearest transparent pixel, capped at the band.
-    let transparent: Vec<bool> = rgba.chunks_exact(4).map(|p| p[3] == 0).collect();
+    let transparent: Vec<bool> = rgba.as_chunks::<4>().0.iter().map(|p| p[3] == 0).collect();
     let near_edge = |x: usize, y: usize| -> bool {
         let (x0, x1) = (x.saturating_sub(SPILL_BAND), (x + SPILL_BAND).min(w - 1));
         let (y0, y1) = (y.saturating_sub(SPILL_BAND), (y + SPILL_BAND).min(h - 1));
