@@ -47,6 +47,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
 | `provider_use` | yes | Switches the provider (and optionally the model) for one kind by rewriting providers.json. Never stores keys: they come from environment variables. |
 | `provider_generate` | yes | Generates text (language), a PNG (image) or a GLB (model3d) with the configured provider. Paid providers are checked against the spend cap first and every paid call is logged in .marionette/spend.jsonl. |
+| `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
+| `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 
 ## `project_init`
 
@@ -999,4 +1001,45 @@ Output:
 | `spent_usd` | number | yes | Ledger total after this call. |
 | `text` | string \| null |  | Language: the reply. |
 | `usage` | Usage \| null |  |  |
+
+## `script_reload`
+
+Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `session` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ms` | number | yes | Wall-clock time of the reload in milliseconds (read, strip, compile, swap). |
+| `scripts` | array of string | yes | Script files now running (relative to the scene). |
+| `session` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `tick` | integer | yes |  |
+
+## `script_types`
+
+Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string \| null |  | Where to write, relative to the project (default `marionette.d.ts`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `path` | string | yes |  |
 

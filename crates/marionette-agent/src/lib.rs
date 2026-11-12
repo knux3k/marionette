@@ -16,6 +16,7 @@ pub mod perf;
 pub mod project;
 pub mod providers;
 pub mod scenario;
+pub mod script;
 pub mod session;
 
 use marionette_core::{Diagnostic, Errors, Registry};
@@ -121,6 +122,7 @@ impl Agent {
             library::ops(),
             perf::ops(),
             providers::ops(),
+            script::ops(),
         ]
         .into_iter()
         .flatten()
