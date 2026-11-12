@@ -93,10 +93,21 @@ enum Command {
         seed: u64,
         #[arg(long)]
         camera: Option<u64>,
-        #[arg(long, default_value = "1920x1080")]
-        size: String,
+        /// Image size per eye (default 1920x1080, or 2160x2160 with --headset).
+        #[arg(long)]
+        size: Option<String>,
         #[arg(long, default_value_t = 4)]
         msaa: u32,
+        /// Views per frame: 2 renders a stereo pair (each eye at --size), as a headset does.
+        #[arg(long, default_value_t = 1)]
+        eyes: u32,
+        /// Emulate a headset: 2 eyes at 2160x2160 each (unless --size), 64 mm apart, and the
+        /// head turning +-25 degrees every 2 seconds, so culling and batching see motion.
+        #[arg(long)]
+        headset: bool,
+        /// Untimed ticks (each with a frame) before measuring.
+        #[arg(long, default_value_t = 30)]
+        warmup: u32,
     },
     /// Scene file tools.
     Scene {
@@ -216,7 +227,22 @@ fn main() -> ExitCode {
             camera,
             size,
             msaa,
-        } => render::bench(&scene, frames, seed, camera, &size, msaa),
+            eyes,
+            headset,
+            warmup,
+        } => render::bench(render::BenchOptions {
+            warmup,
+            path: &scene,
+            frames,
+            seed,
+            camera,
+            size: size
+                .as_deref()
+                .unwrap_or(if headset { "2160x2160" } else { "1920x1080" }),
+            msaa,
+            eyes: if headset { 2 } else { eyes },
+            headset,
+        }),
         Command::Scene {
             command: SceneCommand::Fmt { scene, check: false },
         } => agent
@@ -364,14 +390,23 @@ fn human(value: &Value) -> String {
             s("state_hash")
         ),
         Some("bench") => format!(
-            "{} at {}x{}: avg {} ms, p99 {} ms, worst {} ms over {} frames",
+            "{} at {}x{} x{} eyes: avg {} ms, p99 {} ms, worst {} ms over {} frames \
+             (median sim {} / extract {} / record {} / gpu wait {} ms; {} draw calls, {} instances, {} triangles)",
             s("gpu"),
             s("width"),
             s("height"),
+            s("eyes"),
             s("avg_ms"),
             s("p99_ms"),
             s("max_ms"),
-            s("frames")
+            s("frames"),
+            value["phases_p50_ms"]["sim"],
+            value["phases_p50_ms"]["extract"],
+            value["phases_p50_ms"]["record"],
+            value["phases_p50_ms"]["gpu_wait"],
+            value["render"]["draw_calls"],
+            value["render"]["instances"],
+            value["render"]["triangles"]
         ),
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),

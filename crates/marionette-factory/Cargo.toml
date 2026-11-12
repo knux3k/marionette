@@ -1,0 +1,16 @@
+[package]
+name = "marionette-factory"
+description = "Marionette factory module: machines, recipes and item belts simulated as flat arrays with deterministic parallel jobs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-jobs.workspace = true
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

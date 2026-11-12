@@ -234,6 +234,11 @@ Options:
       --msaa <MSAA>
           [default: 4]
 
+      --eyes <EYES>
+          Views per frame: 2 renders a stereo pair (each eye at --size), as a headset does
+          
+          [default: 1]
+
   -h, --help
           Print help
 
