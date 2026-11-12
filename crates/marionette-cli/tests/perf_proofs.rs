@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// State hash of the scale-1 factory benchmark after 60 warm-up and 300 timed ticks, seed 0.
-/// A change here changes simulation results: say so in the commit and in docs/ai/STATE.md.
+/// A change here changes simulation results: say so in the commit and in docs/ai/PROOFS.md.
 const HASH_FACTORY_1: &str = "13f72b12e6a829c27f4f4834d1255b7fd3bbd50ddc71bb0161d56f9edca22e69";
 
 fn temp_dir() -> PathBuf {

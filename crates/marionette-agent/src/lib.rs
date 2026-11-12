@@ -52,6 +52,8 @@ pub mod codes {
     /// An operation hit an engine bug (a Rust panic). The process keeps serving; a live
     /// session the operation named is closed, because its state may be half-updated.
     pub const PANIC: &str = "agent.panic";
+    /// The MCP server was started without this operation (`marionette mcp --tools`).
+    pub const NOT_ENABLED: &str = "agent.not_enabled";
 }
 
 type Handler = Box<dyn Fn(&mut Agent, Value) -> Result<Value, Errors> + Send + Sync>;

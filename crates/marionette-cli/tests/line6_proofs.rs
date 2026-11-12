@@ -10,7 +10,7 @@ use std::path::PathBuf;
 const SCENES: [&str; 2] = ["playground3d", "playground2d"];
 
 /// State hashes after 1,000 ticks, seed 1, with the scripted input. A change here changes
-/// simulation results: say so in the commit and in docs/ai/STATE.md.
+/// simulation results: say so in the commit and in docs/ai/PROOFS.md.
 const HASH_3D: &str = "541b991eb45fe2a436c2ec8c0bea9b490c3a84356b51c8740771aa1083547c44";
 const HASH_2D: &str = "1071e11381ec030e587cc2e241fedbafca679becc1ef13a886ea389dc184e8ac";
 

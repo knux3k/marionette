@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// `examples/scripted.scene.json`, 1,000 ticks, seed 1. A change here changes script
-/// results: say so in the commit and in docs/ai/STATE.md.
+/// results: say so in the commit and in docs/ai/PROOFS.md.
 const SCRIPTED_HASH: &str = "4450bc3cb97805f59584f11c13b999a13f8ac42ca67752dc7d1cc247575251d3";
 
 /// `examples/spawner.scene.json`, 1,000 ticks, seed 1: a script drops physics crates with a
