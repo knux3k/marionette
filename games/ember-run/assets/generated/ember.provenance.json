@@ -1,11 +1,11 @@
 {
   "format": "marionette.generated_asset/1",
   "name": "ember",
-  "output": "image",
+  "output": "texture",
   "file": "ember.png",
-  "sha256": "4c7d5bf66deeaf31dd3996b829acb66146edd121fcc2ef8139a341ffa79ef10a",
+  "sha256": "07ca65703e8d259606b0f0bd08fe93147eab00653b4f0a628c29e912e1501d6b",
   "recipe": "ember.recipe.json",
-  "recipe_sha256": "1fd543dc574c95fcad1ae61a96f8158e31d5cdb72019918dc84feb8c42db3db2",
+  "recipe_sha256": "e8568681f33f76c22384f8b7443ac0ea2d960094c0b10c28759438a50b9c7eb6",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
@@ -21,10 +21,11 @@
     "cost_usd": 0.05
   },
   "postprocess": {
-    "resized": false,
+    "background_removed": true,
+    "resized": true,
     "size": [
-      1024,
-      1024
+      256,
+      256
     ],
     "source_size": [
       1024,

@@ -3,7 +3,7 @@
   "name": "hedge",
   "output": "texture",
   "file": "hedge.png",
-  "sha256": "68acf93aef78e93c4134fbc501773dc327c157874d6e7a270ab37e36fff8662a",
+  "sha256": "0ed56bbcda549a376b6c1aea1ec523b638525e51fda68d1e1589835a2123a2c5",
   "recipe": "hedge.recipe.json",
   "recipe_sha256": "f692160a9ca21cc68b72acea6b2d63951c9047a227a1f76dd934aa7b47d65f28",
   "source": {

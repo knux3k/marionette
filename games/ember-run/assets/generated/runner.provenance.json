@@ -1,11 +1,11 @@
 {
   "format": "marionette.generated_asset/1",
   "name": "runner",
-  "output": "image",
+  "output": "texture",
   "file": "runner.png",
-  "sha256": "de83af0f85749bcbca1d3153a710d3b4ba2a16e8a38c62f0f9036f613483e34a",
+  "sha256": "ef5100e29ad80c0bcc6a1dc82944321a139bef386a69ddbde83d9e2cdc0ac580",
   "recipe": "runner.recipe.json",
-  "recipe_sha256": "ae228bfb28fbf4772da50b53a38869cf54737820797f258cf79326398e12825c",
+  "recipe_sha256": "c0508f6919b22ebd93126193f0374a2268548fb9ad5fd8761db4fbbc742b6b7f",
   "source": {
     "provider": "qwen",
     "model": "qwen-image-3.0-pro",
@@ -21,10 +21,11 @@
     "cost_usd": 0.05
   },
   "postprocess": {
-    "resized": false,
+    "background_removed": true,
+    "resized": true,
     "size": [
-      1024,
-      1024
+      256,
+      256
     ],
     "source_size": [
       1024,
