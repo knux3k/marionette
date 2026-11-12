@@ -13,11 +13,12 @@
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
 | `crates/marionette-jobs` | Deterministic data-parallel jobs (`Jobs` resource over rayon) | bevy_ecs, rayon | any other marionette crate |
 | `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
+| `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend cap and ledger | core, assets, sha2, schemars | render, input, physics, audio, any HTTP client (decision 0019) |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
-Planned crates (not created yet): marionette-script (line 4), marionette-providers (line 7),
-marionette-ai-runtime (line 10). `marionette-assets` will grow the asset pipeline (line 8).
+Planned crates (not created yet): marionette-script (line 4), marionette-ai-runtime (line 10).
+`marionette-assets` will grow the asset pipeline (line 8).
 
 ## One tick
 

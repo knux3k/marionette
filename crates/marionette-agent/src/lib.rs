@@ -14,6 +14,7 @@ pub mod mcp;
 pub mod observe;
 pub mod perf;
 pub mod project;
+pub mod providers;
 pub mod scenario;
 pub mod session;
 
@@ -119,6 +120,7 @@ impl Agent {
             scenario::ops(),
             library::ops(),
             perf::ops(),
+            providers::ops(),
         ]
         .into_iter()
         .flatten()
