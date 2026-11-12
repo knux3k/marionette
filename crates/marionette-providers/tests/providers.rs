@@ -677,3 +677,52 @@ fn a_provider_can_have_its_own_cap_or_none() {
     assert!(spend::check_for(&cap(1.0), &caps, "claude", &ledger, 0.0, 0.5).is_ok());
     assert!(spend::check_for(&cap(1.0), &caps, "claude", &ledger, 0.0, 0.6).is_err());
 }
+
+#[test]
+fn qwen_finds_the_keys_region_after_a_401() {
+    let dir = temp_dir("qwen-region");
+    let ledger = dir.join("spend.jsonl");
+    let cfg = config(Kind::Image, "qwen", None);
+    let key = vars(&[("DASHSCOPE_API_KEY", FAKE_KEY)]);
+    let refused = HttpResponse::json(
+        401,
+        &json!({ "code": "InvalidApiKey", "message": "Invalid API-key provided." }),
+    );
+    let t = Scripted::new(vec![
+        refused.clone(),
+        HttpResponse::json(
+            200,
+            &json!({ "output": { "task_id": "t-9", "task_status": "PENDING" } }),
+        ),
+        HttpResponse::json(
+            200,
+            &json!({ "output": { "task_id": "t-9", "task_status": "SUCCEEDED",
+                                  "results": [{ "url": "https://files.example/cn.png" }] } }),
+        ),
+        HttpResponse {
+            status: 200,
+            body: png_bytes(),
+        },
+    ]);
+    run(&cfg, &key, &t, &ledger, cap(1.0), &image("x", 64, 64)).unwrap();
+    let urls: Vec<String> = t.sent().iter().map(|r| r.url.clone()).collect();
+    assert!(urls[0].starts_with("https://dashscope-intl.aliyuncs.com/"));
+    assert!(urls[1].starts_with("https://dashscope.aliyuncs.com/api/v1/services/"));
+    assert_eq!(
+        urls[2], "https://dashscope.aliyuncs.com/api/v1/tasks/t-9",
+        "polls the region that answered"
+    );
+
+    // A key no region accepts: the last region's 401 is the error, nothing charged.
+    let t = Scripted::new(vec![refused.clone(), refused.clone(), refused]);
+    let e = run(&cfg, &key, &t, &ledger, cap(1.0), &image("x", 64, 64)).unwrap_err();
+    assert_eq!(code(&e), codes::HTTP);
+    assert!(e.0[0].message.contains("401"));
+    assert!(!format!("{e:?}").contains(FAKE_KEY));
+    assert_eq!(t.sent().len(), 3);
+    assert_eq!(
+        spend::entries(&ledger).unwrap().len(),
+        1,
+        "only the successful call"
+    );
+}

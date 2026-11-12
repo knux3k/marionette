@@ -467,7 +467,16 @@ pub(crate) mod net {
         req: &HttpRequest,
         provider: &str,
     ) -> Result<HttpResponse, Errors> {
-        let resp = transport.send(req).map_err(|e| {
+        send_result(transport.send(req), req, provider)
+    }
+
+    /// Turns a transport result into a response or an error, as [`send`] does.
+    pub fn send_result(
+        result: Result<HttpResponse, String>,
+        req: &HttpRequest,
+        provider: &str,
+    ) -> Result<HttpResponse, Errors> {
+        let resp = result.map_err(|e| {
             Errors::from(
                 Diagnostic::error(
                     codes::HTTP,
@@ -482,7 +491,9 @@ pub(crate) mod net {
                 .and_then(|v| error_message(&v))
                 .unwrap_or_default();
             let fix = match resp.status {
-                401 | 403 => "check the key in the provider's environment variable",
+                401 | 403 => {
+                    "check the provider's key (environment variable or key file) and, for Qwen, the region it was made in"
+                }
                 429 => "the service is rate limiting; wait and try again",
                 s if s >= 500 => "the service had an error; try again later",
                 _ => "check the request against the provider's documentation",

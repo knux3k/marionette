@@ -68,7 +68,7 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
 
 - `crates/marionette-agent/src/lib.rs`: `op(name, description, mutating, fn)` turns a typed
   function into a table entry with schemas from `schemars`. Modules: `project.rs`, `edit.rs`,
-  `session.rs`, `observe.rs`, `scenario.rs`, `library.rs`, `script.rs`.
+  `session.rs`, `observe.rs`, `scenario.rs`, `library.rs`, `script.rs`, `stability.rs`.
 - CLI: `marionette op <name> '<json>'` and shortcuts in `crates/marionette-cli/src/main.rs`.
 - MCP: `crates/marionette-agent/src/mcp.rs` (rmcp, stdio), one tool per operation.
 - Read-only mode refuses mutating operations (`agent.read_only`). Generated reference:

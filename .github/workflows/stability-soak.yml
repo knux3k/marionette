@@ -1,0 +1,62 @@
+name: Stability soak
+
+# Long stability runs (decision 0031, docs/ai/STABILITY.md): every mode for its long_ticks,
+# several seeds. Nightly with a new first seed each run (the run number), or on demand.
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: Seeds per mode
+        default: "3"
+      seed:
+        description: First seed (empty = the run number)
+        default: ""
+      mode:
+        description: Only this mode (empty = all)
+        default: ""
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  soak:
+    name: soak ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - name: System libraries on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers
+      - name: Stability suite (long)
+        shell: bash
+        run: |
+          args=(stability --long --out target/stability --seeds "${SEEDS:-3}" --seed "${SEED:-$GITHUB_RUN_NUMBER}")
+          if [ -n "$MODE" ]; then args+=(--mode "$MODE"); fi
+          cargo run --release --locked -q -p marionette-cli -- "${args[@]}"
+        env:
+          SEEDS: ${{ github.event.inputs.seeds }}
+          SEED: ${{ github.event.inputs.seed }}
+          MODE: ${{ github.event.inputs.mode }}
+          MARIONETTE_BUDGET_SCALE: "2"
+          MARIONETTE_REQUIRE_GPU: "1"
+          WGPU_BACKEND: ${{ runner.os == 'Windows' && 'dx12' || 'vulkan' }}
+          WGPU_ADAPTER_NAME: ${{ runner.os == 'Windows' && 'basic render' || '' }}
+      - name: Keep the stability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-long-${{ matrix.os }}
+          path: target/stability
+          if-no-files-found: ignore

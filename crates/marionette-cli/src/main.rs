@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 use std::process::ExitCode;
 
 mod render;
+mod stability;
 
 /// Counted heap, so `live_bytes` is available to memory checks on every platform (decision
 /// 0032); the cost is a few relaxed atomic adds per allocation.
@@ -113,6 +114,36 @@ enum Command {
         /// Untimed ticks (each with a frame) before measuring.
         #[arg(long, default_value_t = 30)]
         warmup: u32,
+    },
+    /// Stability suite (operation `stability_run`): run every game mode with seeded random
+    /// input and check no panic, no hang, replay and snapshot determinism, time budgets and
+    /// memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a
+    /// replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed.
+    Stability {
+        /// Suite file.
+        #[arg(long, default_value = "stability/suite.json")]
+        suite: String,
+        /// Only this mode (repeatable).
+        #[arg(long = "mode")]
+        modes: Vec<String>,
+        /// Long soak: long_ticks per mode and 3 seeds (default: fast, for every push).
+        #[arg(long)]
+        long: bool,
+        /// First seed (default: the suite's seed).
+        #[arg(long)]
+        seed: Option<u64>,
+        /// Seeds per mode.
+        #[arg(long)]
+        seeds: Option<u32>,
+        /// Ticks per mode, overriding the suite.
+        #[arg(long)]
+        ticks: Option<u64>,
+        /// Check time budgets even in a debug build.
+        #[arg(long)]
+        enforce_timing: bool,
+        /// Report directory.
+        #[arg(long, default_value = "target/stability")]
+        out: String,
     },
     /// Scene file tools.
     Scene {
@@ -321,6 +352,30 @@ fn run(cli: Cli) -> ExitCode {
             eyes: if headset { 2 } else { eyes },
             headset,
         }),
+        Command::Stability {
+            suite,
+            modes,
+            long,
+            seed,
+            seeds,
+            ticks,
+            enforce_timing,
+            out,
+        } => {
+            let input = json!({ "suite": suite, "modes": modes, "length": if long { "long" } else { "fast" },
+                                "seed": seed, "seeds": seeds, "ticks": ticks,
+                                "enforce_timing": enforce_timing.then_some(true) });
+            let report = agent
+                .call("stability_run", input)
+                .and_then(|v| stability::write(&out, v));
+            // A hung worker thread may still be running: report, then end the process.
+            let code = match &report {
+                Ok(v) if v["passed"] == true => 0,
+                _ => 1,
+            };
+            print_result(cli.json, report);
+            std::process::exit(code);
+        }
         Command::Provider { command } => match command {
             ProviderCommand::List => agent
                 .call("provider_list", json!({}))
@@ -380,12 +435,16 @@ fn run(cli: Cli) -> ExitCode {
                 }
             }),
     };
+    print_result(cli.json, result)
+}
+
+fn print_result(json_out: bool, result: Result<Value, Errors>) -> ExitCode {
     match result {
         Ok(value) => {
             let always_json = ["$schema", "operation", "operations"]
                 .iter()
                 .any(|k| value.get(k).is_some());
-            if cli.json || always_json {
+            if json_out || always_json {
                 println!("{}", serde_json::to_string_pretty(&value).expect("serializable"));
             } else {
                 println!("{}", human(&value));
@@ -393,7 +452,7 @@ fn run(cli: Cli) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(errors) => {
-            if cli.json {
+            if json_out {
                 let out = json!({ "ok": false, "diagnostics": errors });
                 println!("{}", serde_json::to_string_pretty(&out).expect("serializable"));
             } else {
@@ -570,6 +629,7 @@ fn human(value: &Value) -> String {
             value["render"]["instances"],
             value["render"]["triangles"]
         ),
+        Some("stability") => stability::human(value),
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),
         Some("provider_use") => format!(

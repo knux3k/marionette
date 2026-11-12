@@ -1,0 +1,231 @@
+{
+  "format": "marionette.stability-suite",
+  "version": 1,
+  "seed": 1,
+  "modes": [
+    {
+      "name": "core-headless",
+      "description": "Core simulation only, no modules in use (headless server or batch run).",
+      "kind": "sim",
+      "scene": "examples/drift.scene.json",
+      "fast_ticks": 1000,
+      "long_ticks": 1000000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "physics-3d",
+      "description": "3D game: character controller, dynamic bodies, jumps, sounds, random player input.",
+      "kind": "sim",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "physics-2d",
+      "description": "2D game: 2D physics, character controller, random player input.",
+      "kind": "sim",
+      "scene": "examples/playground2d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "scripted",
+      "description": "Game logic in TypeScript scripts (hooks, engine API, seeded randomness).",
+      "kind": "sim",
+      "scene": "examples/scripted.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "scripted-spawning",
+      "description": "Scripts that spawn, clone and destroy entities and run timers (entity churn over a long run).",
+      "kind": "sim",
+      "scene": "examples/spawner.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "render-3d",
+      "description": "3D rendering: PBR models, lights, offscreen frame every tick.",
+      "kind": "render",
+      "scene": "examples/showcase.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-3d-play",
+      "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
+      "kind": "render",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-2d",
+      "description": "2D rendering: batched sprites.",
+      "kind": "render",
+      "scene": "examples/sprites.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-2d-play",
+      "description": "2D game played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "examples/playground2d.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "render-ui",
+      "description": "UI-heavy screen: panels, text and buttons in screen space.",
+      "kind": "render",
+      "scene": "examples/ui.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "animation",
+      "description": "Skeletal animation: glTF clips on the fixed tick, scripted clip blending, GPU skinning and blend shapes, rendered every tick.",
+      "kind": "render",
+      "scene": "examples/animation.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "vr-headset",
+      "description": "VR: the 3D game played with random input and rendered to both eyes of an emulated headset every tick.",
+      "kind": "render",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "views": 2,
+      "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "factory-sim",
+      "description": "Factory simulation at 4x stress (952 machines, belts and items) on the job system, headless.",
+      "kind": "sim",
+      "scene": "target/stability/factory4.scene.json",
+      "setup": [
+        {
+          "op": "perf_factory_scene",
+          "input": {
+            "out": "target/stability/factory4.scene.json",
+            "scale": 4
+          }
+        }
+      ],
+      "fast_ticks": 300,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "factory-vr",
+      "description": "Factory at 1x rendered to both eyes of an emulated headset (instanced items, stereo).",
+      "kind": "render",
+      "scene": "target/stability/factory1.scene.json",
+      "setup": [
+        {
+          "op": "perf_factory_scene",
+          "input": {
+            "out": "target/stability/factory1.scene.json",
+            "scale": 1
+          }
+        }
+      ],
+      "views": 2,
+      "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-lantern-keeper",
+      "description": "Proof game 1 (top-down 2D, scripted): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/lantern-keeper/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-lantern-keeper-render",
+      "description": "Proof game 1 played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/lantern-keeper/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-cloudstep",
+      "description": "Proof game cloudstep: played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/cloudstep/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-cloudstep-render",
+      "description": "Proof game cloudstep played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/cloudstep/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "proof-ember-run",
+      "description": "Proof game ember-run: played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/ember-run/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-ember-run-render",
+      "description": "Proof game ember-run played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/ember-run/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "agent-session",
+      "description": "AI-driven building: a live session stepped, observed, edited, snapshotted and restored through operations (CLI and MCP run the same code).",
+      "kind": "agent",
+      "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 108000,
+      "tick_budget_ms": 4.0
+    }
+  ],
+  "exempt": {}
+}
