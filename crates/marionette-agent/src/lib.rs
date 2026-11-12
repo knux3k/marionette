@@ -12,6 +12,7 @@ pub mod engine;
 pub mod library;
 pub mod mcp;
 pub mod observe;
+pub mod port;
 pub mod project;
 pub mod providers;
 pub mod scenario;
@@ -124,6 +125,7 @@ impl Agent {
             library::ops(),
             providers::ops(),
             script::ops(),
+            port::ops(),
         ]
         .into_iter()
         .flatten()

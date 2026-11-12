@@ -1,6 +1,6 @@
 [package]
 name = "marionette-import"
-description = "Marionette owned asset library: license records, refusal rules, Unity project and .unitypackage import, and the pool admission gate."
+description = "Marionette owned asset library: license records, refusal rules, Unity project and .unitypackage import, FBX to glTF conversion, and the pool admission gate."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,4 +15,8 @@ serde_json.workspace = true
 sha2.workspace = true
 schemars = "1.2"
 flate2 = "1.1"
+glam = "0.34"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "tga"] }
+
+[dev-dependencies]
+gltf = { version = "1.4.1", default-features = false, features = ["utils", "names"] }

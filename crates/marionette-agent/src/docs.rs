@@ -165,3 +165,8 @@ pub fn components(agent: &Agent) -> String {
 pub fn script_typings(agent: &Agent) -> String {
     marionette_script::typings::typings(agent.registry())
 }
+
+/// The Unity/Unreal concept tables as one reference document.
+pub fn porting_map() -> String {
+    marionette_port::map::reference()
+}

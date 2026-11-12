@@ -13,9 +13,10 @@ be checked against a repo-relative path, a command or a test name. Read in this 
    [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) (normative asset rules),
    [MEMORY-AND-CRASHES.md](MEMORY-AND-CRASHES.md) (normative: child processes, temp files,
    bounded logs, script limits, leak tests),
-   [GLOSSARY.md](GLOSSARY.md), and the generated reference in `docs/ai/reference/`
+   [GLOSSARY.md](GLOSSARY.md), [PORTING.md](PORTING.md) (bringing Unity or Unreal code over),
+   and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),
-   [CLI](reference/cli.md)).
+   [CLI](reference/cli.md), [porting map](reference/porting-map.md)).
 
 `docs/DESIGN.md` is the product definition (brief, plan lines 1 to 10, principles). These docs
 describe how far the code has come and how to continue.
