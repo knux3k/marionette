@@ -2,6 +2,7 @@
 //! and no network everything runs on the mock; one command swaps a provider; swapping back
 //! gives the same output again; keys and the spend cap never come from files an operation
 //! writes.
+#![cfg(feature = "generate")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

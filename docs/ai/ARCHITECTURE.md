@@ -20,8 +20,8 @@
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts` | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
-| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
-| `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
+| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
+| `crates/marionette-cli` | The `marionette` binary and `main_with(engine)` for a game's binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
 Planned crates (not created yet): marionette-ai-runtime (line 10).
 `marionette-assets` will grow the asset pipeline (line 8).

@@ -1,6 +1,7 @@
 //! The owned library operations through the CLI (workstream W2): import with a declaration,
 //! list, read a record, the pool gate, the license text check, and the refusal to write a
 //! declaration file through any operation.
+#![cfg(feature = "import")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

@@ -16,7 +16,8 @@ them; when a change hurts one, say so in its decision record.
 - Every engine feature is a crate (or a `Module`, decision 0011) that a game can take or leave.
   Lower crates never depend on higher ones (crate map in ARCHITECTURE.md).
 - A game's own code plugs in without forking the engine: TypeScript scripts (decision 0022),
-  job TypeScript (decision 0030), and Rust modules and operations of its own.
+  job TypeScript (decision 0030), and Rust modules and operations of its own (decision 0062,
+  HOWTO.md "Add a game's own Rust module").
 - Check: a new feature adds a crate or module, not branches inside an unrelated one.
 
 ### 2. Limit context memory and optimize token usage
@@ -59,7 +60,7 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | Graphics | No shadows; directional lights only (no point or spot lights) | done: `Shadows`, `PointLight`, `SpotLight` (decision 0063); shadows from local lights and cascades open |
 | Graphics | No HDR or tone mapping (colors clamp at 1.0); no emissive materials; no bloom | done: `ToneMapping`, `Emissive` (decision 0063); bloom, glTF emissive open |
 | Graphics | No sky, environment lighting or fog (ambient is a flat color) | done: `SkyLight`, `Fog` (decision 0063); image-based lighting, sky background open |
-| Modularity | The module set and operation table are fixed in `marionette-agent`: a game cannot add a Rust module or operation without editing the engine | open |
-| Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | open |
+| Modularity | The module set and operation table are fixed in `marionette-agent`: a game cannot add a Rust module or operation without editing the engine | done: `Engine::builder()`, `marionette_cli::main_with`, template `examples/rust-module` (decision 0062) |
+| Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | done: features `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, CI lean build (decision 0062) |
 | Modularity | Job TypeScript cannot be called from scenes or scripts yet (WJ next) | open |
 | Performance | No hardware-GPU run of frame budgets yet (needs the owner's PC) | open |

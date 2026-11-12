@@ -300,5 +300,7 @@
       "memory_growth_mib": 64
     }
   ],
-  "exempt": {}
+  "exempt": {
+    "examples/rust-module/spring.scene.json": "needs the example game's own binary (Spring is its component, decision 0062); examples/rust-module/tests/spring.rs checks determinism"
+  }
 }

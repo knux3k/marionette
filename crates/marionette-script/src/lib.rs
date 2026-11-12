@@ -124,14 +124,14 @@ pub const MAX_DESTROY_ROUNDS: usize = 64;
 /// The script module. `registry` builds the engine-wide type registry (scripts read and
 /// write any registered component by name).
 pub struct ScriptModule {
-    registry: fn() -> Registry,
+    registry: Box<dyn Fn() -> Registry + Send + Sync>,
     cache: OnceLock<Arc<Registry>>,
 }
 
 impl ScriptModule {
-    pub fn new(registry: fn() -> Registry) -> Self {
+    pub fn new(registry: impl Fn() -> Registry + Send + Sync + 'static) -> Self {
         Self {
-            registry,
+            registry: Box::new(registry),
             cache: OnceLock::new(),
         }
     }

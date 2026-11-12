@@ -318,3 +318,16 @@ bit-identical to the Rust job body and to the QuickJS interpreter; errors with c
 column and fix; index trap; time limit; hot reload); `cargo test -p marionette-cli --test
 jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`
 (decision 0030). Guide: `docs/ai/JOBS-TS.md`. Not yet usable from scenes or scripts (WJ next).
+
+## Game Rust modules and cargo features (decision 0062)
+
+- `cargo test -p marionette-example-rust-module` (built with `script` only): the game module
+  is deterministic and settles at its anchor, the built-in engine refuses its component, the
+  `spring_set` operation changes a live session and is refused read-only, duplicate or badly
+  named parts are refused, and the `spring-game` binary runs scenes and lists only the
+  operations of the parts it was built with (`examples/rust-module/tests/spring.rs`).
+- `cargo clippy -p marionette-agent -p marionette-cli --all-targets --no-default-features -- -D warnings`
+  passes, and with each single feature (`script`, `import`, `pool`, `generate`, `port`,
+  `jobs-ts`).
+- Linux debug build: example binary 489 linked crates and 103 MB, full `marionette` 559 and
+  147 MB, `marionette-cli --no-default-features` 374 crates.

@@ -37,6 +37,10 @@ jobs:
         run: |
           cargo clippy --locked -p marionette-providers -p marionette-cli --features marionette-providers/net,marionette-cli/net --all-targets -- -D warnings
           cargo test --locked -p marionette-providers --features net --test network
+      - name: Lean builds, a game with only the engine parts it uses (decision 0062)
+        run: |
+          cargo clippy --locked -p marionette-agent -p marionette-cli --no-default-features --all-targets -- -D warnings
+          cargo test --locked -p marionette-example-rust-module
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
 

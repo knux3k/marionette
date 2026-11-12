@@ -453,10 +453,7 @@ pub struct RunOutput {
 }
 
 pub(crate) fn load_sim(agent: &Agent, scene: &str, seed: u64) -> Result<Sim, Errors> {
-    let path = agent.resolve(scene)?;
-    let text = read_text(&path, scene)?;
-    let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
-    Sim::with_modules(&text, Some(scene), seed, crate::engine::modules(), dir)
+    agent.load_sim(scene, seed)
 }
 
 fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {

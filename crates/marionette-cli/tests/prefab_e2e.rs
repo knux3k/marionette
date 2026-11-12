@@ -1,5 +1,6 @@
 //! Unity prefab import and placement through the CLI (decision 0040): import a Unity project
 //! holding a model and a prefab, list the prefab, place it into a scene twice, run the scene.
+#![cfg(feature = "import")]
 
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
