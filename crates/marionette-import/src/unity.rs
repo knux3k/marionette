@@ -151,15 +151,6 @@ pub fn clean_package_path(raw: &str) -> Result<String, String> {
     Ok(p)
 }
 
-/// Removes a staging folder when dropped (also on errors).
-pub struct Staging(pub PathBuf);
-
-impl Drop for Staging {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
-
 /// Reads a `.unitypackage` into `staging` (files are named only by validated GUIDs, so archive
 /// names never choose where bytes go). Returns the entries with their package paths.
 pub fn stage_package(

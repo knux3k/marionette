@@ -121,9 +121,7 @@ fn play_sounds(world: &mut World) {
         .map(|(e, _, l)| (place(world, e), l.volume));
     let this_tick: Vec<(String, u64, Option<u64>)> = world
         .resource::<EventLog>()
-        .events
-        .iter()
-        .filter(|e| e.tick == tick)
+        .of_tick(tick)
         .filter_map(|e| e.entity.map(|a| (e.kind.clone(), a, e.other)))
         .collect();
     let involved = |kind: &str, id: u64| {
@@ -230,7 +228,7 @@ pub struct Player {
     manager: kira::AudioManager<kira::DefaultBackend>,
     cache: BTreeMap<String, kira::sound::static_sound::StaticSoundData>,
     base_dir: PathBuf,
-    seen: usize,
+    seen: u64,
 }
 
 impl Player {
@@ -248,7 +246,7 @@ impl Player {
     /// Plays every `sound` event added since the last call. Problems are returned, not fatal.
     pub fn play_new(&mut self, log: &EventLog) -> Vec<String> {
         let mut problems = Vec::new();
-        for e in log.events.iter().skip(self.seen).filter(|e| e.kind == "sound") {
+        for e in log.since(self.seen).filter(|e| e.kind == "sound") {
             let Some(sound) = e.detail["sound"].as_str() else {
                 continue;
             };
@@ -275,7 +273,7 @@ impl Player {
                 problems.push(format!("cannot play {sound}: {err}"));
             }
         }
-        self.seen = log.events.len();
+        self.seen = log.end();
         problems
     }
 }

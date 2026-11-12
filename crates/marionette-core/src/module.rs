@@ -9,7 +9,7 @@ use crate::error::Result;
 use crate::registry::Registry;
 use bevy_ecs::prelude::*;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -74,13 +74,22 @@ pub struct EngineEvent {
     pub detail: serde_json::Value,
 }
 
-/// All events so far, in the order they happened.
+/// Recent events, oldest first. Bounded so long runs keep steady memory (decision 0029): a
+/// ring of at most `EventLog::KEEP` events; each push past that drops the oldest event and
+/// counts it in `dropped`. The trim depends only on the event count, so it is
+/// deterministic. Readers that keep a position use absolute positions: event `i` of
+/// `events` has absolute position `dropped + i`.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct EventLog {
-    pub events: Vec<EngineEvent>,
+    pub events: VecDeque<EngineEvent>,
+    /// Events removed from the front so far.
+    pub dropped: u64,
 }
 
 impl EventLog {
+    /// Events kept. Far more than one tick produces; about 10 MB of typical events.
+    pub const KEEP: usize = 16_384;
+
     pub fn push(
         &mut self,
         tick: u64,
@@ -89,13 +98,38 @@ impl EventLog {
         other: Option<u64>,
         detail: serde_json::Value,
     ) {
-        self.events.push(EngineEvent {
+        if self.events.len() >= Self::KEEP {
+            self.events.pop_front();
+            self.dropped += 1;
+        }
+        self.events.push_back(EngineEvent {
             tick,
             kind: kind.into(),
             entity,
             other,
             detail,
         });
+    }
+
+    /// Absolute position after the last event (events ever pushed).
+    pub fn end(&self) -> u64 {
+        self.dropped + self.events.len() as u64
+    }
+
+    /// Events from absolute position `from` on (all held events if `from` was dropped).
+    pub fn since(&self, from: u64) -> impl Iterator<Item = &EngineEvent> {
+        let skip = from.saturating_sub(self.dropped).min(self.events.len() as u64) as usize;
+        self.events.range(skip..)
+    }
+
+    /// Events of one tick, found from the end (cheap for the current or last tick).
+    pub fn of_tick(&self, tick: u64) -> impl Iterator<Item = &EngineEvent> {
+        let start = self
+            .events
+            .iter()
+            .rposition(|e| e.tick < tick)
+            .map_or(0, |i| i + 1);
+        self.events.range(start..).filter(move |e| e.tick == tick)
     }
 }
 
@@ -117,4 +151,30 @@ pub fn registry_with(modules: &[Box<dyn Module>]) -> Registry {
         m.register(&mut r);
     }
     r
+}
+
+#[cfg(test)]
+mod event_log_tests {
+    use super::EventLog;
+
+    #[test]
+    fn the_event_log_is_bounded_and_positions_stay_absolute() {
+        let mut log = EventLog::default();
+        let n = 5 * EventLog::KEEP as u64 + 17;
+        for i in 0..n {
+            log.push(i / 4, "e", Some(i), None, serde_json::Value::Null);
+            assert!(log.events.len() <= EventLog::KEEP);
+        }
+        assert_eq!(log.end(), n);
+        assert_eq!(log.dropped + log.events.len() as u64, n);
+        // Absolute positions: the last three events, and an old position falls back to all.
+        let tail: Vec<u64> = log.since(n - 3).map(|e| e.entity.unwrap()).collect();
+        assert_eq!(tail, [n - 3, n - 2, n - 1]);
+        assert_eq!(log.since(0).count(), log.events.len());
+        assert_eq!(log.since(n + 10).count(), 0);
+        // One tick's events, found from the end.
+        let last_tick = (n - 1) / 4;
+        let ids: Vec<u64> = log.of_tick(last_tick).map(|e| e.entity.unwrap()).collect();
+        assert_eq!(ids, ((last_tick * 4)..n).collect::<Vec<_>>());
+    }
 }

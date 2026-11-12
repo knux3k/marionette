@@ -1883,6 +1883,7 @@ version = "0.1.0"
 dependencies = [
  "marionette-audio",
  "marionette-core",
+ "marionette-host",
  "marionette-import",
  "marionette-input",
  "marionette-physics",
@@ -1925,6 +1926,7 @@ dependencies = [
  "clap",
  "marionette-agent",
  "marionette-core",
+ "marionette-host",
  "marionette-render",
  "serde",
  "serde_json",
@@ -1942,6 +1944,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-host"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "marionette-import"
 version = "0.1.0"
 dependencies = [
@@ -1949,6 +1959,7 @@ dependencies = [
  "image",
  "marionette-assets",
  "marionette-core",
+ "marionette-host",
  "schemars",
  "serde",
  "serde_json",

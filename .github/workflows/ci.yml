@@ -35,3 +35,20 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
+
+  leaks:
+    name: leaks (valgrind)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries (ALSA, valgrind)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev valgrind
+      # Decision 0029: the C script runtime (QuickJS) and the crates that own OS resources
+      # run under valgrind; any definitely-lost block fails the job. The Rust heap, GPU
+      # objects and kill tests run in the normal test job (counting allocator).
+      - name: Tests under valgrind
+        run: cargo test --locked -p marionette-core -p marionette-host -p marionette-script -- --test-threads=1
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: valgrind --leak-check=full --errors-for-leak-kinds=definite --show-leak-kinds=definite --error-exitcode=9 -q

@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 marionette-core.workspace = true
+marionette-host.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent" }
 clap.workspace = true

@@ -12,5 +12,5 @@ pub mod renderer;
 pub mod window;
 
 pub use extract::{FrameData, View, extract};
-pub use gpu::{Gpu, Offscreen};
+pub use gpu::{Gpu, GpuObjects, Offscreen};
 pub use renderer::Renderer;

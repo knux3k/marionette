@@ -75,15 +75,26 @@ pub struct Session {
     pub snapshots: std::collections::BTreeMap<String, marionette_core::SimSnapshot>,
     pub scene: String,
     pub seed: u64,
-    pub logs: Vec<LogEntry>,
+    /// The most recent log entries (at most `LOG_KEEP`; older ones are dropped so a
+    /// long-lived session keeps steady memory, decision 0029).
+    pub logs: std::collections::VecDeque<LogEntry>,
+    /// Entries ever logged; the next entry's `seq`.
+    pub logged: usize,
     pub stats: Stats,
 }
 
+/// Log entries a session keeps after trimming.
+pub const LOG_KEEP: usize = 1_000;
+
 impl Session {
     pub fn log(&mut self, kind: &str, message: String) {
-        let seq = self.logs.len();
+        let seq = self.logged;
+        self.logged += 1;
+        if self.logs.len() >= LOG_KEEP {
+            self.logs.pop_front();
+        }
         let tick = self.sim.tick();
-        self.logs.push(LogEntry {
+        self.logs.push_back(LogEntry {
             seq,
             tick,
             kind: kind.into(),
@@ -149,7 +160,8 @@ fn start(agent: &mut Agent, input: StartInput) -> Result<StepOutput, Errors> {
         snapshots: Default::default(),
         scene: input.scene.clone(),
         seed: input.seed,
-        logs: Vec::new(),
+        logs: Default::default(),
+        logged: 0,
         stats: Stats::default(),
     };
     session.log(

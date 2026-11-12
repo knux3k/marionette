@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 marionette-core.workspace = true
+marionette-host.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-input = { path = "../marionette-input" }
 marionette-physics = { path = "../marionette-physics" }
