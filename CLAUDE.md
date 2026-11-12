@@ -21,14 +21,29 @@ cargo run -p marionette-cli -- schema
 cargo run -p marionette-cli -- validate examples/drift.scene.json --json
 cargo run -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
 cargo run -p marionette-cli -- scene fmt examples/drift.scene.json
+cargo run -p marionette-cli -- screenshot examples/showcase.scene.json --ticks 60 --seed 1 --size 1280x720 --out shot.png --json
+cargo run -p marionette-cli -- bench examples/showcase.scene.json --frames 1000 --size 1920x1080 --json
+cargo run -p marionette-cli -- run examples/sprites.scene.json   # opens a window; Escape closes
 ```
+
+GPU tests skip when no GPU adapter exists; set `MARIONETTE_REQUIRE_GPU=1` to make that a
+failure (CI does). Use `--test-threads=1` on software rasterizers (WARP crashed with
+concurrent devices). `MARIONETTE_UPDATE_REFERENCES=1` rewrites the reference images: only for
+an intended visual change, after looking at the new images.
+
+Keep the build cache small: build with `CARGO_INCREMENTAL=0`, use `--release` only for
+benchmarks, and run `cargo clean` when a session ends.
 
 ## Layout
 
 - `crates/marionette-core`: ECS world (`bevy_ecs`), schema registry, scene format and validator,
   fixed-step loop, seeded RNG, errors as data. No graphics, no network.
-- `crates/marionette-cli`: the `marionette` binary. Thin: parse args, call core, print.
-- `examples/`: scene files. They must stay canonical (`marionette scene fmt --check`).
+- `crates/marionette-render`: wgpu renderer (PBR models, batched sprites), glTF/PNG loading,
+  offscreen capture, image comparison, the window. Reads the world through `extract(&World)`
+  and never writes simulation state.
+- `crates/marionette-cli`: the `marionette` binary. Thin: parse args, call core/render, print.
+- `examples/`: scene files (canonical: `marionette scene fmt --check`), `assets/` (only CC0
+  or self-made, each listed with its source in `assets/LICENSE.md`) and `reference/` images.
 - `docs/decisions/`: one short record per decision (`NNNN-title.md`: context, decision, why,
   consequences). Add one whenever you pick between real alternatives.
 
