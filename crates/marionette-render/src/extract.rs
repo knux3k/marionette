@@ -6,8 +6,8 @@ use marionette_core::Kind;
 use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
-    AmbientLight, Camera, DirectionalLight, LookAt, Material, Model, Projection, Sprite, SpriteRegion,
-    Transform,
+    AmbientLight, Camera, DirectionalLight, Emissive, Fog, LookAt, Material, Model, PointLight, Projection,
+    Shadows, SkyLight, SpotLight, Sprite, SpriteRegion, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -24,6 +24,29 @@ pub struct FrameData {
     pub ui: Vec<UiDraw>,
     /// Copies drawn from modules' arrays (see `BulkDrawHooks`), in hook order.
     pub bulk: Vec<marionette_core::spatial::BulkDraw>,
+    /// Point and spot lights, sorted by entity id (decision 0063).
+    pub local_lights: Vec<LocalLightData>,
+    /// Opt-in looks; `None` (the default) keeps the plain look.
+    pub shadows: Option<Shadows>,
+    /// Exposure, when tone mapping is on.
+    pub exposure: Option<f32>,
+    /// Fog color (linear RGB) and density.
+    pub fog: Option<(Vec3, f32)>,
+    /// Sky and ground ambient (color times intensity), replacing `ambient`.
+    pub sky: Option<(Vec3, Vec3)>,
+}
+
+/// A point light (`cos_outer` below -1) or a spot light.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalLightData {
+    pub position: Vec3,
+    /// Color times intensity (linear).
+    pub radiance: Vec3,
+    pub range: f32,
+    /// Direction the light travels (spot lights; normalized).
+    pub direction: Vec3,
+    pub cos_inner: f32,
+    pub cos_outer: f32,
 }
 
 /// What a UI node looks like.
@@ -112,6 +135,8 @@ pub struct MeshDraw {
     pub material: Option<Material>,
     /// Animated node matrices (from the animation module); `None` draws the rest pose.
     pub pose: Option<std::sync::Arc<marionette_core::spatial::Pose>>,
+    /// Light given off (color times intensity), from `Emissive`; zero for most models.
+    pub emissive: Vec3,
 }
 
 #[derive(Debug, Clone)]
@@ -135,6 +160,10 @@ pub struct LightData {
 
 fn v3(v: CVec3) -> Vec3 {
     Vec3::new(v.x, v.y, v.z)
+}
+
+fn rgb(c: Color) -> Vec3 {
+    Vec3::new(c.r, c.g, c.b)
 }
 
 fn rgba(c: Color) -> [f32; 4] {
@@ -174,6 +203,14 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     if let Some(a) = world.get_resource::<AmbientLight>() {
         frame.ambient = Vec3::new(a.color.r, a.color.g, a.color.b) * a.intensity;
     }
+    frame.shadows = world.get_resource::<Shadows>().copied();
+    frame.exposure = world.get_resource::<ToneMapping>().map(|t| t.exposure);
+    frame.fog = world
+        .get_resource::<Fog>()
+        .map(|f| (rgb(f.color), f.density.max(0.0)));
+    frame.sky = world
+        .get_resource::<SkyLight>()
+        .map(|s| (rgb(s.sky) * s.intensity, rgb(s.ground) * s.intensity));
     type Place<'a> = (Option<&'a Transform>, Option<&'a Position>, Option<&'a LookAt>);
 
     if let Some(mut q) = world.try_query::<(&SceneId, &Camera, Place)>() {
@@ -202,7 +239,15 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         // Share one allocation per distinct asset path.
         let mut names: std::collections::BTreeMap<&str, std::sync::Arc<str>> = Default::default();
         frame.meshes.reserve(q.iter(world).len());
+        let emissives = world.components().component_id::<Emissive>().is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
+            let emissive = if emissives {
+                world
+                    .get::<Emissive>(e)
+                    .map_or(Vec3::ZERO, |m| rgb(m.color) * m.intensity.max(0.0))
+            } else {
+                Vec3::ZERO
+            };
             let pose = if poses {
                 world.get::<marionette_core::spatial::Pose>(e)
             } else {
@@ -218,6 +263,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 world: world_matrix(t, p, l),
                 material: material.copied(),
                 pose: pose.map(|p| std::sync::Arc::new(p.clone())),
+                emissive,
             });
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
@@ -282,6 +328,41 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         lights.sort_by_key(|(id, _)| *id);
         frame.lights = lights.into_iter().map(|(_, l)| l).collect();
     }
+    let mut local: Vec<(u64, LocalLightData)> = Vec::new();
+    if let Some(mut q) = world.try_query::<(&SceneId, &PointLight, Place)>() {
+        for (id, light, (t, p, l)) in q.iter(world) {
+            local.push((
+                id.0,
+                LocalLightData {
+                    position: world_matrix(t, p, l).w_axis.truncate(),
+                    radiance: rgb(light.color) * light.intensity,
+                    range: light.range.max(1e-3),
+                    direction: Vec3::NEG_Y,
+                    cos_inner: -2.0,
+                    cos_outer: -3.0,
+                },
+            ));
+        }
+    }
+    if let Some(mut q) = world.try_query::<(&SceneId, &SpotLight, Place)>() {
+        for (id, light, (t, p, l)) in q.iter(world) {
+            let outer = light.outer_angle_degrees.clamp(0.1, 89.9);
+            let inner = light.inner_angle_degrees.clamp(0.0, outer - 0.05);
+            local.push((
+                id.0,
+                LocalLightData {
+                    position: world_matrix(t, p, l).w_axis.truncate(),
+                    radiance: rgb(light.color) * light.intensity,
+                    range: light.range.max(1e-3),
+                    direction: v3(light.direction).normalize_or(Vec3::NEG_Y),
+                    cos_inner: inner.to_radians().cos(),
+                    cos_outer: outer.to_radians().cos(),
+                },
+            ));
+        }
+    }
+    local.sort_by_key(|(id, _)| *id);
+    frame.local_lights = local.into_iter().map(|(_, l)| l).collect();
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
         for hook in &hooks.0 {
             hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);
@@ -294,7 +375,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 9] = [
+pub const READS: [(&str, Kind); 16] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -304,4 +385,11 @@ pub const READS: [(&str, Kind); 9] = [
     ("SpriteRegion", Kind::Component),
     ("DirectionalLight", Kind::Component),
     ("AmbientLight", Kind::Resource),
+    ("PointLight", Kind::Component),
+    ("SpotLight", Kind::Component),
+    ("Emissive", Kind::Component),
+    ("Shadows", Kind::Resource),
+    ("ToneMapping", Kind::Resource),
+    ("Fog", Kind::Resource),
+    ("SkyLight", Kind::Resource),
 ];

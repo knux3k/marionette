@@ -95,6 +95,11 @@ tick and RNG). File edits never touch sessions; session edits never touch files;
 2. Sprites, same view, alpha blended, depth-tested without depth writes.
 3. UI in screen pixels (separate view buffer), no depth test.
 
+Opt-in looks (decision 0063): with resource `Shadows`, a depth pass from the first directional
+light runs before the views (view-buffer slot after the last view); `PointLight`, `SpotLight`,
+`Emissive`, `SkyLight`, `ToneMapping` and `Fog` are uniforms and instance data read by the same
+PBR shader behind flag bits. Absent data means the plain look, bit for bit.
+
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so
 rendering cannot change simulation state. Offscreen capture: `gpu.rs`; window: `window.rs`.

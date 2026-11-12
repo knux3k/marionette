@@ -44,3 +44,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0060 | Four standing focuses (modularity, token use, performance, graphics) in FOCUSES.md | accepted |
 | 0061 | Small always-read docs with a size test; selectable and lean MCP tool listings | accepted |
 | 0062 | Games add their own Rust modules and operations (`Engine::builder`, `marionette_cli::main_with`); optional engine parts are cargo features | accepted |
+| 0063 | Opt-in looks: shadows, point and spot lights, sky light, emissive, tone mapping, fog | accepted |

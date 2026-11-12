@@ -31,6 +31,17 @@ Line 3 (renderer):
   `b95606f6c44132e9b2fd82caad0e37a7d056da1b267e5e4ec24be117de832c08`, sprites
   `3c90975a249c2cb5a44bb38e83d2116ba77c804b61352db3858c3dc93baaf3d1`.
 
+Opt-in looks (decision 0063):
+- Example `examples/lighting.scene.json`, built by `examples/lighting.ops.json`
+  (`marionette op batch_run '{"file":"examples/lighting.ops.json"}'` after deleting the scene).
+  `run examples/lighting.scene.json --headless --ticks 60 --seed 1` prints
+  `3ee41e1c69d935cd056e877c62b1e2ae6920860b188147c6478bea364b529841`.
+- Reference image `examples/reference/lighting.png` (320x180, 60 ticks, seed 1, MSAA 4, made on
+  Mesa lavapipe): `343fa9e737f9d2ae626e0ad0cf684819399e8c139db06240bd44fd9bc2d4dff7`.
+- Tests: `opt_in_looks_change_the_image_only_when_present` and the lighting entries of
+  `matches_reference_images` and `same_inputs_give_identical_images` in
+  `crates/marionette-render/tests/render.rs`; stability mode `render-3d-lighting`.
+
 Line 4 (scripting, decision 0022):
 - Spike numbers and how to rerun them: decision 0022, harness `spikes/script-spike` (not a
   workspace member).
