@@ -30,11 +30,15 @@ fn op(root: &Path, name: &str, input: &Value) -> (bool, Value) {
     op_with(root, &[], name, input)
 }
 
-fn fixtures() -> String {
+/// A fixture folder as a plain absolute path (no `canonicalize`: on Windows it returns a
+/// `\\?\` verbatim path, which does not accept `/` separators).
+fn fixture(name: &str) -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../marionette-port/tests/fixtures")
-        .canonicalize()
-        .unwrap()
+        .join("..")
+        .join("marionette-port")
+        .join("tests")
+        .join("fixtures")
+        .join(name)
         .to_string_lossy()
         .into_owned()
 }
@@ -45,7 +49,7 @@ fn scan_map_and_convert() {
     let (ok, v) = op(
         &root,
         "port_scan",
-        &json!({ "source": format!("{}/unity", fixtures()), "limit": 2 }),
+        &json!({ "source": fixture("unity"), "limit": 2 }),
     );
     assert!(ok, "{v}");
     let r = &v["result"];
@@ -93,7 +97,8 @@ fn scan_map_and_convert() {
 #[test]
 fn scaffold_writes_skeletons_and_refuses_to_overwrite() {
     let root = temp_dir("scaffold");
-    let input = json!({ "source": format!("{}/unreal", fixtures()), "out": "scripts/ported", "scene": "scenes/main.scene.json" });
+    let input =
+        json!({ "source": fixture("unreal"), "out": "scripts/ported", "scene": "scenes/main.scene.json" });
     let (ok, v) = op(
         &root,
         "port_scaffold",
