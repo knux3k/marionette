@@ -45,7 +45,12 @@ fn render(gpu: &Gpu, scene: &str, size: (u32, u32)) -> Vec<u8> {
 #[test]
 fn same_inputs_give_identical_images() {
     let Some(gpu) = gpu() else { return };
-    for scene in ["showcase.scene.json", "sprites.scene.json", "ui.scene.json"] {
+    for scene in [
+        "showcase.scene.json",
+        "sprites.scene.json",
+        "ui.scene.json",
+        "lighting.scene.json",
+    ] {
         let a = render(&gpu, scene, (480, 270));
         let b = render(&gpu, scene, (480, 270));
         assert!(a == b, "{scene}: two renders differ");
@@ -67,7 +72,7 @@ fn rendering_does_not_change_simulation_state() {
 fn matches_reference_images() {
     let Some(gpu) = gpu() else { return };
     let update = std::env::var("MARIONETTE_UPDATE_REFERENCES").as_deref() == Ok("1");
-    for name in ["showcase", "sprites", "ui"] {
+    for name in ["showcase", "sprites", "ui", "lighting"] {
         let pixels = render(&gpu, &format!("{name}.scene.json"), REF_SIZE);
         let path = repo().join(format!("examples/reference/{name}.png"));
         if update {
@@ -168,4 +173,89 @@ fn gpu_objects_come_back_after_repeated_setups_and_trims() {
             "round {round}: GPU objects leaked"
         );
     }
+}
+
+/// Renders `sim` at 160x90 with 4x MSAA; returns pixels and stats.
+fn render_sim(gpu: &Gpu, sim: &Sim) -> (Vec<u8>, marionette_render::RenderStats) {
+    let mut off = Offscreen::new(gpu, 160, 90, 4, repo().join("examples"));
+    let stats = off.render(gpu, &extract(&sim.world), None).unwrap();
+    (off.read_pixels(gpu).unwrap(), stats)
+}
+
+/// Mean brightness (0..255) of a pixel rectangle.
+fn mean(pixels: &[u8], (x0, y0, x1, y1): (u32, u32, u32, u32)) -> f32 {
+    let mut sum = 0u64;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * 160 + x) * 4) as usize;
+            sum += pixels[i] as u64 + pixels[i + 1] as u64 + pixels[i + 2] as u64;
+        }
+    }
+    sum as f32 / (3 * (x1 - x0) * (y1 - y0)) as f32
+}
+
+/// Decision 0063: each look is on only while its resource or component is in the scene,
+/// and does what it says: shadows darken the ground behind a casting ball, point lights
+/// brighten the ground under them, fog pulls the far ground toward the fog color, and
+/// removing every opt-in item gives back the plain look.
+#[test]
+fn opt_in_looks_change_the_image_only_when_present() {
+    use marionette_core::spatial::{Emissive, Fog, PointLight, Shadows, SkyLight, SpotLight, ToneMapping};
+    let Some(gpu) = gpu() else { return };
+    let full = sim("lighting.scene.json");
+    let (all, stats) = render_sim(&gpu, &full);
+
+    // Shadows: the ground in the blue ball's shadow darkens, and the
+    // shadow pass adds one draw per mesh group.
+    let mut no_shadow = sim("lighting.scene.json");
+    no_shadow.world.remove_resource::<Shadows>();
+    let (unshadowed, plain_stats) = render_sim(&gpu, &no_shadow);
+    let behind_ball = (94, 50, 100, 54);
+    assert!(
+        mean(&all, behind_ball) + 10.0 < mean(&unshadowed, behind_ball),
+        "shadowed {} vs unshadowed {}",
+        mean(&all, behind_ball),
+        mean(&unshadowed, behind_ball)
+    );
+    assert!(stats.draw_calls > plain_stats.draw_calls);
+
+    // Point lights: the ground around the lantern is brighter with its light.
+    let mut dark = sim("lighting.scene.json");
+    let lights: Vec<_> = dark
+        .world
+        .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<PointLight>>()
+        .iter(&dark.world)
+        .collect();
+    for e in lights {
+        dark.world.entity_mut(e).remove::<PointLight>();
+    }
+    let (unlit, _) = render_sim(&gpu, &dark);
+    let under_lantern = (85, 63, 95, 69);
+    assert!(mean(&all, under_lantern) > mean(&unlit, under_lantern) + 10.0);
+
+    // Removing every opt-in resource and component gives exactly the plain renderer.
+    let mut plain = sim("lighting.scene.json");
+    plain.world.remove_resource::<Shadows>();
+    plain.world.remove_resource::<ToneMapping>();
+    plain.world.remove_resource::<Fog>();
+    plain.world.remove_resource::<SkyLight>();
+    let entities: Vec<_> = plain
+        .world
+        .query::<bevy_ecs::entity::Entity>()
+        .iter(&plain.world)
+        .collect();
+    for e in entities {
+        plain
+            .world
+            .entity_mut(e)
+            .remove::<(PointLight, SpotLight, Emissive)>();
+    }
+    let (plain_pixels, _) = render_sim(&gpu, &plain);
+    assert_ne!(plain_pixels, all);
+    // The plain look of the same frame, built without the new types ever existing: the
+    // extracted frame has no local lights, no flags and zero emissive.
+    let frame = extract(&plain.world);
+    assert!(frame.local_lights.is_empty() && frame.shadows.is_none() && frame.exposure.is_none());
+    assert!(frame.fog.is_none() && frame.sky.is_none());
+    assert!(frame.meshes.iter().all(|m| m.emissive == glam::Vec3::ZERO));
 }

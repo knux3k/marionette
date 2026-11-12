@@ -20,6 +20,15 @@ use wgpu::util::DeviceExt;
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
+/// Point and spot lights per frame (lowest entity ids win).
+pub const MAX_LOCAL_LIGHTS: usize = 16;
+/// Depth format of the shadow map.
+const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+/// Flags in `LightsUniform::count[2]` (match `pbr.wgsl`).
+const FLAG_SHADOWS: u32 = 1;
+const FLAG_TONEMAP: u32 = 2;
+const FLAG_FOG: u32 = 4;
+const FLAG_SKY: u32 = 8;
 /// Dynamic uniform offsets must be multiples of this (WebGPU minimum alignment).
 const VIEW_STRIDE: u64 = 256;
 /// Most views one [`Renderer::render_views`] call can draw (two for stereo; more for
@@ -47,7 +56,16 @@ struct LightsUniform {
     direction: [[f32; 4]; MAX_LIGHTS],
     radiance: [[f32; 4]; MAX_LIGHTS],
     ambient: [f32; 4],
+    /// Directional lights, local lights, flags.
     count: [u32; 4],
+    ground: [f32; 4],
+    fog: [f32; 4],
+    /// Exposure, shadow texel size (uv), softness (texels), normal offset (m).
+    post: [f32; 4],
+    shadow_view_proj: [[f32; 4]; 4],
+    local_pos: [[f32; 4]; MAX_LOCAL_LIGHTS],
+    local_rad: [[f32; 4]; MAX_LOCAL_LIGHTS],
+    local_dir: [[f32; 4]; MAX_LOCAL_LIGHTS],
 }
 
 /// Per-instance vertex data: one per drawn copy of a mesh part.
@@ -59,6 +77,8 @@ pub(crate) struct InstanceData {
     pub base_color: [f32; 4],
     /// metallic, roughness, normal_scale, has_normal_map (0/1)
     pub params: [f32; 4],
+    /// Light given off (rgb); zero for most instances.
+    pub emissive: [f32; 4],
 }
 
 /// What one frame cost in GPU work, counted on the CPU. Deterministic for a given frame,
@@ -163,7 +183,12 @@ pub struct Renderer {
     view_buffer: wgpu::Buffer,
     view_group: wgpu::BindGroup,
     lights_buffer: wgpu::Buffer,
+    lights_layout: wgpu::BindGroupLayout,
     lights_group: wgpu::BindGroup,
+    /// Shadow map (resolution, view) while a scene asks for shadows; a 1x1 map otherwise.
+    shadow_map: (u32, wgpu::TextureView),
+    shadow_sampler: wgpu::Sampler,
+    shadow_pipeline: wgpu::RenderPipeline,
     instance_buffer: Option<wgpu::Buffer>,
     /// Reused per-frame arrays: instances in frame order, their group, instances by group.
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
@@ -262,7 +287,25 @@ impl Renderer {
         let view_layout = layout("view", &[uniform_entry(0, vf, true, view_size)]);
         let lights_layout = layout(
             "lights",
-            &[uniform_entry(0, wgpu::ShaderStages::FRAGMENT, false, lights_size)],
+            &[
+                uniform_entry(0, wgpu::ShaderStages::FRAGMENT, false, lights_size),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    count: None,
+                },
+            ],
         );
         let material_layout = layout(
             "material",
@@ -283,7 +326,8 @@ impl Renderer {
                 mapped_at_creation: false,
             })
         };
-        let view_buffer = buffer("views", VIEW_STRIDE * 2 * MAX_VIEWS as u64);
+        // Two slots per view (world, UI) plus one for the shadow-casting light.
+        let view_buffer = buffer("views", VIEW_STRIDE * (2 * MAX_VIEWS as u64 + 1));
         let lights_buffer = buffer("lights", lights_size);
         let group = |label, layout: &wgpu::BindGroupLayout, res| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -296,10 +340,20 @@ impl Renderer {
             })
         };
         let view_group = group("view", &view_layout, buffer_resource(&view_buffer, view_size));
-        let lights_group = group(
-            "lights",
+        let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("shadow"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            ..Default::default()
+        });
+        let shadow_map = (0, shadow_texture(device, 1));
+        let lights_group = lights_bind_group(
+            device,
             &lights_layout,
-            buffer_resource(&lights_buffer, lights_size),
+            &lights_buffer,
+            &shadow_map.1,
+            &shadow_sampler,
         );
 
         let depth_stencil = |write: bool| wgpu::DepthStencilState {
@@ -327,7 +381,7 @@ impl Renderer {
         let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
         let instance_attrs = wgpu::vertex_attr_array![
             3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
-            7 => Float32x4, 8 => Float32x4
+            7 => Float32x4, 8 => Float32x4, 12 => Float32x4
         ];
         let pbr_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr"),
@@ -365,6 +419,40 @@ impl Renderer {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
+            multiview_mask: None,
+            cache: None,
+        });
+
+        // Depth-only pass from the shadow-casting light: only the view group is used.
+        let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("shadow"),
+            bind_group_layouts: &[Some(&view_layout)],
+            immediate_size: 0,
+        });
+        let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("shadow"),
+            layout: Some(&shadow_layout),
+            vertex: wgpu::VertexState {
+                module: &pbr_shader,
+                entry_point: Some("vs_shadow"),
+                compilation_options: Default::default(),
+                buffers: &[
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<MeshVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &mesh_attrs,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<InstanceData>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &instance_attrs,
+                    }),
+                ],
+            },
+            primitive: wgpu::PrimitiveState::default(), // both faces cast shadows
+            depth_stencil: Some(shadow_depth_state()),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: None,
             multiview_mask: None,
             cache: None,
         });
@@ -472,7 +560,11 @@ impl Renderer {
             view_buffer,
             view_group,
             lights_buffer,
+            lights_layout,
             lights_group,
+            shadow_map,
+            shadow_sampler,
+            shadow_pipeline,
             instance_buffer: None,
             scratch: Default::default(),
             material_layout,
@@ -743,6 +835,59 @@ impl Renderer {
         }
         lu.ambient = frame.ambient.extend(0.0).to_array();
         lu.count[0] = frame.lights.len().min(MAX_LIGHTS) as u32;
+        for (i, l) in frame.local_lights.iter().take(MAX_LOCAL_LIGHTS).enumerate() {
+            lu.local_pos[i] = l.position.extend(l.range).to_array();
+            lu.local_rad[i] = l.radiance.extend(l.cos_outer).to_array();
+            lu.local_dir[i] = l.direction.extend(l.cos_inner).to_array();
+        }
+        lu.count[1] = frame.local_lights.len().min(MAX_LOCAL_LIGHTS) as u32;
+        let mut flags = 0;
+        if let Some((sky, ground)) = frame.sky {
+            flags |= FLAG_SKY;
+            lu.ambient = sky.extend(0.0).to_array();
+            lu.ground = ground.extend(0.0).to_array();
+        }
+        if let Some(exposure) = frame.exposure {
+            flags |= FLAG_TONEMAP;
+            lu.post[0] = exposure;
+        }
+        if let Some((color, density)) = frame.fog {
+            flags |= FLAG_FOG;
+            lu.fog = color.extend(density).to_array();
+        }
+        // Shadows: the first directional light, seen from the first view.
+        let shadow = match (frame.shadows, frame.lights.first(), views.first()) {
+            (Some(s), Some(light), Some((view, _))) if s.distance > 0.0 => {
+                let resolution = s.resolution.clamp(256, 4096);
+                let vp = shadow_view_proj(light.direction, view, s.distance, resolution);
+                let texel = 2.0 * s.distance / resolution as f32;
+                lu.shadow_view_proj = mat(vp);
+                lu.post[1] = 1.0 / resolution as f32;
+                lu.post[2] = s.softness.clamp(0.0, 4.0);
+                lu.post[3] = texel * 1.5;
+                flags |= FLAG_SHADOWS;
+                if self.shadow_map.0 != resolution {
+                    self.shadow_map = (resolution, shadow_texture(&self.device, resolution));
+                    self.lights_group = lights_bind_group(
+                        &self.device,
+                        &self.lights_layout,
+                        &self.lights_buffer,
+                        &self.shadow_map.1,
+                        &self.shadow_sampler,
+                    );
+                }
+                let at = 2 * MAX_VIEWS * VIEW_STRIDE as usize;
+                let su = ViewUniform {
+                    view_proj: mat(vp),
+                    eye: [0.0, 0.0, 0.0, 1.0],
+                };
+                self.queue
+                    .write_buffer(&self.view_buffer, at as u64, bytemuck::bytes_of(&su));
+                true
+            }
+            _ => false,
+        };
+        lu.count[2] = flags;
         self.queue
             .write_buffer(&self.lights_buffer, 0, bytemuck::bytes_of(&lu));
 
@@ -802,6 +947,7 @@ impl Renderer {
                     model: mat(model_m),
                     base_color,
                     params,
+                    emissive: draw.emissive.extend(0.0).to_array(),
                 });
                 gid.push(g);
             }
@@ -840,6 +986,7 @@ impl Renderer {
                         model: mat(if identity { world } else { world * part.transform }),
                         base_color,
                         params,
+                        emissive: [0.0; 4],
                     });
                     gid.push(g);
                 }
@@ -1062,6 +1209,52 @@ impl Renderer {
             );
         }
 
+        if shadow {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("shadow"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.shadow_map.1,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            let offset = (2 * MAX_VIEWS as u64 * VIEW_STRIDE) as u32;
+            if let (Some(ib), false) = (&self.instance_buffer, calls.is_empty()) {
+                pass.set_pipeline(&self.shadow_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[offset]);
+                pass.set_vertex_buffer(1, ib.slice(..));
+                for call in &calls {
+                    pass.set_vertex_buffer(0, call.part.vertices.slice(..));
+                    pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
+                    stats.draw_calls += 1;
+                }
+            }
+            if let (Some(ib), false) = (&self.skinning.instances, skinned_calls.is_empty()) {
+                pass.set_pipeline(&self.skinning.shadow_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[offset]);
+                pass.set_vertex_buffer(1, ib.slice(..));
+                for (call, group) in skinned_calls.iter().zip(&deform_groups) {
+                    let Some(deform) = &call.part.deform else {
+                        continue;
+                    };
+                    pass.set_bind_group(3, group, &[]);
+                    pass.set_vertex_buffer(0, call.part.vertices.slice(..));
+                    pass.set_vertex_buffer(2, deform.skin_vertices.slice(..));
+                    pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
+                    stats.draw_calls += 1;
+                }
+            }
+        }
+
         for (i, (view, target)) in views.iter().enumerate() {
             let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
             let ui_offset = world_offset + VIEW_STRIDE as u32;
@@ -1167,6 +1360,93 @@ impl Renderer {
         self.scratch = (raw, gid, instances);
         stats
     }
+}
+
+/// Depth state of the shadow pass: biased against self-shadowing ("acne").
+pub(crate) fn shadow_depth_state() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: SHADOW_FORMAT,
+        depth_write_enabled: Some(true),
+        depth_compare: Some(wgpu::CompareFunction::LessEqual),
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState {
+            constant: 2,
+            slope_scale: 2.0,
+            clamp: 0.0,
+        },
+    }
+}
+
+fn shadow_texture(device: &wgpu::Device, size: u32) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow map"),
+            size: wgpu::Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SHADOW_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor::default())
+}
+
+fn lights_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    buffer: &wgpu::Buffer,
+    shadow: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lights"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer_resource(buffer, size_of::<LightsUniform>() as u64),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(shadow),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
+/// View-projection of the shadow-casting light: an orthographic box `distance` meters each
+/// side of a point ahead of the camera, snapped to whole shadow texels so edges do not
+/// shimmer as the camera moves.
+pub(crate) fn shadow_view_proj(light_dir: Vec3, view: &View, distance: f32, resolution: u32) -> Mat4 {
+    let d = light_dir.normalize_or(Vec3::NEG_Y);
+    let forward = -view.view.inverse().z_axis.truncate().normalize_or(Vec3::NEG_Z);
+    let center = view.eye + forward * distance * 0.5;
+    let up = if d.y.abs() > 0.99 { Vec3::Z } else { Vec3::Y };
+    let rot = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, d, up);
+    let c = rot.transform_point3(center);
+    let texel = 2.0 * distance / resolution as f32;
+    let (sx, sy) = ((c.x / texel).floor() * texel, (c.y / texel).floor() * texel);
+    // Room behind the area for tall casters, in front for the area's depth.
+    let depth = distance * 4.0;
+    let light_view = Mat4::from_translation(-Vec3::new(sx, sy, c.z + depth)) * rot;
+    let proj = glam::camera::rh::proj::directx::orthographic(
+        -distance,
+        distance,
+        -distance,
+        distance,
+        0.0,
+        2.0 * depth,
+    );
+    proj * light_view
 }
 
 /// Bind group with a material's textures (defaults where it has none).
