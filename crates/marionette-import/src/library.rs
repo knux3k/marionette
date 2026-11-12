@@ -41,7 +41,7 @@ pub struct FileRecord {
 /// Where an asset came from. Holds names inside the source only, never machine paths.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SourceRecord {
-    /// `unity_project`, `unitypackage` or `files`.
+    /// `unity_project`, `unitypackage`, `unreal_project` or `files`.
     pub importer: String,
     /// File or folder name of the source (no directories).
     pub source_name: String,
@@ -50,6 +50,10 @@ pub struct SourceRecord {
     /// The Unity GUID from the asset's `.meta`, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unity_guid: Option<String>,
+    /// The Unreal object path the file has in its project (`/game/props/t_crate_d`,
+    /// lowercase), used to match exported files to material references.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unreal_path: Option<String>,
     /// SHA-256 of the original file.
     pub sha256: String,
 }
