@@ -95,12 +95,13 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
 Stability suite (decision 0031, `docs/ai/STABILITY.md`):
-- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-one modes
+- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-seven modes
   (core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d,
   render-3d-play, render-2d, render-2d-play, render-ui, animation, vr-headset, factory-sim,
-  factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run (each also
-  `-render`),
-  agent-session); `--long --seeds 1` passed for every mode (Linux container, lavapipe, release;
+  factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run, proof-crystal-ward,
+  proof-dust-circuit, proof-signal-yard (each proof game also `-render`),
+  agent-session); `--long --seeds 1` passed for every mode up to proof-ember-run (the last
+  three proof games have the fast suite only so far) (Linux container, lavapipe, release;
   factory-vr frame p99 12.4 ms at 256x256 per eye on the software GPU, under the CI scale).
 - Tests: `crates/marionette-cli/tests/stability.rs` (`fast_suite_passes_for_every_mode`,
   `drift_mode_reaches_the_pinned_drift_hash`, `injected_panic_is_reported_with_tick_and_backtrace`,
