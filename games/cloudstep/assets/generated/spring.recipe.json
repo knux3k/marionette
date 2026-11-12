@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "spring",
+  "output": "model",
+  "from": "spring_ref",
+  "model": {
+    "height_m": 1.0,
+    "max_triangles": 5000
+  }
+}

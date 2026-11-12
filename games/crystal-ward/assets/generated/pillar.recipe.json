@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "pillar",
+  "output": "model",
+  "from": "pillar_ref",
+  "model": {
+    "height_m": 3.0,
+    "max_triangles": 6000
+  }
+}

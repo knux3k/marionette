@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "grandstand",
+  "output": "model",
+  "from": "grandstand_ref",
+  "model": {
+    "height_m": 3.5,
+    "max_triangles": 15000
+  }
+}

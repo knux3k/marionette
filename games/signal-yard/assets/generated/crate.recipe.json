@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "crate",
+  "output": "model",
+  "from": "crate_ref",
+  "model": {
+    "height_m": 1.0,
+    "max_triangles": 3000
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "island",
+  "output": "model",
+  "from": "island_ref",
+  "model": {
+    "height_m": 3.0,
+    "max_triangles": 15000
+  }
+}

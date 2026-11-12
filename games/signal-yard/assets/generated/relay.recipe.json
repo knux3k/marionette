@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "relay",
+  "output": "model",
+  "from": "relay_ref",
+  "model": {
+    "height_m": 8.0,
+    "max_triangles": 20000
+  }
+}

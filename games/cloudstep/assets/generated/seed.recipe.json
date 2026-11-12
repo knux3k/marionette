@@ -1,0 +1,10 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "seed",
+  "output": "model",
+  "from": "seed_ref",
+  "model": {
+    "height_m": 0.4,
+    "max_triangles": 3000
+  }
+}
