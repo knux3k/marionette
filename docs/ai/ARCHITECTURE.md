@@ -13,6 +13,7 @@
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend cap and ledger | core, assets, sha2, schemars | render, input, physics, audio, any HTTP client (decision 0019) |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, rquickjs, oxc, libm | render, input, physics, audio, agent |
+| `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
 | `crates/marionette-agent` | The operation table (project, edit, session, observe, test), engine module set, generated docs, MCP server | all crates above, rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
@@ -28,9 +29,12 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
    events, updates `DeviceState`, recomputes `ActionState` from the action map, records changes.
 2. `Stage::Script`: `run_scripts` (`crates/marionette-script/src/lib.rs`): for each entity
    with a `Script`, in id order, the module's hooks (`start` once, contact hooks for last
-   tick's collisions, `update`). Decision 0022.
+   tick's collisions, due timers, `update`). Decision 0022. Then entities whose `DestroyAt`
+   tick has come get `onDestroy` and are removed (id order), and scripts first used by
+   entities spawned this tick are loaded. Decision 0021.
 3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
-4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): kinematic targets,
+4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): bodies for
+   spawned entities and removal of bodies of removed ones (`sync`), kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
 5. `Stage::Effects`: `play_sounds` (`crates/marionette-audio/src/lib.rs`): sound events.
 6. `Stage::End`: `advance_clock` increments `SimClock.tick`.
@@ -94,7 +98,9 @@ Forbidden in simulation code (systems and anything they call):
 - `sin`, `cos`, `powf`, `exp`, `atan2` and other platform math in per-tick code (plain
   `+ - * /` and `sqrt` are fine; physics 2D converts angles with `atan2` only at load);
 - unseeded randomness (only `SimRng`, seeded from `--seed` / `seed`);
-- reading files during a tick (load in `Module::init`).
+- reading files during a tick (load in `Module::init`). Two exceptions, each read once when
+  first needed: a script file first used by a spawned entity, and a mesh a spawned
+  entity's `Collider` needs (decision 0021).
 
 Scripts (TypeScript) have their own enforced sandbox: no clock, no `Math.random`, `libm`
 math, `**` rewritten to `Math.pow` (decision 0022).

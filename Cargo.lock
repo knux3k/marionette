@@ -1886,6 +1886,7 @@ dependencies = [
  "marionette-import",
  "marionette-input",
  "marionette-physics",
+ "marionette-port",
  "marionette-providers",
  "marionette-render",
  "marionette-script",
@@ -1946,6 +1947,8 @@ name = "marionette-import"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "glam 0.34.3",
+ "gltf",
  "image",
  "marionette-assets",
  "marionette-core",
@@ -1978,6 +1981,16 @@ dependencies = [
  "postcard",
  "rapier2d",
  "rapier3d",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "marionette-port"
+version = "0.1.0"
+dependencies = [
+ "marionette-core",
+ "schemars",
  "serde",
  "serde_json",
 ]

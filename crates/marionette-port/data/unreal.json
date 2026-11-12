@@ -1,0 +1,1609 @@
+{
+  "engine": "unreal",
+  "language": "C++",
+  "bases": [
+    {
+      "name": "AActor",
+      "role": "actor",
+      "marionette": "An entity with a TypeScript script (`Script { path }` component).",
+      "status": "script"
+    },
+    {
+      "name": "APawn",
+      "role": "actor",
+      "marionette": "An entity with a script; possession is not a concept, input actions are global.",
+      "status": "script"
+    },
+    {
+      "name": "ACharacter",
+      "role": "actor",
+      "marionette": "An entity with CharacterController + Collider (Capsule) + a script.",
+      "status": "script",
+      "note": "UCharacterMovementComponent maps to CharacterController (walk, jump, slopes, pushing)."
+    },
+    {
+      "name": "AGameModeBase",
+      "role": "actor",
+      "marionette": "A script on a 'game' entity that holds rules and score in self.state.",
+      "status": "rewrite"
+    },
+    {
+      "name": "AGameMode",
+      "role": "actor",
+      "marionette": "A script on a 'game' entity.",
+      "status": "rewrite"
+    },
+    {
+      "name": "AGameStateBase",
+      "role": "actor",
+      "marionette": "self.state of the 'game' entity.",
+      "status": "rewrite"
+    },
+    {
+      "name": "APlayerController",
+      "role": "actor",
+      "marionette": "The action map file plus a script on the player entity.",
+      "status": "rewrite"
+    },
+    {
+      "name": "AHUD",
+      "role": "actor",
+      "marionette": "UiNode + UiText / UiRect / UiImage entities updated by a script.",
+      "status": "rewrite"
+    },
+    {
+      "name": "UActorComponent",
+      "role": "component",
+      "marionette": "A TypeScript script on the owning entity (one script per entity today; merge several components into one script).",
+      "status": "script"
+    },
+    {
+      "name": "USceneComponent",
+      "role": "component",
+      "marionette": "A script; no attachment hierarchy.",
+      "status": "script",
+      "note": "Attachment is a gap."
+    },
+    {
+      "name": "UObject",
+      "role": "data",
+      "marionette": "Plain TypeScript data or self.state.",
+      "status": "rewrite"
+    },
+    {
+      "name": "UDataAsset",
+      "role": "data",
+      "marionette": "Constants in the script or a JSON data file.",
+      "status": "rewrite"
+    },
+    {
+      "name": "UPrimaryDataAsset",
+      "role": "data",
+      "marionette": "Constants in the script.",
+      "status": "rewrite"
+    },
+    {
+      "name": "UUserWidget",
+      "role": "other",
+      "marionette": "UiNode + UiText / UiImage / UiButton entities.",
+      "status": "rewrite"
+    },
+    {
+      "name": "UGameInstance",
+      "role": "other",
+      "marionette": "",
+      "status": "gap",
+      "note": "One scene per run."
+    },
+    {
+      "name": "UAnimInstance",
+      "role": "other",
+      "marionette": "",
+      "status": "gap"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "BeginPlay",
+      "marionette": "start",
+      "status": "script",
+      "note": "Drop the Super::BeginPlay() call."
+    },
+    {
+      "name": "PostInitializeComponents",
+      "marionette": "start",
+      "status": "script"
+    },
+    {
+      "name": "OnConstruction",
+      "marionette": "the entity's components in the scene file",
+      "status": "rewrite",
+      "note": "Construction scripts become data written through operations."
+    },
+    {
+      "name": "Tick",
+      "marionette": "update",
+      "status": "script",
+      "note": "DeltaTime is engine.dt (fixed step). PrimaryActorTick.bCanEverTick is not needed: update is optional."
+    },
+    {
+      "name": "TickComponent",
+      "marionette": "update",
+      "status": "script"
+    },
+    {
+      "name": "NotifyHit",
+      "marionette": "onCollisionEnter",
+      "status": "script",
+      "note": "Receives the other Entity; no hit result."
+    },
+    {
+      "name": "ReceiveHit",
+      "marionette": "onCollisionEnter",
+      "status": "script"
+    },
+    {
+      "name": "NotifyActorBeginOverlap",
+      "marionette": "onTriggerEnter",
+      "status": "script",
+      "note": "The overlapping collider is a sensor (Collider.sensor: true)."
+    },
+    {
+      "name": "NotifyActorEndOverlap",
+      "marionette": "onTriggerExit",
+      "status": "script",
+      "note": "Collider.sensor: true."
+    },
+    {
+      "name": "EndPlay",
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
+    },
+    {
+      "name": "Destroyed",
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
+    },
+    {
+      "name": "BeginDestroy",
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Garbage-collection hook; put cleanup in onDestroy."
+    },
+    {
+      "name": "SetupPlayerInputComponent",
+      "marionette": "the action map file (*.actions.json)",
+      "status": "rewrite",
+      "note": "Each BindAxis / BindAction / Enhanced Input action becomes an action in the map; the bound function's body moves into update, reading engine.action / engine.justPressed."
+    },
+    {
+      "name": "PossessedBy",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "Landed",
+      "marionette": "update, when CharacterState.grounded turns true",
+      "status": "rewrite"
+    },
+    {
+      "name": "OnJumped",
+      "marionette": "AudioSource trigger OnJump, or justPressed(jump) && grounded in update",
+      "status": "rewrite"
+    },
+    {
+      "name": "NativeConstruct",
+      "marionette": "start",
+      "status": "rewrite"
+    },
+    {
+      "name": "NativeTick",
+      "marionette": "update",
+      "status": "rewrite"
+    },
+    {
+      "name": "ReceiveBeginPlay",
+      "marionette": "start",
+      "status": "script",
+      "note": "Blueprint Event BeginPlay."
+    },
+    {
+      "name": "ReceiveTick",
+      "marionette": "update",
+      "status": "script",
+      "note": "Blueprint Event Tick; Delta Seconds is engine.dt."
+    },
+    {
+      "name": "ReceiveActorBeginOverlap",
+      "marionette": "onTriggerEnter",
+      "status": "script",
+      "note": "Blueprint overlap event; Collider.sensor: true."
+    },
+    {
+      "name": "ReceiveActorEndOverlap",
+      "marionette": "onTriggerExit",
+      "status": "script",
+      "note": "Collider.sensor: true."
+    },
+    {
+      "name": "ReceiveEndPlay",
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
+    },
+    {
+      "name": "ReceiveDestroyed",
+      "marionette": "onDestroy",
+      "status": "script",
+      "note": "Runs when engine.destroy removes the entity (end of the script stage), not when the run ends."
+    }
+  ],
+  "components": [
+    {
+      "name": "USceneComponent",
+      "marionette": "Transform",
+      "status": "ready",
+      "note": "No attachment hierarchy."
+    },
+    {
+      "name": "UStaticMeshComponent",
+      "marionette": "Model + Material",
+      "status": "ready",
+      "note": "Export the mesh as glTF (File > Export) and import it; SetSimulatePhysics(true) adds RigidBody { kind: Dynamic } + Collider."
+    },
+    {
+      "name": "USkeletalMeshComponent",
+      "marionette": "Model",
+      "status": "gap",
+      "note": "No skinning or skeletal animation yet."
+    },
+    {
+      "name": "UBoxComponent",
+      "marionette": "Collider { shape: Cuboid }",
+      "status": "ready",
+      "note": "half_extents = BoxExtent / 100 (BoxExtent is already a half size, in cm). Overlap-only (no blocking) -> sensor: true."
+    },
+    {
+      "name": "USphereComponent",
+      "marionette": "Collider { shape: Ball }",
+      "status": "ready",
+      "note": "radius = SphereRadius / 100."
+    },
+    {
+      "name": "UCapsuleComponent",
+      "marionette": "Collider { shape: Capsule }",
+      "status": "ready",
+      "note": "radius = CapsuleRadius / 100; half_height = (CapsuleHalfHeight - CapsuleRadius) / 100 (Unreal's half height includes the cap)."
+    },
+    {
+      "name": "UCharacterMovementComponent",
+      "marionette": "CharacterController",
+      "status": "ready",
+      "note": "MaxWalkSpeed / 100 -> speed; JumpZVelocity / 100 -> jump_speed; GravityScale * 9.81 -> gravity."
+    },
+    {
+      "name": "UProjectileMovementComponent",
+      "marionette": "RigidBody { kind: Dynamic } with an initial Velocity, or Velocity + integrate",
+      "status": "rewrite"
+    },
+    {
+      "name": "UFloatingPawnMovement",
+      "marionette": "Kinematic RigidBody moved by script",
+      "status": "rewrite"
+    },
+    {
+      "name": "URotatingMovementComponent",
+      "marionette": "AngularVelocity on a kinematic or dynamic body",
+      "status": "rewrite"
+    },
+    {
+      "name": "UCameraComponent",
+      "marionette": "Camera",
+      "status": "ready",
+      "note": "FieldOfView is horizontal in Unreal; fov_y = 2 * atan(tan(fov_x / 2) / aspect) (compute once while porting)."
+    },
+    {
+      "name": "USpringArmComponent",
+      "marionette": "Follow or LookAt on the camera entity",
+      "status": "rewrite"
+    },
+    {
+      "name": "UDirectionalLightComponent",
+      "marionette": "DirectionalLight",
+      "status": "ready"
+    },
+    {
+      "name": "UPointLightComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "USpotLightComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "UAudioComponent",
+      "marionette": "AudioSource",
+      "status": "ready",
+      "note": "bAutoActivate -> trigger OnStart; arbitrary Play() from code is a gap."
+    },
+    {
+      "name": "UPaperSpriteComponent",
+      "marionette": "Sprite",
+      "status": "ready"
+    },
+    {
+      "name": "UPaperFlipbookComponent",
+      "marionette": "Sprite + SpriteRegion stepped by script",
+      "status": "rewrite"
+    },
+    {
+      "name": "UTextRenderComponent",
+      "marionette": "",
+      "status": "gap",
+      "note": "World-space text is not supported; use UiText."
+    },
+    {
+      "name": "UWidgetComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "UNiagaraComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "UParticleSystemComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "UPhysicsConstraintComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "name": "UInputComponent",
+      "marionette": "action map file",
+      "status": "ready"
+    },
+    {
+      "name": "UEnhancedInputComponent",
+      "marionette": "action map file",
+      "status": "ready"
+    }
+  ],
+  "types": [
+    {
+      "name": "float",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "double",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "int32",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "int64",
+      "marionette": "number",
+      "status": "ready",
+      "note": "Exact only up to 2^53."
+    },
+    {
+      "name": "uint8",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "uint32",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "int",
+      "marionette": "number",
+      "status": "ready"
+    },
+    {
+      "name": "bool",
+      "marionette": "boolean",
+      "status": "ready"
+    },
+    {
+      "name": "FString",
+      "marionette": "string",
+      "status": "ready"
+    },
+    {
+      "name": "FName",
+      "marionette": "string",
+      "status": "ready"
+    },
+    {
+      "name": "FText",
+      "marionette": "string",
+      "status": "ready"
+    },
+    {
+      "name": "FVector",
+      "marionette": "{ x: number, y: number, z: number }",
+      "status": "ready",
+      "note": "Convert axes and units: Marionette (x, y, z) = Unreal (Y, Z, -X) / 100."
+    },
+    {
+      "name": "FVector2D",
+      "marionette": "{ x: number, y: number }",
+      "status": "ready"
+    },
+    {
+      "name": "FRotator",
+      "marionette": "{ x: number, y: number, z: number, w: number } (quaternion)",
+      "status": "rewrite",
+      "note": "Convert to a quaternion while porting (Pitch, Yaw, Roll in degrees); per-tick sin/cos is a determinism hazard."
+    },
+    {
+      "name": "FQuat",
+      "marionette": "{ x: number, y: number, z: number, w: number }",
+      "status": "ready",
+      "note": "Axis change: Marionette (x, y, z, w) = Unreal (-Y, -Z, X, W)."
+    },
+    {
+      "name": "FTransform",
+      "marionette": "Transform",
+      "status": "ready"
+    },
+    {
+      "name": "FLinearColor",
+      "marionette": "{ r: number, g: number, b: number, a: number }",
+      "status": "ready"
+    },
+    {
+      "name": "FColor",
+      "marionette": "{ r: number, g: number, b: number, a: number }",
+      "status": "ready",
+      "note": "Divide by 255; FColor is sRGB, Marionette colors are linear."
+    },
+    {
+      "name": "FTimerHandle",
+      "marionette": "the number returned by engine.after / engine.every",
+      "status": "script",
+      "note": "Keep it in self.state to cancel later."
+    },
+    {
+      "name": "AActor",
+      "marionette": "entity id (number)",
+      "status": "ready",
+      "note": "Pointers to actors become entity ids; look up with engine.entity(id) or engine.find(name)."
+    },
+    {
+      "name": "APawn",
+      "marionette": "entity id (number)",
+      "status": "ready"
+    },
+    {
+      "name": "ACharacter",
+      "marionette": "entity id (number)",
+      "status": "ready"
+    },
+    {
+      "name": "UStaticMesh",
+      "marionette": "string (glTF path)",
+      "status": "ready"
+    },
+    {
+      "name": "USoundBase",
+      "marionette": "string (sound path or builtin:)",
+      "status": "ready"
+    },
+    {
+      "name": "USoundCue",
+      "marionette": "string (sound path)",
+      "status": "rewrite",
+      "note": "Cues become single sounds."
+    },
+    {
+      "name": "UTexture2D",
+      "marionette": "string (PNG path)",
+      "status": "ready"
+    },
+    {
+      "name": "UMaterialInterface",
+      "marionette": "Material component values",
+      "status": "ready"
+    },
+    {
+      "name": "TSubclassOf",
+      "marionette": "a template entity name for engine.clone, or a components object for engine.spawn",
+      "status": "rewrite",
+      "note": "Entities have no classes: pick the template by name (engine.find) and clone it."
+    },
+    {
+      "name": "UCurveFloat",
+      "marionette": "",
+      "status": "gap",
+      "note": "Sample into an array."
+    },
+    {
+      "name": "FGameplayTag",
+      "marionette": "",
+      "status": "gap",
+      "note": "No tags; use a marker component or a name."
+    }
+  ],
+  "api": [
+    {
+      "pattern": "GetWorld.GetDeltaSeconds",
+      "marionette": "engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "GetDeltaSeconds",
+      "marionette": "engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "GetWorld.GetTimeSeconds",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "GetTimeSeconds",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.GetTimeSeconds",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "GetRealTimeSeconds",
+      "marionette": "engine.tick * engine.dt",
+      "status": "hazard",
+      "note": "Real time breaks determinism."
+    },
+    {
+      "pattern": "FPlatformTime.Seconds",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Wall clock breaks determinism."
+    },
+    {
+      "pattern": "FDateTime.Now",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Wall clock."
+    },
+    {
+      "pattern": "FDateTime.UtcNow",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Wall clock."
+    },
+    {
+      "pattern": "UGameplayStatics.SetGlobalTimeDilation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "GetTimerManager.SetTimer",
+      "marionette": "engine.after(seconds, fn) or engine.every(seconds, fn) when looping",
+      "status": "script",
+      "note": "fn is an exported function of the same script, called as fn(self, arg); FirstDelay is the fourth argument of engine.every."
+    },
+    {
+      "pattern": "GetTimerManager.ClearTimer",
+      "marionette": "engine.cancel(handle)",
+      "status": "script"
+    },
+    {
+      "pattern": "GetTimerManager.IsTimerActive",
+      "marionette": "engine.pending(handle) > 0",
+      "status": "script"
+    },
+    {
+      "pattern": "GetTimerManager.SetTimerForNextTick",
+      "marionette": "engine.afterTicks(1, fn)",
+      "status": "script"
+    },
+    {
+      "pattern": "UKismetSystemLibrary.Delay",
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "rewrite",
+      "note": "Split the function at the Delay: the rest moves into an exported nextStep(self, arg)."
+    },
+    {
+      "pattern": "FLatentActionInfo",
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "rewrite",
+      "note": "Latent actions become timer steps (see Delay)."
+    },
+    {
+      "pattern": "UE_LOG",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "GEngine.AddOnScreenDebugMessage",
+      "marionette": "engine.log, or a UiText entity",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "DrawDebugLine",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "DrawDebugSphere",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "DrawDebugBox",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "UKismetSystemLibrary.PrintString",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "PlayerInputComponent.BindAxis",
+      "marionette": "an axis action in the action map; engine.action(name) in update",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "PlayerInputComponent.BindAction",
+      "marionette": "a button action in the action map; engine.justPressed(name) in update",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "BindAxis",
+      "marionette": "axis action in the action map",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "BindAction",
+      "marionette": "action in the action map",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "EnhancedInputComponent.BindAction",
+      "marionette": "action in the action map",
+      "status": "rewrite",
+      "note": "ETriggerEvent::Triggered -> engine.pressed / engine.action; Started -> engine.justPressed."
+    },
+    {
+      "pattern": "UInputAction",
+      "marionette": "an action name",
+      "status": "ready"
+    },
+    {
+      "pattern": "UInputMappingContext",
+      "marionette": "the action map file",
+      "status": "ready"
+    },
+    {
+      "pattern": "FInputActionValue",
+      "marionette": "engine.action(name)",
+      "status": "script"
+    },
+    {
+      "pattern": "Value.Get",
+      "marionette": "engine.action(name)",
+      "status": "script"
+    },
+    {
+      "pattern": "GetInputAxisValue",
+      "marionette": "engine.action(name)",
+      "status": "script"
+    },
+    {
+      "pattern": "IsInputKeyDown",
+      "marionette": "engine.pressed(action)",
+      "status": "script",
+      "note": "Bind the key to an action."
+    },
+    {
+      "pattern": "WasInputKeyJustPressed",
+      "marionette": "engine.justPressed(action)",
+      "status": "script"
+    },
+    {
+      "pattern": "AddMovementInput",
+      "marionette": "CharacterController reads move_x / move_forward actions directly",
+      "status": "rewrite",
+      "note": "Drop the call and bind the axes to the CharacterController's actions."
+    },
+    {
+      "pattern": "AddControllerYawInput",
+      "marionette": "",
+      "status": "gap",
+      "note": "Mouse look is not available to scripts yet."
+    },
+    {
+      "pattern": "AddControllerPitchInput",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Jump",
+      "marionette": "CharacterController.jump action",
+      "status": "rewrite",
+      "note": "Jumping is driven by the controller's jump action."
+    },
+    {
+      "pattern": "StopJumping",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed."
+    },
+    {
+      "pattern": "LaunchCharacter",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "FMath.RandRange",
+      "marionette": "min + engine.rand() * (max - min)",
+      "status": "script",
+      "note": "Integer overload includes max: Math.floor(min + engine.rand() * (max - min + 1))."
+    },
+    {
+      "pattern": "FMath.FRandRange",
+      "marionette": "min + engine.rand() * (max - min)",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.FRand",
+      "marionette": "engine.rand()",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.RandBool",
+      "marionette": "engine.rand() < 0.5",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Rand",
+      "marionette": "Math.floor(engine.rand() * 2147483647)",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.VRand",
+      "marionette": "rejection-sample with engine.rand()",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "FRandomStream",
+      "marionette": "engine.rand()",
+      "status": "rewrite",
+      "note": "One seeded engine RNG per run."
+    },
+    {
+      "pattern": "FMath.Sin",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Platform sin/cos/atan2/pow/exp differ between machines and break the state hash. Precompute, or use quaternion math with sqrt only."
+    },
+    {
+      "pattern": "FMath.Cos",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.Tan",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.Atan2",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.Pow",
+      "marionette": "x * x ... for small integer powers",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.Exp",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.SinCos",
+      "marionette": "",
+      "status": "hazard",
+      "note": "See FMath.Sin."
+    },
+    {
+      "pattern": "FMath.Sqrt",
+      "marionette": "Math.sqrt",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Abs",
+      "marionette": "Math.abs",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Min",
+      "marionette": "Math.min",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Max",
+      "marionette": "Math.max",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Clamp",
+      "marionette": "Math.min(Math.max(v, lo), hi)",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.Lerp",
+      "marionette": "a + (b - a) * t",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.FInterpTo",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Frame-rate based easing; with a fixed step it is a + (b - a) * Math.min(dt * speed, 1)."
+    },
+    {
+      "pattern": "FMath.VInterpTo",
+      "marionette": "component-wise a + (b - a) * Math.min(dt * speed, 1)",
+      "status": "script"
+    },
+    {
+      "pattern": "FMath.IsNearlyEqual",
+      "marionette": "Math.abs(a - b) <= tolerance",
+      "status": "script"
+    },
+    {
+      "pattern": "FVector.Dist",
+      "marionette": "Math.sqrt(dx*dx + dy*dy + dz*dz)",
+      "status": "script"
+    },
+    {
+      "pattern": "FVector.DotProduct",
+      "marionette": "a.x*b.x + a.y*b.y + a.z*b.z",
+      "status": "script"
+    },
+    {
+      "pattern": "GetSafeNormal",
+      "marionette": "divide by the length if it is not zero",
+      "status": "script"
+    },
+    {
+      "pattern": "Rotation.Quaternion",
+      "marionette": "precomputed quaternion",
+      "status": "hazard",
+      "note": "Converting an FRotator at run time needs sin/cos; precompute the quaternion with port_convert."
+    },
+    {
+      "pattern": "GetActorLocation",
+      "marionette": "self.get(\"Transform\").translation",
+      "status": "script",
+      "note": "Convert units and axes when porting constants: Marionette = Unreal (Y, Z, -X) / 100."
+    },
+    {
+      "pattern": "SetActorLocation",
+      "marionette": "const t = self.get(\"Transform\"); t.translation = p; self.set(\"Transform\", t)",
+      "status": "script",
+      "note": "Sweep (bSweep) is not available; kinematic bodies follow Transform."
+    },
+    {
+      "pattern": "AddActorWorldOffset",
+      "marionette": "add to Transform.translation",
+      "status": "script"
+    },
+    {
+      "pattern": "AddActorLocalOffset",
+      "marionette": "rotate the offset by Transform.rotation, then add",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "GetActorRotation",
+      "marionette": "self.get(\"Transform\").rotation",
+      "status": "script",
+      "note": "A quaternion, not an FRotator."
+    },
+    {
+      "pattern": "SetActorRotation",
+      "marionette": "set Transform.rotation",
+      "status": "script"
+    },
+    {
+      "pattern": "AddActorWorldRotation",
+      "marionette": "multiply Transform.rotation by a precomputed quaternion",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "AddActorLocalRotation",
+      "marionette": "multiply Transform.rotation by a precomputed quaternion",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "GetActorScale3D",
+      "marionette": "self.get(\"Transform\").scale",
+      "status": "script"
+    },
+    {
+      "pattern": "SetActorScale3D",
+      "marionette": "set Transform.scale",
+      "status": "script"
+    },
+    {
+      "pattern": "GetActorForwardVector",
+      "marionette": "rotate (0, 0, -1) by Transform.rotation",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "GetActorRightVector",
+      "marionette": "rotate (1, 0, 0) by Transform.rotation",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "GetActorUpVector",
+      "marionette": "rotate (0, 1, 0) by Transform.rotation",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "SetActorTransform",
+      "marionette": "self.set(\"Transform\", t)",
+      "status": "script"
+    },
+    {
+      "pattern": "GetVelocity",
+      "marionette": "self.get(\"Velocity\")",
+      "status": "script",
+      "note": "Read only for dynamic bodies."
+    },
+    {
+      "pattern": "FindComponentByClass",
+      "marionette": "self.get(\"<Component>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "GetComponentByClass",
+      "marionette": "self.get(\"<Component>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "CreateDefaultSubobject",
+      "marionette": "add the component to the entity in the scene file",
+      "status": "rewrite",
+      "note": "Constructor-created components are scene data, written with entity_create / component_set."
+    },
+    {
+      "pattern": "SetupAttachment",
+      "marionette": "",
+      "status": "gap",
+      "note": "No attachment hierarchy yet; use separate entities, Follow, or copy positions in update."
+    },
+    {
+      "pattern": "AttachToComponent",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "AttachToActor",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SetRootComponent",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed."
+    },
+    {
+      "pattern": "RootComponent",
+      "marionette": "the entity's Transform",
+      "status": "ready"
+    },
+    {
+      "pattern": "PrimaryActorTick.bCanEverTick",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed; export update only if the script ticks."
+    },
+    {
+      "pattern": "GetWorld.SpawnActor",
+      "marionette": "engine.clone(templateEntity, { Transform: t }) or engine.spawn({ ...components })",
+      "status": "script",
+      "note": "The new entity gets a new id; its script starts next tick; physics bodies are added in the same tick."
+    },
+    {
+      "pattern": "SpawnActor",
+      "marionette": "engine.clone(templateEntity, overrides) or engine.spawn(components)",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.SpawnEmitterAtLocation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "Destroy",
+      "marionette": "engine.destroy(entity)",
+      "status": "script",
+      "note": "Removed at the end of the script stage, after onDestroy."
+    },
+    {
+      "pattern": "SetLifeSpan",
+      "marionette": "engine.destroy(self, seconds)",
+      "status": "script"
+    },
+    {
+      "pattern": "SetActorHiddenInGame",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SetActorEnableCollision",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SetActorTickEnabled",
+      "marionette": "an `active` flag in self.state",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "UGameplayStatics.GetPlayerPawn",
+      "marionette": "engine.find(\"player\")",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.GetPlayerCharacter",
+      "marionette": "engine.find(\"player\")",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.GetPlayerController",
+      "marionette": "",
+      "status": "rewrite",
+      "note": "No controllers; input actions are global."
+    },
+    {
+      "pattern": "UGameplayStatics.GetAllActorsOfClass",
+      "marionette": "engine.query(\"<Component>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.GetActorOfClass",
+      "marionette": "engine.query(\"<Component>\")[0]",
+      "status": "script"
+    },
+    {
+      "pattern": "UGameplayStatics.GetAllActorsWithTag",
+      "marionette": "engine.query(\"<MarkerComponent>\")",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "TActorIterator",
+      "marionette": "engine.query(\"<Component>\")",
+      "status": "script"
+    },
+    {
+      "pattern": "ActorHasTag",
+      "marionette": "other.has(\"<MarkerComponent>\") or a name check",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Tags.Add",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "GetName",
+      "marionette": "the entity name in the scene file",
+      "status": "ready"
+    },
+    {
+      "pattern": "GetOwner",
+      "marionette": "self (one script per entity)",
+      "status": "script"
+    },
+    {
+      "pattern": "Cast",
+      "marionette": "other.has(\"<Component>\")",
+      "status": "rewrite",
+      "note": "Entities have no classes; test for the component or script data you need."
+    },
+    {
+      "pattern": "IsA",
+      "marionette": "other.has(\"<Component>\")",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "UGameplayStatics.OpenLevel",
+      "marionette": "",
+      "status": "gap",
+      "note": "One scene per run."
+    },
+    {
+      "pattern": "UGameplayStatics.PlaySound2D",
+      "marionette": "AudioSource trigger",
+      "status": "rewrite",
+      "note": "Sounds are triggered by data; playing any sound from script is a gap."
+    },
+    {
+      "pattern": "UGameplayStatics.PlaySoundAtLocation",
+      "marionette": "AudioSource trigger",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "UGameplayStatics.ApplyDamage",
+      "marionette": "write the other entity's health in its data, or engine.emit(\"damage\", ...)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "TakeDamage",
+      "marionette": "a health value in self.state and an event",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "LineTraceSingleByChannel",
+      "marionette": "",
+      "status": "gap",
+      "note": "Raycasts exist as the observe_raycast operation but not inside scripts yet."
+    },
+    {
+      "pattern": "LineTraceMultiByChannel",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SweepSingleByChannel",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "OverlapMultiByChannel",
+      "marionette": "",
+      "status": "gap",
+      "note": "Use a sensor Collider and onTriggerEnter/Exit."
+    },
+    {
+      "pattern": "AddImpulse",
+      "marionette": "",
+      "status": "gap",
+      "note": "Scripts cannot push dynamic bodies yet; use kinematic bodies or CharacterController."
+    },
+    {
+      "pattern": "AddForce",
+      "marionette": "",
+      "status": "gap",
+      "note": "Scripts cannot push dynamic bodies yet."
+    },
+    {
+      "pattern": "AddTorqueInRadians",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SetPhysicsLinearVelocity",
+      "marionette": "",
+      "status": "gap",
+      "note": "Velocity is read by physics only at load."
+    },
+    {
+      "pattern": "SetSimulatePhysics",
+      "marionette": "RigidBody { kind: Dynamic } in the scene",
+      "status": "ready"
+    },
+    {
+      "pattern": "SetCollisionEnabled",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "SetCollisionProfileName",
+      "marionette": "",
+      "status": "gap",
+      "note": "No collision channels or profiles yet."
+    },
+    {
+      "pattern": "SetGenerateOverlapEvents",
+      "marionette": "Collider.sensor: true",
+      "status": "ready"
+    },
+    {
+      "pattern": "OnComponentBeginOverlap.AddDynamic",
+      "marionette": "export function onTriggerEnter(self, other)",
+      "status": "script",
+      "note": "Delegates become exported hooks; the overlapping collider needs sensor: true."
+    },
+    {
+      "pattern": "OnComponentEndOverlap.AddDynamic",
+      "marionette": "export function onTriggerExit(self, other)",
+      "status": "script"
+    },
+    {
+      "pattern": "OnComponentHit.AddDynamic",
+      "marionette": "export function onCollisionEnter(self, other)",
+      "status": "script"
+    },
+    {
+      "pattern": "OnActorBeginOverlap.AddDynamic",
+      "marionette": "export function onTriggerEnter(self, other)",
+      "status": "script",
+      "note": "Delegates become exported hooks; the overlapping collider needs sensor: true."
+    },
+    {
+      "pattern": "OnActorEndOverlap.AddDynamic",
+      "marionette": "export function onTriggerExit(self, other)",
+      "status": "script"
+    },
+    {
+      "pattern": "OnActorHit.AddDynamic",
+      "marionette": "export function onCollisionEnter(self, other)",
+      "status": "script"
+    },
+    {
+      "pattern": "OnClicked.AddDynamic",
+      "marionette": "UiButton { action } + engine.justPressed(action)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "DECLARE_DYNAMIC_MULTICAST_DELEGATE",
+      "marionette": "engine.emit(kind, detail)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Broadcast",
+      "marionette": "engine.emit(kind, detail)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "CreateWidget",
+      "marionette": "UiNode entities in the scene",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "AddToViewport",
+      "marionette": "",
+      "status": "ready",
+      "note": "UI entities are always shown."
+    },
+    {
+      "pattern": "SetText",
+      "marionette": "set UiText.text on the UI entity",
+      "status": "script"
+    },
+    {
+      "pattern": "PlayAnimMontage",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "PlayAnimation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "UAIBlueprintHelperLibrary.SimpleMoveToLocation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "MoveToActor",
+      "marionette": "Follow component",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "MoveToLocation",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "UGameplayStatics.SaveGameToSlot",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "UGameplayStatics.LoadGameFromSlot",
+      "marionette": "",
+      "status": "gap"
+    },
+    {
+      "pattern": "NewObject",
+      "marionette": "a plain TypeScript object",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "LoadObject",
+      "marionette": "reference the asset path in a component",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "ConstructorHelpers.FObjectFinder",
+      "marionette": "reference the asset path in a component",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "FRunnableThread",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Simulation is single-threaded."
+    },
+    {
+      "pattern": "AsyncTask",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Background work breaks determinism."
+    },
+    {
+      "pattern": "ParallelFor",
+      "marionette": "",
+      "status": "hazard",
+      "note": "Simulation is single-threaded; run the loop in order."
+    },
+    {
+      "pattern": "FHttpModule",
+      "marionette": "",
+      "status": "hazard",
+      "note": "No network in the simulation."
+    },
+    {
+      "pattern": "TMap",
+      "marionette": "Map (iterate in insertion order) or a sorted array",
+      "status": "rewrite",
+      "note": "TMap iteration order is not stable across runs; never let order affect game state."
+    },
+    {
+      "pattern": "TSet",
+      "marionette": "Set (insertion order)",
+      "status": "rewrite",
+      "note": "Iteration order is not stable in Unreal."
+    },
+    {
+      "pattern": "TArray",
+      "marionette": "array",
+      "status": "script"
+    },
+    {
+      "pattern": "Delay",
+      "marionette": "engine.after(seconds, nextStep)",
+      "status": "rewrite",
+      "note": "Blueprint Delay node: the nodes after it move into an exported nextStep(self, arg)."
+    },
+    {
+      "pattern": "PrintString",
+      "marionette": "engine.log(message)",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_SetTimer",
+      "marionette": "engine.after(seconds, \"FunctionName\") or engine.every when looping",
+      "status": "script",
+      "note": "Blueprint Set Timer by Function Name; the name is an exported function of the script."
+    },
+    {
+      "pattern": "K2_SetTimerDelegate",
+      "marionette": "engine.after(seconds, fn) or engine.every(seconds, fn)",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_GetActorLocation",
+      "marionette": "self.get(\"Transform\").translation",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_SetActorLocation",
+      "marionette": "set Transform.translation",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_GetActorRotation",
+      "marionette": "self.get(\"Transform\").rotation",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_SetActorRotation",
+      "marionette": "set Transform.rotation",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_AddActorWorldOffset",
+      "marionette": "add to Transform.translation",
+      "status": "script"
+    },
+    {
+      "pattern": "K2_DestroyActor",
+      "marionette": "engine.destroy(self)",
+      "status": "script"
+    },
+    {
+      "pattern": "BeginDeferredActorSpawnFromClass",
+      "marionette": "engine.spawn(components) then set more components",
+      "status": "script",
+      "note": "Spawning is already deferred: the script starts next tick."
+    },
+    {
+      "pattern": "RandomFloatInRange",
+      "marionette": "min + engine.rand() * (max - min)",
+      "status": "script"
+    },
+    {
+      "pattern": "RandomIntegerInRange",
+      "marionette": "Math.floor(min + engine.rand() * (max - min + 1))",
+      "status": "script"
+    },
+    {
+      "pattern": "GetWorldDeltaSeconds",
+      "marionette": "engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "GetGameTimeInSeconds",
+      "marionette": "engine.tick * engine.dt",
+      "status": "script"
+    },
+    {
+      "pattern": "FVector",
+      "marionette": "{ x, y, z }",
+      "status": "script",
+      "note": "Convert axes and units of constants: Marionette = Unreal (Y, Z, -X) / 100 for positions (port_convert)."
+    },
+    {
+      "pattern": "FVector2D",
+      "marionette": "{ x, y }",
+      "status": "script"
+    },
+    {
+      "pattern": "FRotator",
+      "marionette": "a precomputed quaternion (port_convert kind euler)",
+      "status": "rewrite",
+      "note": "Building rotations from angles at run time needs sin/cos."
+    },
+    {
+      "pattern": "FQuat",
+      "marionette": "{ x, y, z, w }",
+      "status": "script",
+      "note": "Axis change: (x, y, z, w) -> (-y, -z, x, w)."
+    },
+    {
+      "pattern": "FLinearColor",
+      "marionette": "{ r, g, b, a }",
+      "status": "script"
+    },
+    {
+      "pattern": "FVector.ZeroVector",
+      "marionette": "{ x: 0, y: 0, z: 0 }",
+      "status": "script"
+    },
+    {
+      "pattern": "FVector.UpVector",
+      "marionette": "{ x: 0, y: 1, z: 0 }",
+      "status": "script",
+      "note": "Unreal up is +Z; Marionette up is +Y."
+    },
+    {
+      "pattern": "FVector.ForwardVector",
+      "marionette": "{ x: 0, y: 0, z: -1 }",
+      "status": "script",
+      "note": "Unreal forward is +X; Marionette forward is -Z."
+    },
+    {
+      "pattern": "FVector.RightVector",
+      "marionette": "{ x: 1, y: 0, z: 0 }",
+      "status": "script",
+      "note": "Unreal right is +Y; Marionette right is +X."
+    },
+    {
+      "pattern": "FVector.OneVector",
+      "marionette": "{ x: 1, y: 1, z: 1 }",
+      "status": "script"
+    },
+    {
+      "pattern": "FRotator.ZeroRotator",
+      "marionette": "{ x: 0, y: 0, z: 0, w: 1 }",
+      "status": "script"
+    },
+    {
+      "pattern": "Size",
+      "marionette": "Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)",
+      "status": "script"
+    },
+    {
+      "pattern": "GetClass",
+      "marionette": "",
+      "status": "gap",
+      "note": "Entities have no classes; spawn by cloning a template entity instead."
+    },
+    {
+      "pattern": "Super.BeginPlay",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: drop Super calls."
+    },
+    {
+      "pattern": "Super.Tick",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: drop Super calls."
+    },
+    {
+      "pattern": "Super.SetupPlayerInputComponent",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed."
+    },
+    {
+      "pattern": "Super.EndPlay",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed."
+    },
+    {
+      "pattern": "GetCharacterMovement",
+      "marionette": "self.get(\"CharacterController\")",
+      "status": "script",
+      "note": "MaxWalkSpeed -> speed (cm/s / 100), JumpZVelocity -> jump_speed (/ 100)."
+    },
+    {
+      "pattern": "GetCapsuleComponent",
+      "marionette": "self.get(\"Collider\")",
+      "status": "script"
+    },
+    {
+      "pattern": "GetMesh",
+      "marionette": "self.get(\"Model\")",
+      "status": "script"
+    }
+  ],
+  "roots": [
+    "UGameplayStatics",
+    "UKismetSystemLibrary",
+    "UKismetMathLibrary",
+    "FMath",
+    "GEngine",
+    "GetWorld",
+    "FVector",
+    "FRotator",
+    "FQuat",
+    "FTransform",
+    "UE_LOG",
+    "GetTimerManager",
+    "PlayerInputComponent",
+    "UEnhancedInputComponent",
+    "EnhancedInputComponent",
+    "UAIBlueprintHelperLibrary",
+    "FPlatformTime",
+    "FDateTime",
+    "GetCharacterMovement",
+    "CharacterMovement",
+    "GetMesh",
+    "GetCapsuleComponent",
+    "UWidgetBlueprintLibrary",
+    "UNiagaraFunctionLibrary",
+    "GetController",
+    "Controller",
+    "FCollisionQueryParams",
+    "FHitResult",
+    "ECollisionChannel"
+  ]
+}

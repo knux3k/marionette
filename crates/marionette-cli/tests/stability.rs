@@ -1,4 +1,4 @@
-//! Stability suite (decision 0027, docs/ai/STABILITY.md): the fast suite passes for every game
+//! Stability suite (decision 0031, docs/ai/STABILITY.md): the fast suite passes for every game
 //! mode, the harness catches each kind of failure it promises to catch, crash reports replay,
 //! and every scene in the repository has a stability mode.
 

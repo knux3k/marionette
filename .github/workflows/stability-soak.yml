@@ -1,6 +1,6 @@
 name: Stability soak
 
-# Long stability runs (decision 0027, docs/ai/STABILITY.md): every mode for its long_ticks,
+# Long stability runs (decision 0031, docs/ai/STABILITY.md): every mode for its long_ticks,
 # several seeds. Nightly with a new first seed each run (the run number), or on demand.
 
 on:

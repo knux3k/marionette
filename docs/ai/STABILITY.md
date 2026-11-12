@@ -1,7 +1,7 @@
 # Stability
 
 Every game mode the engine supports has a stability mode: a long, seeded, replayable run that
-must not crash, hang, lose determinism, miss its time budget or grow its memory. Decision 0027.
+must not crash, hang, lose determinism, miss its time budget or grow its memory. Decision 0031.
 
 ## Rule
 
@@ -40,7 +40,7 @@ the suite refuses it with a diagnostic.
 
 ## Current suite (`stability/suite.json`)
 
-core-headless, physics-3d, physics-2d, scripted (TypeScript), render-3d, render-3d-play,
+core-headless, physics-3d, physics-2d, scripted (TypeScript), scripted-spawning, render-3d, render-3d-play,
 render-2d, render-2d-play, render-ui, agent-session. Fast length: 120 to 1,000 ticks each, about
 4 s in a debug build for all ten. Long length: 1 hour of game time per sim mode (216,000 ticks;
 drift 1,000,000), 15 minutes per render mode (54,000 frames), 30 minutes of agent session.

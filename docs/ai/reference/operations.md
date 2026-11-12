@@ -48,6 +48,10 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `script_reload` | yes | Re-read every script file of a live session and swap the running scripts (hot reload). Components, script state, tick and RNG are kept; on error the old scripts keep running. |
 | `script_types` | yes | Write `marionette.d.ts` (TypeScript declarations for scripts, generated from the schema) into the project. |
 | `stability_run` | no | Run the stability suite (default `stability/suite.json`): every game mode for `fast` or `long` length with seeded random input. Checks no panic, no hang, same hash on replay and after a snapshot/restore, time budgets and memory growth. Failures come back as data with seed, tick, backtrace and a reproduce command. |
+| `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
+| `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
+| `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
+| `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 
 ## `project_init`
 
@@ -1020,4 +1024,101 @@ Output:
 | `results` | array of ModeResult | yes |  |
 | `suite` | string | yes |  |
 | `timing_enforced` | boolean | yes |  |
+
+## `port_scan`
+
+Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | integer \| null |  | Classes per page, default 50, at most 500. |
+| `max_locations` | integer \| null |  | Places listed per API use, default 5. |
+| `offset` | integer |  | First class to list (classes are paged; API uses are always complete). |
+| `source` | string | yes | A Unity project or Assets folder, an Unreal project or Source folder, or one .cs/.h/.cpp/.t3d file. Relative to the project root, or absolute. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `api` | array of ApiUse | yes | Every engine concept used, gaps and hazards first, then by count. |
+| `classes` | array of ClassReport | yes |  |
+| `engines` | array of Engine | yes |  |
+| `next_offset` | integer \| null |  | Classes not shown because of `offset`/`limit`. |
+| `next_steps` | array of string | yes |  |
+| `root` | string | yes |  |
+| `skipped` | array of Skipped | yes |  |
+| `summary` | Summary | yes |  |
+
+## `port_map`
+
+Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | Engine \| null |  | unity or unreal; both when omitted. |
+| `limit` | integer \| null |  | Default 50, at most 500. |
+| `offset` | integer |  |  |
+| `query` | string \| null |  | Case-insensitive text that the source name or the Marionette equivalent contains. |
+| `section` | Section \| null |  | Only this section: bases, hooks, components, types or api. |
+| `status` | Status \| null |  | Only entries with this status. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `entries` | array of MapRow | yes |  |
+| `next` | integer \| null |  |  |
+| `total` | integer | yes |  |
+
+## `port_scaffold`
+
+Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dry_run` | boolean |  | Report what would be written without writing. |
+| `out` | string \| null |  | Output folder for the .ts files and PORT-NOTES.md, relative to the project root. Default `scripts/ported`. |
+| `overwrite` | boolean |  | Replace existing files. |
+| `scene` | string \| null |  | The scene file the scripts will be used from, so the suggested `Script.path` is relative to it. Default: paths relative to the project root. |
+| `source` | string | yes | Same as `port_scan`'s source. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | array of ScaffoldFile | yes |  |
+| `written` | boolean | yes |  |
+
+## `port_convert`
+
+Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | Engine | yes |  |
+| `kind` | ValueKind | yes |  |
+| `value` | array of number | yes | 3 numbers (position, direction, velocity, scale, euler in degrees: Unity x/y/z, Unreal pitch/yaw/roll), 4 for a quaternion (x, y, z, w), 1 for a length. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rule` | string | yes | The rule applied. |
+| `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
 

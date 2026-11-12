@@ -1,4 +1,4 @@
-# 0027: Stability suite per game mode
+# 0031: Stability suite per game mode
 
 Date: 2026-11-12. Status: accepted.
 

@@ -11,9 +11,11 @@ be checked against a repo-relative path, a command or a test name. Read in this 
 6. [ENVIRONMENT.md](ENVIRONMENT.md): toolchain, exact commands, durations, GPU-less setup.
 7. As needed: [DECISIONS.md](DECISIONS.md) (index of `docs/decisions/`),
    [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) (normative asset rules),
-   [GLOSSARY.md](GLOSSARY.md), [STABILITY.md](STABILITY.md) (stability suite per game mode), and the generated reference in `docs/ai/reference/`
+   [GLOSSARY.md](GLOSSARY.md), [PORTING.md](PORTING.md) (bringing Unity or Unreal code over),
+   [STABILITY.md](STABILITY.md) (stability suite per game mode),
+   and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),
-   [CLI](reference/cli.md)).
+   [CLI](reference/cli.md), [porting map](reference/porting-map.md)).
 
 `docs/DESIGN.md` is the product definition (brief, plan lines 1 to 10, principles). These docs
 describe how far the code has come and how to continue.

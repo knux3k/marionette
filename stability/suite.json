@@ -42,6 +42,15 @@
       "tick_budget_ms": 2.0
     },
     {
+      "name": "scripted-spawning",
+      "description": "Scripts that spawn, clone and destroy entities and run timers (entity churn over a long run).",
+      "kind": "sim",
+      "scene": "examples/spawner.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
       "name": "render-3d",
       "description": "3D rendering: PBR models, lights, offscreen frame every tick.",
       "kind": "render",

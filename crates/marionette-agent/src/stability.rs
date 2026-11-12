@@ -1,4 +1,4 @@
-//! Stability suites (decision 0027): every game mode the engine supports is run for a long,
+//! Stability suites (decision 0031): every game mode the engine supports is run for a long,
 //! seeded, replayable stretch and must not crash, hang, lose determinism, miss its time budget
 //! or grow its memory. Results are data; a failure carries everything an agent needs to
 //! reproduce and fix it (mode, scene, seed, tick, message, backtrace, the input it was fed, and
