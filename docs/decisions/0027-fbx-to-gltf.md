@@ -1,4 +1,4 @@
-# 0021: FBX to glTF conversion inside the importer
+# 0027: FBX to glTF conversion inside the importer
 
 Date: 2026-11-12. Status: accepted.
 

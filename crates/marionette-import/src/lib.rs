@@ -6,7 +6,7 @@
 //!   content rules and the pasted-license-text check.
 //! - [`unity`]: reading Unity project folders and `.unitypackage` archives, `.meta` files and
 //!   `.mat` materials (mapped to glTF-style PBR).
-//! - [`fbx`]: FBX (2011+, binary or ASCII) to binary glTF conversion (decision 0021).
+//! - [`fbx`]: FBX (2011+, binary or ASCII) to binary glTF conversion (decision 0027).
 //! - [`import`]: the import pipeline that applies every rule and writes the import report.
 //! - [`pool`]: the admission gate the CC0 pool must call; it refuses owned assets.
 //!

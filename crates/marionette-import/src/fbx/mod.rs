@@ -1,4 +1,4 @@
-//! FBX to glTF conversion (decision 0021).
+//! FBX to glTF conversion (decision 0027).
 //!
 //! A pure-Rust reader for FBX 2011 and newer (file version 7000+, binary or ASCII) and a writer
 //! for binary glTF (`.glb`). What is converted:

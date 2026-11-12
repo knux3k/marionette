@@ -14,7 +14,7 @@ refer to `docs/DESIGN.md`.
 | 5 | Agent interface (CLI + MCP) | Done. |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. No network transport yet; live calls come with W4. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0021); pool and search (W3) and generation (W4) not started. |
+| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer and FBX to glTF conversion done (W2, decision 0027); pool and search (W3) and generation (W4) not started. |
 | 9 | Six proof scenes | Not started. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
@@ -125,7 +125,7 @@ Line 8, owned library and Unity import (W2, decision 0018):
   tests in `src/tar.rs`, `src/license.rs`, `src/unity.rs`.
 - `crates/marionette-cli/tests/library_e2e.rs`: `library_operations_import_list_and_gate`,
   `operations_never_write_license_declarations`.
-- FBX to glTF (decision 0021): `crates/marionette-import/tests/fbx.rs`
+- FBX to glTF (decision 0027): `crates/marionette-import/tests/fbx.rs`
   (`static_meshes_match_blenders_own_gltf`, `embedded_textures_are_used`,
   `other_axis_systems_and_units_give_the_same_world`,
   `fbx_7500_from_a_second_writer_matches_blenders_reading`,
@@ -135,7 +135,7 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `textures_outside_the_models_license_are_not_bundled`); unit tests in `src/fbx/`. One-off
   conversion: `cargo run -p marionette-import --example fbx2glb -- in.fbx out.glb`.
 - Not covered yet: OBJ/blend to glTF conversion (kept as `source.<ext>`, `engine_ready:
-  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0021); skinning in
+  false`); FBX blend shapes, vertex colors, extra UV sets, FBX 6.x (decision 0027); skinning in
   the renderer (skinned FBX models draw in bind pose), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
@@ -184,4 +184,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
-| 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0021. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |
+| 2026-11-12 | Line 8 part (W2 follow-up): FBX to glTF conversion in `marionette-import` (binary and ASCII FBX 2011+, nodes, meshes, materials, textures under the license gate, skins, animation), Blender-referenced tests, decision 0027. Drift hash unchanged. | branch `claude/project-thread-zbl2wy` |

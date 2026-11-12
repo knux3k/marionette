@@ -40,7 +40,7 @@ UNVERIFIED list in STATE.md.
 
 ## W2: assets A, local import path and Unity importer
 
-Status: done (decision 0018); FBX to glTF conversion added (decision 0021). OBJ conversion,
+Status: done (decision 0018); FBX to glTF conversion added (decision 0027). OBJ conversion,
 Unity prefabs, scenes, animation clips and audio are not covered and are listed as later work in STATE.md.
 
 - Scope: the owned library (per-user folder shared across projects, path from configuration,

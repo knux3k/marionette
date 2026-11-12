@@ -1,4 +1,4 @@
-//! FBX to glTF conversion (decision 0021).
+//! FBX to glTF conversion (decision 0027).
 //!
 //! The fixtures in `tests/fixtures/fbx/` were made for the project with Blender and Assimp
 //! (`make_fixtures.py` there); they are CC0. Blender's own glTF export of the same scenes is the

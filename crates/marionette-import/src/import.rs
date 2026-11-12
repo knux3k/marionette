@@ -500,7 +500,7 @@ fn model(
         }
         _ => {
             notes.push(format!(
-                "{ext} is kept as source.{ext}; it needs conversion to glTF before the engine can use it (no converter for this format yet; FBX is converted, decision 0021)"
+                "{ext} is kept as source.{ext}; it needs conversion to glTF before the engine can use it (no converter for this format yet; FBX is converted, decision 0027)"
             ));
             p.files.push((format!("source.{ext}"), bytes));
             p.main = Some(format!("source.{ext}"));
