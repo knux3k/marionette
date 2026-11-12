@@ -43,7 +43,18 @@ fn factory(agent: &mut Agent, dir: &Path, scale: u32) -> String {
     out
 }
 
+/// Shared CI runners are slower and noisier than the reference desktop, so CI sets
+/// `MARIONETTE_BUDGET_SCALE=2` (decision 0021); on the reference desktop it is 1.
+fn scale() -> f64 {
+    std::env::var("MARIONETTE_BUDGET_SCALE")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .filter(|s| *s >= 1.0)
+        .unwrap_or(1.0)
+}
+
 fn check(name: &str, measured: f64, budget: f64) {
+    let budget = budget * scale();
     println!("budget {name}: {measured:.3} ms (budget {budget} ms)");
     assert!(
         measured <= budget,

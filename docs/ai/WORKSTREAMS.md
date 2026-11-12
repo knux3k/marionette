@@ -19,6 +19,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W6 | Assets D: Unreal importer (glTF/FBX exports) | after W2 | W4, W5, W7 |
 | W7 | Scripting spike, TypeScript vs Luau (line 4) | now | any |
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
+| WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W0 | Owner: create the engine and assets repositories on GitHub | owner | - |
 
@@ -104,6 +105,14 @@ and audio are not covered and are listed as later work in STATE.md.
 - Acceptance per scene: deterministic headless run with scripted input (same hash twice), its
   tests pass twice with identical results, uses pooled CC0 or recipe-generated assets, holds
   90 frames per second on a mid-range desktop GPU.
+
+## WP: performance
+
+- Done: decisions 0021 to 0024, `docs/ai/PERFORMANCE.md`.
+- Owns: `crates/marionette-jobs`, `crates/marionette-factory`, `crates/marionette-agent/src/perf.rs`,
+  `crates/marionette-cli/tests/perf_proofs.rs`, `crates/marionette-cli/tests/perf_budgets.rs`.
+- Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
+  a typed TypeScript subset compiled to WASM for job bodies (own workstream, after W7).
 
 ## W9: later (line 10)
 

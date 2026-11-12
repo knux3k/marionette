@@ -91,6 +91,14 @@ Line 8, owned library and Unity import (W2, decision 0018):
   false`), Unity prefabs, scenes, animations and audio (skipped and listed), binary-serialized
   `.mat` files (skipped and listed).
 
+## Performance (workstream WP)
+
+Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
+draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
+`cargo test -p marionette-factory`; timing budgets in release:
+`cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
+Numbers and budgets: `docs/ai/PERFORMANCE.md`.
+
 ## UNVERIFIED
 
 - CI has never run (no remote); the state hash has never been compared on Linux.
@@ -110,6 +118,8 @@ Line 8, owned library and Unity import (W2, decision 0018):
   `crates/marionette-import/src/unity.rs` (`known_shader`) and the Asset Store cache folder
   layout used by `package_location_reason` are from memory, not checked against a Unity install.
 - The pasted-license phrase list catches common wording only; it never grants permission.
+- Performance on a real desktop GPU and headset: all timings come from a Linux container with
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
 
 ## Session log
 
@@ -123,3 +133,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | History rewritten to remove identifying text before first publication (file contents and commit trailers; final tree unchanged). Scripting spike marked ready. | this commit |
 | 2026-11-12 | Line 6 finished (W1): playground examples, proofs, window hooks, parse-error tests, enhanced-determinism cost, decisions 0012 update and 0017. | `3e4514b`..this commit |
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
+| 2026-11-12 | Performance (WP): instanced multi-view renderer, bulk draws, `Registry::init_world`, `marionette-jobs`, `marionette-factory`, `perf_factory_scene`/`perf_sim`, `bench --headset`, perf proofs and CI budget job, decisions 0021 to 0024, `docs/ai/PERFORMANCE.md`. Drift hash unchanged. | branch `claude/project-thread-6udfc0` |
