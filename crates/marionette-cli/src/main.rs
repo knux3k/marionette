@@ -132,6 +132,12 @@ enum Command {
         #[command(subcommand)]
         command: ProviderCommand,
     },
+    /// Generate assets from recipes (last step of the asset lookup order): plan, run, list,
+    /// and approve an image for a paid 3D model (a person only).
+    Generate {
+        #[command(subcommand)]
+        command: GenerateCommand,
+    },
     /// Serve every operation as an MCP tool over stdio.
     Mcp,
     /// Write the generated reference docs (operations, components, CLI help).
@@ -160,6 +166,38 @@ enum ProviderCommand {
         /// Model name (default: the provider's default model).
         #[arg(long)]
         model: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum GenerateCommand {
+    /// What a run would do: cache hits, calls, cost, refusals (operation `generate_plan`).
+    Plan {
+        /// Recipe names (default: all).
+        names: Vec<String>,
+        #[arg(long, default_value = "assets/generated")]
+        dir: String,
+    },
+    /// Build recipes into assets with provenance (operation `generate_run`).
+    Run {
+        names: Vec<String>,
+        #[arg(long, default_value = "assets/generated")]
+        dir: String,
+        /// Use cached provider outputs only.
+        #[arg(long)]
+        offline: bool,
+    },
+    /// Recipes and the state of their outputs (operation `generate_list`).
+    List {
+        #[arg(long, default_value = "assets/generated")]
+        dir: String,
+    },
+    /// Approve a generated image so a paid 3D model may be made from it. A person must type
+    /// the image's name at an interactive terminal; there is no operation for this.
+    Approve {
+        name: String,
+        #[arg(long, default_value = "assets/generated")]
+        dir: String,
     },
 }
 
@@ -304,6 +342,21 @@ fn run(cli: Cli) -> ExitCode {
                     .map(|v| merge("provider_use", v))
             }
         },
+        Command::Generate { command } => match command {
+            GenerateCommand::Plan { names, dir } => agent
+                .call("generate_plan", json!({ "names": names, "dir": dir }))
+                .map(|v| merge("generate_plan", v)),
+            GenerateCommand::Run { names, dir, offline } => agent
+                .call(
+                    "generate_run",
+                    json!({ "names": names, "dir": dir, "offline": offline }),
+                )
+                .map(|v| merge("generate_run", v)),
+            GenerateCommand::List { dir } => agent
+                .call("generate_list", json!({ "dir": dir }))
+                .map(|v| merge("generate_list", v)),
+            GenerateCommand::Approve { name, dir } => approve(&cli.project, &name, &dir, cli.read_only),
+        },
         Command::Scene {
             command: SceneCommand::Fmt { scene, check: false },
         } => agent
@@ -425,6 +478,52 @@ fn parse_input(input: Option<&str>) -> Result<Value, Errors> {
     }
 }
 
+/// `marionette generate approve`: a person looks at the image and types its name.
+fn approve(project: &str, name: &str, dir: &str, read_only: bool) -> Result<Value, Errors> {
+    use marionette_generate::approval;
+    use std::io::{BufRead, IsTerminal, Write};
+    if read_only {
+        return Err(Diagnostic::error(
+            marionette_agent::codes::READ_ONLY,
+            "approving writes a file and --read-only is set",
+        )
+        .into());
+    }
+    let root = std::path::Path::new(project);
+    let target = marionette_generate::Target {
+        root,
+        dir,
+        names: &[],
+    };
+    let (path, file, sha) = marionette_generate::approvable(&target, name)?;
+    let interactive = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
+    let mut confirmed = false;
+    if interactive {
+        eprintln!(
+            "Approve {} (sha256 {}) so a paid 3D model may be made from it?",
+            path.display(),
+            &sha[..16]
+        );
+        eprint!("Look at the image first. Type its name ({name}) to approve: ");
+        let _ = std::io::stderr().flush();
+        let mut line = String::new();
+        let _ = std::io::stdin().lock().read_line(&mut line);
+        confirmed = line.trim() == name;
+    }
+    if !confirmed && interactive {
+        return Err(Diagnostic::error(
+            marionette_generate::codes::APPROVAL_NEEDS_PERSON,
+            "not approved: the typed name did not match",
+        )
+        .into());
+    }
+    approval::approve_by_person(&root.join(dir), name, &file, &sha, confirmed)?;
+    Ok(merge(
+        "generate_approve",
+        json!({ "name": name, "file": file, "sha256": sha, "approval": format!("{name}{}", approval::SUFFIX) }),
+    ))
+}
+
 /// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.
 fn merge(command: &str, v: Value) -> Value {
     let mut out = json!({ "ok": true, "command": command });
@@ -481,6 +580,70 @@ fn human(value: &Value) -> String {
             value["previous"]["provider"].as_str().unwrap_or(""),
             s("readiness")
         ),
+        Some("generate_plan") => value["steps"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|st| {
+                let blocked = st["blocked"]["message"]
+                    .as_str()
+                    .map(|m| format!(" ({m})"))
+                    .unwrap_or_default();
+                format!(
+                    "{}: {} via {} {}, est ${}{}",
+                    st["name"].as_str().unwrap_or(""),
+                    st["status"].as_str().unwrap_or(""),
+                    st["provider"].as_str().unwrap_or(""),
+                    st["model"].as_str().unwrap_or(""),
+                    st["estimate_usd"],
+                    blocked
+                )
+            })
+            .chain([format!(
+                "total est ${}; spent ${} of cap ${}",
+                s("total_estimate_usd"),
+                s("spent_usd"),
+                value["cap"]["usd"]
+            )])
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some("generate_run") => value["built"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|b| {
+                format!(
+                    "{}: {} ({})",
+                    b["name"].as_str().unwrap_or(""),
+                    b["file"].as_str().unwrap_or(""),
+                    b["how"].as_str().unwrap_or("")
+                )
+            })
+            .chain(value["blocked"].as_array().into_iter().flatten().map(|b| {
+                format!(
+                    "{}: refused: {}",
+                    b["name"].as_str().unwrap_or(""),
+                    b["problem"]["message"].as_str().unwrap_or("")
+                )
+            }))
+            .chain([format!("{} calls, ${} spent now", s("calls"), s("cost_usd"))])
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some("generate_list") => value["recipes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|r| {
+                format!(
+                    "{}: {} {}",
+                    r["name"].as_str().unwrap_or(""),
+                    r["output"].as_str().unwrap_or(""),
+                    r["state"].as_str().unwrap_or("")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some("generate_approve") => format!("approved {}", s("file")),
         Some("provider_status") => value["kinds"]
             .as_array()
             .into_iter()

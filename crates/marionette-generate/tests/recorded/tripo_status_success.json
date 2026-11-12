@@ -1,0 +1,1 @@
+{"code": 0, "data": {"task_id": "tripo-task-0001", "type": "image_to_model", "status": "success", "progress": 100, "output": {"pbr_model": "https://files.example/tripo/result-0001.glb"}}}

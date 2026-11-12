@@ -6,8 +6,10 @@
 //! `model_version` unless the model is `default`; answer `data.task_id`. Then
 //! `GET {BASE}/v2/openapi/task/<id>` until `data.status` is `success` (failures: `failed`,
 //! `cancelled`, `banned`, `expired`, `unknown`), and download `data.output.pbr_model` (or
-//! `data.output.model`). The file must be GLB. Rigging (Tripo auto-rig) belongs to workstream
-//! W4.
+//! `data.output.model`). The file must be GLB. A local reference image (PNG bytes) is first
+//! uploaded with `POST {BASE}/v2/openapi/upload` (multipart, field `file`; answer
+//! `data.image_token`) and then sent as `file: {type: "png", file_token}`. Rigging (Tripo
+//! auto-rig) is not built yet (decision 0045).
 //!
 //! UNVERIFIED: endpoint, field names and the price are from documentation as remembered, not
 //! checked against the live service (decision 0019).
@@ -44,6 +46,47 @@ fn image_type(url: &str) -> &'static str {
     } else {
         "png"
     }
+}
+
+/// Multipart boundary for uploads. Fixed so requests are reproducible in tests; long and
+/// random-looking so it does not occur inside an image (checked before sending).
+pub const UPLOAD_BOUNDARY: &str = "marionette-upload-7f3a9c2e5b1d4086";
+
+/// Upload of a local PNG reference image.
+pub fn build_upload(key: &str, png: &[u8]) -> HttpRequest {
+    let mut body = Vec::with_capacity(png.len() + 256);
+    body.extend_from_slice(
+        format!(
+            "--{UPLOAD_BOUNDARY}\r\ncontent-disposition: form-data; name=\"file\"; filename=\"reference.png\"\r\ncontent-type: image/png\r\n\r\n"
+        )
+        .as_bytes(),
+    );
+    body.extend_from_slice(png);
+    body.extend_from_slice(format!("\r\n--{UPLOAD_BOUNDARY}--\r\n").as_bytes());
+    HttpRequest {
+        method: crate::http::Method::Post,
+        url: format!("{BASE}/v2/openapi/upload"),
+        headers: Vec::new(),
+        body: Some(body),
+    }
+    .header(
+        "content-type",
+        format!("multipart/form-data; boundary={UPLOAD_BOUNDARY}"),
+    )
+    .secret_header("authorization", format!("Bearer {key}"))
+}
+
+/// Submit with an uploaded image token.
+pub fn build_submit_token(model: &str, key: &str, token: &str) -> HttpRequest {
+    let mut body = json!({
+        "type": "image_to_model",
+        "file": { "type": "png", "file_token": token },
+    });
+    if model != DEFAULT_MODEL {
+        body["model_version"] = Value::String(model.to_string());
+    }
+    HttpRequest::post_json(format!("{BASE}/v2/openapi/task"), &body)
+        .secret_header("authorization", format!("Bearer {key}"))
 }
 
 pub fn build_submit(model: &str, key: &str, request: &ModelRequest) -> HttpRequest {
@@ -102,7 +145,24 @@ impl Provider for Tripo {
             unreachable!("generate checks the kind first")
         };
         let key = ctx.key.expect("generate checks the key first");
-        let submit = net::send(ctx.transport, &build_submit(ctx.model, key, m), "tripo")?;
+        let submit_req = match &m.image_png {
+            Some(png) => {
+                if png
+                    .windows(UPLOAD_BOUNDARY.len())
+                    .any(|w| w == UPLOAD_BOUNDARY.as_bytes())
+                {
+                    return Err(net::bad_response(
+                        "tripo",
+                        "the reference image contains the upload boundary; re-encode it",
+                    ));
+                }
+                let up = net::send(ctx.transport, &build_upload(key, png), "tripo")?;
+                let token = net::str_at(&net::json(&up, "tripo")?, "/data/image_token", "tripo")?.to_string();
+                build_submit_token(ctx.model, key, &token)
+            }
+            None => build_submit(ctx.model, key, m),
+        };
+        let submit = net::send(ctx.transport, &submit_req, "tripo")?;
         let task_id = net::str_at(&net::json(&submit, "tripo")?, "/data/task_id", "tripo")?.to_string();
         let url = net::poll(ctx.max_polls, ctx.wait, "tripo", || {
             let resp = net::send(ctx.transport, &build_status(key, &task_id), "tripo")?;

@@ -33,6 +33,10 @@ jobs:
           WGPU_BACKEND: ${{ runner.os == 'Windows' && 'dx12' || 'vulkan' }}
           WGPU_ADAPTER_NAME: ${{ runner.os == 'Windows' && 'basic render' || '' }}
       - run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Network transport (feature net; local server only, no outside calls)
+        run: |
+          cargo clippy --locked -p marionette-providers -p marionette-cli --features marionette-providers/net,marionette-cli/net --all-targets -- -D warnings
+          cargo test --locked -p marionette-providers --features net --test network
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
 
