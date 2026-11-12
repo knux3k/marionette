@@ -75,6 +75,24 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `mcp_read_only_refuses_mutations_with_structured_error`,
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
+Memory and crash hygiene (decision 0029, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
+- `crates/marionette-agent/tests/leaks.rs` (`memory_stays_flat_under_repeated_work`: session
+  load/unload, a long run past the event-log bound, script hot reload, entity churn,
+  screenshots; heap growth under 64 KB per scenario, counted by `marionette_host::alloc`).
+- `gpu_objects_come_back_after_repeated_setups_and_trims` in
+  `crates/marionette-render/tests/render.rs`.
+- `crates/marionette-host/tests/crash.rs` (`children_die_when_the_engine_is_killed`,
+  `a_killed_process_leaves_a_run_folder_that_the_next_start_removes`,
+  `shutdown_removes_the_run_folder_and_temp_dirs_clean_up_on_drop`);
+  `crates/marionette-cli/tests/crash.rs` (`a_run_killed_mid_simulation_is_cleaned_up_by_the_next_start`,
+  `a_clean_exit_leaves_no_run_folder`).
+- `crates/marionette-script/tests/misbehaving.rs` (endless loop, out of memory, deep recursion,
+  engine call at load); `a_panicking_operation_is_an_error_and_the_agent_keeps_serving` in
+  `crates/marionette-agent/src/lib.rs`; `the_event_log_is_bounded_and_positions_stay_absolute`
+  in `crates/marionette-core/src/module.rs`.
+- CI job `leaks (valgrind)`: core, host and script tests under valgrind, no definite leaks
+  (checked locally on Linux).
+
 Repository rules: `crates/marionette-cli/tests/repo_hygiene.rs` (no identifying details, every
 path in `docs/ai/` exists, generated reference is current).
 
@@ -131,6 +149,9 @@ Line 8, owned library and Unity import (W2, decision 0018):
 
 ## UNVERIFIED
 
+- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
+  passes clippy for a Windows target; first run is the CI run of its merge.
+
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
   the seed-2 hash, the playground hashes (`line6_proofs.rs`) and the scripted example hash
@@ -171,3 +192,4 @@ Line 8, owned library and Unity import (W2, decision 0018):
 | 2026-11-12 | Line 8 part (W2): `marionette-import` crate (owned library, declarations, refusal rules, Unity project and `.unitypackage` import, material mapping, pool gate), six `library_*`/`license_*`/`pool_*` operations, decision 0018. Drift hash unchanged. | branch `w2-owned-library` merged |
 | 2026-11-12 | Line 7 (W5): `marionette-providers` crate (interface, mock, Claude/Qwen/Tripo as HTTP-as-data, `providers.json`, spend cap and ledger), four `provider_*` operations, `marionette provider` CLI, decision 0019. CI: first run checked, Linux fixed (ALSA). Drift hash unchanged. | branch `claude/project-thread-zgz6yk` |
 | 2026-11-12 | Line 4 (W7): spike TypeScript against Luau (`spikes/script-spike`), decision 0022 (TypeScript on QuickJS-ng), crate `marionette-script`, `Stage::Script`, `Script`/`ScriptState` components, `script_reload` and `script_types` operations, `marionette.d.ts` in the generated reference, scripted example. Drift and playground hashes unchanged. | branch `claude/project-thread-ylu6qj` |
+| 2026-11-12 | Memory and crash hygiene (decision 0029): crate `marionette-host` (children die with the engine, run folder swept after crashes, counting allocator), bounded event and session logs, `Sim::step` clears ECS trackers (fixed a per-tick leak), renderer `trim` and GPU object counts, script heap/stack/work limits, panics in operations and scripts become errors, leak and kill tests, valgrind CI job, `docs/ai/MEMORY-AND-CRASHES.md`. All hashes unchanged. | branch `claude/project-thread-u1a53l` |

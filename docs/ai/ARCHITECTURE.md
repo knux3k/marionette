@@ -5,6 +5,7 @@
 | Crate | Responsibility | Depends on | Must NOT depend on |
 | --- | --- | --- | --- |
 | `crates/marionette-core` | ECS world (`bevy_ecs`), type registry, JSON Schema, scene format and validator, fixed-step `Sim`, seeded RNG, errors as data, module trait and stages, data components (spatial, UI, actions) | bevy_ecs, bevy_reflect, serde, serde_json, sha2 | any other marionette crate, wgpu, winit, rapier, kira, network |
+| `crates/marionette-host` | What the engine holds from the OS: `spawn` (children die with the engine), per-process run folder and stale sweep, `init`/`shutdown`, counting allocator (decision 0029) | libc (Unix), windows-sys (Windows) | any other crate |
 | `crates/marionette-assets` | CPU assets: glTF/GLB models, PNG, primitive shapes, built-in images and font | glam, gltf, png | wgpu, winit, any marionette crate |
 | `crates/marionette-render` | wgpu renderer (PBR, sprites, UI), offscreen capture, image diff, the window | core, assets, wgpu, winit, glam, bytemuck, pollster | physics, input, audio, agent |
 | `crates/marionette-input` | Action maps, input event queue, recording, `Stage::Input` system | core | render, winit, physics, audio |

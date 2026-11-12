@@ -625,7 +625,10 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `entities` | integer | yes |  |
+| `events_held` | integer | yes | Events held in the bounded event log. |
+| `process_heap_bytes` | integer \| null |  | Live Rust heap bytes of the whole process, when the binary counts allocations (the `marionette` CLI and MCP server do); absent otherwise. |
 | `render_ms_last` | number \| null |  |  |
+| `script_heap_bytes` | integer \| null |  | Bytes the session's script heap uses (QuickJS's count); absent without scripts. |
 | `session` | string | yes |  |
 | `step_ms_avg` | number | yes |  |
 | `step_ms_last` | number | yes |  |
@@ -681,6 +684,7 @@ Output:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `dropped` | integer | yes | Older events already dropped from the bounded event log (it keeps the most recent ones, at least 16,384); 0 in short runs. |
 | `events` | array of any | yes |  |
 | `next_offset` | integer \| null |  |  |
 | `tick` | integer | yes |  |

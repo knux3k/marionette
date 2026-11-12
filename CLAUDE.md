@@ -15,7 +15,9 @@ engine is.
   (`cargo run -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1`).
 - Change scenes through operations (`marionette op <name> '<json>'`, `marionette ops`) or the
   MCP server (`marionette mcp`); both run the same code.
-- Follow the determinism rules in `docs/ai/ARCHITECTURE.md`.
+- Follow the determinism rules in `docs/ai/ARCHITECTURE.md` and the memory and crash rules in
+  `docs/ai/MEMORY-AND-CRASHES.md` (children via `marionette_host::spawn`, temp files via
+  `marionette_host::temp_dir`, every log or cache bounded).
 - Record every real choice in `docs/decisions/` and index it in `docs/ai/DECISIONS.md`.
 - Regenerate `docs/ai/reference/` with `cargo run -q -p marionette-cli -- docs` when operations,
   components or CLI flags change.

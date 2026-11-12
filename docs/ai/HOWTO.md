@@ -45,6 +45,20 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 4. Add it to the crate map in ARCHITECTURE.md with its forbidden dependencies.
 5. Record why in a decision.
 
+## Start a child process or write a temporary file
+
+Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
+
+1. Add `marionette-host.workspace = true` to the crate's dependencies.
+2. Child process: build a `std::process::Command`, then `marionette_host::spawn(cmd)` (never
+   `cmd.spawn()`, `output()` or `status()`; wait on the returned `Child` yourself). It dies
+   with the engine on Windows and Linux, even on a kill.
+3. Temporary files: `let dir = marionette_host::temp_dir("what-for")?;` and write under
+   `dir.path()`. The folder is removed when `dir` drops, and by the next engine start if the
+   process dies first. Never write straight into `std::env::temp_dir()` outside tests.
+4. A new cache or log that lives as long as a session or the process needs a bound; add a
+   round of the work that fills it to `crates/marionette-agent/tests/leaks.rs`.
+
 ## Add an example scene with a reference image
 
 1. Write the scene as JSON under `examples/`, then canonicalize:

@@ -11,6 +11,8 @@ be checked against a repo-relative path, a command or a test name. Read in this 
 6. [ENVIRONMENT.md](ENVIRONMENT.md): toolchain, exact commands, durations, GPU-less setup.
 7. As needed: [DECISIONS.md](DECISIONS.md) (index of `docs/decisions/`),
    [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) (normative asset rules),
+   [MEMORY-AND-CRASHES.md](MEMORY-AND-CRASHES.md) (normative: child processes, temp files,
+   bounded logs, script limits, leak tests),
    [GLOSSARY.md](GLOSSARY.md), and the generated reference in `docs/ai/reference/`
    ([operations](reference/operations.md), [components](reference/components.md),
    [CLI](reference/cli.md)).
