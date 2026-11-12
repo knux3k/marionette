@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "runner",
+  "output": "image",
+  "file": "runner.png",
+  "sha256": "de83af0f85749bcbca1d3153a710d3b4ba2a16e8a38c62f0f9036f613483e34a",
+  "recipe": "runner.recipe.json",
+  "recipe_sha256": "ae228bfb28fbf4772da50b53a38869cf54737820797f258cf79326398e12825c",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a tiny living spark creature mid-run, orange flame body with bright yellow core and small dark eyes, single game sprite, side view, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text, no shadow on the ground",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "2ee67dad46bee6bfcc56d01c1a7346fb094d0ae2f238e2650eaae19f7dedf5d7",
+    "raw_sha256": "4a79e1f5527549c06b1ba0373a71cfd51ec91ad22bdff3bd6e407323b097d628",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

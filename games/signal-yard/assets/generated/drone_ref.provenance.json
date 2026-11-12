@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "drone_ref",
+  "output": "image",
+  "file": "drone_ref.png",
+  "sha256": "fc4f2f9c4443139ff30555bba2f4ed63cd917e93fa68701db9530492d3323eb8",
+  "recipe": "drone_ref.recipe.json",
+  "recipe_sha256": "28ea01660f407916adefee9c0cd9465794925935ba49ff7d628b48ea834e5f31",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a hovering security drone: a flat round grey body with four ducted rotors and a single red sensor eye, single object, three-quarter front view, centred, full body in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "0712c4c91dabfd352fb08a9606c84dfe18a84edeb971e3ccfc2d083bfcfbdf2f",
+    "raw_sha256": "8e7efa49947d8f225159022e5f5605529eacedcfb8e4e30285fb5b56bdd0c0c5",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

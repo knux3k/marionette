@@ -139,6 +139,22 @@ fn only_a_person_approves_an_image() {
     let (ok, v) = cli(&root, &["generate", "approve", "ref"]);
     assert!(!ok);
     assert_eq!(first_code(&v), "generate.approval_needs_person");
+    // `--all` lists the reference images models wait on, and also needs a person.
+    let (ok, _) = op(
+        &root,
+        "generate_recipe",
+        json!({"name": "lamp", "output": "model", "from": "ref"}),
+    );
+    assert!(ok);
+    let pending = marionette_generate::pending_approvals(&root).unwrap();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(
+        (pending[0].dir.as_str(), pending[0].name.as_str()),
+        ("assets/generated", "ref")
+    );
+    let (ok, v) = cli(&root, &["generate", "approve", "--all"]);
+    assert!(!ok);
+    assert_eq!(first_code(&v), "generate.approval_needs_person");
     // No operation can write an approval file either.
     let (ok, v) = op(
         &root,

@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "lantern",
+  "output": "image",
+  "file": "lantern.png",
+  "sha256": "419a8cc602b19ef1472f8cd9ba8e17fabbbfd5515cd0818e9175923ce5068223",
+  "recipe": "lantern.recipe.json",
+  "recipe_sha256": "ad2ba881fe51d2317e94e415471eb3245bafdac2ca27e5524eb528ec290d1f88",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "an unlit iron paper lantern on a short post, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "d613204b7264bc096e5d1ce10c2522e98dcfe614630762a85350f9fcd1f2feea",
+    "raw_sha256": "e69b40711431b899aab13fc9db2dd429f9aa260c7b8609a9bc72eceb0e8b1c5b",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

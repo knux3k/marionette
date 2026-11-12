@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "hero_ref",
+  "output": "image",
+  "file": "hero_ref.png",
+  "sha256": "79928ed6f95db9626a4636f518ef0844e2e3957754647a5afdd394dd1b3826a5",
+  "recipe": "hero_ref.recipe.json",
+  "recipe_sha256": "6c5edc4d7cb58c7f56c415c5a099bd2ab475f02037e9d278da9a2db74ff3699f",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small round sky-sprite hero with a leaf cap, big eyes, stubby arms and boots, cheerful, single object, three-quarter front view, centred, full body in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "2382eac2432d6239e027587cd774cf859b2567b9749df6900e861f06f416ea43",
+    "raw_sha256": "1c87aa664164b1bad6bded9e9be9d6f7d9444ea056487af7618cedb9b38ce215",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

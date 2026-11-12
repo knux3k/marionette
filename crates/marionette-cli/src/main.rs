@@ -224,9 +224,16 @@ enum GenerateCommand {
         dir: String,
     },
     /// Approve a generated image so a paid 3D model may be made from it. A person must type
-    /// the image's name at an interactive terminal; there is no operation for this.
+    /// the image's name at an interactive terminal; there is no operation for this. With
+    /// `--all`, every reference image under the project that still waits is listed and a
+    /// person types `yes` once to approve them all.
     Approve {
-        name: String,
+        /// The image recipe to approve (not with `--all`).
+        #[arg(required_unless_present = "all", conflicts_with = "all")]
+        name: Option<String>,
+        /// Approve every waiting reference image under the project at once.
+        #[arg(long)]
+        all: bool,
         #[arg(long, default_value = "assets/generated")]
         dir: String,
     },
@@ -373,7 +380,7 @@ fn run(cli: Cli) -> ExitCode {
                 Ok(v) if v["passed"] == true => 0,
                 _ => 1,
             };
-            print_result(cli.json, report);
+            let _ = print_result(cli.json, report);
             std::process::exit(code);
         }
         Command::Provider { command } => match command {
@@ -410,7 +417,10 @@ fn run(cli: Cli) -> ExitCode {
             GenerateCommand::List { dir } => agent
                 .call("generate_list", json!({ "dir": dir }))
                 .map(|v| merge("generate_list", v)),
-            GenerateCommand::Approve { name, dir } => approve(&cli.project, &name, &dir, cli.read_only),
+            GenerateCommand::Approve { name, all, dir } => match name {
+                Some(name) if !all => approve(&cli.project, &name, &dir, cli.read_only),
+                _ => approve_all(&cli.project, cli.read_only),
+            },
         },
         Command::Scene {
             command: SceneCommand::Fmt { scene, check: false },
@@ -582,6 +592,49 @@ fn approve(project: &str, name: &str, dir: &str, read_only: bool) -> Result<Valu
         "generate_approve",
         json!({ "name": name, "file": file, "sha256": sha, "approval": format!("{name}{}", approval::SUFFIX) }),
     ))
+}
+
+/// `marionette generate approve --all`: lists every waiting reference image and approves them
+/// all after a person types `yes` at an interactive terminal.
+fn approve_all(project: &str, read_only: bool) -> Result<Value, Errors> {
+    use marionette_generate::approval;
+    use std::io::{BufRead, IsTerminal, Write};
+    if read_only {
+        return Err(Diagnostic::error(
+            marionette_agent::codes::READ_ONLY,
+            "approving writes files and --read-only is set",
+        )
+        .into());
+    }
+    let root = std::path::Path::new(project);
+    let pending = marionette_generate::pending_approvals(root)?;
+    if pending.is_empty() {
+        return Ok(merge("generate_approve", json!({ "approved": [] })));
+    }
+    let interactive = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
+    let mut confirmed = false;
+    if interactive {
+        eprintln!("These images wait for approval; each lets a paid 3D model be made from it:");
+        for p in &pending {
+            eprintln!("  {}/{}  (sha256 {})", p.dir, p.file, &p.sha256[..16]);
+        }
+        eprint!("Look at them first. Type yes to approve all {}: ", pending.len());
+        let _ = std::io::stderr().flush();
+        let mut line = String::new();
+        let _ = std::io::stdin().lock().read_line(&mut line);
+        confirmed = line.trim().eq_ignore_ascii_case("yes");
+        if !confirmed {
+            return Err(Diagnostic::error(
+                marionette_generate::codes::APPROVAL_NEEDS_PERSON,
+                "not approved: the answer was not yes",
+            )
+            .into());
+        }
+    }
+    for p in &pending {
+        approval::approve_by_person(&root.join(&p.dir), &p.name, &p.file, &p.sha256, confirmed)?;
+    }
+    Ok(merge("generate_approve", json!({ "approved": pending })))
 }
 
 /// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.

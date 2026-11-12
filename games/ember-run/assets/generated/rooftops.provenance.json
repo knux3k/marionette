@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "rooftops",
+  "output": "image",
+  "file": "rooftops.png",
+  "sha256": "120afd631b605ee4085643d92fc557103feea5f11f138862362844b6ed87ff8b",
+  "recipe": "rooftops.recipe.json",
+  "recipe_sha256": "7515db7755143f4696eae680539fdfa4e847db753929cc7ad667e2ccf4d57347",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "wide night skyline of slanted tile rooftops and chimneys in deep blue silhouettes under a starry sky, painterly game background, no characters, no text",
+    "size": [
+      1536,
+      768
+    ],
+    "cache_key": "cb913e42feae18512dce0218f1ec3c736ac48c6c76b09784374dc2f730a782ed",
+    "raw_sha256": "1ea8774c7f5addfec0be6ca5e5afb7dd047352b0de6e8b68ed0c2330a618ce39",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1536,
+      768
+    ],
+    "source_size": [
+      1536,
+      768
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
