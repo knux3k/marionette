@@ -45,8 +45,12 @@ export function spawnCrawler(self: Entity, wave: number): void {
       CharacterController: { speed: 2 + 0.25 * wave, jump_speed: 0, gravity: 20, mass: 20, move_x: "none", move_forward: "none", jump: "none" },
       CharacterState: { grounded: false, vertical_velocity: 0 },
       CharacterInput: { move_x: 0, move_forward: 1, jump: false },
-      Model: { asset: "primitive:sphere" },
-      Material: { base_color: { r: 0.7, g: 0.1 + 0.05 * wave, b: 0.25, a: 1 }, metallic: 0, roughness: 0.6 },
+      Model: { asset: "../assets/generated/crawler.glb" },
+      // The model's feet are at its origin and it faces +X: drop it to the ball's bottom and
+      // turn it to face -Z. Placement scale replaces the squashed ball's scale.
+      ModelPlacement: { offset: { x: 0, y: -0.36, z: 0 }, rotation: { x: 0, y: 0.707107, z: 0, w: 0.707107 }, scale: { x: 0.75, y: 0.75, z: 0.75 } },
+      // Later waves glow hotter.
+      Emissive: { color: { r: 0.6, g: 0.1, b: 1.0, a: 1 }, intensity: 0.1 * wave },
       Script: { path: "scripts/crawler.ts" },
     },
     "crawler",
@@ -86,10 +90,8 @@ export function update(self: Entity): void {
     bt.text = s.result === "won" ? "THE CRYSTAL HOLDS" : "THE CRYSTAL SHATTERED";
     b.set("UiText", bt);
   }
-  // The crystal slowly turns and dims with damage.
+  // The crystal's glow fades with damage (Emissive keeps the model's own textures).
   const crystal = engine.find("crystal")!;
-  const m = crystal.get("Material")!;
   const k = Math.max(0, s.hp) / CRYSTAL_HP;
-  m.base_color = { r: 0.3 * k + 0.2, g: 0.9 * k + 0.05, b: 1.0 * k + 0.1, a: 1 };
-  crystal.set("Material", m);
+  crystal.set("Emissive", { color: { r: 0.3, g: 0.9, b: 1.0, a: 1 }, intensity: 0.6 * k });
 }

@@ -172,18 +172,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.45,
-            "r": 1.0
-          },
-          "metallic": 0.0,
-          "roughness": 0.5
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/hero.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.7,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 0.707107,
+            "x": 0.0,
+            "y": 0.707107,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1667,
+            "y": 1.1667,
+            "z": 1.1667
+          }
         },
         "RigidBody": {
           "angular_damping": 0.0,
@@ -234,18 +242,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.1,
-            "g": 0.35,
-            "r": 0.12
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -2.02,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1905,
+            "y": 1.0,
+            "z": 1.7241
+          }
         },
         "Transform": {
           "rotation": {
@@ -286,18 +302,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.1,
-            "g": 0.35,
-            "r": 0.12
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -2.02,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.7937,
+            "y": 1.0,
+            "z": 1.1494
+          }
         },
         "Transform": {
           "rotation": {
@@ -338,18 +362,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.1,
-            "g": 0.35,
-            "r": 0.12
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -2.02,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.7937,
+            "y": 1.0,
+            "z": 1.1494
+          }
         },
         "Transform": {
           "rotation": {
@@ -390,18 +422,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.1,
-            "g": 0.35,
-            "r": 0.12
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -2.02,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.7937,
+            "y": 1.0,
+            "z": 1.1494
+          }
         },
         "Transform": {
           "rotation": {
@@ -442,18 +482,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.22,
-            "r": 0.25
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.708,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4365,
+            "y": 0.4,
+            "z": 0.6322
+          }
         },
         "Transform": {
           "rotation": {
@@ -494,18 +542,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.22,
-            "r": 0.25
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.708,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4365,
+            "y": 0.4,
+            "z": 0.6322
+          }
         },
         "Transform": {
           "rotation": {
@@ -546,18 +602,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.22,
-            "r": 0.25
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.708,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.4365,
+            "y": 0.4,
+            "z": 0.6322
+          }
         },
         "Transform": {
           "rotation": {
@@ -598,18 +662,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.22,
-            "g": 0.42,
-            "r": 0.55
-          },
-          "metallic": 0.0,
-          "roughness": 0.9
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -2.02,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.1905,
+            "y": 1.0,
+            "z": 1.7241
+          }
         },
         "Transform": {
           "rotation": {
@@ -650,18 +722,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.25,
-            "g": 0.4,
-            "r": 0.6
-          },
-          "metallic": 0.0,
-          "roughness": 0.7
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/island.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.656,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.6944,
+            "y": 0.3,
+            "z": 1.1494
+          }
         },
         "RigidBody": {
           "angular_damping": 0.0,
@@ -709,18 +789,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -761,18 +849,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -813,18 +909,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -865,18 +969,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -917,18 +1029,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -969,18 +1089,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -1021,18 +1149,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -1073,18 +1209,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.2,
-            "g": 0.85,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:sphere"
+          "asset": "../assets/generated/seed.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.2,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
         },
         "Transform": {
           "rotation": {
@@ -1125,18 +1269,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.6,
-            "g": 0.2,
-            "r": 0.9
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/spring.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -0.15,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.5217,
+            "y": 0.4,
+            "z": 1.5556
+          }
         },
         "Transform": {
           "rotation": {
@@ -1294,18 +1446,26 @@
             }
           }
         },
-        "Material": {
-          "base_color": {
-            "a": 1.0,
-            "b": 0.7,
-            "g": 0.95,
-            "r": 1.0
-          },
-          "metallic": 0.2,
-          "roughness": 0.3
-        },
         "Model": {
-          "asset": "primitive:cube"
+          "asset": "../assets/generated/beacon.glb"
+        },
+        "ModelPlacement": {
+          "offset": {
+            "x": 0.0,
+            "y": -1.5,
+            "z": 0.0
+          },
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.6
+          }
         },
         "Transform": {
           "rotation": {

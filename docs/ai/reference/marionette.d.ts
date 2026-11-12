@@ -507,6 +507,27 @@ type Model = {
   asset: string;
 };
 
+/** Where a `Model` is drawn relative to its entity, for models that do not match the entity's collider: the model is moved by `offset` (in the entity's rotated frame, unscaled), turned by `rotation` and sized by `scale`, which replaces the entity's `Transform.scale` for drawing. Physics and scripts still see the entity's own `Transform`. Typical use: a generated model whose origin is at its feet on a character whose origin is at the center of its capsule. */
+type ModelPlacement = {
+  offset: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). */
+  rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  scale: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
 /** Turns physics on for the scene and picks 3D or 2D. */
 type PhysicsSettings = {
   /** Acceleration in m/s² (2D uses x and y). */
@@ -765,6 +786,7 @@ interface Components {
   LookAt: LookAt;
   Material: Material;
   Model: Model;
+  ModelPlacement: ModelPlacement;
   PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;

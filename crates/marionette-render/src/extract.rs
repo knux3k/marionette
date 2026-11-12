@@ -6,8 +6,8 @@ use marionette_core::Kind;
 use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
-    AmbientLight, Camera, DirectionalLight, Emissive, Fog, LookAt, Material, Model, PointLight, Projection,
-    Shadows, SkyLight, SpotLight, Sprite, SpriteRegion, ToneMapping, Transform,
+    AmbientLight, Camera, DirectionalLight, Emissive, Fog, LookAt, Material, Model, ModelPlacement,
+    PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -186,6 +186,23 @@ fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookA
     Mat4::from_scale_rotation_translation(v3(t.scale), rotation, translation)
 }
 
+/// The entity's translation and rotation (not its scale), then the placement's offset,
+/// rotation and scale.
+fn placed_matrix(
+    t: Option<&Transform>,
+    p: Option<&Position>,
+    look: Option<&LookAt>,
+    m: &ModelPlacement,
+) -> Mat4 {
+    let (_, rotation, translation) = world_matrix(t, p, look).to_scale_rotation_translation();
+    let local = Quat::from_xyzw(m.rotation.x, m.rotation.y, m.rotation.z, m.rotation.w).normalize();
+    Mat4::from_scale_rotation_translation(
+        v3(m.scale),
+        rotation * local,
+        translation + rotation * v3(m.offset),
+    )
+}
+
 /// Extracts the frame from the world at its latest tick.
 pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
     extract_at(world, 1.0)
@@ -240,6 +257,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         let mut names: std::collections::BTreeMap<&str, std::sync::Arc<str>> = Default::default();
         frame.meshes.reserve(q.iter(world).len());
         let emissives = world.components().component_id::<Emissive>().is_some();
+        let placements = world.components().component_id::<ModelPlacement>().is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
             let emissive = if emissives {
                 world
@@ -257,10 +275,18 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 .entry(model.asset.as_str())
                 .or_insert_with(|| model.asset.as_str().into())
                 .clone();
+            let placement = if placements {
+                world.get::<ModelPlacement>(e)
+            } else {
+                None
+            };
             frame.meshes.push(MeshDraw {
                 entity: id.0,
                 asset,
-                world: world_matrix(t, p, l),
+                world: match placement {
+                    Some(m) => placed_matrix(t, p, l, m),
+                    None => world_matrix(t, p, l),
+                },
                 material: material.copied(),
                 pose: pose.map(|p| std::sync::Arc::new(p.clone())),
                 emissive,
@@ -375,12 +401,13 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 16] = [
+pub const READS: [(&str, Kind); 17] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
     ("Model", Kind::Component),
     ("Material", Kind::Component),
+    ("ModelPlacement", Kind::Component),
     ("Sprite", Kind::Component),
     ("SpriteRegion", Kind::Component),
     ("DirectionalLight", Kind::Component),

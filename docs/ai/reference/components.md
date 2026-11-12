@@ -214,6 +214,18 @@ Rust type: `marionette_core::spatial::Model`.
 | --- | --- | --- | --- |
 | `asset` | string | yes |  |
 
+### `ModelPlacement`
+
+Where a `Model` is drawn relative to its entity, for models that do not match the entity's collider: the model is moved by `offset` (in the entity's rotated frame, unscaled), turned by `rotation` and sized by `scale`, which replaces the entity's `Transform.scale` for drawing. Physics and scripts still see the entity's own `Transform`. Typical use: a generated model whose origin is at its feet on a character whose origin is at the center of its capsule.
+
+Rust type: `marionette_core::spatial::ModelPlacement`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `offset` | object {x, y, z} | yes |  |
+| `rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
+| `scale` | object {x, y, z} | yes |  |
+
 ### `PointLight`
 
 A light at the entity's position shining in every direction (a lamp, a torch, a glowing crystal). Brightness falls off with the square of the distance and reaches zero at `range`. The renderer uses the first 16 point and spot lights by entity id.
