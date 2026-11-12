@@ -42,8 +42,14 @@ pass.
 
 - Cost: one extra depth pass over all mesh groups when `Shadows` is present (draw calls rise by
   the number of groups), plus nine shadow taps per pixel. On a software rasterizer the lighting
-  example took 13.1 ms against 5.6 ms without the looks at 640x360; hardware GPU numbers need the
-  owner's PC.
+  example took 13.1 ms against 5.6 ms without the looks at 640x360. On a desktop GPU of the
+  RTX 2080 class (Vulkan, 1920x1080, 2,000 frames, release): lighting example 0.43 ms average
+  (p99 0.63 ms), the same scene without `Shadows` 0.36 ms, without any look 0.35 ms; two eyes
+  at 1920x1080 each with every look 0.61 ms (p99 0.80 to 1.0 ms). Shadows cost about 0.07 ms,
+  the other looks are within noise. The lighting reference image matched (max channel
+  difference 2).
 - Sprites and UI are not lit, fogged or tone mapped.
+- Seen on the desktop GPU: a thin block's shadow starts slightly away from its base (bias), and
+  fog does not hide the ground plane's far edge. Both are tuning follow-ups.
 - Follow-ups: shadows from point and spot lights, cascades, glTF emissive factors and textures,
   bloom with an HDR target, image-based environment lighting, a sky gradient background.
