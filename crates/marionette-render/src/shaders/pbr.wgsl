@@ -13,12 +13,6 @@ struct LightsU {
     count: vec4<u32>,
 };
 
-struct DrawU {
-    model: mat4x4<f32>,
-    normal: mat4x4<f32>, // inverse-transpose of model (upper 3x3 used)
-    base_color: vec4<f32>,
-    params: vec4<f32>, // metallic, roughness, normal_scale, has_normal_map (0/1)
-};
 
 @group(0) @binding(0) var<uniform> view: ViewU;
 @group(1) @binding(0) var<uniform> lights: LightsU;
@@ -26,7 +20,6 @@ struct DrawU {
 @group(2) @binding(2) var mr_tex: texture_2d<f32>;
 @group(2) @binding(3) var normal_tex: texture_2d<f32>;
 @group(2) @binding(4) var samp: sampler;
-@group(3) @binding(0) var<uniform> draw: DrawU;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -34,21 +27,45 @@ struct VsIn {
     @location(2) uv: vec2<f32>,
 };
 
+// Per-instance data: one entry per drawn copy of a mesh part (GPU instancing).
+struct InstIn {
+    @location(3) model0: vec4<f32>,
+    @location(4) model1: vec4<f32>,
+    @location(5) model2: vec4<f32>,
+    @location(6) model3: vec4<f32>,
+    @location(7) base_color: vec4<f32>,
+    @location(8) params: vec4<f32>, // metallic, roughness, normal_scale, has_normal_map (0/1)
+};
+
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) world_pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(3) @interpolate(flat) base_color: vec4<f32>,
+    @location(4) @interpolate(flat) params: vec4<f32>,
 };
 
 @vertex
-fn vs_main(in: VsIn) -> VsOut {
+fn vs_main(in: VsIn, inst: InstIn) -> VsOut {
     var out: VsOut;
-    let world = draw.model * vec4<f32>(in.position, 1.0);
+    let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
+    // Normal matrix as the cofactor matrix of the model's 3x3 part: the inverse-transpose
+    // times the determinant. The fragment shader normalizes, so the scale factor cancels;
+    // sign(det) keeps normals pointing out on mirrored instances. No CPU inverse needed.
+    let c0 = inst.model0.xyz;
+    let c1 = inst.model1.xyz;
+    let c2 = inst.model2.xyz;
+    let k0 = cross(c1, c2);
+    let flip = select(1.0, -1.0, dot(c0, k0) < 0.0);
+    let cof = mat3x3<f32>(k0, cross(c2, c0), cross(c0, c1)) * flip;
+    let world = model * vec4<f32>(in.position, 1.0);
     out.clip = view.view_proj * world;
     out.world_pos = world.xyz;
-    out.normal = (draw.normal * vec4<f32>(in.normal, 0.0)).xyz;
+    out.normal = cof * in.normal;
     out.uv = in.uv;
+    out.base_color = inst.base_color;
+    out.params = inst.params;
     return out;
 }
 
@@ -77,18 +94,18 @@ fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, sample: vec3<f32>, 
 
 @fragment
 fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-    let base = draw.base_color * textureSample(base_tex, samp, in.uv);
+    let base = in.base_color * textureSample(base_tex, samp, in.uv);
     let mr = textureSample(mr_tex, samp, in.uv);
-    let metallic = clamp(draw.params.x * mr.b, 0.0, 1.0);
-    let roughness = clamp(draw.params.y * mr.g, 0.045, 1.0);
+    let metallic = clamp(in.params.x * mr.b, 0.0, 1.0);
+    let roughness = clamp(in.params.y * mr.g, 0.045, 1.0);
 
     var n = normalize(in.normal);
     if (!front) {
         n = -n;
     }
     let nm = textureSample(normal_tex, samp, in.uv).xyz;
-    if (draw.params.w > 0.5) {
-        n = perturb_normal(n, in.world_pos, in.uv, nm, draw.params.z);
+    if (in.params.w > 0.5) {
+        n = perturb_normal(n, in.world_pos, in.uv, nm, in.params.z);
     }
 
     let v = normalize(view.eye.xyz - in.world_pos);
