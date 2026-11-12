@@ -8,6 +8,8 @@
 //!   `.mat` materials (mapped to glTF-style PBR).
 //! - [`fbx`]: FBX (2011+, binary or ASCII) to binary glTF conversion (decision 0027).
 //! - [`import`]: the import pipeline that applies every rule and writes the import report.
+//! - [`prefab`]: Unity prefabs (text YAML, nested prefabs, variants) to Marionette prefabs
+//!   (decision 0040); [`unity_yaml`] reads Unity's text serialization.
 //! - [`pool`]: the admission gate the CC0 pool must call; it refuses owned assets.
 //!
 //! The rules are normative in `docs/ai/ASSETS-AND-LICENSES.md`; the design is decision 0018.
@@ -17,8 +19,10 @@ pub mod import;
 pub mod library;
 pub mod license;
 pub mod pool;
+pub mod prefab;
 pub mod tar;
 pub mod unity;
+pub mod unity_yaml;
 
 pub use import::{ImportOptions, ImportReport, import};
 pub use library::Library;

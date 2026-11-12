@@ -52,7 +52,7 @@ pub(crate) fn ops() -> Vec<Op> {
     ]
 }
 
-fn library(agent: &Agent, explicit: Option<&str>) -> Result<Library, Errors> {
+pub(crate) fn library(agent: &Agent, explicit: Option<&str>) -> Result<Library, Errors> {
     let path = explicit.map(|p| agent.resolve(p)).transpose()?;
     Library::locate(path.as_deref(), agent.root())
 }

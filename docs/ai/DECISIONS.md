@@ -27,3 +27,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0021 | Scripts spawn, clone and destroy entities (`onDestroy`) and set timers; all saved as state | accepted |
 | 0022 | Game scripts are TypeScript on QuickJS-ng (spike: TypeScript against Luau) | accepted |
 | 0027 | FBX to glTF conversion inside the importer | accepted |
+| 0040 | Unity prefabs become flat Marionette prefabs in the owned library (`prefab_instantiate`) | accepted |

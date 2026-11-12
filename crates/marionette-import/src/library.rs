@@ -27,6 +27,8 @@ pub enum AssetKind {
     Texture,
     Model,
     Material,
+    /// A Unity prefab converted to `prefab.json` (decision 0040).
+    Prefab,
 }
 
 /// One file of an asset.
