@@ -62,6 +62,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
 | `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
+| `nav_path` | no | Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`. |
+| `nav_agents` | no | NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left. |
 | `synth_render` | no | Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers. |
 | `synth_patches` | no | Synth presets and every Patch field with its default. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
@@ -88,6 +90,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
 | `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
+| `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
+| `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 | `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
 | `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
@@ -1434,6 +1438,59 @@ Output:
 | `sources` | array of HeardSource | yes |  |
 | `tick` | integer | yes |  |
 
+## `nav_path`
+
+Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `surface` | integer | yes | The entity with the NavSurface. |
+| `ticks` | integer |  |  |
+| `to` | array of number | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `complete` | boolean | yes |  |
+| `corners` | array of array of number | yes |  |
+| `length` | number | yes |  |
+
+## `nav_agents`
+
+NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most agents to list. Default 10. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `agents` | array of AgentRow | yes |  |
+| `counts` | object | yes | Status name -> agent count. |
+| `more` | integer | yes |  |
+| `tick` | integer | yes |  |
+
 ## `synth_render`
 
 Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers.
@@ -2100,6 +2157,62 @@ Output:
 | `tests_passed` | integer | yes |  |
 | `title` | string | yes |  |
 | `view` | View | yes |  |
+
+## `net_simulate`
+
+Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array \| null |  | Actions that travel. Default: the scene's action map. |
+| `drop_at` | integer \| null |  |  |
+| `drop_slot` | integer \| null |  | A client slot whose game vanishes at `drop_at`. |
+| `hash_interval` | integer \| null |  | Compare state hashes every this many ticks (0 = never). Default 60. |
+| `input_change` | number \| null |  | Chance per tick per action that a player changes it. Default 0.05. |
+| `late_join_at` | integer \| null |  | A player who joins at this host tick (gets a snapshot). |
+| `link` | LinkConditions \| null |  | Simulated link, each direction. Default 40 ms, 10 ms jitter, 2% loss. |
+| `players` | integer \| null |  | Players at the start, including the host (1 to 8). Default 2. |
+| `scene` | string | yes | Scene file, relative to the project root. |
+| `seed` | integer \| null |  | Seed of the sims, the inputs and the network. Default 1. |
+| `ticks` | integer \| null |  | Ticks the host runs. Default 600. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string | yes |  |
+| `all_equal` | boolean | yes | Every peer still playing ended in the host's state. |
+| `desyncs` | array of array of any | yes | (slot, tick) of each hash mismatch the session itself reported. |
+| `final_tick` | integer | yes |  |
+| `hash_checks` | integer | yes | Hash comparisons made by the session protocol. |
+| `host_bytes_per_tick` | number | yes | Host bytes sent per tick, average. |
+| `host_hash` | string | yes |  |
+| `peers` | array of PeerReport | yes |  |
+| `seconds` | number | yes | Virtual seconds of play. |
+
+## `achievements_check`
+
+Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes | Definitions file, relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `achievements` | array of string | yes |  |
+| `stat_driven` | integer | yes | Achievements unlocked by a stat threshold. |
+| `stats` | array of string | yes |  |
 
 ## `batch_run`
 

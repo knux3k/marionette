@@ -1,6 +1,6 @@
 ---
 name: marionette-write-script
-description: Write or fix gameplay logic for a Marionette game as a deterministic TypeScript script attached to an entity. Use when adding behaviour to an entity, handling collisions or triggers, reading input, or debugging a script error or a state hash that changes between runs.
+description: Write or fix gameplay logic as a deterministic TypeScript script on an entity (hooks, engine API, timers, spawning, input). Use when adding behaviour, handling collisions or triggers, reading input, or debugging a script error or a changing state hash.
 ---
 
 # Write a game script

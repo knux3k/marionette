@@ -1,6 +1,6 @@
 ---
 name: engine-add-skill
-description: Add or update one of the agent skills that ship with the Marionette engine. Use when a new engine feature, operation group or workflow lands, or when a skill is out of date or fails its test.
+description: Add or update an agent skill that ships with the engine. Use when an engine feature, operation group or workflow lands, a skill is out of date or fails its test, or when deciding whether knowledge belongs in a skill or in docs/ai.
 ---
 
 # Add or update a skill (engine work)

@@ -9,20 +9,22 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
+| 1 | Workspace, CI | Done. CI runs on Linux and Windows (`.github/workflows/ci.yml`). |
 | 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080). |
+| 3 | Renderer | Done. Opt-in looks (decisions 0063 to 0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090 to 0093). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
-| 9 | Six proof scenes | Done (W8, decision 0050): all 6 games in `games/` with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. Game starter `marionette make` (0150, [STARTER.md](STARTER.md)). |
-| 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
+| 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 10 | Later (OpenXR, AI while playing, inspector) | OpenXR (0190), co-op networking, achievements, cloud saves, optional Steam backend (0210-0213) done; rest not started. |
 
 ## UNVERIFIED
 
 - Starter (0150): made games not played by a person.
+- Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
+  never run against a Steam client (first check: `steam_check`, app id 480, owner login).
 - Synth and streamed audio (decision 0220): rendered and checked as numbers only; never played
   through a real audio device (`marionette audio-check` is written, exits 2 without one; the PC
   run is planned in proofs/play.md). OGG streaming untested (WAV is).
@@ -34,14 +36,14 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Skills (decision 0160): the format and two agents' project skill folders were read from
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
-
+- Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
-  not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
+  not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
-  on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
-  nor on AMD or Intel GPUs.
-- Frustum culling and `LevelOfDetail` (decision 0080): measured only on Mesa lavapipe in a
-  cloud container; hardware GPU and headset numbers not yet taken.
+  on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not on AMD or Intel GPUs.
+- Render cost controls (0080 to 0082): one desktop GPU offscreen only; not in a headset or
+  on AMD/Intel. Scale plus foveation resolve not re-timed.
+- Ray tracing (0093): lavapipe and one desktop GPU only; skinned models are not traced.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
@@ -51,8 +53,6 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
-- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
-  passes clippy for a Windows target; first run is the CI run of its merge.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
@@ -103,7 +103,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
   export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
-  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.

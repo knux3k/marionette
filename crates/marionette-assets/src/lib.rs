@@ -5,8 +5,10 @@
 pub use glam;
 
 pub mod font;
+pub mod hdr;
 pub mod rig;
 use glam::{Mat4, Vec2, Vec3};
+pub use hdr::{HdrImage, is_hdr_name, load_hdr_image};
 pub use rig::{Rig, load_rig};
 use std::path::Path;
 

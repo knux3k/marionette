@@ -17,6 +17,7 @@ pub mod schema;
 pub mod sim;
 pub mod spatial;
 pub mod ui;
+pub mod vmath;
 
 pub use error::{Diagnostic, Errors, Result, Severity};
 pub use module::{EngineEvent, EventLog, Module, Modules, SceneDir, SimSnapshot, Stage};

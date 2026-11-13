@@ -10,6 +10,7 @@
 mod backend;
 pub mod components;
 mod dims;
+pub mod planet;
 
 use bevy_ecs::prelude::*;
 use components::*;
@@ -19,6 +20,7 @@ use marionette_core::module::{EventLog, Module, RayCaster, SceneDir, Stage};
 pub use marionette_core::module::{RayFilter, RayHit};
 use marionette_core::scene::SceneId;
 use marionette_core::{Diagnostic, Errors, Registry, Result};
+pub use planet::{GravityWell, PlanetCharacter, PlanetState, SphereFluid};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -62,6 +64,10 @@ impl Module for PhysicsModule {
         r.register_component::<CharacterController>();
         r.register_component::<CharacterState>();
         r.register_component::<CharacterInput>();
+        r.register_component::<planet::GravityWell>();
+        r.register_component::<planet::SphereFluid>();
+        r.register_component::<planet::PlanetCharacter>();
+        r.register_component::<planet::PlanetState>();
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {

@@ -1,5 +1,5 @@
 //! The engine as the agent runs it: core, the built-in modules (input, physics, audio,
-//! script, factory, animation, job schedules) and the operation table, plus whatever a game adds.
+//! script, factory, animation, XR gameplay, job schedules) and the operation table, plus whatever a game adds.
 //!
 //! A game adds its own Rust modules and operations without editing the engine (decision
 //! 0062):
@@ -61,10 +61,15 @@ impl EngineBuilder {
                 Part::Script,
                 Part::Module(Box::new(FactoryModule)),
                 Part::Module(Box::new(AnimModule)),
+                Part::Module(Box::new(marionette_xr::XrModule)),
                 #[cfg(feature = "ui3d")]
                 Part::Module(Box::new(marionette_ui3d::Ui3dModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "nav")]
+                Part::Module(Box::new(marionette_nav::NavModule)),
+                #[cfg(feature = "netplay")]
+                Part::Module(Box::new(marionette_net::NetModule)),
             ],
             ops: crate::builtin_ops(),
         }

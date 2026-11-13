@@ -1,6 +1,6 @@
 ---
 name: marionette-port-unity-unreal
-description: Port Unity C# or Unreal C++ and Blueprint gameplay code to Marionette with the engine's scan, map, scaffold and convert tools. Use when converting a MonoBehaviour, Actor, ActorComponent, Burst job, prefab or whole game from Unity or Unreal.
+description: Port Unity C# or Unreal C++ and Blueprint gameplay code to Marionette with the engine's scan, map, scaffold and convert tools. Use when converting a MonoBehaviour, Actor, ActorComponent, Burst job, prefab or whole game from Unity or Unreal, or when asking what a Unity or Unreal API becomes.
 ---
 
 # Port Unity or Unreal code

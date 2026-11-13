@@ -52,7 +52,10 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-handoff` | start, claim and hand off work in a game project |
 | `marionette-light-scene` | lighting and post-processing |
 | `marionette-make-game` | a playable game from one idea or brief |
+| `marionette-make-vr` | headsets through OpenXR, grab and throw, VR movement |
+| `marionette-multiplayer` | co-op lockstep, lobbies, Steam, achievements, cloud saves |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
+| `marionette-round-worlds` | movement and navigation on round planets |
 | `marionette-synth-audio` | synth voices, streamed music, generated samples, audio checked as numbers |
 | `marionette-test-game` | scenarios, replays, stability soaks |
 | `marionette-tune-render-cost` | level of detail, render scale, foveation, anti-aliasing |

@@ -10,3 +10,9 @@ rust-version.workspace = true
 glam = "0.34"
 gltf = { version = "1.4.1", default-features = false, features = ["import", "utils", "names", "KHR_materials_emissive_strength"] }
 png = "0.18.1"
+exr = { version = "1.74", default-features = false, optional = true }
+
+[features]
+default = ["exr"]
+# OpenEXR environment images (decision 0091); `.hdr` files need no feature.
+exr = ["dep:exr"]
