@@ -212,6 +212,18 @@ Rust type: `marionette_core::builtin::Follow`.
 | `gain` | number | yes |  |
 | `target` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
 
+### `GravityWell`
+
+A point gravity source at the entity's `Transform` translation (a planet, a moon). Gravity is `surface_gravity * (radius / r)²` at distance `r >= radius` and falls off linearly to zero at the centre inside (a body of even density), so it is finite everywhere. Set the scene's `PhysicsSettings.gravity` to zero when wells are used.
+
+Rust type: `marionette_physics::planet::GravityWell`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `radius` | number | yes | Reference radius in metres (the ground level). |
+| `range` | number | yes | No pull beyond this distance from the centre (sphere of influence); 0 = everywhere. |
+| `surface_gravity` | number | yes | Acceleration in m/s² at `radius`. |
+
 ### `JobData`
 
 Named typed arrays that job functions read and write in place (decision 0070). Names are unique per entity. Saved with the scene and part of the state hash; keep arrays to what the game needs (every element is written in snapshots).
@@ -292,6 +304,17 @@ Rust type: `marionette_core::spatial::ModelPlacement`.
 | `rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
 | `scale` | object {x, y, z} | yes |  |
 
+### `MoveIntent`
+
+A movement request in world space, written by one system and read by another without either depending on the other (decision 0232): navigation writes it, a character controller (`PlanetCharacter` in physics) or a game's own system reads it. `velocity` is in m/s; a reader uses the part along the ground and caps it at its own speed. `jump` asks for one jump; the reader sets it back to false.
+
+Rust type: `marionette_core::builtin::MoveIntent`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `jump` | boolean | yes |  |
+| `velocity` | object {x, y, z} | yes |  |
+
 ### `Music`
 
 Layered music, not positional. Raise `intensity` to bring layers in.
@@ -305,6 +328,87 @@ Rust type: `marionette_audio::music::Music`.
 | `layers` | array of object {at, level, mix, sound} | yes |  |
 | `playing` | boolean | yes | False fades every layer out (the player stops the stems once all are silent). |
 | `volume` | number | yes | Master gain. |
+
+### `NavAgent`
+
+An agent that walks to `goal` over a `NavSurface`.
+
+Rust type: `marionette_nav::NavAgent`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `acceleration` | number | yes | m/s². |
+| `active` | boolean | yes | False stands still (and drops the route). |
+| `arrive_distance` | number | yes | Counts as arrived within this many metres of the goal. |
+| `drive` | "Direct" \| "Intent" | yes |  |
+| `goal` | object {x, y, z} | yes | Destination in world space. Changing it plans a new route. |
+| `height` | number | yes | `Direct` only: height of the entity's origin above the ground. |
+| `radius` | number | yes | Body radius for avoidance, in metres. |
+| `speed` | number | yes | Top speed in m/s. |
+| `surface` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+
+### `NavAgentState`
+
+Navigation's view of an agent. Written by navigation.
+
+Rust type: `marionette_nav::NavAgentState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `corners` | integer | yes | Route corners left before the goal. |
+| `status` | "Idle" \| "Waiting" \| "Moving" \| "Partial" \| "Arrived" \| "Unreachable" | yes |  |
+| `velocity` | object {x, y, z} | yes | World-space velocity in m/s. |
+
+### `NavObstacle`
+
+Blocks the surface cells within `radius` (plus the surface's clearance) of this entity's `Transform` translation, while the entity exists.
+
+Rust type: `marionette_nav::NavObstacle`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `radius` | number | yes |  |
+| `surface` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+
+### `NavSurface`
+
+A walkable round world. Put it on the world's entity; its `Transform` translation is the centre and its rotation turns the grid with the world.
+
+Rust type: `marionette_nav::NavSurface`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `clearance` | number | yes | Extra metres added around every obstacle (agent body clearance). |
+| `max_grade` | number | yes | Steepest walkable ground as rise over run (1 = 45°). |
+| `probe` | number | yes | Ground is probed from `radius + probe` down to `radius - probe` (0 = no probing: a smooth sphere at `radius`). |
+| `radius` | number | yes | Ground radius in metres where there is no terrain to probe. |
+| `resolution` | integer | yes | Cells per cube-face edge (6 × resolution² cells; 128 gives cells of about radius / 80 metres). 4 to 1024. |
+| `sea_level` | number | yes | Ground below this distance from the centre is water and not walkable (0 = none). |
+
+### `PlanetCharacter`
+
+Walk on round worlds. Needs a `CharacterController` (its speed, jump speed, mass and actions are used; its `gravity` is used only where no `GravityWell` pulls).
+
+Rust type: `marionette_physics::planet::PlanetCharacter`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `align_speed` | number | yes | How fast up turns toward minus gravity, in radians per second (0 = at once). |
+| `face_movement` | boolean | yes | Turn to face the walking direction (AI characters); off for player-turned characters. |
+| `thrust` | number | yes | Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none. Inside a `SphereFluid` it is the swim-up acceleration. |
+| `thrust_action` | string | yes | Action that fires `thrust` (empty = none). |
+
+### `PlanetState`
+
+What a `PlanetCharacter` currently feels. Written by physics.
+
+Rust type: `marionette_physics::planet::PlanetState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `gravity` | object {x, y, z} | yes | The gravity acting on the character in m/s² (zero in empty space). |
+| `swimming` | boolean | yes |  |
+| `up` | object {x, y, z} | yes | The character's up (unit length). |
 
 ### `PointLight`
 
@@ -407,6 +511,18 @@ Rust type: `marionette_audio::SoundSpatial`.
 | `min_distance` | number | yes | Full gain inside this distance (meters); also where panning reaches full width. |
 | `rear_muffle` | number | yes | 0..1: low-pass when the sound is behind the listener (1 = down to 4 kHz straight behind). Stereo panning alone cannot tell front from back; this can. |
 | `rolloff` | "Inverse" \| "Linear" \| "Constant" | yes | How gain falls with distance (between `min_distance` and `max_distance`). |
+
+### `SphereFluid`
+
+A spherical fluid (ocean, thick atmosphere) around the centre of the entity's `Transform`. Bodies and characters closer to the centre than `radius` are inside it.
+
+Rust type: `marionette_physics::planet::SphereFluid`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `buoyancy` | number | yes | Fraction of gravity cancelled inside (1 = floats in place, above 1 rises). |
+| `drag` | number | yes | Velocity damping per second inside (0 = none). |
+| `radius` | number | yes | Fluid surface distance from the centre in metres. |
 
 ### `SpotLight`
 
@@ -633,6 +749,19 @@ Rust type: `marionette_input::InputConfig`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `action_map` | string | yes |  |
+
+### `NavSettings`
+
+Navigation tunables (optional resource; these defaults apply without it).
+
+Rust type: `marionette_nav::NavSettings`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `horizon` | number | yes | Seconds ahead that avoidance looks. |
+| `neighbour_distance` | number | yes | Agents closer than this (metres) are considered for avoidance. |
+| `search_budget` | integer | yes | Cells one search may expand before it settles for the closest place. |
+| `searches_per_tick` | integer | yes | Route searches started per tick at most (agents beyond wait in order). |
 
 ### `PhysicsSettings`
 

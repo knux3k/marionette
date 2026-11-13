@@ -62,6 +62,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
 | `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
+| `nav_path` | no | A route over a NavSurface between two world points (session, or a scene after `ticks`): corner points on the ground, length in metres, and whether it reaches `to` (false: it ends at the closest reachable place). |
+| `nav_agents` | no | How the NavAgents are doing: a count per status (Idle, Waiting, Moving, Partial, Arrived, Unreachable), then up to `limit` agents (not arrived first) with status, speed and corners left. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
 | `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
 | `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
@@ -1427,6 +1429,59 @@ Output:
 | `more` | integer | yes | Sources left out by `limit`. |
 | `music` | array of HeardLayer | yes |  |
 | `sources` | array of HeardSource | yes |  |
+| `tick` | integer | yes |  |
+
+## `nav_path`
+
+A route over a NavSurface between two world points (session, or a scene after `ticks`): corner points on the ground, length in metres, and whether it reaches `to` (false: it ends at the closest reachable place).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `surface` | integer | yes | The entity with the NavSurface. |
+| `ticks` | integer |  |  |
+| `to` | array of number | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `complete` | boolean | yes |  |
+| `corners` | array of array of number | yes |  |
+| `length` | number | yes |  |
+
+## `nav_agents`
+
+How the NavAgents are doing: a count per status (Idle, Waiting, Moving, Partial, Arrived, Unreachable), then up to `limit` agents (not arrived first) with status, speed and corners left.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most agents to list. Default 10. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `agents` | array of AgentRow | yes |  |
+| `counts` | object | yes | Status name -> agent count. |
+| `more` | integer | yes |  |
 | `tick` | integer | yes |  |
 
 ## `generate_recipe`

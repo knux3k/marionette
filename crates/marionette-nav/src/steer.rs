@@ -28,12 +28,15 @@ pub struct Want {
 
 /// Agents sorted by spatial bucket, with an open-addressing table from bucket to its run in
 /// the sorted list (lookups only, never iterated, so it cannot change any order).
+/// A table slot: surface, bucket, start and end in `order`.
+type Slot = Option<(u64, [i32; 3], u32, u32)>;
+
 pub struct Buckets {
     size: f32,
     /// Agent indices, sorted by (surface, bucket, index).
     order: Vec<u32>,
     /// Table slots: (surface, bucket, start, end) or empty.
-    slots: Vec<Option<(u64, [i32; 3], u32, u32)>>,
+    slots: Vec<Slot>,
     mask: usize,
 }
 
@@ -56,7 +59,7 @@ impl Buckets {
         keys.sort_unstable();
         let cap = (keys.len() * 2).next_power_of_two().max(16);
         let mask = cap - 1;
-        let mut slots: Vec<Option<(u64, [i32; 3], u32, u32)>> = vec![None; cap];
+        let mut slots: Vec<Slot> = vec![None; cap];
         let mut at = 0;
         while at < keys.len() {
             let (sf, k, _) = keys[at];

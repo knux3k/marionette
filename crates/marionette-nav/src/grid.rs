@@ -38,7 +38,7 @@ const FACES: [[[f32; 3]; 3]; 6] = [
 
 /// tan(π/4 · x) for x in [-1, 1] from the [5/4] Padé approximant (error below 1e-6).
 fn warp(x: f32) -> f32 {
-    let y = x * 0.785_398_2;
+    let y = x * std::f32::consts::FRAC_PI_4;
     let y2 = y * y;
     y * (945.0 - 105.0 * y2 + y2 * y2) / (945.0 - 420.0 * y2 + 15.0 * y2 * y2)
 }
@@ -91,12 +91,11 @@ impl Grid {
             blocks: vec![0; cells],
             min_step: 0.0,
         };
-        for f in 0..6 {
+        for &[nrm, a, b] in &FACES {
             for j in 0..n {
                 for i in 0..n {
                     let uc = (g.bounds[i as usize] + g.bounds[i as usize + 1]) * 0.5;
                     let vc = (g.bounds[j as usize] + g.bounds[j as usize + 1]) * 0.5;
-                    let [nrm, a, b] = FACES[f];
                     let d = add(nrm, add(scale(a, uc), scale(b, vc)));
                     g.centre.push(norm(d).expect("face point is not zero"));
                 }

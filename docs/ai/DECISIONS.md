@@ -62,3 +62,6 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
 | 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |
+| 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
+| 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
+| 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
