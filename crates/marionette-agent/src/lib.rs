@@ -39,6 +39,7 @@ pub mod skills;
 pub mod stability;
 #[cfg(feature = "starter")]
 pub mod starter;
+pub mod synth;
 #[cfg(feature = "ui3d")]
 mod ui3d;
 
@@ -178,6 +179,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "ui3d")]
         ui3d::ops(),
         audio::ops(),
+        synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]

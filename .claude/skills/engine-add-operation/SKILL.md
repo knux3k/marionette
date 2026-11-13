@@ -1,6 +1,6 @@
 ---
 name: engine-add-operation
-description: Add or change an engine operation, component, resource or simulation system inside the Marionette engine repository, with schema, registration, tests and regenerated reference docs. Use when working on the engine itself (crates under crates/) and a task needs a new operation, MCP tool, component type, resource or system.
+description: Add or change an engine operation, component, resource or simulation system in the Marionette engine, with schema, tests and reference docs. Use when working on the engine itself (crates under crates/) and a task needs a new operation, MCP tool, component type, resource or system.
 ---
 
 # Add an operation, component or system (engine work)

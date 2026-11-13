@@ -1,6 +1,6 @@
 ---
 name: marionette-make-game
-description: Turn a game idea into a playable, tested Marionette game project from one prompt or a short brief (maze in 2D or 3D, side-scrolling platformer), then swap in generated or pooled art. Use when asked to make, start or prototype a new game, to change a made game's design through its brief, or to refresh its art and tests.
+description: Make a playable, tested Marionette game (maze or platformer) from one idea or brief, then add art. Use when asked to make or prototype a new game, or to change a made game's brief or art.
 ---
 
 # Make a game from an idea

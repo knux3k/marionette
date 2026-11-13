@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 exclude = ["spikes"]
-members = ["crates/marionette-core", "crates/marionette-host", "crates/marionette-jobs", "crates/marionette-factory", "crates/marionette-assets", "crates/marionette-render", "crates/marionette-input", "crates/marionette-physics", "crates/marionette-audio", "crates/marionette-import", "crates/marionette-pool", "crates/marionette-anim", "crates/marionette-ui3d", "crates/marionette-providers", "crates/marionette-generate", "crates/marionette-script", "crates/marionette-jobs-ts", "crates/marionette-port", "crates/marionette-starter", "crates/marionette-agent", "crates/marionette-cli", "examples/rust-module"]
+members = ["crates/marionette-core", "crates/marionette-host", "crates/marionette-jobs", "crates/marionette-factory", "crates/marionette-assets", "crates/marionette-render", "crates/marionette-input", "crates/marionette-physics", "crates/marionette-audio", "crates/marionette-synth", "crates/marionette-import", "crates/marionette-pool", "crates/marionette-anim", "crates/marionette-ui3d", "crates/marionette-providers", "crates/marionette-generate", "crates/marionette-script", "crates/marionette-jobs-ts", "crates/marionette-port", "crates/marionette-starter", "crates/marionette-agent", "crates/marionette-cli", "examples/rust-module"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ rust-version = "1.95"
 [workspace.dependencies]
 marionette-core = { path = "crates/marionette-core" }
 marionette-host = { path = "crates/marionette-host" }
+marionette-synth = { path = "crates/marionette-synth" }
 marionette-jobs = { path = "crates/marionette-jobs" }
 bevy_ecs = { version = "0.20.1", default-features = false, features = ["std", "bevy_reflect"] }
 bevy_reflect = { version = "0.20.1", default-features = false, features = ["std", "reflect_documentation"] }
