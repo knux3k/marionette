@@ -8,4 +8,6 @@
 | Cloudstep for `linux-x64`, `steamdeck`, `steam-frame` in one call | same, three targets | three packages, one x64 build reused |
 | ARM64 determinism | packaged `steam-frame` binaries under `qemu-aarch64`, `run scenes/main.scene.json --headless --ticks 300 --seed 1` | cloudstep `e39f2532...7b56` and ember-run `8a559377...6097`, equal to x86-64; drift hash `7441258f...6558` equal |
 | No-argument start plays the entry scene | `./cloudstep` in a package without a display | fails at window creation (`render.surface`, no display), so the manifest path is taken |
-| Real ARM64 machine, Windows package | CI workflow `package` (jobs `frame-on-arm64`, `test-arm64`, `windows`) | see the workflow runs |
+| Real ARM64 machine (GitHub Ubuntu 24.04 ARM64 runner) | CI workflow `package`, job `frame-on-arm64`: the cross-built steam-frame zip, `run scenes/main.scene.json --headless --ticks 600 --seed 1` | cloudstep `331d72c7...d642`, equal to x86-64 |
+| Full test suite on ARM64, GPU tests on lavapipe | job `test-arm64` | passes; drift hash equal |
+| Windows package | job `windows` | builds, smoke run passes |

@@ -24,9 +24,9 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 ## UNVERIFIED
 
 - Game packages (decision 0140): no package has run on a Steam Deck, a Steam Frame, or a
-  screen (windowed start untested); Steam Frame binaries ran only under ARM64 emulation here
-  (CI runs them on an ARM64 machine, headless). Windows packages: first built by CI. Steam
-  Frame facts are from Valve's pages, not a device.
+  screen (windowed start untested); Steam Frame binaries ran headless on a generic ARM64
+  Linux machine (CI), not on Snapdragon hardware or in the Steam runtime. Steam Frame facts
+  are from Valve's pages, not a device.
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
   been worked on by several real agents through it, and claims are not checked against a
   remote.
