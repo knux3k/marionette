@@ -300,35 +300,12 @@ impl Controls {
             let mut pinch = 0.0;
             if let Some(trackers) = &spaces.hands
                 && let Ok(Some(joints)) = base.locate_hand_joints(&trackers[i], time)
+                && let Some(hand) = hand_from_joints(&joints)
             {
-                let valid = |j: &xr::HandJointLocation| {
-                    j.location_flags.contains(
-                        xr::SpaceLocationFlags::POSITION_VALID | xr::SpaceLocationFlags::ORIENTATION_VALID,
-                    )
-                };
-                if joints.iter().all(valid) {
-                    let p = |k: usize| joints[k].pose.position;
-                    let (thumb, index) = (
-                        p(xr::HandJoint::THUMB_TIP.into_raw() as usize),
-                        p(xr::HandJoint::INDEX_TIP.into_raw() as usize),
-                    );
-                    let d = ((thumb.x - index.x).powi(2)
-                        + (thumb.y - index.y).powi(2)
-                        + (thumb.z - index.z).powi(2))
-                    .sqrt();
-                    pinch = ((0.035 - d) / 0.02).clamp(0.0, 1.0);
-                    let palm_j = &joints[xr::HandJoint::PALM.into_raw() as usize];
-                    palm = Some(to_pose(&palm_j.pose, true));
-                    out.joints[i] = Some(HandJoints {
-                        positions: joints
-                            .iter()
-                            .map(|j| [j.pose.position.x, j.pose.position.y, j.pose.position.z])
-                            .collect(),
-                        radii: joints.iter().map(|j| j.radius).collect(),
-                    });
-                }
+                pinch = hand.pinch;
+                palm = Some(hand.palm);
+                out.joints[i] = Some(hand.joints);
             }
-            let pinch = (pinch * 100.0f32).round() / 100.0;
             put(
                 last,
                 &mut out.events,
@@ -380,6 +357,48 @@ impl Controls {
     }
 }
 
+/// What one tracked hand gives this frame.
+pub struct HandReading {
+    /// 0 when thumb and index tips are 3.5 cm or more apart, 1 at 1.5 cm or closer, in steps
+    /// of 0.01 so tiny tracking noise does not make new input events.
+    pub pinch: f32,
+    /// The palm joint, used as grip and aim when no controller is tracked.
+    pub palm: Pose,
+    pub joints: HandJoints,
+}
+
+/// Pinch strength for a thumb-tip to index-tip distance in metres.
+pub fn pinch_strength(distance: f32) -> f32 {
+    let v = ((0.035 - distance) / 0.02).clamp(0.0, 1.0);
+    (v * 100.0).round() / 100.0
+}
+
+/// Reads one hand's located joints (`XR_EXT_hand_tracking` order). `None` unless every joint
+/// has a valid position and orientation, so a half-lost hand never grabs or drops.
+pub fn hand_from_joints(joints: &[xr::HandJointLocation]) -> Option<HandReading> {
+    let valid = |j: &xr::HandJointLocation| {
+        j.location_flags
+            .contains(xr::SpaceLocationFlags::POSITION_VALID | xr::SpaceLocationFlags::ORIENTATION_VALID)
+    };
+    if joints.len() < xr::HAND_JOINT_COUNT || !joints.iter().all(valid) {
+        return None;
+    }
+    let p = |j: xr::HandJoint| joints[j.into_raw() as usize].pose.position;
+    let (thumb, index) = (p(xr::HandJoint::THUMB_TIP), p(xr::HandJoint::INDEX_TIP));
+    let d = ((thumb.x - index.x).powi(2) + (thumb.y - index.y).powi(2) + (thumb.z - index.z).powi(2)).sqrt();
+    Some(HandReading {
+        pinch: pinch_strength(d),
+        palm: to_pose(&joints[xr::HandJoint::PALM.into_raw() as usize].pose, true),
+        joints: HandJoints {
+            positions: joints
+                .iter()
+                .map(|j| [j.pose.position.x, j.pose.position.y, j.pose.position.z])
+                .collect(),
+            radii: joints.iter().map(|j| j.radius).collect(),
+        },
+    })
+}
+
 fn input(tick: u64, name: String, value: f32) -> InputEvent {
     InputEvent {
         tick,
@@ -426,5 +445,91 @@ fn locate(space: &xr::Space, base: &xr::Space, time: xr::Time) -> Pose {
             to_pose(&l.pose, ok)
         }
         Err(_) => Pose::default(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A made-up open right hand: joints spread along +X, palm 10 cm up, all valid.
+    fn hand(thumb_to_index: f32) -> Vec<xr::HandJointLocation> {
+        let flags = xr::SpaceLocationFlags::POSITION_VALID
+            | xr::SpaceLocationFlags::ORIENTATION_VALID
+            | xr::SpaceLocationFlags::POSITION_TRACKED
+            | xr::SpaceLocationFlags::ORIENTATION_TRACKED;
+        let mut j: Vec<xr::HandJointLocation> = (0..xr::HAND_JOINT_COUNT)
+            .map(|k| xr::HandJointLocation {
+                location_flags: flags,
+                pose: xr::Posef {
+                    orientation: xr::Quaternionf {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                        w: 1.0,
+                    },
+                    position: xr::Vector3f {
+                        x: 0.01 * k as f32,
+                        y: 1.0,
+                        z: -0.3,
+                    },
+                },
+                radius: 0.008,
+            })
+            .collect();
+        let at = |j: xr::HandJoint| j.into_raw() as usize;
+        j[at(xr::HandJoint::PALM)].pose.position = xr::Vector3f {
+            x: 0.2,
+            y: 1.1,
+            z: -0.3,
+        };
+        let thumb = j[at(xr::HandJoint::THUMB_TIP)].pose.position;
+        j[at(xr::HandJoint::INDEX_TIP)].pose.position = xr::Vector3f {
+            x: thumb.x,
+            y: thumb.y + thumb_to_index,
+            z: thumb.z,
+        };
+        j
+    }
+
+    #[test]
+    fn pinch_follows_the_thumb_to_index_distance() {
+        let pinch = |d| hand_from_joints(&hand(d)).unwrap().pinch;
+        assert_eq!(pinch(0.08), 0.0, "open hand");
+        assert_eq!(pinch(0.035), 0.0, "fingers apart");
+        assert_eq!(pinch(0.025), 0.5, "half way");
+        assert_eq!(pinch(0.01), 1.0, "tips touching");
+        assert!(
+            pinch(0.02) > marionette_core::actions::PRESSED,
+            "a firm pinch presses grab"
+        );
+        assert!(
+            pinch(0.03) < marionette_core::actions::PRESSED,
+            "a light pinch does not"
+        );
+    }
+
+    #[test]
+    fn small_tracking_noise_makes_no_new_value() {
+        assert_eq!(pinch_strength(0.0250), pinch_strength(0.02502));
+    }
+
+    #[test]
+    fn the_palm_is_the_hand_pose() {
+        let r = hand_from_joints(&hand(0.05)).unwrap();
+        assert!(r.palm.tracked);
+        let p = r.palm.position;
+        assert_eq!([p.x, p.y, p.z], [0.2, 1.1, -0.3]);
+        assert_eq!(r.joints.positions.len(), xr::HAND_JOINT_COUNT);
+        assert_eq!(r.joints.radii[0], 0.008);
+    }
+
+    #[test]
+    fn a_partly_lost_hand_reads_as_no_hand() {
+        let mut j = hand(0.01);
+        j[xr::HandJoint::INDEX_TIP.into_raw() as usize].location_flags =
+            xr::SpaceLocationFlags::POSITION_VALID;
+        assert!(hand_from_joints(&j).is_none());
+        assert!(hand_from_joints(&j[..10]).is_none());
     }
 }
