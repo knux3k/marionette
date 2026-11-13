@@ -14,7 +14,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
-| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
+| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
@@ -84,6 +84,11 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   documentation and tested only against recorded shapes; none has been called live
   (`verified: false`). The Qwen and Tripo prices and endpoints are from memory. The mock PNG
   pin depends on the locked `png` encoder version.
+- Blend spaces and overlays (decision 0074): poses checked numerically on the generated
+  puppet only, not on a real rigged character or a hardware GPU. 3D sound and music layers
+  (decision 0075): the `hear` numbers and music levels are tested; kira voices, glides, the
+  rear low-pass, Doppler, synced stem start and `Player::set_head` have never played through
+  a real audio device or a headset.
 - Skinned and morphed characters have been rendered only on Mesa lavapipe (Linux container);
   never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
   export.

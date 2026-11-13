@@ -331,8 +331,29 @@ Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
 - Test character `examples/assets/puppet.glb` (CC0, made by
   `cargo run -p marionette-anim --example make_puppet -- examples/assets/puppet.glb`,
   byte-identical every run).
-- Not yet: root motion, additive layers, bone masks, animation events, IK; FBX blend shapes
+- Not yet: root motion, animation events, IK, state machines; FBX blend shapes (additive
+  layers and bone masks: decision 0074, next section)
   (the FBX converter of the FBX branch writes skins and clips; blend shapes not yet).
+
+## Blend spaces, overlays, 3D sound, music layers (decisions 0074, 0075)
+
+- Scene `examples/blend-and-sound.scene.json`, built by
+  `cargo run -q -p marionette-cli -- op batch_run '{"file":"examples/blend-and-sound.ops.json"}'`
+  (scripts `examples/scripts/strider.ts`, `orbit.ts`, `conductor.ts`).
+- `cargo run -q -p marionette-cli -- run examples/blend-and-sound.scene.json --headless --ticks 600 --seed 1`
+  prints `d344027414b14c0f555f9de4b443777a25a1b6f07886cda765a49bfd0938e236`.
+- Tests: `crates/marionette-cli/tests/blend_and_sound.rs` (recorded hash twice, synced space
+  phase runs at the blended cycle length and parameters glide, a space at an edge poses like
+  that clip, a masked overlay changes only masked bones and their children, unknown clips in
+  spaces and overlays refused, the orbiting hum pans right, muffles behind and pans left
+  through `audio_mix`, music layers fade in by intensity and out through `audio_music`); unit
+  tests in `crates/marionette-anim/src/blend.rs` (1D and 2D weights, parameter glide,
+  quaternion helpers), `crates/marionette-audio/src/lib.rs` (distance curves, rear muffle and
+  head turn, Doppler, stems decode) and `crates/marionette-audio/src/music.rs` (levels, stems
+  loop without a click).
+- Stability mode `blend-and-sound` (render).
+- Drift hash and every earlier pinned hash unchanged (new components only).
+- Not yet: heard through a real audio device or headset; HRTF, occlusion, reverb.
 
 ## Performance (workstream WP)
 
@@ -414,19 +435,4 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
 
 ## Save games (decision 0076)
 
-- `cargo test -p marionette-save --test save`: exact continuation after load (same hash as a
-  run that never saved), background writer equals `Sim::save_state` and drop finishes every
-  save, waiting saves of one slot are replaced, cut-off and flipped-byte files load the
-  backup, a crash between the two renames stays loadable and the temp file is swept, slot
-  menus read headers only, bad slot names and large meta refused, data plus Rust migrations
-  from version 1 to 3, the scene's migrations file, newer and other-game saves refused with
-  the world untouched, autosave rotation and `save_request` slots.
-- `cargo test -p marionette-agent --test save_ops`: `save_write` then `save_load` into a
-  fresh session continues with the same hash for `playground3d` (physics, input),
-  `playground2d` and `scripted`; `save_check`, `save_list`, `save_delete`; read-only mode.
-- Leaks: `save_write` and `save_load` run in every round of the session scenario of
-  `crates/marionette-agent/tests/leaks.rs`.
-- `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_game_budget`:
-  4x factory, main-thread part of a whole save 1.06 ms (budget 2 ms); save thread 68 ms for
-  2.3 MB; load 0.4 s (container).
-- Windowed `--saves` (autosave, F5, F9): compiled and wired only; never run on a screen.
+In [proofs/save-games.md](proofs/save-games.md).
