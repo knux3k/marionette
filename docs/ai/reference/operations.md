@@ -6,7 +6,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 
 | Operation | Mutating | Summary |
 | --- | --- | --- |
-| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json. |
+| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`). |
 | `project_validate` | no | Validate every *.scene.json and *.test.json under the project. Read-only. |
 | `project_schema` | no | List component and resource types. Pass `types` for their JSON Schemas, or `full: true` for the whole scene-file schema. |
 | `scene_create` | yes | Create a new scene file (empty, or `basic` with camera, light and ground). |
@@ -57,7 +57,11 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_play` | yes | Play a clip on an entity's Animator (added if missing), cross-fading every other clip out over `fade` seconds. Target: `scene` (file) or `session` (live world). |
 | `anim_blend` | yes | Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing. |
 | `anim_stop` | yes | Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds. |
+| `anim_space` | yes | Define or steer a blend space: clips mixed by parameter `x` (and `y`), e.g. idle at 0, walk at 1.5, run at 4 by speed. `points` (re)defines it; `x`/`y` set where it goes (gliding at `rate` units/s). Play it with anim_play using its `name` as clip. |
+| `anim_overlay` | yes | Play a clip on a named overlay over the base pose: limited to `mask` bones (with their children), replacing them or `additive`, at strength `weight` (fading over `fade`). E.g. a wave on the upper body while walking. `stop: true` fades it out. |
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
+| `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
+| `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
 | `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
 | `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
@@ -80,10 +84,17 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
+| `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
+| `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
+| `skills_install` | yes | Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone. |
+| `handoff_init` | yes | Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites. |
+| `handoff_status` | no | Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems. |
+| `handoff_claim` | yes | Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim. |
+| `handoff_note` | yes | End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim. |
 
 ## `project_init`
 
-Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json.
+Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`).
 
 Mutating: yes.
 
@@ -1281,6 +1292,65 @@ Output:
 | `id` | integer | yes | The entity the edit was about. |
 | `target` | string | yes | The scene file or session that was changed. |
 
+## `anim_space`
+
+Define or steer a blend space: clips mixed by parameter `x` (and `y`), e.g. idle at 0, walk at 1.5, run at 4 by speed. `points` (re)defines it; `x`/`y` set where it goes (gliding at `rate` units/s). Play it with anim_play using its `name` as clip.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `name` | string | yes | Space name; play it with anim_play `clip: <name>`. |
+| `points` | array \| null |  | Clips and where they sit; replaces the space's points. Required to create a space. |
+| `rate` | number \| null |  | Units per second toward the target (0 = jump). Omitted keeps the current rate. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `sync` | boolean \| null |  | Keep every clip at the same phase (walk/run cycles). Default true when creating. |
+| `x` | number \| null |  | Parameter target. Omitted keeps the current one. |
+| `y` | number \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `anim_overlay`
+
+Play a clip on a named overlay over the base pose: limited to `mask` bones (with their children), replacing them or `additive`, at strength `weight` (fading over `fade`). E.g. a wave on the upper body while walking. `stop: true` fades it out.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `additive` | boolean \| null |  | Add the clip's motion instead of replacing bones. |
+| `clip` | string \| null |  | Clip or blend space to play on the overlay (cross-fades its other clips out). |
+| `fade` | number \| null |  | Seconds for a full strength change and the clip cross-fade. Default 0.2. |
+| `id` | integer | yes |  |
+| `looping` | boolean \| null |  | Default true. |
+| `mask` | array \| null |  | Bone names (each with its children); replaces the mask. Empty = whole model. |
+| `name` | string | yes | Overlay name (created if missing). |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `speed` | number \| null |  |  |
+| `stop` | boolean \| null |  | Fade the overlay out (its clips stop once silent). |
+| `weight` | number \| null |  | Strength target 0..1. Default 1 (0 with `stop`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
 ## `anim_pose`
 
 World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list.
@@ -1304,6 +1374,59 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `nodes` | array of NodePose | yes |  |
+| `tick` | integer | yes |  |
+
+## `audio_music`
+
+Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `fade` | number \| null |  | Seconds for a full layer fade. |
+| `id` | integer | yes |  |
+| `intensity` | number \| null |  |  |
+| `playing` | boolean \| null |  |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `volume` | number \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `audio_mix`
+
+What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most sources to list. Default 20. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `listener` | boolean | yes | False when the world has no AudioListener (sources are then heard at their volume). |
+| `more` | integer | yes | Sources left out by `limit`. |
+| `music` | array of HeardLayer | yes |  |
+| `sources` | array of HeardSource | yes |  |
 | `tick` | integer | yes |  |
 
 ## `generate_recipe`
@@ -1862,4 +1985,159 @@ Output:
 | --- | --- | --- | --- |
 | `ran` | array of string | yes | Operation name of each step, in order. |
 | `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
+
+## `skills_list`
+
+List the task skills: name and when to use each. Read the matching one with skills_get before a task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | boolean |  | Also list the skills for work on the engine itself (default: game skills only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `skills` | array of SkillSummary | yes |  |
+
+## `skills_get`
+
+One skill's instructions: the tested procedure, traps and checks for a kind of task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Skill name from skills_list. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `instructions` | string | yes | The instructions, without the front matter. |
+| `name` | string | yes |  |
+
+## `skills_install`
+
+Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string \| null |  | Project folder to install into (default: the project root). |
+| `targets` | array \| null |  | Which skill folders to write: `claude` (`.claude/skills`) and `agents` (`.agents/skills`). Default: both. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | integer | yes | Files written. |
+| `folders` | array of string | yes | Skill folders written, relative to the project root. |
+| `skills` | array of string | yes | Skill names installed. |
+
+## `handoff_init`
+
+Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `notes` | array of string |  | Lines for START-HERE.md's "This game" section: the files that matter and what each is. |
+| `path` | string \| null |  | Project folder, relative to the project root (default: the root itself). |
+| `summary` | string \| null |  | One line on what the game is. |
+| `title` | string \| null |  | The game's title, for START-HERE.md. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `written` | array of string | yes | Files written; files that already existed are left alone. |
+
+## `handoff_status`
+
+Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `claims` | array of Claim | yes | Work in progress. |
+| `decisions` | integer | yes |  |
+| `latest_sessions` | array of string | yes | The newest session notes (at most 5, newest last); read these, not the whole folder. |
+| `next_decision` | integer | yes | The next decision number nobody has recorded or reserved. |
+| `problems` | array of string | yes | Things to fix before starting work. Empty when the handoff is in order. |
+| `read_first` | array of string | yes | Files to read before anything else, in order. |
+| `sessions` | integer | yes |  |
+
+## `handoff_claim`
+
+Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. Keep them narrow: a claim on `scenes` blocks everyone else's scene work. |
+| `branch` | string \| null |  | Branch the work is on. |
+| `date` | string | yes | Today's date, `YYYY-MM-DD` (operations never read the clock). |
+| `decisions` | integer |  | How many decision numbers to reserve (default 0). The block starts at the next free one. |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens, e.g. `power-grid`. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. |
+| `branch` | string \| null |  | Branch the work is on, if any. |
+| `date` | string | yes | The day the claim was made, `YYYY-MM-DD`. |
+| `decisions` | array \| null |  | Reserved decision numbers, first and last (inclusive). |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens; also the file name. |
+
+## `handoff_note`
+
+End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `date` | string | yes | Today's date, `YYYY-MM-DD`. |
+| `done` | array of string | yes | What was finished and how it was checked, one line each. |
+| `next` | array of string |  | The next step for whoever continues, most useful first. |
+| `not_done` | array of string |  | What was started or planned but is not finished. |
+| `release` | boolean |  | Remove the claim: its work is finished (or given up, with `not_done` saying so). |
+| `topic` | string | yes | The work this session was about (the claim's topic when there is one). |
+| `unverified` | array of string |  | What was written or assumed but not checked, with what would check it. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes | The session note written. |
+| `released` | boolean | yes | True when a claim was removed. |
+| `still_claimed` | boolean | yes | True when the topic still has a claim (work continues). |
 

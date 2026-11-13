@@ -34,6 +34,14 @@ interface Entity {
   blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
   /** Fades out one clip, or every clip when `clip` is omitted. */
   stopClip(clip?: string, options?: { fade?: number }): void;
+  /** Steers blend space `space` (see `anim_space`) to parameter (x, y), gliding at `rate`
+   *  units per second when given. Play the space with `playClip(space)`. */
+  setBlend(space: string, x: number, y?: number, options?: { rate?: number }): void;
+  /** Plays a clip on overlay `name` over the base pose: only `mask` bones (with children),
+   *  replacing them or `additive`, at strength `weight` (default 1). Like `anim_overlay`. */
+  playOverlay(name: string, clip: string, options?: { weight?: number; mask?: string[]; additive?: boolean; fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades overlay `name` out. */
+  stopOverlay(name: string, options?: { fade?: number }): void;
   /** Same as `engine.destroy(this, seconds)`. */
   destroy(seconds?: number): void;
 }
@@ -198,6 +206,39 @@ type AngularVelocity = {
   z: number;
 };
 
+/** Overlays applied in order on top of the entity's `Animator` pose. */
+type AnimOverlays = {
+  overlays: Array<{
+    /** Adds the clips' motion (relative to their first frame) instead of replacing bones. */
+    additive: boolean;
+    /** Seconds for a full 0 to 1 strength change. */
+    fade: number;
+    /** Clips (or blend spaces) of this overlay, cross-faded like `Animator` layers. */
+    layers: Array<{
+      /** Clip name in the model file; `#0`, `#1`, ... pick unnamed clips by position. */
+      clip: string;
+      /** Seconds a full 0 to 1 weight change takes (0 = immediate). */
+      fade: number;
+      /** Wraps around at the end; otherwise holds the last frame (and logs `anim_finished`). */
+      looping: boolean;
+      /** Playback rate: 1 is normal speed, 0 holds, negative plays backwards. */
+      speed: number;
+      /** Weight this layer moves toward. A layer whose weight and target are both 0 is removed. */
+      target_weight: number;
+      /** Seconds into the clip. */
+      time: number;
+      /** Blend weight now (0..1). Layer poses are averaged by weight. */
+      weight: number;
+    }>;
+    /** Bone (node) names; each includes its children. Empty = the whole model. */
+    mask: Array<string>;
+    name: string;
+    target_weight: number;
+    /** Strength now (0..1). */
+    weight: number;
+  }>;
+};
+
 /** Plays skeletal animation clips of the entity's `Model` (a glTF file with animations), blended by layer weight. Change it through the `anim_play`, `anim_blend` and `anim_stop` operations or by editing the layers directly. An empty list shows the rest pose. */
 type Animator = {
   layers: Array<{
@@ -218,13 +259,13 @@ type Animator = {
   }>;
 };
 
-/** Where sounds are heard from (usually on the camera). Pan follows the listener's right (+X) axis; gain falls off as `1 / (1 + distance)`. */
+/** Where sounds are heard from (usually on the camera, or the head in VR). Pan follows the listener's right (+X) axis; front is its -Z axis. Without a `SoundSpatial` on the source, gain falls off as `1 / (1 + distance)`. */
 type AudioListener = {
   /** Master gain. */
   volume: number;
 };
 
-/** A sound attached to an entity. `sound` is a WAV/OGG file relative to the scene or a built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`). */
+/** A sound attached to an entity. `sound` is a WAV/OGG file relative to the scene or a built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`; music stems in `Music`). Add `SoundSpatial` for 3D distance, rear muffling and Doppler. */
 type AudioSource = {
   looping: boolean;
   sound: string;
@@ -236,6 +277,28 @@ type AudioSource = {
   };
   /** Linear gain (1.0 = as recorded). */
   volume: number;
+};
+
+/** Blend spaces of an entity (used by its `Animator` and `AnimOverlays` layers). */
+type BlendSpaces = {
+  spaces: Array<{
+    name: string;
+    points: Array<{
+      clip: string;
+      x: number;
+      y: number;
+    }>;
+    /** Parameter units per second toward the target (0 = jump straight there). */
+    rate: number;
+    /** Play every clip at the same phase (walk/run cycles keep their footfalls together). The layer's `time` is then the phase, 0 to 1. */
+    sync: boolean;
+    /** Parameter the space moves toward. */
+    target_x: number;
+    target_y: number;
+    /** Parameter now. */
+    x: number;
+    y: number;
+  }>;
 };
 
 /** Turns on bloom: light brighter than `threshold` spills into a soft glow around it (lamps, emissive screens, the sun on metal). Works best with `ToneMapping`, which keeps colors above 1.0 for the glow to pick up. Renders models into a floating-point target first (decision 0064). */
@@ -636,6 +699,27 @@ type ModelPlacement = {
   };
 };
 
+/** Layered music, not positional. Raise `intensity` to bring layers in. */
+type Music = {
+  /** Seconds for a layer to fade fully in or out (0 = instant). */
+  fade: number;
+  intensity: number;
+  layers: Array<{
+    /** The layer plays while the music's intensity is at least this. */
+    at: number;
+    /** Level now, 0..1 (moved by the engine; start at 0). */
+    level: number;
+    /** Gain of this stem at full level. */
+    mix: number;
+    /** WAV/OGG file relative to the scene, or a built-in stem (`builtin:music_pad`, `builtin:music_bass`, `builtin:music_drums`, `builtin:music_lead`). */
+    sound: string;
+  }>;
+  /** False fades every layer out (the player stops the stems once all are silent). */
+  playing: boolean;
+  /** Master gain. */
+  volume: number;
+};
+
 /** Turns physics on for the scene and picks 3D or 2D. */
 type PhysicsSettings = {
   /** Acceleration in m/s² (2D uses x and y). */
@@ -762,6 +846,20 @@ type SkyLight = {
     g: number;
     r: number;
   };
+};
+
+/** 3D settings for the `AudioSource` on the same entity. */
+type SoundSpatial = {
+  /** Doppler pitch shift: 0 off, 1 real speed of sound. Player only (needs velocities). */
+  doppler: number;
+  /** See [`Rolloff`]. */
+  max_distance: number;
+  /** Full gain inside this distance (meters); also where panning reaches full width. */
+  min_distance: number;
+  /** 0..1: low-pass when the sound is behind the listener (1 = down to 4 kHz straight behind). Stereo panning alone cannot tell front from back; this can. */
+  rear_muffle: number;
+  /** How gain falls with distance (between `min_distance` and `max_distance`). */
+  rolloff: "Inverse" | "Linear" | "Constant";
 };
 
 /** The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity. */
@@ -908,9 +1006,11 @@ type Velocity = {
 /** Every component, by the name used in scene files. */
 interface Components {
   AngularVelocity: AngularVelocity;
+  AnimOverlays: AnimOverlays;
   Animator: Animator;
   AudioListener: AudioListener;
   AudioSource: AudioSource;
+  BlendSpaces: BlendSpaces;
   Camera: Camera;
   CastShadows: CastShadows;
   CharacterController: CharacterController;
@@ -930,6 +1030,7 @@ interface Components {
   Material: Material;
   Model: Model;
   ModelPlacement: ModelPlacement;
+  Music: Music;
   PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;
@@ -939,6 +1040,7 @@ interface Components {
   ScriptInbox: ScriptInbox;
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
+  SoundSpatial: SoundSpatial;
   SpotLight: SpotLight;
   Sprite: Sprite;
   SpriteRegion: SpriteRegion;

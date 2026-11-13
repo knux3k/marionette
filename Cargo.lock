@@ -2235,6 +2235,7 @@ name = "marionette-agent"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "bevy_reflect",
  "marionette-anim",
  "marionette-assets",
  "marionette-audio",
