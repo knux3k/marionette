@@ -60,7 +60,7 @@ Decision 0076; code `crates/marionette-save`.
    relative to the scene, or `""`). Everything the player keeps must be in registered
    components or resources; anything else is lost on load.
 2. Ask for saves at safe moments from scripts: `engine.emit("save_request")` (autosave slot)
-   or `engine.emit("save_request", JSON.stringify({ slot: "checkpoint", label: "Gate" }))`.
+   or `engine.emit("save_request", { slot: "checkpoint", label: "Gate" })`.
 3. Changing saved data: raise `version` and add a step `{ "from": <old>, "changes": [...] }`
    to the migrations file (`rename_type`, `remove_type`, `rename_field`, `set_field`,
    `remove_field`), or a Rust step with `SaveModule::with(Migrations::new().rust(old, f))`

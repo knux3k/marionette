@@ -16,3 +16,7 @@
   4x factory, main-thread part of a whole save 1.06 ms (budget 2 ms); save thread 68 ms for
   2.3 MB; load 0.4 s (container).
 - Windowed `--saves` (autosave, F5, F9): compiled and wired only; never run on a screen.
+- `a_script_asking_for_a_save_gets_its_own_slot` in `crates/marionette-agent/tests/save_ops.rs`:
+  a TypeScript `engine.emit("save_request", { slot, label })` makes the autosaver write that
+  slot with the label.
+- Skill `marionette-save-games`: checked by `cargo test -p marionette-cli --test skills`.

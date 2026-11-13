@@ -1,7 +1,7 @@
 //! Autosave: every `SaveFormat.autosave_every` ticks and whenever game code asks.
 //!
 //! Game code asks by recording a `save_request` event (scripts: `engine.emit("save_request")`
-//! or `engine.emit("save_request", JSON.stringify({ slot: "checkpoint", label: "Gate" }))`;
+//! or `engine.emit("save_request", { slot: "checkpoint", label: "Gate" })`;
 //! Rust systems: push the same event to the `EventLog`). Ask at safe moments (a checkpoint,
 //! a level change), not mid-action. Events are records, not state, so asking changes no
 //! state hash. A request without a slot is an autosave.

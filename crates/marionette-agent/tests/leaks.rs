@@ -107,16 +107,18 @@ fn memory_stays_flat_under_repeated_work() {
             json!({ "session": id, "snapshot": "a" }),
         );
         // Save games (decision 0076): write and load a slot.
-        call(
-            &mut agent,
-            "save_write",
-            json!({ "session": id, "slot": "leak", "dir": saves }),
-        );
-        call(
-            &mut agent,
-            "save_load",
-            json!({ "session": id, "slot": "leak", "dir": saves }),
-        );
+        if cfg!(feature = "save") {
+            call(
+                &mut agent,
+                "save_write",
+                json!({ "session": id, "slot": "leak", "dir": saves }),
+            );
+            call(
+                &mut agent,
+                "save_load",
+                json!({ "session": id, "slot": "leak", "dir": saves }),
+            );
+        }
         call(&mut agent, "session_stop", json!({ "session": id }));
     });
     let _ = std::fs::remove_dir_all(&saves);

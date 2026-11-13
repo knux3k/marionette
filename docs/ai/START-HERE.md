@@ -13,6 +13,12 @@ when the task calls for it, and then only the section that matters.
 2. [FOCUSES.md](FOCUSES.md): the four standing focuses and the open gaps.
 3. [STATE.md](STATE.md): status per plan line and the UNVERIFIED list.
 
+## Skills first
+
+For a task with a procedure, load its skill instead of a doc: `.claude/skills/<name>/SKILL.md`
+(index in `AGENTS.md`; agents that read skills load them by themselves; decision 0160). The
+table below is for everything else.
+
 ## Read when the task needs it
 
 | Task | Read |
@@ -21,7 +27,7 @@ when the task calls for it, and then only the section that matters.
 | Change engine code | the crate map and the relevant section of [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Add a component, system, operation, crate, scene, test | the recipe in [HOWTO.md](HOWTO.md) |
 | Build, test, toolchain, durations, no GPU | [ENVIRONMENT.md](ENVIRONMENT.md) |
-| Rerun or add a proof (hashes, reference images, test names) | the section in [PROOFS.md](PROOFS.md) |
+| Rerun or add a proof (hashes, reference images, test names) | one file of `docs/ai/proofs/` (index: [PROOFS.md](PROOFS.md)) |
 | Find why something was chosen | [DECISIONS.md](DECISIONS.md), then one record in `docs/decisions/` |
 | When something changed | [SESSION-LOG.md](SESSION-LOG.md), or `git log` |
 | Assets and licenses (normative) | [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) |
@@ -33,6 +39,7 @@ when the task calls for it, and then only the section that matters.
 | Save games | "Add save games to a game" in [HOWTO.md](HOWTO.md), decision 0076 |
 | Generating images and models | [GENERATION.md](GENERATION.md) |
 | The six proof games and their gaps | [PROOF-SCENES.md](PROOF-SCENES.md) |
+| Add or update a skill | `.claude/skills/engine-add-skill/SKILL.md` |
 | Terms | [GLOSSARY.md](GLOSSARY.md) |
 
 Generated reference in `docs/ai/reference/` (large; search it, do not read it whole):

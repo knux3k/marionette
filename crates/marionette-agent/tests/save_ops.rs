@@ -1,5 +1,7 @@
 //! Save operations on live sessions with physics, input and scripts (decision 0076).
 
+#![cfg(feature = "save")]
+
 use marionette_agent::Agent;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -111,4 +113,39 @@ fn save_operations_refuse_bad_slots_and_read_only_mode_refuses_writes() {
         .unwrap_err();
     assert_eq!(e.0[0].code, "agent.read_only");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_script_asking_for_a_save_gets_its_own_slot() {
+    let root = std::env::temp_dir().join(format!("marionette-saveops-script-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(
+        root.join("gate.ts"),
+        "export function update(self: Entity): void {\n  if (engine.tick === 10) engine.emit(\"save_request\", { slot: \"checkpoint\", label: \"Gate\" });\n}\n",
+    )
+    .unwrap();
+    let scene = root.join("gate.scene.json");
+    std::fs::write(
+        &scene,
+        r#"{"format":"marionette.scene","version":1,"resources":{"SaveFormat":{"game":"g","version":1,"autosave_every":0,"autosave_slots":2,"migrations":""}},"entities":[
+{"id":1,"name":"gate","components":{"Position":{"x":0,"y":0,"z":0},"Script":{"path":"gate.ts"}}}]}"#,
+    )
+    .unwrap();
+    let engine = marionette_agent::Engine::standard();
+    let mut sim = engine.load_file(&scene, "gate", 0).unwrap();
+    let store = marionette_save::SaveStore::open(root.join("saves")).unwrap();
+    let registry = std::sync::Arc::new(marionette_core::module::registry_with(&engine.modules()));
+    let writer = marionette_save::SaveWriter::new(store.clone(), registry);
+    let mut auto = marionette_save::Autosaver::new(&sim, &store);
+    let mut queued = Vec::new();
+    for _ in 0..20 {
+        sim.step();
+        queued.extend(auto.after_step(&mut sim, &writer).unwrap());
+    }
+    drop(writer);
+    assert_eq!(queued, ["checkpoint"]);
+    let h = store.read("checkpoint").unwrap().0.header;
+    assert_eq!((h.tick, h.label.as_str()), (11, "Gate"));
+    let _ = std::fs::remove_dir_all(&root);
 }
