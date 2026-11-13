@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "wall_ref",
+  "output": "image",
+  "file": "wall_ref.png",
+  "sha256": "ba0b3c04c2fe9b1744603051d9e1e0e9b4950c7d8e9a8c08925014a00adc1adb",
+  "recipe": "wall_ref.recipe.json",
+  "recipe_sha256": "66324956a9f67b593930ec5efd4795ffb149501b25f2a60bc2ec12c505dc24c8",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a square block of neatly trimmed green boxwood hedge, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "e7abcd74e5a0641c29aa6adb955dd20a9113f779b370dc917cdb25c4eefc4612",
+    "raw_sha256": "02a9a184906b0e8cf1cc09096bc1a78083bb65cf454e49c845a2d183ba3478ca",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
