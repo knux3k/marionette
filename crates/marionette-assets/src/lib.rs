@@ -395,8 +395,44 @@ fn gltf_image(d: &gltf::image::Data, srgb: bool) -> Image {
     }
 }
 
+/// Images that modules make at run time (for example a distance-field font atlas), found by
+/// the name `generated:<key>`. The registry holds at most [`generated::LIMIT`] images; the
+/// oldest is dropped first, so it cannot grow without bound. Keys should name the content
+/// (a hash), so two scenes never clash.
+pub mod generated {
+    use super::Image;
+    use std::sync::{Arc, Mutex};
+
+    pub const LIMIT: usize = 8;
+    static IMAGES: Mutex<Vec<(String, Arc<Image>)>> = Mutex::new(Vec::new());
+
+    /// Stores `image` under `key` (replacing an older one with that key).
+    pub fn put(key: &str, image: Arc<Image>) {
+        let mut all = IMAGES.lock().unwrap_or_else(|e| e.into_inner());
+        all.retain(|(k, _)| k != key);
+        all.push((key.to_string(), image));
+        if all.len() > LIMIT {
+            all.remove(0);
+        }
+    }
+
+    pub fn get(key: &str) -> Option<Image> {
+        let all = IMAGES.lock().unwrap_or_else(|e| e.into_inner());
+        all.iter().find(|(k, _)| k == key).map(|(_, i)| (**i).clone())
+    }
+
+    pub fn contains(key: &str) -> bool {
+        let all = IMAGES.lock().unwrap_or_else(|e| e.into_inner());
+        all.iter().any(|(k, _)| k == key)
+    }
+}
+
 /// Loads a sprite image by its scene `image` string (see `marionette_core::spatial::Sprite`).
 pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
+    if let Some(key) = name.strip_prefix("generated:") {
+        return generated::get(key)
+            .ok_or_else(|| format!("no generated image `{key}` (it was replaced or never made)"));
+    }
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {
             format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas, font")
