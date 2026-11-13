@@ -25,6 +25,8 @@ pub struct FrameData {
     pub ui: Vec<UiDraw>,
     /// Copies drawn from modules' arrays (see `BulkDrawHooks`), in hook order.
     pub bulk: Vec<marionette_core::spatial::BulkDraw>,
+    /// World-space quads from modules (see `QuadDrawHooks`), in hook order.
+    pub quads: Vec<marionette_core::spatial::WorldQuads>,
     /// Point and spot lights, sorted by entity id (decision 0063).
     pub local_lights: Vec<LocalLightData>,
     /// Opt-in looks; `None` (the default) keeps the plain look.
@@ -449,6 +451,19 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         };
         for hook in &hooks.0 {
             hook(world, &context, &mut frame.bulk);
+        }
+    }
+    if let Some(hooks) = world.get_resource::<marionette_core::spatial::QuadDrawHooks>() {
+        let eye = frame
+            .cameras
+            .first()
+            .map_or([0.0; 3], |c| c.world.w_axis.truncate().to_array());
+        let ctx = marionette_core::spatial::QuadContext {
+            alpha: alpha.clamp(0.0, 1.0),
+            eye,
+        };
+        for hook in &hooks.0 {
+            hook(world, &ctx, &mut frame.quads);
         }
     }
     // Stable draw order for sprites: layer, then entity id.

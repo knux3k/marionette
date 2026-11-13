@@ -60,3 +60,8 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0074 | Blend spaces (gradient band weights, phase sync) and masked or additive overlays as optional components | accepted |
 | 0075 | 3D sound through one `hear` formula (distance curves, rear muffle, Doppler, head pose), live voices, layered `Music` | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
+| 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
+| 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
+| 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |
+| 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
+| 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |

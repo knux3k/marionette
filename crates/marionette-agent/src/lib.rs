@@ -14,6 +14,7 @@ pub mod edit;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
+pub mod handoff;
 #[cfg(feature = "jobs-ts")]
 pub mod jobs_ts;
 #[cfg(feature = "import")]
@@ -34,7 +35,10 @@ pub mod scenario;
 #[cfg(feature = "script")]
 pub mod script;
 pub mod session;
+pub mod skills;
 pub mod stability;
+#[cfg(feature = "ui3d")]
+mod ui3d;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -145,6 +149,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "ui3d")]
+    "ui3d",
     #[cfg(feature = "net")]
     "net",
 ];
@@ -165,6 +171,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        #[cfg(feature = "ui3d")]
+        ui3d::ops(),
         audio::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
@@ -178,6 +186,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "import")]
         prefab::ops(),
         batch::ops(),
+        skills::ops(),
+        handoff::ops(),
     ];
     groups.into_iter().flatten().collect()
 }
