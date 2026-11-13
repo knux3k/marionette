@@ -33,7 +33,11 @@ fn four_players_late_join_and_bad_network_end_equal() {
                "link": {"latency_ms": 80, "jitter_ms": 30, "loss": 0.1, "duplicate": 0.02}}),
     );
     assert_eq!(r["all_equal"], true, "{r}");
-    assert_eq!(r["peers"].as_array().unwrap().len(), 4, "three clients and the late joiner");
+    assert_eq!(
+        r["peers"].as_array().unwrap().len(),
+        4,
+        "three clients and the late joiner"
+    );
     assert!(r["hash_checks"].as_u64().unwrap() >= 30);
     // Same request, same result (virtual time, seeded network).
     let again = call(
@@ -61,8 +65,14 @@ fn frames_drive_the_named_players_only() {
         };
         if t == 0 {
             f.roster = vec![
-                RosterEvent::Join { slot: 0, peer: PeerId(1) },
-                RosterEvent::Join { slot: 1, peer: PeerId(2) },
+                RosterEvent::Join {
+                    slot: 0,
+                    peer: PeerId(1),
+                },
+                RosterEvent::Join {
+                    slot: 1,
+                    peer: PeerId(2),
+                },
             ];
             f.inputs = vec![(1, 1, 1.0)]; // player 1 holds move_x right
         }
@@ -81,15 +91,25 @@ fn frames_drive_the_named_players_only() {
             .unwrap()
     };
     assert_eq!(x("player-0"), -3.0, "player 0 did not move");
-    assert!((x("player-1") - (-1.0 + 3.0)).abs() < 0.1, "player 1 moved about 3 m in a second");
+    assert!(
+        (x("player-1") - (-1.0 + 3.0)).abs() < 0.1,
+        "player 1 moved about 3 m in a second"
+    );
     assert_eq!(x("player-2"), 1.0, "slot 2 is not in the session");
 }
 
 #[test]
 fn achievements_file_is_checked() {
     let mut a = agent();
-    let r = call(&mut a, "achievements_check", json!({"file": "examples/coop.achievements.json"}));
-    assert_eq!(r["achievements"], json!(["FIRST_JUMP", "JUMPS_100", "FULL_HOUSE"]));
+    let r = call(
+        &mut a,
+        "achievements_check",
+        json!({"file": "examples/coop.achievements.json"}),
+    );
+    assert_eq!(
+        r["achievements"],
+        json!(["FIRST_JUMP", "JUMPS_100", "FULL_HOUSE"])
+    );
     assert_eq!(r["stat_driven"], 1);
     let e = a
         .call("achievements_check", json!({"file": SCENE}))

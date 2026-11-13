@@ -720,6 +720,12 @@ type Music = {
   volume: number;
 };
 
+/** The players in a networked session, by slot (0 is the host). Part of the state hash, so a peer that disagrees about who is playing is caught as a desync. */
+type NetPlayers = {
+  /** Occupied slots, ascending. */
+  slots: Array<number>;
+};
+
 /** Turns physics on for the scene and picks 3D or 2D. */
 type PhysicsSettings = {
   /** Acceleration in m/s² (2D uses x and y). */
@@ -1032,6 +1038,7 @@ interface Resources {
   FixedStep: FixedStep;
   Fog: Fog;
   InputConfig: InputConfig;
+  NetPlayers: NetPlayers;
   PhysicsSettings: PhysicsSettings;
   Shadows: Shadows;
   SkyLight: SkyLight;

@@ -101,13 +101,11 @@ fn check(agent: &mut Agent, input: CheckInput) -> Result<CheckOutput, Errors> {
     let path = agent.resolve(&input.file)?;
     let text = std::fs::read_to_string(&path).map_err(|e| {
         Errors::from(
-            Diagnostic::error(codes::BAD_INPUT, format!("cannot read {}: {e}", input.file))
-                .file(&input.file),
+            Diagnostic::error(codes::BAD_INPUT, format!("cannot read {}: {e}", input.file)).file(&input.file),
         )
     })?;
-    let defs = marionette_platform::parse_definitions(&text).map_err(|e| {
-        Errors::from(Diagnostic::error(e.code, e.message).file(&input.file))
-    })?;
+    let defs = marionette_platform::parse_definitions(&text)
+        .map_err(|e| Errors::from(Diagnostic::error(e.code, e.message).file(&input.file)))?;
     Ok(CheckOutput {
         stat_driven: defs.achievements.iter().filter(|a| a.stat.is_some()).count(),
         achievements: defs.achievements.into_iter().map(|a| a.id).collect(),

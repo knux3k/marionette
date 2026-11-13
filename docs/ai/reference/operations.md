@@ -6,7 +6,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 
 | Operation | Mutating | Summary |
 | --- | --- | --- |
-| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json. |
+| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`). |
 | `project_validate` | no | Validate every *.scene.json and *.test.json under the project. Read-only. |
 | `project_schema` | no | List component and resource types. Pass `types` for their JSON Schemas, or `full: true` for the whole scene-file schema. |
 | `scene_create` | yes | Create a new scene file (empty, or `basic` with camera, light and ground). |
@@ -83,11 +83,20 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
+| `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
+| `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
+| `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
+| `skills_install` | yes | Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone. |
+| `handoff_init` | yes | Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites. |
+| `handoff_status` | no | Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems. |
+| `handoff_claim` | yes | Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim. |
+| `handoff_note` | yes | End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim. |
 
 ## `project_init`
 
-Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json.
+Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`).
 
 Mutating: yes.
 
@@ -1959,6 +1968,62 @@ Output:
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
 
+## `net_simulate`
+
+Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array \| null |  | Actions that travel. Default: the scene's action map. |
+| `drop_at` | integer \| null |  |  |
+| `drop_slot` | integer \| null |  | A client slot whose game vanishes at `drop_at`. |
+| `hash_interval` | integer \| null |  | Compare state hashes every this many ticks (0 = never). Default 60. |
+| `input_change` | number \| null |  | Chance per tick per action that a player changes it. Default 0.05. |
+| `late_join_at` | integer \| null |  | A player who joins at this host tick (gets a snapshot). |
+| `link` | LinkConditions \| null |  | Simulated link, each direction. Default 40 ms, 10 ms jitter, 2% loss. |
+| `players` | integer \| null |  | Players at the start, including the host (1 to 8). Default 2. |
+| `scene` | string | yes | Scene file, relative to the project root. |
+| `seed` | integer \| null |  | Seed of the sims, the inputs and the network. Default 1. |
+| `ticks` | integer \| null |  | Ticks the host runs. Default 600. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string | yes |  |
+| `all_equal` | boolean | yes | Every peer still playing ended in the host's state. |
+| `desyncs` | array of array of any | yes | (slot, tick) of each hash mismatch the session itself reported. |
+| `final_tick` | integer | yes |  |
+| `hash_checks` | integer | yes | Hash comparisons made by the session protocol. |
+| `host_bytes_per_tick` | number | yes | Host bytes sent per tick, average. |
+| `host_hash` | string | yes |  |
+| `peers` | array of PeerReport | yes |  |
+| `seconds` | number | yes | Virtual seconds of play. |
+
+## `achievements_check`
+
+Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes | Definitions file, relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `achievements` | array of string | yes |  |
+| `stat_driven` | integer | yes | Achievements unlocked by a stat threshold. |
+| `stats` | array of string | yes |  |
+
 ## `batch_run`
 
 Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied.
@@ -1978,4 +2043,159 @@ Output:
 | --- | --- | --- | --- |
 | `ran` | array of string | yes | Operation name of each step, in order. |
 | `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
+
+## `skills_list`
+
+List the task skills: name and when to use each. Read the matching one with skills_get before a task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | boolean |  | Also list the skills for work on the engine itself (default: game skills only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `skills` | array of SkillSummary | yes |  |
+
+## `skills_get`
+
+One skill's instructions: the tested procedure, traps and checks for a kind of task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Skill name from skills_list. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `instructions` | string | yes | The instructions, without the front matter. |
+| `name` | string | yes |  |
+
+## `skills_install`
+
+Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string \| null |  | Project folder to install into (default: the project root). |
+| `targets` | array \| null |  | Which skill folders to write: `claude` (`.claude/skills`) and `agents` (`.agents/skills`). Default: both. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | integer | yes | Files written. |
+| `folders` | array of string | yes | Skill folders written, relative to the project root. |
+| `skills` | array of string | yes | Skill names installed. |
+
+## `handoff_init`
+
+Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `notes` | array of string |  | Lines for START-HERE.md's "This game" section: the files that matter and what each is. |
+| `path` | string \| null |  | Project folder, relative to the project root (default: the root itself). |
+| `summary` | string \| null |  | One line on what the game is. |
+| `title` | string \| null |  | The game's title, for START-HERE.md. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `written` | array of string | yes | Files written; files that already existed are left alone. |
+
+## `handoff_status`
+
+Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `claims` | array of Claim | yes | Work in progress. |
+| `decisions` | integer | yes |  |
+| `latest_sessions` | array of string | yes | The newest session notes (at most 5, newest last); read these, not the whole folder. |
+| `next_decision` | integer | yes | The next decision number nobody has recorded or reserved. |
+| `problems` | array of string | yes | Things to fix before starting work. Empty when the handoff is in order. |
+| `read_first` | array of string | yes | Files to read before anything else, in order. |
+| `sessions` | integer | yes |  |
+
+## `handoff_claim`
+
+Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. Keep them narrow: a claim on `scenes` blocks everyone else's scene work. |
+| `branch` | string \| null |  | Branch the work is on. |
+| `date` | string | yes | Today's date, `YYYY-MM-DD` (operations never read the clock). |
+| `decisions` | integer |  | How many decision numbers to reserve (default 0). The block starts at the next free one. |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens, e.g. `power-grid`. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. |
+| `branch` | string \| null |  | Branch the work is on, if any. |
+| `date` | string | yes | The day the claim was made, `YYYY-MM-DD`. |
+| `decisions` | array \| null |  | Reserved decision numbers, first and last (inclusive). |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens; also the file name. |
+
+## `handoff_note`
+
+End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `date` | string | yes | Today's date, `YYYY-MM-DD`. |
+| `done` | array of string | yes | What was finished and how it was checked, one line each. |
+| `next` | array of string |  | The next step for whoever continues, most useful first. |
+| `not_done` | array of string |  | What was started or planned but is not finished. |
+| `release` | boolean |  | Remove the claim: its work is finished (or given up, with `not_done` saying so). |
+| `topic` | string | yes | The work this session was about (the claim's topic when there is one). |
+| `unverified` | array of string |  | What was written or assumed but not checked, with what would check it. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes | The session note written. |
+| `released` | boolean | yes | True when a claim was removed. |
+| `still_claimed` | boolean | yes | True when the topic still has a claim (work continues). |
 
