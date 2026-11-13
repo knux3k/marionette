@@ -15,6 +15,7 @@ use marionette_core::{Diagnostic, Errors};
 use serde_json::{Value, json};
 use std::process::ExitCode;
 
+mod audio_check;
 mod render;
 mod stability;
 
@@ -192,6 +193,20 @@ enum Command {
         #[arg(long)]
         lean: bool,
     },
+    /// Play a synth stress test through the real audio device and report glitch counters:
+    /// callbacks that ran longer than the audio they made, stream underruns, dropped commands,
+    /// stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device.
+    AudioCheck {
+        /// Seconds to play.
+        #[arg(long, default_value_t = 8.0)]
+        seconds: f64,
+        /// Synth voices sounding at once (notes start at this many per second, each held 1 s).
+        #[arg(long, default_value_t = 64)]
+        voices: usize,
+        /// Stream this WAV or OGG in a loop alongside (default: a generated music file).
+        #[arg(long)]
+        stream: Option<String>,
+    },
     /// Write the generated reference docs (operations, components, CLI help).
     Docs {
         /// Output directory.
@@ -310,6 +325,13 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                     ExitCode::FAILURE
                 }
             };
+        }
+        Command::AudioCheck {
+            seconds,
+            voices,
+            stream,
+        } => {
+            return audio_check::run(seconds, voices, stream.as_deref(), cli.json);
         }
         Command::Docs { out, check } => docs(&agent, &out, check),
         Command::Ops { brief, tools } => ops(&agent, brief, &tools),

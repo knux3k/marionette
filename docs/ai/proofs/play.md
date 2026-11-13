@@ -57,3 +57,26 @@ Line 6 (input, physics, audio, UI):
 - Stability mode `blend-and-sound` (render).
 - Drift hash and every earlier pinned hash unchanged (new components only).
 - Not yet: heard through a real audio device or headset; HRTF, occlusion, reverb.
+
+## Procedural and streamed audio (decision 0220)
+
+- `cargo test -p marionette-synth`: pitch of sine, saw, square, triangle within 2 Hz; level and
+  no DC or clipping; identical bits for block sizes 1, 7, 64, 480, 4096; a note starts on the
+  exact frame (1000) even when blocks split elsewhere; late commands run now and count; 300
+  notes on 16 voices steal without NaN or going past full scale; release, master glide and
+  looping streams make no clicks; a WAV streamed from disk keeps its pitch and start frame, a
+  44.1 kHz file resamples to 48 kHz, looping continues past the file's end; custom generators
+  mix in and are handed back; bad scores fail with a reason.
+- `tests/realtime.rs`: zero allocations in 400 renders with 32 voices, queued commands,
+  stealing and a generator.
+- `cargo test -p marionette-cli --test synth`: `synth_render` of `examples/synth-demo.score.json`
+  (report, envelope, WAV size) and `synth_patches`.
+- Cost, `cargo run --release -p marionette-synth --example bench` (cloud container, one core,
+  480-frame blocks at 48 kHz): sustained voices as percent of one core: 64 voices 5.6 to 6.5,
+  128 voices 11.7 to 13.0, 256 voices 20 to 30, 512 voices 37 to 58.
+- `marionette audio-check` without a device exits 2 with a message (checked here).
+- Not checked: any of it through a real audio device; OGG streaming (WAV only is tested; the
+  decoder is shared); the PC figures. Planned PC run (Unity lock free, PC idle 5 minutes):
+  `cargo run --release -p marionette-cli -- audio-check --seconds 30 --voices 128`, then 256,
+  expecting `pass: true`; record `max_block_us` and the device rate here.
+

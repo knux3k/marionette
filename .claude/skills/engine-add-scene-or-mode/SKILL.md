@@ -1,6 +1,6 @@
 ---
 name: engine-add-scene-or-mode
-description: Add an example scene, proof scene or game mode to the Marionette engine repository with its stability mode, reference image and proof entry. Use when working on the engine itself and adding or renaming a file ending in .scene.json, adding a reference image, or when the stability or render tests fail because a scene is not registered.
+description: Add an example scene, proof scene or game mode to the Marionette engine repository with its stability mode, reference image and proof entry. Use when adding or renaming a .scene.json file or a reference image, or when stability or render tests fail on an unregistered scene.
 ---
 
 # Add a scene or game mode (engine work)
