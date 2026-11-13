@@ -11,6 +11,7 @@ Commands:
   schema       Print the JSON Schema of the scene format and every component and resource
   validate     Check a scene file against the schema
   run          Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
+  edit         Open the scene editor window: fly around (right mouse + WASD), click things to inspect them, play, pause and step, and move, copy or delete entities (written through the edit operations, with undo). Keys are listed in the window's bottom bar
   screenshot   Simulate N ticks, then render one image with no window and save it as PNG
   bench        Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
   xr           Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered, head, controllers and hands fed in as input (marionette-xr). With --probe, only report the runtime and headset. Ends when the runtime ends the session, or after --frames or --ticks
@@ -180,6 +181,48 @@ Options:
 
       --frame-stats <FRAME_STATS>
           Windowed mode: also write the frame numbers to this JSON file
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette edit`
+
+```text
+Open the scene editor window: fly around (right mouse + WASD), click things to inspect them, play, pause and step, and move, copy or delete entities (written through the edit operations, with undo). Keys are listed in the window's bottom bar
+
+Usage: edit [OPTIONS] <SCENE>
+
+Arguments:
+  <SCENE>
+          
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --seed <SEED>
+          [default: 0]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --size <SIZE>
+          Window size, e.g. 1600x900
+          
+          [default: 1600x900]
+
+      --mute
+          Do not open the audio device
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --frames <FRAMES>
+          Close after this many frames (for scripted checks)
 
   -h, --help
           Print help

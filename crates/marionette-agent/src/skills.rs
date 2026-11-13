@@ -47,6 +47,7 @@ pub const ALL: &[Skill] = &[
     skill!("marionette-find-slowdown"),
     skill!("marionette-generate-assets", Some("generate")),
     skill!("marionette-handoff"),
+    skill!("marionette-inspect-scene", Some("editor")),
     skill!("marionette-light-scene"),
     skill!("marionette-make-game", Some("starter")),
     skill!("marionette-make-vr"),

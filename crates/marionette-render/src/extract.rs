@@ -216,8 +216,8 @@ fn rgba(c: Color) -> [f32; 4] {
     [c.r, c.g, c.b, c.a]
 }
 
-/// World matrix from `Position`/`Transform`/`LookAt`.
-fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
+/// World matrix from `Position`/`Transform`/`LookAt` (what the renderer draws an entity at).
+pub fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
     let t = t.copied().unwrap_or_default();
     let translation = p.map_or(v3(t.translation), |p| Vec3::new(p.x, p.y, p.z));
     let mut rotation = Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize();

@@ -36,6 +36,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_stats` | no | Tick, entity count and step / render timings of a session. |
 | `observe_raycast` | no | Cast a ray through the physics scene; returns the first entity hit, distance, point and normal. |
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
+| `editor_view` | no | The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene). |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
 | `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
@@ -798,6 +799,46 @@ Output:
 | `next_offset` | integer \| null |  |  |
 | `tick` | integer | yes |  |
 | `total` | integer | yes |  |
+
+## `editor_view`
+
+The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `eye` | array \| null |  | Editor camera position. |
+| `frame` | boolean |  | Move the camera so the selection (or the whole scene) fills the view. |
+| `grid` | boolean \| null |  | Show the ground grid (default true). |
+| `image` | boolean \| null |  | Write the image (default true). With false only picks and the inspector come back. |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `look_at` | array \| null |  | Point the editor camera looks at (with `eye`; default: 1 m ahead along -Z). |
+| `msaa` | integer \| null |  | MSAA samples, 1 or 4 (default 4). |
+| `out` | string \| null |  | Output PNG path (default `.marionette/screenshots/<name>-editor.png`). |
+| `panels` | boolean \| null |  | Show the entity list and inspector panels (default true). |
+| `pick` | array of array of number |  | Pixels to pick at, `[x, y]` with y down. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `select` | integer \| null |  | Entity to select (highlighted, boxed and shown in the inspector). |
+| `session` | string \| null |  |  |
+| `size` | string \| null |  | Image size `WIDTHxHEIGHT` (default 1280x720; pick pixels use the same size). |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `camera` | array of array of number | yes | Where the editor camera ended up (useful after `frame`): position and look direction. |
+| `entities` | integer | yes |  |
+| `height` | integer | yes |  |
+| `path` | string \| null |  | PNG path, when an image was written. |
+| `picks` | array of Pick | yes |  |
+| `selected` | Selected \| null |  |  |
+| `tick` | integer | yes |  |
+| `width` | integer | yes |  |
 
 ## `test_run`
 

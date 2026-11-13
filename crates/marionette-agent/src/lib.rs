@@ -11,6 +11,8 @@ pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
+#[cfg(feature = "editor")]
+pub mod editor;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
@@ -168,6 +170,8 @@ pub const FEATURES: &[&str] = &[
     "nav",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "editor")]
+    "editor",
     #[cfg(feature = "netplay")]
     "netplay",
 ];
@@ -179,6 +183,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         edit::ops(),
         session::ops(),
         observe::ops(),
+        #[cfg(feature = "editor")]
+        editor::ops(),
         scenario::ops(),
         #[cfg(feature = "import")]
         library::ops(),
