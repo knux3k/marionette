@@ -39,7 +39,7 @@ the recipe that rebuilds the scene, so keep it beside the scene.
 | Something visible in 2D | `Transform`, `Sprite` |
 | A solid object | `Collider`; add `RigidBody` to make it move |
 | A player | `CharacterController` plus the actions it names |
-| Controls | resource `InputConfig` naming an action map file (`*.actions.json`); scripts read actions, never keys |
+| Controls | resource `InputConfig` naming an action map file (`*.actions.json`); scripts read actions, never keys; gamepads bind as `pad:South`, `axis:LeftStickX` (up and right +) |
 | Sound | `AudioSource` (heard through an `AudioListener`) |
 | Screen UI | `UiNode` with `UiRect`, `UiText`, `UiImage`, `UiButton` |
 | Behaviour | `Script` (skill `marionette-write-script`) |

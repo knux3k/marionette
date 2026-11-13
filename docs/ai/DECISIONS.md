@@ -73,6 +73,10 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
 | 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |
 | 0190 | Headsets through OpenXR: poses enter as recorded input, gameplay in `marionette-xr`, the runtime in `marionette-openxr` (Vulkan through wgpu-hal, one swapchain per eye) | accepted |
+| 0170 | Windowed play picks present mode, frame queue, frame cap; borderless fullscreen toggle; cursor lock | accepted |
+| 0171 | Focus loss releases held input; hidden windows sleep; vsync frame times snap to the refresh | accepted |
+| 0172 | Gamepads through gilrs in `marionette-gamepad`, polled by window hooks | accepted |
+| 0173 | Every windowed run measures frame pacing and input latency (`FrameStats`, `--frame-stats`) | accepted |
 | 0220 | Real-time synth crate (lock-free commands, sample-accurate notes, generators, disk streaming), offline render with numeric checks, `audio-check` device run | accepted |
 | 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
 | 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |

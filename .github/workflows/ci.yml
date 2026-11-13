@@ -23,7 +23,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: System libraries on Linux (ALSA for audio, software Vulkan for GPU tests)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev libudev-dev pkg-config
       - run: cargo fmt --all -- --check
       - run: cargo build --locked
       - name: Test (GPU tests on lavapipe / WARP, one thread)
@@ -64,7 +64,7 @@ jobs:
           key: release
       - name: System libraries on Linux (ALSA for audio, software Vulkan for GPU tests)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev mesa-vulkan-drivers
       - name: Stability suite (fast)
         run: cargo run --release --locked -q -p marionette-cli -- stability --out target/stability
         env:
@@ -88,7 +88,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Software Vulkan, ALSA headers
-        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev libudev-dev
       - name: Timing budgets (decision 0021; docs/ai/PERFORMANCE.md)
         run: cargo test --release --locked -p marionette-cli --test perf_budgets -- --ignored --test-threads=1 --nocapture
         env:
@@ -108,7 +108,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, valgrind)
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev valgrind
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev valgrind
       # Decision 0032: the C script runtime (QuickJS) and the crates that own OS resources
       # run under valgrind; any definitely-lost block fails the job. The Rust heap, GPU
       # objects and kill tests run in the normal test job (counting allocator).
@@ -128,7 +128,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, Vulkan, OpenXR loader, Monado, Xvfb)
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
       - name: Build
         run: cargo build --locked -p marionette-cli --tests
       - name: Start the simulated headset
