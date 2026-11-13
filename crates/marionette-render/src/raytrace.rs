@@ -132,6 +132,9 @@ pub(crate) struct RayTracer {
     pub lit: LitPipelines,
     /// Skinned pipelines (final, HDR) with the ray tracing fragment shader.
     pub skinned: [wgpu::RenderPipeline; 2],
+    /// Depth prepass ([static, skinned] for the final and HDR formats): every pixel's nearest surface is known before the lit
+    /// pass, so rays are traced once per pixel instead of once per overlapping surface.
+    pub prepass: [[wgpu::RenderPipeline; 2]; 2],
     tlas: wgpu::Tlas,
     tlas_capacity: u32,
     /// Instances set in the TLAS last frame (slots past this are already empty).
@@ -238,14 +241,38 @@ impl RayTracer {
                 setup.deform_layout,
             ],
             setup.color_format,
-            setup.depth,
+            setup.depth.clone(),
             setup.multisample,
             setup.mesh_stride,
         );
+        // The same vertex entry points as the lit pipelines, so depths match exactly.
+        let prepass = [setup.color_format, crate::post::HDR_FORMAT].map(|format| {
+            [
+                crate::renderer::depth_pipeline(
+                    device,
+                    &shader,
+                    setup.view_layout,
+                    "vs_main",
+                    setup.depth.clone(),
+                    setup.multisample,
+                    (Some(wgpu::Face::Back), Some(format)),
+                ),
+                crate::skinning::depth_pipeline(
+                    device,
+                    &skinned_shader,
+                    [setup.view_layout, setup.deform_layout],
+                    "vs_skinned",
+                    setup.depth.clone(),
+                    setup.multisample,
+                    (setup.mesh_stride, Some(wgpu::Face::Back), Some(format)),
+                ),
+            ]
+        });
         Self {
             layout,
             lit,
             skinned,
+            prepass,
             tlas: make_tlas(device, 64),
             tlas_capacity: 64,
             tlas_used: 0,

@@ -613,43 +613,18 @@ impl Renderer {
             color_format,
             multisample,
         );
-        let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
-        let instance_attrs = INSTANCE_ATTRS;
         let post = crate::post::Post::new(device, color_format, sample_count, depth_stencil(false));
 
         // Depth-only pass from the shadow-casting light: only the view group is used.
-        let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("shadow"),
-            bind_group_layouts: &[Some(&view_layout)],
-            immediate_size: 0,
-        });
-        let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("shadow"),
-            layout: Some(&shadow_layout),
-            vertex: wgpu::VertexState {
-                module: &pbr_shader,
-                entry_point: Some("vs_shadow"),
-                compilation_options: Default::default(),
-                buffers: &[
-                    Some(wgpu::VertexBufferLayout {
-                        array_stride: size_of::<MeshVertex>() as u64,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &mesh_attrs,
-                    }),
-                    Some(wgpu::VertexBufferLayout {
-                        array_stride: size_of::<InstanceData>() as u64,
-                        step_mode: wgpu::VertexStepMode::Instance,
-                        attributes: &instance_attrs,
-                    }),
-                ],
-            },
-            primitive: wgpu::PrimitiveState::default(), // both faces cast shadows
-            depth_stencil: Some(shadow_depth_state()),
-            multisample: wgpu::MultisampleState::default(),
-            fragment: None,
-            multiview_mask: None,
-            cache: None,
-        });
+        let shadow_pipeline = depth_pipeline(
+            device,
+            &pbr_shader,
+            &view_layout,
+            "vs_shadow",
+            shadow_depth_state(),
+            wgpu::MultisampleState::default(),
+            (None, None), // both faces cast shadows; no color target
+        );
 
         let skinning = crate::skinning::Skinning::new(
             device,
@@ -931,6 +906,10 @@ impl Renderer {
                 self.probes = crate::probes::Probes::new(&self.device, 1);
                 self.rebuild_lights_group();
             }
+            return Ok(());
+        }
+        if self.models_loading() > 0 {
+            // Models still decoding would be missing from the picture: capture once they are in.
             return Ok(());
         }
         if self.probes.is_stand_in() {
@@ -1831,13 +1810,19 @@ impl Renderer {
             );
         }
         // Lit pipelines and lights group: the ray tracing variant when it ran this frame.
-        let (lit, skinned_lit, lights_group) =
+        let (lit, skinned_lit, lights_group, prepass) =
             match self.rt.as_ref().and_then(|r| Some((r, r.group.as_ref()?))) {
-                Some((rt, group)) => (&rt.lit, [&rt.skinned[0], &rt.skinned[1]], group),
+                Some((rt, group)) => (
+                    &rt.lit,
+                    [&rt.skinned[0], &rt.skinned[1]],
+                    group,
+                    Some(&rt.prepass),
+                ),
                 None => (
                     &self.lit,
                     [&self.skinning.pipeline, &self.skinning.hdr_pipeline],
                     &self.lights_group,
+                    None,
                 ),
             };
         let meshes = MeshCalls {
@@ -1934,6 +1919,16 @@ impl Renderer {
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
+                if let Some([_, [p, s]]) = prepass {
+                    meshes.draw_depth(
+                        &mut pass,
+                        (p, s),
+                        &self.view_group,
+                        world_offset,
+                        false,
+                        &mut stats,
+                    );
+                }
                 meshes.draw_lit(
                     &mut pass,
                     (&lit.pbr[1], skinned_lit[1]),
@@ -1993,6 +1988,17 @@ impl Renderer {
                 None => {
                     // A probe capture draws into the floating-point target.
                     let fi = usize::from(capture);
+                    if let Some(depth) = prepass {
+                        let [p, s] = &depth[fi];
+                        meshes.draw_depth(
+                            &mut pass,
+                            (p, s),
+                            &self.view_group,
+                            world_offset,
+                            false,
+                            &mut stats,
+                        );
+                    }
                     meshes.draw_lit(
                         &mut pass,
                         (&lit.pbr[fi], skinned_lit[fi]),
@@ -2437,6 +2443,78 @@ pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_
 pub(crate) struct LitPipelines {
     pub pbr: [wgpu::RenderPipeline; 2],
     pub sky: [wgpu::RenderPipeline; 2],
+}
+
+/// A depth-only pipeline for static meshes (view group only) from vertex entry `entry`:
+/// shadow maps, or the depth prepass of ray-traced frames (decision 0093).
+/// A prepass runs inside a pass with a color attachment, so it names that format and gets
+/// an empty fragment shader that writes no color.
+pub(crate) fn depth_targets(color: Option<wgpu::TextureFormat>) -> [Option<wgpu::ColorTargetState>; 1] {
+    [color.map(|format| wgpu::ColorTargetState {
+        format,
+        blend: None,
+        write_mask: wgpu::ColorWrites::empty(),
+    })]
+}
+
+pub(crate) fn depth_fragment<'a>(
+    shader: &'a wgpu::ShaderModule,
+    targets: &'a [Option<wgpu::ColorTargetState>],
+) -> wgpu::FragmentState<'a> {
+    wgpu::FragmentState {
+        module: shader,
+        entry_point: Some("fs_depth"),
+        compilation_options: Default::default(),
+        targets,
+    }
+}
+
+pub(crate) fn depth_pipeline(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    view_layout: &wgpu::BindGroupLayout,
+    entry: &str,
+    depth: wgpu::DepthStencilState,
+    multisample: wgpu::MultisampleState,
+    (cull_mode, color): (Option<wgpu::Face>, Option<wgpu::TextureFormat>),
+) -> wgpu::RenderPipeline {
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("depth"),
+        bind_group_layouts: &[Some(view_layout)],
+        immediate_size: 0,
+    });
+    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let targets = depth_targets(color);
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("depth"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some(entry),
+            compilation_options: Default::default(),
+            buffers: &[
+                Some(wgpu::VertexBufferLayout {
+                    array_stride: size_of::<MeshVertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &mesh_attrs,
+                }),
+                Some(wgpu::VertexBufferLayout {
+                    array_stride: size_of::<InstanceData>() as u64,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &INSTANCE_ATTRS,
+                }),
+            ],
+        },
+        primitive: wgpu::PrimitiveState {
+            cull_mode,
+            ..Default::default()
+        },
+        depth_stencil: Some(depth),
+        multisample,
+        fragment: color.map(|_| depth_fragment(shader, &targets)),
+        multiview_mask: None,
+        cache: None,
+    })
 }
 
 /// Bindings of the lights group (group 1); the ray tracing variant adds its own after these.

@@ -156,7 +156,8 @@ fn ray_traced_shadows_need_no_shadow_maps() {
         mean(&lit, behind)
     );
     assert!((mean(&traced, front) - mean(&lit, front)).abs() < 3.0);
-    assert_eq!(stats.draw_calls, plain_stats.draw_calls);
+    // Each mesh draw once more for the depth prepass, and no shadow map draws.
+    assert_eq!(stats.draw_calls, 2 * plain_stats.draw_calls);
 
     // The sun too, and the box's own top stays lit.
     let (sun_lit, _) = render(&gpu, &stage(&sun_entity(), AMBIENT));

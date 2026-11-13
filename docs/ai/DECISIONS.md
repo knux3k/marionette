@@ -55,3 +55,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0069 | Stability memory checks read the counted heap when the binary installs it (all platforms) | accepted |
 | 0070 | Scenes and scripts run job TypeScript over job arrays saved with the scene (`JobData`, `JobSchedule`, `engine.jobs`, `JobDraw`) | accepted |
 | 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
+| 0090 | Sun shadow cascades (`ShadowCascades`), sphere-fitted and texel-snapped | accepted |
+| 0091 | HDR environment files: Radiance `.hdr` (own decoder), OpenEXR `.exr` (feature `exr`) | accepted |
+| 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
+| 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |

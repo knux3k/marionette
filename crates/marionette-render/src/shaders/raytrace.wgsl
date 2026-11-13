@@ -56,18 +56,25 @@ fn rt_sun(p: vec3<f32>, ng: vec3<f32>, l: vec3<f32>, px: vec2<f32>) -> f32 {
     if (radius <= 0.0) {
         return select(1.0, 0.0, rt_blocked(origin, l, RT_FAR, 0xFFu));
     }
-    // Soft: four rays spread over the sun's disc, rotated per pixel.
+    // Soft: rays spread over the sun's disc, rotated per pixel. Two rays at opposite edges
+    // first; where they agree (fully lit or fully shadowed, most of the picture) that is the
+    // answer, and only the penumbra traces two more.
     let t = normalize(cross(l, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(l.y) > 0.9)));
     let b = cross(l, t);
     let spin = rt_noise(px) * 2.0 * PI;
-    var lit = 0.0;
+    var hits = array<f32, 4>(0.0, 0.0, 0.0, 0.0);
     for (var k = 0u; k < 4u; k = k + 1u) {
-        let a = spin + f32(k) * 0.5 * PI;
-        let r = radius * sqrt((f32(k) + 0.5) / 4.0);
+        // Order 0, 2 (opposite edges), then 1, 3.
+        let j = (k * 2u) % 4u + k / 2u;
+        if (k == 2u && hits[0] == hits[2]) {
+            return 1.0 - hits[0];
+        }
+        let a = spin + f32(j) * 0.5 * PI;
+        let r = radius * select(0.55, 0.95, j % 2u == 0u);
         let dir = normalize(l + (t * cos(a) + b * sin(a)) * r);
-        lit += select(0.25, 0.0, rt_blocked(origin, dir, RT_FAR, 0xFFu));
+        hits[j] = select(0.0, 1.0, rt_blocked(origin, dir, RT_FAR, 0xFFu));
     }
-    return lit;
+    return 1.0 - 0.25 * (hits[0] + hits[1] + hits[2] + hits[3]);
 }
 
 fn rt_visible(p: vec3<f32>, ng: vec3<f32>, l: vec3<f32>, dist: f32, mask: u32) -> f32 {

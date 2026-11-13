@@ -104,7 +104,13 @@ the final pass before sprites and UI (`post.rs`, decision 0064); `CastShadows` o
 spot light adds depth passes into one shadow map array (decision 0065); `Environment` adds a
 CPU-prefiltered sky texture for diffuse and reflections and an optional sky background
 (`environment.rs`, decision 0066); glTF emissive comes through a per-material uniform
-(decision 0067).
+(decision 0067). Remaining lighting (decisions 0090 to 0093): `ShadowCascades` puts 2 to 4 sun
+maps in the sun's shadow map array; `Environment` reads `.hdr`/`.exr` (`marionette-assets`
+`hdr.rs`); `ReflectionProbe` pictures are captured in `prepare` and prefiltered like the
+environment (`probes.rs`); `RayTracing` uses a variant of the PBR shader with ray queries
+(`raytrace.rs`, `shaders/raytrace.wgsl`; stubs between `RT:BEGIN` and `RT:END` in `pbr.wgsl`),
+its own pipelines and lights group, a BLAS per static part and a TLAS per frame, only on GPUs
+with ray queries.
 
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so

@@ -315,6 +315,10 @@ fn tonemap(c: vec3<f32>) -> vec3<f32> {
     return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
+// Depth prepass (decision 0093): no color, only depth.
+@fragment
+fn fs_depth() {}
+
 @fragment
 fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
     let base = in.base_color * textureSample(base_tex, samp, in.uv);

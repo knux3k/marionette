@@ -308,7 +308,8 @@ pub struct CastShadows {
 /// relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose
 /// values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from
 /// `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for
-/// models.
+/// models. An image with a bright sun also lights surfaces through it: with a
+/// `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`.
 #[derive(Resource, Reflect, Debug, Clone, PartialEq)]
 pub struct Environment {
     pub image: String,
