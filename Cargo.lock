@@ -2368,6 +2368,7 @@ dependencies = [
  "marionette-providers",
  "marionette-render",
  "marionette-script",
+ "marionette-starter",
  "marionette-synth",
  "marionette-ui3d",
  "marionette-xr",
@@ -2710,6 +2711,17 @@ dependencies = [
  "marionette-core",
  "oxc",
  "rquickjs",
+ "serde_json",
+]
+
+[[package]]
+name = "marionette-starter"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "marionette-core",
+ "schemars",
+ "serde",
  "serde_json",
 ]
 

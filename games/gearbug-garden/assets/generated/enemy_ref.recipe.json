@@ -1,0 +1,7 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "enemy_ref",
+  "notes": "Starter slot `enemy` of \"Gearbug Garden\" (game_make, decision 0150).",
+  "output": "image",
+  "prompt": "a wandering topiary hedge monster with leafy teeth and stubby legs, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text"
+}

@@ -1,0 +1,42 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "enemy",
+  "output": "texture",
+  "file": "enemy.png",
+  "sha256": "c5839849020e747866200dbef2eb7c1f7a0b6e71460c0e6624141df8cbfff7a0",
+  "recipe": "enemy.recipe.json",
+  "recipe_sha256": "48a7ef17a729e455d900f0e248785e4b9ad068c0642d30b13b192ecb97b9849b",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a one-eyed purple slime alien, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "694863002b9361017ed3bc5090b0f9563d0451e7e3ad7f1934548bda308cf685",
+    "raw_sha256": "b632b1dbd07a8a987418f6f58a37f30df91dd376c60e402b44001ce1e301ba65",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "background_removed": true,
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

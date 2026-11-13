@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "goal_ref",
+  "output": "image",
+  "file": "goal_ref.png",
+  "sha256": "979570f66faf0b85c9230073c23c1b40ec11b729d98e45918d1eca528b3fe8e8",
+  "recipe": "goal_ref.recipe.json",
+  "recipe_sha256": "cff379be35a8eff81cc9e8351cbe5f35ddf43092457f1dec927a35b990ebdae3",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a tall ornate brass garden gate, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "8527ae64bae806ca30ec981dd6aa4f04448c6083ffb12a7f595b0191e9e8ec74",
+    "raw_sha256": "62bde8a6e14706ae07054f7f2df147172fe0b315f78df4ca2d3e288a324d0e93",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

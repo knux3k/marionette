@@ -22,14 +22,14 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 ## UNVERIFIED
 
+- Starter (0150): made games not played by a person.
 - Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
-- Synth and streamed audio (decision 0220): rendered and checked as numbers only; never played
-  through a real audio device (`marionette audio-check` is written, exits 2 without one; the PC
-  run is planned in proofs/play.md). OGG streaming untested (WAV is).
+- Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
+  device once (64 voices clean; 128 and 256 had a few slow callbacks, cause unknown, see
+  proofs/play.md); no one has listened. OGG streaming untested (WAV is).
 - World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
   not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
-
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
   been worked on by several real agents through it, and claims are not checked against a
   remote.
@@ -66,7 +66,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
 - Window (proofs/window.md; editor too): gamepads on hardware, high-refresh screens, clicks, speakers,
-  the Windows minimize fix, Linux and macOS screens.
+  minimize CPU on Windows (62-172 ms per 2 s), Linux and macOS screens.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.
