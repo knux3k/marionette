@@ -92,6 +92,10 @@ impl Player {
         self.head = head;
     }
 
+    pub(crate) fn manager_mut(&mut self) -> &mut kira::AudioManager<kira::DefaultBackend> {
+        &mut self.manager
+    }
+
     /// Voices followed now.
     pub fn voices(&self) -> usize {
         self.voices.len()
