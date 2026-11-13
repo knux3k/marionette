@@ -30,6 +30,7 @@ when the task calls for it, and then only the section that matters.
 | Hot loops in TypeScript | [JOBS-TS.md](JOBS-TS.md) |
 | Unity or Unreal code | [PORTING.md](PORTING.md) |
 | Stability modes | [STABILITY.md](STABILITY.md) |
+| Package a game (Windows, Linux, Steam Deck, Steam Frame) | [PACKAGING.md](PACKAGING.md) |
 | Generating images and models | [GENERATION.md](GENERATION.md) |
 | The six proof games and their gaps | [PROOF-SCENES.md](PROOF-SCENES.md) |
 | Terms | [GLOSSARY.md](GLOSSARY.md) |

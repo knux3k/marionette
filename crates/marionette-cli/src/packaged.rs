@@ -115,7 +115,10 @@ mod tests {
         )
         .unwrap();
         let p = read(tmp.path()).unwrap();
-        assert_eq!((p.title.as_str(), p.entry.as_str(), p.window.as_str()), ("Cloudstep", "scenes/main.scene.json", "1280x800"));
+        assert_eq!(
+            (p.title.as_str(), p.entry.as_str(), p.window.as_str()),
+            ("Cloudstep", "scenes/main.scene.json", "1280x800")
+        );
     }
 
     #[cfg(feature = "package")]

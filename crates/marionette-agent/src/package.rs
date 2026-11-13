@@ -144,7 +144,11 @@ fn build(agent: &mut Agent, input: BuildInput) -> Result<BuildOutput, Errors> {
         release: !input.debug,
         archive: input.archive,
         smoke: input.smoke,
-        sysroots: input.sysroots.into_iter().map(|(k, v)| (k, PathBuf::from(v))).collect(),
+        sysroots: input
+            .sysroots
+            .into_iter()
+            .map(|(k, v)| (k, PathBuf::from(v)))
+            .collect(),
     };
     Ok(BuildOutput {
         packages: pkg::package(&opts)?,

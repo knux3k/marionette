@@ -67,12 +67,20 @@ pub(crate) fn runtime_files(dir: &Path, extra: &[String], rust: bool) -> Result<
 }
 
 fn walk(root: &Path, rel: &str, out: &mut Vec<String>) -> Result<(), Errors> {
-    let here = if rel.is_empty() { root.to_path_buf() } else { root.join(rel) };
+    let here = if rel.is_empty() {
+        root.to_path_buf()
+    } else {
+        root.join(rel)
+    };
     let entries = std::fs::read_dir(&here).map_err(|e| io(&here, e))?;
     for entry in entries {
         let entry = entry.map_err(|e| io(&here, e))?;
         let name = entry.file_name().to_string_lossy().into_owned();
-        let path = if rel.is_empty() { name } else { format!("{rel}/{name}") };
+        let path = if rel.is_empty() {
+            name
+        } else {
+            format!("{rel}/{name}")
+        };
         let kind = entry.file_type().map_err(|e| io(&entry.path(), e))?;
         if kind.is_dir() {
             walk(root, &path, out)?;
@@ -92,7 +100,9 @@ fn walk(root: &Path, rel: &str, out: &mut Vec<String>) -> Result<(), Errors> {
 
 /// Whether a file is text the engine reads (scenes, maps, scripts) and may name assets in.
 pub(crate) fn is_text(path: &str) -> bool {
-    [".json", ".ts", ".js", ".txt", ".md"].iter().any(|e| path.ends_with(e))
+    [".json", ".ts", ".js", ".txt", ".md"]
+        .iter()
+        .any(|e| path.ends_with(e))
 }
 
 /// Removes from `files` every non-text file under `assets/` whose file name no text file
@@ -116,14 +126,22 @@ pub(crate) fn drop_unreferenced(dir: &Path, files: &mut Vec<String>) -> Vec<Stri
     }
     let stems: Vec<String> = gone
         .iter()
-        .filter_map(|f| f.rsplit_once('.').map(|(stem, _)| format!("{stem}.provenance.json")))
+        .filter_map(|f| {
+            f.rsplit_once('.')
+                .map(|(stem, _)| format!("{stem}.provenance.json"))
+        })
         .collect();
     let all_assets_of = |prov: &str| {
         // Keep a provenance file while another asset with the same stem stays.
         let stem = prov.trim_end_matches(".provenance.json");
-        !files.iter().any(|f| !gone.contains(f) && f != prov && f.rsplit_once('.').is_some_and(|(s, _)| s == stem))
+        !files
+            .iter()
+            .any(|f| !gone.contains(f) && f != prov && f.rsplit_once('.').is_some_and(|(s, _)| s == stem))
     };
-    let extra: Vec<String> = stems.into_iter().filter(|p| files.contains(p) && all_assets_of(p)).collect();
+    let extra: Vec<String> = stems
+        .into_iter()
+        .filter(|p| files.contains(p) && all_assets_of(p))
+        .collect();
     gone.extend(extra);
     files.retain(|f| !gone.contains(f));
     gone.sort();
@@ -170,7 +188,9 @@ pub(crate) fn write_executable(path: &Path, bytes: &[u8]) -> std::io::Result<()>
 
 /// Removes staging folders that a crashed package run left in `out`.
 pub(crate) fn sweep_partials(out: &Path) {
-    let Ok(entries) = std::fs::read_dir(out) else { return };
+    let Ok(entries) = std::fs::read_dir(out) else {
+        return;
+    };
     for e in entries.flatten() {
         let name = e.file_name().to_string_lossy().into_owned();
         if let Some(pid) = name.rsplit_once(".partial-").map(|(_, p)| p.to_string())
@@ -226,7 +246,10 @@ mod tests {
     #[test]
     fn globs_match_parts_and_any_depth() {
         assert!(glob_match("tests/**", "tests/a/b.json"));
-        assert!(glob_match("**/*.recipe.json", "assets/generated/hero.recipe.json"));
+        assert!(glob_match(
+            "**/*.recipe.json",
+            "assets/generated/hero.recipe.json"
+        ));
         assert!(glob_match("**/*.recipe.json", "x.recipe.json"));
         assert!(!glob_match("*.json", "scenes/main.scene.json"));
         assert!(glob_match("scenes/*.json", "scenes/main.scene.json"));

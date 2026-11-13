@@ -1,0 +1,100 @@
+name: Package
+
+# Game packages (decision 0140, docs/ai/PACKAGING.md): one proof game packaged for every
+# target, the zips kept as workflow artifacts, the Steam Frame package started on a real
+# ARM64 machine, and the full test suite on ARM64.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Game folder to package
+        default: games/cloudstep
+
+env:
+  CARGO_TERM_COLOR: always
+  GAME: ${{ inputs.game || 'games/cloudstep' }}
+
+jobs:
+  linux:
+    name: package linux-x64, steamdeck, steam-frame
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: package
+      - name: System libraries, zig and cargo-zigbuild
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+          pip install ziglang
+          cargo install cargo-zigbuild --locked
+      - name: Link-time sysroots (glibc 2.31 ALSA)
+        run: scripts/package-sysroots.sh target/sysroots >> "$GITHUB_ENV"
+      - name: Package
+        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target linux-x64 --target steamdeck --target steam-frame --out target/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-linux
+          path: target/dist/*.zip
+          if-no-files-found: error
+
+  windows:
+    name: package windows-x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: package
+      - name: Package
+        shell: bash
+        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target windows-x64 --out target/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-windows
+          path: target/dist/*.zip
+          if-no-files-found: error
+
+  frame-on-arm64:
+    name: steam-frame package on ARM64
+    needs: linux
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-linux
+      - name: Run the packaged game headless
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2 unzip
+          name=$(basename "$GAME")
+          unzip -q "$name-steam-frame.zip"
+          cd "$name-steam-frame"
+          entry=$(python3 -c "import json; print(json.load(open('game.package.json'))['entry'])")
+          ./"$name" --json run "$entry" --headless --ticks 600 --seed 1
+
+  test-arm64:
+    name: tests on ARM64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries (ALSA, software Vulkan)
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev pkg-config
+      - name: State hash of the example scene (must equal x86-64)
+        run: |
+          hash=$(cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1)
+          echo "$hash"
+          test "$hash" = 7441258fdf64141911d44e0608c48498897564168684fdd86cd244e149926558
+      - name: Test (GPU tests on lavapipe, one thread)
+        run: cargo test --locked -- --test-threads=1
+        env:
+          MARIONETTE_REQUIRE_GPU: "1"
+          WGPU_BACKEND: vulkan

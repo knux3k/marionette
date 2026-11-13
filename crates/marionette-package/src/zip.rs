@@ -38,11 +38,19 @@ pub fn write_dir(dir: &Path, top: &str, out: &Path) -> io::Result<()> {
 }
 
 fn collect(root: &Path, rel: &str, out: &mut Vec<String>) -> io::Result<()> {
-    let here = if rel.is_empty() { root.to_path_buf() } else { root.join(rel) };
+    let here = if rel.is_empty() {
+        root.to_path_buf()
+    } else {
+        root.join(rel)
+    };
     for e in std::fs::read_dir(&here)? {
         let e = e?;
         let name = e.file_name().to_string_lossy().into_owned();
-        let path = if rel.is_empty() { name } else { format!("{rel}/{name}") };
+        let path = if rel.is_empty() {
+            name
+        } else {
+            format!("{rel}/{name}")
+        };
         if e.file_type()?.is_dir() {
             collect(root, &path, out)?;
         } else {
@@ -126,7 +134,7 @@ fn write_files(dir: &Path, top: &str, files: &[String], out: &Path) -> io::Resul
         c.extend_from_slice(&0u16.to_le_bytes()); // comment
         c.extend_from_slice(&0u16.to_le_bytes()); // disk
         c.extend_from_slice(&0u16.to_le_bytes()); // internal attributes
-        c.extend_from_slice(&(((0o100000 | e.mode) << 16) as u32).to_le_bytes());
+        c.extend_from_slice(&((0o100000 | e.mode) << 16).to_le_bytes());
         c.extend_from_slice(&e.offset.to_le_bytes());
         c.extend_from_slice(e.name.as_bytes());
         w.write_all(&c)?;

@@ -20,8 +20,14 @@ pub(crate) fn write(opts: &Options, game: &Game, target: &Target, dir: &Path) ->
         }
     }
     let mut cmd = Command::new("cargo");
-    cmd.current_dir(&opts.workspace)
-        .args(["metadata", "--locked", "--format-version", "1", "--filter-platform", target.triple]);
+    cmd.current_dir(&opts.workspace).args([
+        "metadata",
+        "--locked",
+        "--format-version",
+        "1",
+        "--filter-platform",
+        target.triple,
+    ]);
     // Features unify across the workspace in `cargo metadata`, so the list can name a few
     // crates the binary leaves out: more attribution than needed, never less.
     let root_name = match &game.rust_package {
@@ -90,28 +96,56 @@ pub(crate) fn write(opts: &Options, game: &Game, target: &Target, dir: &Path) ->
         let version = p["version"].as_str().unwrap_or("?");
         let license = p["license"].as_str().unwrap_or("see license file");
         let _ = writeln!(list, "{name} {version}: {license}");
-        let Some(manifest) = p["manifest_path"].as_str() else { continue };
-        let Some(crate_dir) = Path::new(manifest).parent() else { continue };
-        let Ok(entries) = std::fs::read_dir(crate_dir) else { continue };
+        let Some(manifest) = p["manifest_path"].as_str() else {
+            continue;
+        };
+        let Some(crate_dir) = Path::new(manifest).parent() else {
+            continue;
+        };
+        let Ok(entries) = std::fs::read_dir(crate_dir) else {
+            continue;
+        };
         let mut found: Vec<_> = entries
             .flatten()
             .filter(|e| {
                 let n = e.file_name().to_string_lossy().to_ascii_uppercase();
-                (n.starts_with("LICENSE") || n.starts_with("LICENCE") || n.starts_with("COPYING") || n.starts_with("NOTICE"))
+                (n.starts_with("LICENSE")
+                    || n.starts_with("LICENCE")
+                    || n.starts_with("COPYING")
+                    || n.starts_with("NOTICE"))
                     && e.file_type().is_ok_and(|t| t.is_file())
             })
             .map(|e| e.path())
             .collect();
         found.sort();
         for f in found {
-            let Ok(text) = std::fs::read_to_string(&f) else { continue };
-            let key: String = Sha256::digest(text.trim().as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
-            let label = format!("{name} {version} ({})", f.file_name().unwrap_or_default().to_string_lossy());
-            texts.entry(key).or_insert_with(|| (text, Vec::new())).1.push(label);
+            let Ok(text) = std::fs::read_to_string(&f) else {
+                continue;
+            };
+            let key: String = Sha256::digest(text.trim().as_bytes())
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            let label = format!(
+                "{name} {version} ({})",
+                f.file_name().unwrap_or_default().to_string_lossy()
+            );
+            texts
+                .entry(key)
+                .or_insert_with(|| (text, Vec::new()))
+                .1
+                .push(label);
         }
     }
     for (text, users) in texts.values() {
-        let _ = write!(list, "\n{}\nUsed by: {}\n{}\n\n{}\n", "=".repeat(72), users.join(", "), "-".repeat(72), text.trim_end());
+        let _ = write!(
+            list,
+            "\n{}\nUsed by: {}\n{}\n\n{}\n",
+            "=".repeat(72),
+            users.join(", "),
+            "-".repeat(72),
+            text.trim_end()
+        );
     }
     let path = dir.join("THIRD-PARTY.txt");
     std::fs::write(&path, list).map_err(|e| io(&path, e))?;

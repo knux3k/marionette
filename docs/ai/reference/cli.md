@@ -20,6 +20,7 @@ Commands:
   provider    AI providers: list them, show this project's choices and spending, switch one
   generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
   mcp         Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
+  package     Package a game for players (operation `package_build`, decision 0140): a folder and a zip per target with the game binary, its runtime files, licenses and a manifest. The binary plays the entry scene when started with no arguments
   docs        Write the generated reference docs (operations, components, CLI help)
   help        Print this message or the help of the given subcommand(s)
 
@@ -481,6 +482,54 @@ Options:
 
       --read-only
           Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette package`
+
+```text
+Package a game for players (operation `package_build`, decision 0140): a folder and a zip per target with the game binary, its runtime files, licenses and a manifest. The binary plays the entry scene when started with no arguments
+
+Usage: package [OPTIONS] [GAME]
+
+Arguments:
+  [GAME]
+          Game folder (holds marionette.json), e.g. games/cloudstep
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --target <TARGETS>
+          windows-x64, linux-x64, steamdeck, steam-frame or all (repeatable; default: this machine's own)
+
+      --out <OUT>
+          Output folder
+          
+          [default: dist]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --no-zip
+          Do not write zips
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --no-smoke
+          Do not start the packaged binary for a headless check
+
+      --debug
+          Debug build (quick to build, slow to play)
+
+      --list
+          List targets and what this machine can build (operation `package_targets`)
 
   -h, --help
           Print help

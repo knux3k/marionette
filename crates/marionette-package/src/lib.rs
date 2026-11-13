@@ -179,7 +179,10 @@ pub fn can_build(target: &Target) -> Result<Builder, Errors> {
         } else {
             Err(Diagnostic::error(
                 codes::TOOLCHAIN,
-                format!("`{}` packages are built on Windows (this machine is {host})", target.name),
+                format!(
+                    "`{}` packages are built on Windows (this machine is {host})",
+                    target.name
+                ),
             )
             .fix("run the same command on a Windows machine, or take the zip from the CI job `package`")
             .into())
@@ -195,12 +198,17 @@ pub fn can_build(target: &Target) -> Result<Builder, Errors> {
     let why = if host == target.triple {
         format!(
             "this machine's glibc ({}) is newer than the {}.{} floor, so a plain build would not run on older systems or in the Steam runtime",
-            host_glibc().map(|(a, b)| format!("{a}.{b}")).unwrap_or_else(|| "unknown".into()),
+            host_glibc()
+                .map(|(a, b)| format!("{a}.{b}"))
+                .unwrap_or_else(|| "unknown".into()),
             GLIBC_FLOOR.0,
             GLIBC_FLOOR.1
         )
     } else {
-        format!("`{}` is another architecture than this machine ({host})", target.triple)
+        format!(
+            "`{}` is another architecture than this machine ({host})",
+            target.triple
+        )
     };
     Err(Diagnostic::error(codes::TOOLCHAIN, format!("cannot build `{}` here: {why}", target.name))
         .fix(format!(
@@ -339,7 +347,8 @@ pub fn read_game(dir: &Path) -> Result<Game, Errors> {
     })?;
     let v: Value = serde_json::from_str(&text).map_err(|e| {
         Errors::from(
-            Diagnostic::error(codes::GAME, format!("marionette.json: {e}")).file(project.display().to_string()),
+            Diagnostic::error(codes::GAME, format!("marionette.json: {e}"))
+                .file(project.display().to_string()),
         )
     })?;
     let fallback = dir
@@ -349,15 +358,16 @@ pub fn read_game(dir: &Path) -> Result<Game, Errors> {
         .unwrap_or_else(|| "game".into());
     let name = v["name"].as_str().map(str::to_string).unwrap_or(fallback);
     if name.is_empty()
-        || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        || !name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     {
-        return Err(Diagnostic::error(
-            codes::GAME,
-            format!("game name `{name}` cannot name a binary"),
-        )
-        .file(project.display().to_string())
-        .fix("use letters, digits, `-` or `_` in marionette.json `name`")
-        .into());
+        return Err(
+            Diagnostic::error(codes::GAME, format!("game name `{name}` cannot name a binary"))
+                .file(project.display().to_string())
+                .fix("use letters, digits, `-` or `_` in marionette.json `name`")
+                .into(),
+        );
     }
     let settings: GameSettings = match v.get("package") {
         Some(p) => serde_json::from_value(p.clone()).map_err(|e| {
@@ -388,7 +398,7 @@ pub fn read_game(dir: &Path) -> Result<Game, Errors> {
         .entry
         .clone()
         .unwrap_or_else(|| "scenes/main.scene.json".into());
-    if !files.iter().any(|f| *f == entry) {
+    if !files.contains(&entry) {
         return Err(Diagnostic::error(
             codes::GAME,
             format!("entry scene `{entry}` is not among the game's files"),
@@ -411,8 +421,14 @@ pub fn read_game(dir: &Path) -> Result<Game, Errors> {
 
 fn cargo_package_name(dir: &Path) -> Result<String, Errors> {
     let mut cmd = Command::new("cargo");
-    cmd.args(["metadata", "--no-deps", "--format-version", "1", "--manifest-path"])
-        .arg(dir.join("Cargo.toml"));
+    cmd.args([
+        "metadata",
+        "--no-deps",
+        "--format-version",
+        "1",
+        "--manifest-path",
+    ])
+    .arg(dir.join("Cargo.toml"));
     let out = marionette_host::output(cmd).map_err(|e| toolchain(format!("cannot run cargo: {e}")))?;
     if !out.status.success() {
         return Err(build_error("cargo metadata", &out.stderr));
@@ -424,7 +440,10 @@ fn cargo_package_name(dir: &Path) -> Result<String, Errors> {
         .into_iter()
         .flatten()
         .find(|p| {
-            p["manifest_path"].as_str().map(|m| Path::new(m).canonicalize().ok()) == Some(wanted.clone())
+            p["manifest_path"]
+                .as_str()
+                .map(|m| Path::new(m).canonicalize().ok())
+                == Some(wanted.clone())
         })
         .and_then(|p| p["name"].as_str())
         .map(str::to_string)
@@ -529,7 +548,12 @@ fn build_binary(opts: &Options, game: &Game, target: &Target, builder: &Builder)
             format!("{}.{}.{}", target.triple, GLIBC_FLOOR.0, GLIBC_FLOOR.1)
         }
     };
-    cmd.args(["--locked", "--message-format=json-render-diagnostics", "--target", &triple]);
+    cmd.args([
+        "--locked",
+        "--message-format=json-render-diagnostics",
+        "--target",
+        &triple,
+    ]);
     if opts.release {
         cmd.arg("--release");
     }
@@ -544,30 +568,47 @@ fn build_binary(opts: &Options, game: &Game, target: &Target, builder: &Builder)
             .env("PKG_CONFIG_SYSROOT_DIR", &sysroot)
             .env("PKG_CONFIG_LIBDIR", &pc);
     }
-    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     let child = marionette_host::spawn(cmd).map_err(|e| toolchain(format!("cannot run cargo: {e}")))?;
     let out = child
         .wait_with_output()
         .map_err(|e| toolchain(format!("cargo did not finish: {e}")))?;
     if !out.status.success() {
-        return Err(build_error(&format!("cargo build for {}", target.name), &out.stderr));
+        return Err(build_error(
+            &format!("cargo build for {}", target.name),
+            &out.stderr,
+        ));
     }
-    let want_bin = if game.rust_package.is_some() { None } else { Some("marionette") };
+    let want_bin = if game.rust_package.is_some() {
+        None
+    } else {
+        Some("marionette")
+    };
     let mut exe = None;
     for line in String::from_utf8_lossy(&out.stdout).lines() {
-        let Ok(msg) = serde_json::from_str::<Value>(line) else { continue };
+        let Ok(msg) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
         if msg["reason"] != "compiler-artifact" {
             continue;
         }
-        let Some(path) = msg["executable"].as_str() else { continue };
-        let is_bin = msg["target"]["kind"].as_array().is_some_and(|k| k.iter().any(|k| k == "bin"));
+        let Some(path) = msg["executable"].as_str() else {
+            continue;
+        };
+        let is_bin = msg["target"]["kind"]
+            .as_array()
+            .is_some_and(|k| k.iter().any(|k| k == "bin"));
         // `-p` builds only the selected package's binaries; dependencies add no `bin`.
         let name_ok = want_bin.is_none_or(|w| msg["target"]["name"] == w);
         if is_bin && name_ok {
             if exe.is_some() {
-                return Err(Diagnostic::error(codes::BUILD, "the game's package has more than one binary")
-                    .fix("give the game's Cargo.toml exactly one [[bin]] (see examples/rust-module)")
-                    .into());
+                return Err(
+                    Diagnostic::error(codes::BUILD, "the game's package has more than one binary")
+                        .fix("give the game's Cargo.toml exactly one [[bin]] (see examples/rust-module)")
+                        .into(),
+                );
             }
             exe = Some(PathBuf::from(path));
         }
@@ -661,7 +702,13 @@ fn assemble(opts: &Options, game: &Game, target: &Target, binary: &Binary) -> Re
     })
 }
 
-fn fill(opts: &Options, game: &Game, target: &Target, binary: &Binary, dir: &Path) -> Result<(Value, usize), Errors> {
+fn fill(
+    opts: &Options,
+    game: &Game,
+    target: &Target,
+    binary: &Binary,
+    dir: &Path,
+) -> Result<(Value, usize), Errors> {
     let bin_name = if target.linux {
         game.name.clone()
     } else {
@@ -736,7 +783,10 @@ fn smoke(dir: &Path, bin: &str, game: &Game, target: &Target) -> Result<String, 
         &SMOKE_TICKS.to_string(),
     ]);
     let out = marionette_host::output(cmd).map_err(|e| {
-        Errors::from(Diagnostic::error(codes::SMOKE, format!("cannot start the packaged binary: {e}")))
+        Errors::from(Diagnostic::error(
+            codes::SMOKE,
+            format!("cannot start the packaged binary: {e}"),
+        ))
     })?;
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
     if out.status.success() && v["ok"] == true {
@@ -747,8 +797,14 @@ fn smoke(dir: &Path, bin: &str, game: &Game, target: &Target) -> Result<String, 
             format!(
                 "the packaged {} game did not run its entry scene: {}{}",
                 target.name,
-                String::from_utf8_lossy(&out.stdout).chars().take(800).collect::<String>(),
-                String::from_utf8_lossy(&out.stderr).chars().take(800).collect::<String>()
+                String::from_utf8_lossy(&out.stdout)
+                    .chars()
+                    .take(800)
+                    .collect::<String>(),
+                String::from_utf8_lossy(&out.stderr)
+                    .chars()
+                    .take(800)
+                    .collect::<String>()
             ),
         )
         .fix("run the same command in the package folder to see the full error")

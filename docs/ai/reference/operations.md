@@ -83,6 +83,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
+| `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 
 ## `project_init`
@@ -1958,6 +1960,50 @@ Output:
 | `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
+
+## `package_targets`
+
+List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | string \| null |  | Game folder (holds marionette.json), relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | Game \| null |  | With `game`: what a package would hold. |
+| `host` | string | yes |  |
+| `targets` | array of TargetRow | yes |  |
+
+## `package_build`
+
+Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `archive` | boolean |  | Write a zip next to each folder (default true). |
+| `debug` | boolean |  | Debug build instead of release (faster to build, slow to play). |
+| `game` | string | yes | Game folder (holds marionette.json), relative to the project root. |
+| `out` | string |  | Output folder, relative to the project root. |
+| `smoke` | boolean |  | Run the packaged binary headless for a few ticks when this machine can (default true). |
+| `sysroots` | object |  | Link-time sysroots by architecture (`x86_64`, `aarch64`) for zigbuild builds (default: MARIONETTE_SYSROOT_X86_64 / MARIONETTE_SYSROOT_AARCH64; scripts/package-sysroots.sh makes them). |
+| `targets` | array of string |  | Targets, or `["all"]` for every target this machine can build. Default: this machine's own. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `packages` | array of Built | yes |  |
 
 ## `batch_run`
 
