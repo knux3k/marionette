@@ -20,6 +20,8 @@ pub mod jobs_ts;
 #[cfg(feature = "import")]
 pub mod library;
 pub mod mcp;
+#[cfg(feature = "netplay")]
+pub mod netplay;
 pub mod observe;
 #[cfg(feature = "package")]
 pub mod package;
@@ -158,6 +160,8 @@ pub const FEATURES: &[&str] = &[
     "ui3d",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "netplay")]
+    "netplay",
 ];
 
 /// Every built-in operation compiled into this build, in a stable order.
@@ -193,6 +197,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         prefab::ops(),
         #[cfg(feature = "package")]
         package::ops(),
+        #[cfg(feature = "netplay")]
+        netplay::ops(),
         batch::ops(),
         skills::ops(),
         handoff::ops(),

@@ -15,6 +15,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
 | Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
 | Game packages (Windows, Linux, Steam Deck, Steam Frame) | [proofs/packaging.md](proofs/packaging.md) |
+| Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
 
 ## Adding a proof
 
