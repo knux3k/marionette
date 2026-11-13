@@ -392,6 +392,7 @@ pub struct Renderer {
     sprite_vertices: Option<wgpu::Buffer>,
     sprite_indices: Option<wgpu::Buffer>,
     ui_pipeline: wgpu::RenderPipeline,
+    ui_output_pipeline: wgpu::RenderPipeline,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
@@ -807,7 +808,7 @@ impl Renderer {
             immediate_size: 0,
         });
         let sprite_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
-        let sprite_pipeline_for = |label, depth: wgpu::DepthStencilState| {
+        let sprite_pipeline_for = |label, depth: Option<wgpu::DepthStencilState>, multisample| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&sprite_layout),
@@ -822,7 +823,7 @@ impl Renderer {
                     })],
                 },
                 primitive: wgpu::PrimitiveState::default(), // sprites are visible from both sides
-                depth_stencil: Some(depth),
+                depth_stencil: depth,
                 multisample,
                 fragment: Some(wgpu::FragmentState {
                     module: &sprite_shader,
@@ -838,15 +839,19 @@ impl Renderer {
                 cache: None,
             })
         };
-        let sprite_pipeline = sprite_pipeline_for("sprite", depth_stencil(false));
+        let sprite_pipeline = sprite_pipeline_for("sprite", Some(depth_stencil(false)), multisample);
         // UI: same shader, drawn over everything (no depth test).
         let ui_pipeline = sprite_pipeline_for(
             "ui",
-            wgpu::DepthStencilState {
+            Some(wgpu::DepthStencilState {
                 depth_compare: Some(wgpu::CompareFunction::Always),
                 ..depth_stencil(false)
-            },
+            }),
+            multisample,
         );
+        // UI in the output pass of render scale and foveation: single-sampled, no depth
+        // (decision 0081). UI quads are pixel-aligned, so multisampling adds nothing there.
+        let ui_output_pipeline = sprite_pipeline_for("ui output", None, wgpu::MultisampleState::default());
 
         let sampler = |label, filter, address| {
             device.create_sampler(&wgpu::SamplerDescriptor {
@@ -922,6 +927,7 @@ impl Renderer {
             sprite_vertices: None,
             sprite_indices: None,
             ui_pipeline,
+            ui_output_pipeline,
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
@@ -1919,11 +1925,15 @@ impl Renderer {
         }
 
         // UI quads in screen pixels, on top of everything in the output target.
-        let draw_ui = |pass: &mut wgpu::RenderPass, i: usize, ui_offset: u32, stats: &mut RenderStats| {
+        let draw_ui = |pass: &mut wgpu::RenderPass,
+                       pipeline: &wgpu::RenderPipeline,
+                       i: usize,
+                       ui_offset: u32,
+                       stats: &mut RenderStats| {
             if let (Some(vb), Some(ib), false) =
                 (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
             {
-                pass.set_pipeline(&self.ui_pipeline);
+                pass.set_pipeline(pipeline);
                 pass.set_bind_group(0, &self.view_group, &[ui_offset]);
                 pass.set_vertex_buffer(0, vb.slice(..));
                 pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
@@ -2088,41 +2098,32 @@ impl Renderer {
                 }
             }
             let Some(internal) = internal else {
-                draw_ui(&mut pass, i, ui_offset, &mut stats);
+                draw_ui(&mut pass, &self.ui_pipeline, i, ui_offset, &mut stats);
                 continue;
             };
             drop(pass);
-            // Output pass: the internal image resolved to the output size, then UI.
+            // Output pass: the internal image resolved to the output size, then UI. It
+            // writes the single-sampled final image directly: the resolve covers every pixel,
+            // so a multisampled pass here would only add a full-size clear and resolve.
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("output"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: output.color,
+                    view: output.resolve.unwrap_or(output.color),
                     depth_slice: None,
-                    resolve_target: output.resolve,
+                    resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear(rgb, c[3])),
-                        store: if output.resolve.is_some() {
-                            wgpu::StoreOp::Discard
-                        } else {
-                            wgpu::StoreOp::Store
-                        },
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: output.depth,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
-                    stencil_ops: None,
-                }),
+                depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
             self.scale.resolve(internal, &mut pass);
             stats.draw_calls += 1;
-            draw_ui(&mut pass, i, ui_offset, &mut stats);
+            draw_ui(&mut pass, &self.ui_output_pipeline, i, ui_offset, &mut stats);
         }
         drop(calls);
         drop(skinned_calls);

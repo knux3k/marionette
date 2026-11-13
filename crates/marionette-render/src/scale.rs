@@ -153,21 +153,14 @@ impl Scale {
             compilation_options: Default::default(),
             buffers: &[],
         };
-        // The output pass also holds the depth UI is drawn against; it neither tests nor
-        // writes it.
+        // The output pass writes the single-sampled final image, with no depth.
         let resolve = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("scale resolve"),
             layout: Some(&read_pl),
             vertex: vertex.clone(),
             primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: Some(false),
-                depth_compare: Some(wgpu::CompareFunction::Always),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample,
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_resolve"),
