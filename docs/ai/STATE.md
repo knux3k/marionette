@@ -25,7 +25,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
-  on Mesa lavapipe only (tests, reference image `looks.png`); no hardware-GPU frame cost yet.
+  on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
+  nor on AMD or Intel GPUs.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
   build machine's network blocks those sites, so no live search or download has run.

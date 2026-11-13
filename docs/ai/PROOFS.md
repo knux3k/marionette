@@ -58,6 +58,14 @@ More looks (decisions 0064 to 0067):
   of the reference, determinism and GPU-object tests; unit tests in `post.rs` and
   `environment.rs`. Existing reference images (showcase, sprites, ui) unchanged; lighting
   within tolerance before its ground change. Stability mode `render-3d-looks` (two eyes).
+- Desktop GPU (RTX 2080 class, Vulkan, 1920x1080, MSAA 4, 2,000 frames, release, two runs
+  each): lighting 0.45 ms avg (p99 0.69); looks 1.01 ms (p99 1.35); looks two eyes 1.67 ms
+  (p99 2.14); looks without `Bloom` 0.63 ms, without `CastShadows` 0.86 ms, without
+  `Environment` 0.97 ms. So bloom costs about 0.38 ms, two shadow-casting lights (seven maps)
+  0.15 ms, the environment 0.05 ms. Worst frames 5 to 7 ms in every case, baseline included.
+  GPU tests passed there (`MARIONETTE_REQUIRE_GPU=1`), release stability `render-3d-looks`
+  passed with frame p99 1.21 ms (budget 11.1 ms). Command:
+  `cargo run --release -q -p marionette-cli -- bench examples/looks.scene.json --frames 2000 --size 1920x1080 [--eyes 2]`.
 
 Line 4 (scripting, decision 0022):
 - Spike numbers and how to rerun them: decision 0022, harness `spikes/script-spike` (not a

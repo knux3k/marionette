@@ -50,4 +50,7 @@ freed, and a frame without `Bloom` frees them all.
   calls in `RenderStats` include the glow passes.
 - Multisampled edges are resolved before tone mapping, so very bright edges against dark
   backgrounds alias slightly more than without bloom.
-- Measured cost: see PROOFS.md, "More looks".
+- Measured on a desktop GPU of the RTX 2080 class at 1920x1080, MSAA 4: about 0.38 ms per
+  frame for one view (looks example 1.01 ms with bloom, 0.63 ms without), the largest of the
+  new looks. Cheaper options if a game needs them: a lower-resolution HDR copy for the chain,
+  or fewer levels. Details in PROOFS.md, "More looks".
