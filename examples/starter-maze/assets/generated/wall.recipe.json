@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "wall",
+  "notes": "Starter slot `wall` of \"Knight And The Coins\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a grey stone brick wall, spooky moonlit cartoon, chunky fantasy cartoon, torchlight, seamless tileable game texture seen from directly above, even flat light, no text",
+  "texture": {
+    "resize": [
+      256,
+      256
+    ],
+    "tileable": true
+  }
+}

@@ -43,6 +43,8 @@ pub mod script;
 pub mod session;
 pub mod skills;
 pub mod stability;
+#[cfg(feature = "starter")]
+pub mod starter;
 pub mod synth;
 #[cfg(feature = "ui3d")]
 mod ui3d;
@@ -158,6 +160,8 @@ pub const FEATURES: &[&str] = &[
     "jobs-ts",
     #[cfg(feature = "save")]
     "save",
+    #[cfg(feature = "starter")]
+    "starter",
     #[cfg(feature = "ui3d")]
     "ui3d",
     #[cfg(feature = "nav")]
@@ -203,6 +207,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "starter")]
+        starter::ops(),
         #[cfg(feature = "netplay")]
         netplay::ops(),
         batch::ops(),

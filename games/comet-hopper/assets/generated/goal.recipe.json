@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "goal",
+  "notes": "Starter slot `goal` of \"Comet Hopper\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a little red and white rocket ship standing upright, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "texture": {
+    "remove_background": true,
+    "resize": [
+      256,
+      256
+    ]
+  }
+}

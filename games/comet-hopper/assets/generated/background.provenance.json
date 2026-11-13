@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "background",
+  "output": "texture",
+  "file": "background.png",
+  "sha256": "3f86ee0063799d89899ad0b641dec80fb31cd08e8691b52f623e132f0cef2077",
+  "recipe": "background.recipe.json",
+  "recipe_sha256": "1c636e7726989e9eb804d7af715990b0d0551c0b81abb4e5bbf5c64630a5d457",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a colorful nebula above a cratered purple moon, bright sci-fi cartoon, clean bold shapes, thick outlines, wide side-scrolling game background landscape, no characters, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "d5103ea6d0a6b7ce041410b250b98d51e83ed9c3b171912d96dc68e32eed1735",
+    "raw_sha256": "c916763f89a35e8838c0f29278169c775e99214bb92bd09e5583cdde4241c847",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": true,
+    "size": [
+      1024,
+      512
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "marionette.recipe/1",
+  "from": "pickup_ref",
+  "model": {
+    "height_m": 0.55,
+    "max_texture_px": 512,
+    "max_triangles": 4000
+  },
+  "name": "pickup",
+  "notes": "Starter slot `pickup` of \"Gearbug Garden\" (game_make, decision 0150).",
+  "output": "model"
+}
