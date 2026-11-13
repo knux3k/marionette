@@ -1,0 +1,2781 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.03,
+            "r": 0.02
+          },
+          "projection": {
+            "Perspective": {
+              "far": 600.0,
+              "fov_y_degrees": 55.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 70.0,
+            "z": 110.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.5,
+            "y": -0.6,
+            "z": -0.6
+          },
+          "illuminance": 1.2
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Ball": {
+              "radius": 0.5
+            }
+          }
+        },
+        "GravityWell": {
+          "radius": 40.0,
+          "range": 0.0,
+          "surface_gravity": 9.81
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.3,
+            "g": 0.5,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "NavSurface": {
+          "clearance": 0.4,
+          "max_grade": 1.0,
+          "probe": 3.0,
+          "radius": 40.0,
+          "resolution": 48,
+          "sea_level": 0.0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 80.0,
+            "y": 80.0,
+            "z": 80.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "planet"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Ball": {
+              "radius": 0.5
+            }
+          }
+        },
+        "GravityWell": {
+          "radius": 10.0,
+          "range": 60.0,
+          "surface_gravity": 3.0
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.65,
+            "g": 0.6,
+            "r": 0.6
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 20.0,
+            "y": 20.0,
+            "z": 20.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 140.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 4,
+      "name": "moon"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9789450103725608,
+            "x": 0.0,
+            "y": 0.0,
+            "z": -0.20412414523193156
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 16.30582717926325,
+            "y": 37.4,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 100,
+      "name": "rock-0"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9354143466934853,
+            "x": 0.23882188384900999,
+            "y": 0.0,
+            "z": 0.26069926696254825
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": -19.899125694322194,
+            "y": 30.599999999999998,
+            "z": 18.229229182869094
+          }
+        }
+      },
+      "id": 101,
+      "name": "rock-1"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.8897565210026093,
+            "x": -0.45468779184588903,
+            "y": 0.0,
+            "z": -0.03990420127809657
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 2.8972099014911055,
+            "y": 23.799999999999994,
+            "z": -33.01221250971679
+          }
+        }
+      },
+      "id": 102,
+      "name": "rock-2"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.8416254115301731,
+            "x": 0.4285933905985957,
+            "y": 0.0,
+            "z": -0.3285945407365531
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 22.566766870835927,
+            "y": 16.999999999999996,
+            "z": 29.43435124131907
+          }
+        }
+      },
+      "id": 103,
+      "name": "rock-3"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.7905694150420948,
+            "x": -0.10666422520802309,
+            "y": 0.0,
+            "z": 0.6030113954651041
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": -38.900545080007674,
+            "y": 10.2,
+            "z": -6.880958688895806
+          }
+        }
+      },
+      "id": 104,
+      "name": "rock-4"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.7359800721939873,
+            "x": -0.363366609365143,
+            "y": 0.0,
+            "z": -0.5712250349309043
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 34.30547578371272,
+            "y": 3.4000000000000012,
+            "z": -21.822335604904893
+          }
+        }
+      },
+      "id": 105,
+      "name": "rock-5"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.67700320038633,
+            "x": 0.710747050157907,
+            "y": 0.0,
+            "z": 0.1910635950632674
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": -10.555014291348227,
+            "y": -3.399999999999997,
+            "z": 39.264127053958994
+          }
+        }
+      },
+      "id": 106,
+      "name": "rock-6"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.6123724356957946,
+            "x": -0.7015895855884469,
+            "y": 0.0,
+            "z": 0.36437899691644066
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": -18.20786935482187,
+            "y": -10.2,
+            "z": -35.05814446826498
+          }
+        }
+      },
+      "id": 107,
+      "name": "rock-7"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.5400617248673216,
+            "x": 0.28871002888016334,
+            "y": 0.0,
+            "z": -0.7905566725778417
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 34.839071056137186,
+            "y": -17.000000000000004,
+            "z": 12.723172872574844
+          }
+        }
+      },
+      "id": 108,
+      "name": "rock-8"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.45643546458763845,
+            "x": 0.3394923025709098,
+            "y": 0.0,
+            "z": 0.8224424862333952
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": -30.63198053332506,
+            "y": -23.799999999999994,
+            "z": 12.644436270787036
+          }
+        }
+      },
+      "id": 109,
+      "name": "rock-9"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.35355339059327373,
+            "x": -0.8472368328405084,
+            "y": 0.0,
+            "z": -0.3964716245563916
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 11.438189190292356,
+            "y": -30.599999999999998,
+            "z": -24.442745918719506
+          }
+        }
+      },
+      "id": 110,
+      "name": "rock-10"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.42,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.8
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavObstacle": {
+          "radius": 1.8,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.2041241452319314,
+            "x": 0.9340742046519397,
+            "y": 0.0,
+            "z": -0.2929824457833262
+          },
+          "scale": {
+            "x": 2.4,
+            "y": 1.6,
+            "z": 2.4
+          },
+          "translation": {
+            "x": 4.880070971180144,
+            "y": -37.4,
+            "z": 15.558435246394305
+          }
+        }
+      },
+      "id": 111,
+      "name": "rock-11"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 9.81,
+          "jump": "jump",
+          "jump_speed": 6.0,
+          "mass": 80.0,
+          "move_forward": "move_forward",
+          "move_x": "move_x",
+          "speed": 5.0
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.5,
+              "radius": 0.35
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.95,
+            "g": 0.9,
+            "r": 0.9
+          },
+          "metallic": 0.0,
+          "roughness": 0.4
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "PlanetCharacter": {
+          "align_speed": 6.0,
+          "face_movement": false,
+          "thrust": 14.0,
+          "thrust_action": "thrust"
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 41.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "player"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.3,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 30.426140077242792,
+            "y": 34.5,
+            "z": 0.0
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 20,
+      "name": "crate-0"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.3,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -32.84189992530327,
+            "y": 11.5,
+            "z": 30.085870592295738
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 21,
+      "name": "crate-1"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.3,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 3.893881322377347,
+            "y": -11.5,
+            "z": -44.36876928930124
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 22,
+      "name": "crate-2"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 0.5,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.3,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.1,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.05,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 18.512446012580927,
+            "y": -34.5,
+            "z": 24.14620762420626
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 23,
+      "name": "crate-3"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 11.960958262696435,
+            "y": 1.6666666666666652,
+            "z": 38.13341972155469
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9895285072531598,
+            "x": 0.0,
+            "y": 0.0,
+            "z": -0.14433756729740632
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 11.568917138176754,
+            "y": 38.8125,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 200,
+      "name": "critter-0"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -34.57839328381728,
+            "y": -1.6666666666666696,
+            "z": -20.038885700853783
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9682458365518541,
+            "x": 0.16887257356538096,
+            "y": 0.0,
+            "z": 0.18434221951957994
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -14.457575510595461,
+            "y": 35.4375,
+            "z": 13.244323467260623
+          }
+        }
+      },
+      "id": 201,
+      "name": "critter-1"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 38.76061812842656,
+            "y": -5.0,
+            "z": -8.521413163454223
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9464847243000456,
+            "x": -0.32151282093696554,
+            "y": 0.0,
+            "z": -0.02821653132157498
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 2.163227785356964,
+            "y": 32.0625,
+            "z": -24.64886486835975
+          }
+        }
+      },
+      "id": 202,
+      "name": "critter-2"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -22.50039487336796,
+            "y": -8.33333333333333,
+            "z": 32.00449634189034
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9242113755341181,
+            "x": 0.30306129286400174,
+            "y": 0.0,
+            "z": -0.23235142801569594
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 17.39408846438994,
+            "y": 28.687499999999996,
+            "z": 22.687508242267967
+          }
+        }
+      },
+      "id": 203,
+      "name": "critter-3"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -4.9169219215963995,
+            "y": -11.66666666666667,
+            "z": -37.94354711549532
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9013878188659974,
+            "x": -0.07542299695460221,
+            "y": 0.0,
+            "z": 0.426393446866138
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -31.132014583003233,
+            "y": 25.3125,
+            "z": -5.506815028096897
+          }
+        }
+      },
+      "id": 204,
+      "name": "critter-4"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 28.353943616301628,
+            "y": -15.0,
+            "z": 23.89673369738191
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.8779711460710615,
+            "x": -0.25693899353885585,
+            "y": 0.0,
+            "z": -0.4039170957831649
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 28.724831995697645,
+            "y": 21.937500000000004,
+            "z": -18.272386832840006
+          }
+        }
+      },
+      "id": 205,
+      "name": "critter-5"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -35.52085619523945,
+            "y": -18.33333333333333,
+            "z": 1.4688989230058747
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.8539125638299665,
+            "x": 0.5025740588749913,
+            "y": 0.0,
+            "z": 0.13510236370711695
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -9.344614067583262,
+            "y": 18.5625,
+            "z": 34.76149855339849
+          }
+        }
+      },
+      "id": 206,
+      "name": "critter-6"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 23.83349238890755,
+            "y": -21.66666666666667,
+            "z": -23.71750821868607
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.82915619758885,
+            "x": -0.49609875357945044,
+            "y": 0.0,
+            "z": 0.25765485964156726
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -17.30452602056595,
+            "y": 15.1875,
+            "z": -33.318811847866904
+          }
+        }
+      },
+      "id": 207,
+      "name": "critter-7"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -1.4423274372034833,
+            "y": -25.0,
+            "z": 31.19166060927007
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.8036375634160796,
+            "x": 0.20414881921772746,
+            "y": 0.0,
+            "z": -0.559007984092065
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 36.388424955536415,
+            "y": 11.812499999999998,
+            "z": 13.28899443168274
+          }
+        }
+      },
+      "id": 208,
+      "name": "critter-8"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -18.090502098424047,
+            "y": -28.33333333333333,
+            "z": -21.678467566900053
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.7772815877574013,
+            "x": 0.24005730930852548,
+            "y": 0.0,
+            "z": 0.5815546591515575
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -36.61457003547599,
+            "y": 8.437500000000002,
+            "z": 15.113962249100123
+          }
+        }
+      },
+      "id": 209,
+      "name": "critter-9"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 24.21988364064394,
+            "y": -31.66666666666667,
+            "z": 3.258751088360384
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.75,
+            "x": -0.599086909772537,
+            "y": 0.0,
+            "z": -0.28034777427187146
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 17.03112728701619,
+            "y": 5.0625,
+            "z": -36.39452976868162
+          }
+        }
+      },
+      "id": 210,
+      "name": "critter-10"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -15.89585334332196,
+            "y": -35.0,
+            "z": 11.059920727003432
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.7216878364870322,
+            "x": 0.6604902042408175,
+            "y": 0.0,
+            "z": -0.20716987418200997
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 12.11047024098014,
+            "y": 1.6874999999999984,
+            "z": 38.61008746807412
+          }
+        }
+      },
+      "id": 211,
+      "name": "critter-11"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 2.5078140979604657,
+            "y": -38.33333333333333,
+            "z": -11.147485097797908
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.6922186552431729,
+            "x": -0.36185975249782576,
+            "y": 0.0,
+            "z": 0.6244124060711363
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -35.010623199864995,
+            "y": -1.687500000000003,
+            "z": -20.289371772114457
+          }
+        }
+      },
+      "id": 212,
+      "name": "critter-12"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 11.4260910006684,
+            "y": 38.333333333333336,
+            "z": 0.0
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.6614378277661476,
+            "x": -0.16103957178094336,
+            "y": 0.0,
+            "z": -0.732506830221132
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 39.24512585503189,
+            "y": -5.0625,
+            "z": -8.627930827997401
+          }
+        }
+      },
+      "id": 213,
+      "name": "critter-13"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -14.279086924044899,
+            "y": 35.0,
+            "z": 13.080813300998146
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.6291528696058958,
+            "x": 0.6358648646460537,
+            "y": 0.0,
+            "z": 0.4470375158477443
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -22.78164980928506,
+            "y": -8.437499999999996,
+            "z": 32.40455254616397
+          }
+        }
+      },
+      "id": 214,
+      "name": "critter-14"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 2.1365212694883597,
+            "y": 31.666666666666664,
+            "z": -24.3445578946763
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.5951190357119042,
+            "x": -0.7969739001480982,
+            "y": 0.0,
+            "z": 0.10327601762298258
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -4.978383445616355,
+            "y": -11.812500000000004,
+            "z": -38.417841454439014
+          }
+        }
+      },
+      "id": 215,
+      "name": "critter-15"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 17.179346631496237,
+            "y": 28.33333333333333,
+            "z": 22.40741554791898
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.5590169943749475,
+            "x": 0.5343472098755584,
+            "y": 0.0,
+            "z": -0.6340134535624665
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 28.7083679115054,
+            "y": -15.1875,
+            "z": 24.195442868599187
+          }
+        }
+      },
+      "id": 216,
+      "name": "critter-16"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -30.74766872395381,
+            "y": 25.0,
+            "z": -5.438829657379651
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.5204164998665332,
+            "x": 0.03528181090008173,
+            "y": 0.0,
+            "z": 0.8531833686179526
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -35.96486689767995,
+            "y": -18.562499999999996,
+            "z": 1.487260159543448
+          }
+        }
+      },
+      "id": 217,
+      "name": "critter-17"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 28.370204440195206,
+            "y": 21.66666666666667,
+            "z": -18.04680181021235
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.47871355387816905,
+            "x": -0.6193032353728305,
+            "y": 0.0,
+            "z": -0.6223317732448488
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 24.131411043768896,
+            "y": -21.937500000000004,
+            "z": -24.013977071419646
+          }
+        }
+      },
+      "id": 218,
+      "name": "critter-18"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -9.229248461810629,
+            "y": 18.333333333333336,
+            "z": 34.33234425027011
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.43301270189221935,
+            "x": 0.9004256824616761,
+            "y": 0.0,
+            "z": 0.04163640670645071
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -1.4603565301685268,
+            "y": -25.3125,
+            "z": 31.581556366885945
+          }
+        }
+      },
+      "id": 219,
+      "name": "critter-19"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -17.09088989685526,
+            "y": 15.0,
+            "z": -32.907468491720394
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.38188130791298674,
+            "x": -0.7095944183997475,
+            "y": 0.0,
+            "z": 0.5921506801841833
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -18.316633374654348,
+            "y": -28.687499999999996,
+            "z": -21.949448411486305
+          }
+        }
+      },
+      "id": 220,
+      "name": "critter-20"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 35.939185141270535,
+            "y": 11.666666666666664,
+            "z": 13.124932772032336
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.3227486121839514,
+            "x": 0.12621088694655067,
+            "y": 0.0,
+            "z": -0.9380320598729548
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 24.522632186151988,
+            "y": -32.0625,
+            "z": 3.299485476964889
+          }
+        }
+      },
+      "id": 221,
+      "name": "critter-21"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": -36.16253830664296,
+            "y": 8.333333333333336,
+            "z": 14.927370122568021
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.25,
+            "x": 0.5529960363501716,
+            "y": 0.0,
+            "z": 0.794792667166098
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": -16.094551510113483,
+            "y": -35.4375,
+            "z": 11.198169736090975
+          }
+        }
+      },
+      "id": 222,
+      "name": "critter-22"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.55,
+            "r": 0.85
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "NavAgent": {
+          "acceleration": 6.0,
+          "active": true,
+          "arrive_distance": 0.6,
+          "drive": "Direct",
+          "goal": {
+            "x": 16.820866456312288,
+            "y": 5.0,
+            "z": -35.94521458635222
+          },
+          "height": 0.3,
+          "radius": 0.4,
+          "speed": 3.0,
+          "surface": 3
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.1443375672974066,
+            "x": -0.965400528300144,
+            "y": 0.0,
+            "z": -0.21718307168025186
+          },
+          "scale": {
+            "x": 0.6,
+            "y": 0.6,
+            "z": 0.9
+          },
+          "translation": {
+            "x": 2.5391617741849717,
+            "y": -38.8125,
+            "z": -11.286828661520383
+          }
+        }
+      },
+      "id": 223,
+      "name": "critter-23"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 9.81,
+          "jump": "",
+          "jump_speed": 5.0,
+          "mass": 60.0,
+          "move_forward": "",
+          "move_x": "",
+          "speed": 3.5
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.4,
+              "radius": 0.3
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 0.6,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "MoveIntent": {
+          "jump": false,
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "NavAgent": {
+          "acceleration": 8.0,
+          "active": true,
+          "arrive_distance": 1.0,
+          "drive": "Intent",
+          "goal": {
+            "x": -28.55686245854129,
+            "y": 25.54203427256404,
+            "z": -11.493915422653817
+          },
+          "height": 0.0,
+          "radius": 0.4,
+          "speed": 3.5,
+          "surface": 3
+        },
+        "PlanetCharacter": {
+          "align_speed": 8.0,
+          "face_movement": true,
+          "thrust": 0.0,
+          "thrust_action": ""
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9051383476613122,
+            "x": 0.15873147254714826,
+            "y": 0.0,
+            "z": -0.3943715142045169
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 29.27078402000482,
+            "y": 26.180585129378144,
+            "z": 11.781263308220163
+          }
+        }
+      },
+      "id": 300,
+      "name": "walker-0"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 9.81,
+          "jump": "",
+          "jump_speed": 5.0,
+          "mass": 60.0,
+          "move_forward": "",
+          "move_x": "",
+          "speed": 3.5
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.4,
+              "radius": 0.3
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 0.6,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "MoveIntent": {
+          "jump": false,
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "NavAgent": {
+          "acceleration": 8.0,
+          "active": true,
+          "arrive_distance": 1.0,
+          "drive": "Intent",
+          "goal": {
+            "x": 29.49475512313279,
+            "y": 0.0,
+            "z": 27.019611770460955
+          },
+          "height": 0.0,
+          "radius": 0.4,
+          "speed": 3.5,
+          "surface": 3
+        },
+        "PlanetCharacter": {
+          "align_speed": 8.0,
+          "face_movement": true,
+          "thrust": 0.0,
+          "thrust_action": ""
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.7071067811865475,
+            "x": -0.4776437676980199,
+            "y": 0.0,
+            "z": 0.5213985339250965
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": -30.23212400121111,
+            "y": 0.0,
+            "z": -27.695102064722477
+          }
+        }
+      },
+      "id": 301,
+      "name": "walker-1"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "gravity": 9.81,
+          "jump": "",
+          "jump_speed": 5.0,
+          "mass": 60.0,
+          "move_forward": "",
+          "move_x": "",
+          "speed": 3.5
+        },
+        "CharacterState": {
+          "grounded": false,
+          "vertical_velocity": 0.0
+        },
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.7,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Capsule": {
+              "half_height": 0.4,
+              "radius": 0.3
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 0.6,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "MoveIntent": {
+          "jump": false,
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "NavAgent": {
+          "acceleration": 8.0,
+          "active": true,
+          "arrive_distance": 1.0,
+          "drive": "Intent",
+          "goal": {
+            "x": -2.6065315126574107,
+            "y": -26.66666666666667,
+            "z": -29.700082194539675
+          },
+          "height": 0.0,
+          "radius": 0.4,
+          "speed": 3.5,
+          "surface": 3
+        },
+        "PlanetCharacter": {
+          "align_speed": 8.0,
+          "face_movement": true,
+          "thrust": 0.0,
+          "thrust_action": ""
+        },
+        "RigidBody": {
+          "angular_damping": 0.0,
+          "gravity_scale": 1.0,
+          "kind": "Kinematic",
+          "linear_damping": 0.0,
+          "lock_rotations": true
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.40824829046386296,
+            "x": 0.9093755836917781,
+            "y": 0.0,
+            "z": -0.07980840255619312
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 2.671694800473846,
+            "y": -27.333333333333336,
+            "z": 30.442584249403165
+          }
+        }
+      },
+      "id": 302,
+      "name": "walker-2"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 1.0,
+        "g": 0.7,
+        "r": 0.6
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666666666666666
+    },
+    "InputConfig": {
+      "action_map": "planet.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}

@@ -7,9 +7,11 @@ macro_rules! backend {
             AngularVelocity, BodyKind, CharacterController, CharacterInput, CharacterState,
             Collider as ColliderComp, RigidBody as BodyComp,
         };
+        use crate::planet::PlanetCharacter;
         use bevy_ecs::entity::Entity;
         use bevy_ecs::world::World;
         use marionette_core::actions::ActionState;
+        use marionette_core::builtin::MoveIntent;
         use marionette_core::builtin::{Position, Velocity};
         use marionette_core::module::EventLog;
         use marionette_core::spatial::Transform;
@@ -197,6 +199,12 @@ macro_rules! backend {
             pw.integration_parameters.dt = dt;
             pw.gravity = conv::vector(gravity);
             let mut log: Vec<(&'static str, u64, Option<u64>)> = Vec::new();
+            // Point gravity (decision 0230): empty unless the scene has a GravityWell.
+            let wells = if conv::DIM == 3 {
+                crate::planet::wells(world)
+            } else {
+                Vec::new()
+            };
 
             // A script that set a dynamic body's Velocity or AngularVelocity since the last
             // write-back (a throw, a held object moved by velocity) sets the body's velocity.
@@ -252,6 +260,7 @@ macro_rules! backend {
                             continue;
                         };
                         let mut cs = world.get::<CharacterState>(e).copied().unwrap_or_default();
+                        let mut planet_state: Option<crate::planet::PlanetState> = None;
                         let mut vy = cs.vertical_velocity - cc.gravity * dt;
                         let scripted = world.get::<CharacterInput>(e).copied();
                         let (move_x, move_forward, jump) = match scripted {
@@ -271,23 +280,75 @@ macro_rules! backend {
                         {
                             i.jump = false;
                         }
-                        if cs.grounded && jump {
-                            vy = cc.jump_speed;
-                            log.push(("jump", id, None));
-                        }
+                        let planet = if conv::DIM == 3 {
+                            world.get::<PlanetCharacter>(e).cloned()
+                        } else {
+                            None
+                        };
                         let t = world.get::<Transform>(e).copied().unwrap_or_default();
                         let q = [t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w];
-                        conv::turn(&mut pw.bodies[h.body], q);
-                        let desired = conv::face(
-                            q,
-                            conv::walk(
-                                move_x * cc.speed * dt,
-                                move_forward * cc.speed * dt,
-                                vy * dt,
-                            ),
-                        );
-                        let controller = KinematicCharacterController::default();
+                        let mut controller = KinematicCharacterController::default();
                         let pose = *pw.bodies[h.body].position();
+                        let desired = if let Some(pc) = &planet {
+                            // Round worlds: up follows gravity (decision 0230).
+                            let intent = world.get::<MoveIntent>(e).copied();
+                            if intent.is_some_and(|i| i.jump)
+                                && let Some(mut i) = world.get_mut::<MoveIntent>(e)
+                            {
+                                i.jump = false;
+                            }
+                            let tr = conv::to3(pose.translation);
+                            let step = crate::planet::Step {
+                                rotation: q,
+                                position: [tr[0], tr[1], tr[2]],
+                                walk: [move_x, move_forward],
+                                intent: intent.map(|i| [i.velocity.x, i.velocity.y, i.velocity.z]),
+                                jump: jump || intent.is_some_and(|i| i.jump),
+                                thrust_held: !pc.thrust_action.is_empty()
+                                    && actions.value(&pc.thrust_action) > 0.5,
+                                vertical_velocity: cs.vertical_velocity,
+                                grounded: cs.grounded,
+                                speed: cc.speed,
+                                jump_speed: cc.jump_speed,
+                                fallback_gravity: cc.gravity,
+                                dt,
+                            };
+                            let plan = crate::planet::plan(pc, &wells, &step);
+                            if plan.jumped {
+                                log.push(("jump", id, None));
+                            }
+                            vy = plan.vertical_velocity;
+                            controller.up = conv::vector(plan.up).normalize_or_zero();
+                            let p = conv::pose(tr, plan.rotation);
+                            pw.bodies[h.body].set_next_kinematic_rotation(p.rotation);
+                            planet_state = Some(plan.state);
+                            conv::vector(plan.translation)
+                        } else {
+                            if cs.grounded && jump {
+                                vy = cc.jump_speed;
+                                log.push(("jump", id, None));
+                            }
+                            conv::turn(&mut pw.bodies[h.body], q);
+                            conv::face(
+                                q,
+                                conv::walk(
+                                    move_x * cc.speed * dt,
+                                    move_forward * cc.speed * dt,
+                                    vy * dt,
+                                ),
+                            )
+                        };
+                        // The controller casts from the rotated pose so the collider is
+                        // upright on round worlds.
+                        let pose = match &planet_state {
+                            Some(_) => {
+                                let r = pw.bodies[h.body].next_position().rotation;
+                                let mut p = pose;
+                                p.rotation = r;
+                                p
+                            }
+                            None => pose,
+                        };
                         let shape = pw.colliders[h.collider].shared_shape().clone();
                         let mut collisions = Vec::new();
                         let movement = {
@@ -329,6 +390,13 @@ macro_rules! backend {
                                 &collisions,
                             );
                         }
+                        if let Some(ps) = planet_state {
+                            if let Some(mut s) = world.get_mut::<crate::planet::PlanetState>(e) {
+                                *s = ps;
+                            } else {
+                                world.entity_mut(e).insert(ps);
+                            }
+                        }
                         if let Some(mut s) = world.get_mut::<CharacterState>(e) {
                             *s = cs;
                         } else {
@@ -336,6 +404,20 @@ macro_rules! backend {
                         }
                     }
                     _ => {}
+                }
+            }
+
+            if !wells.is_empty() {
+                for h in state.entities.values() {
+                    if h.kind != 0 {
+                        continue;
+                    }
+                    let body = &mut pw.bodies[h.body];
+                    let p = conv::to3(body.translation());
+                    let v = conv::to3(body.linvel());
+                    let f = crate::planet::body_force(&wells, p, v, body.mass(), body.gravity_scale());
+                    body.reset_forces(false);
+                    body.add_force(conv::vector(f), false);
                 }
             }
 
