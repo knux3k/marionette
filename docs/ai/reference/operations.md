@@ -81,7 +81,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
-| `port_serde` | yes | Writes Rust serde types for the C# [Serializable] classes and structs of a Unity project (a folder or one file) so a port reads and writes the JSON Unity's JsonUtility makes: public and [SerializeField] fields in declaration order, base class first, C# initializers kept as defaults, nested objects never null, enums as integers, Vector/Color/Quaternion written out, unknown types kept as raw JSON. Reports every field it could not save or map. Without `out` or with `dry_run` it returns the code instead of writing. Never overwrites unless `overwrite` is set. |
+| `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
@@ -1919,7 +1919,7 @@ Output:
 
 ## `port_serde`
 
-Writes Rust serde types for the C# [Serializable] classes and structs of a Unity project (a folder or one file) so a port reads and writes the JSON Unity's JsonUtility makes: public and [SerializeField] fields in declaration order, base class first, C# initializers kept as defaults, nested objects never null, enums as integers, Vector/Color/Quaternion written out, unknown types kept as raw JSON. Reports every field it could not save or map. Without `out` or with `dry_run` it returns the code instead of writing. Never overwrites unless `overwrite` is set.
+Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`.
 
 Mutating: yes.
 

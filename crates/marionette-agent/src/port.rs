@@ -33,7 +33,7 @@ pub(crate) fn ops() -> Vec<Op> {
         ),
         op(
             "port_serde",
-            "Writes Rust serde types for the C# [Serializable] classes and structs of a Unity project (a folder or one file) so a port reads and writes the JSON Unity's JsonUtility makes: public and [SerializeField] fields in declaration order, base class first, C# initializers kept as defaults, nested objects never null, enums as integers, Vector/Color/Quaternion written out, unknown types kept as raw JSON. Reports every field it could not save or map. Without `out` or with `dry_run` it returns the code instead of writing. Never overwrites unless `overwrite` is set.",
+            "Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`.",
             true,
             write_serde,
         ),
