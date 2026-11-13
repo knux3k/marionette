@@ -25,6 +25,8 @@ jobs-ts = ["marionette-agent/jobs-ts"]
 # Headsets through OpenXR (`marionette xr`; decision 0190). The OpenXR loader is opened at
 # run time, so this adds no system dependency.
 xr = ["dep:marionette-openxr"]
+# World-space UI (off by default; decision 0200).
+ui3d = ["marionette-agent/ui3d"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-agent/net"]
 

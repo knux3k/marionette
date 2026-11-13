@@ -37,6 +37,8 @@ pub mod script;
 pub mod session;
 pub mod skills;
 pub mod stability;
+#[cfg(feature = "ui3d")]
+mod ui3d;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -147,6 +149,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "ui3d")]
+    "ui3d",
     #[cfg(feature = "net")]
     "net",
 ];
@@ -167,6 +171,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        #[cfg(feature = "ui3d")]
+        ui3d::ops(),
         audio::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
