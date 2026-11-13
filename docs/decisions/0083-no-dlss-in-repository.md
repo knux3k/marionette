@@ -1,4 +1,4 @@
-# 0083: DLSS is not part of the engine; only a possible optional add-on later
+# 0083: No DLSS
 
 Date: 2026-11-13. Status: accepted. Focuses 1 (modularity) and 3 (performance).
 
@@ -24,7 +24,7 @@ The owner asked whether the engine has DLSS. Read on 2026-11-13: the NVIDIA RTX 
 
 ## Decision
 
-No DLSS code or files in the engine. Vendor-neutral options come first: render scale with an
-upscaler (decision 0081) and foveation (decision 0082). If motion vectors and temporal
-anti-aliasing land later, an optional crate outside the default build may connect DLSS for
-developers who download the SDK themselves and accept NVIDIA's terms.
+No DLSS code, files or add-on point for it. After these terms were summarised, the owner chose
+not to use DLSS at all (2026-11-13). Vendor-neutral options only: render scale with an
+upscaler (decision 0081), foveation (decision 0082), and later temporal upscaling written in
+the engine if motion vectors and temporal anti-aliasing land.
