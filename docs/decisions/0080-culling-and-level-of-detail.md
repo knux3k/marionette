@@ -61,7 +61,7 @@ while animated). The simplifier is behind the `lod` cargo feature of `marionette
 ## Consequences
 
 - Frames where much of a scene is out of view record and draw only what is seen. Measured
-  numbers are in `docs/ai/PROOFS.md` (section Culling and level of detail).
+  numbers are in `docs/ai/proofs/render.md` (section Culling and level of detail).
 - Reduced levels use extra index memory (about 75% of the part's index buffer) only for scenes
   with `LevelOfDetail`.
 - Level switches can pop at the thresholds; no cross-fade yet.
