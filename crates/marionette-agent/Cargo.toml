@@ -13,6 +13,7 @@ marionette-render = { path = "../marionette-render" }
 marionette-input = { path = "../marionette-input" }
 marionette-physics = { path = "../marionette-physics" }
 marionette-audio = { path = "../marionette-audio" }
+marionette-synth = { path = "../marionette-synth" }
 marionette-import = { path = "../marionette-import", optional = true }
 marionette-anim = { path = "../marionette-anim" }
 marionette-ui3d = { path = "../marionette-ui3d", optional = true }
