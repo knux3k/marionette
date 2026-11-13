@@ -65,10 +65,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
   container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
-- Windowed mode ran on one real screen (Windows, 60 Hz, discrete GPU; proofs/window.md):
-  keys, focus loss, resize, fullscreen and present modes checked. Still unverified: gamepads
-  on hardware, high-refresh displays, `UiButton` clicks and sound through real speakers, the
-  minimize fix on Windows (rerun pending), Linux and macOS screens.
+- Window (proofs/window.md): gamepads on hardware, high-refresh screens, clicks, speakers,
+  the Windows minimize fix, Linux and macOS screens.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.
