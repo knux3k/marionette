@@ -11,22 +11,23 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
 | 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067). |
+| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
-| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). |
+| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
-| - | Game packages | Done (decision 0140): `marionette package` for windows-x64, linux-x64, steamdeck, steam-frame (Linux ARM64). |
+| - | Game packages | Done (decision 0140): Windows, Linux, Steam Deck, Steam Frame (ARM64). |
 
 ## UNVERIFIED
 
-- Game packages (decision 0140): no package has run on a Steam Deck, a Steam Frame, or a
-  screen (windowed start untested); Steam Frame binaries ran headless on a generic ARM64
-  Linux machine (CI), not on Snapdragon hardware or in the Steam runtime. Steam Frame facts
-  are from Valve's pages, not a device.
+- Game packages (decision 0140): never run on a Deck, a Frame or a screen; Frame binaries
+  ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
+- World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
+  not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
+
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
   been worked on by several real agents through it, and claims are not checked against a
   remote.
@@ -39,6 +40,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
   nor on AMD or Intel GPUs.
+- Frustum culling and `LevelOfDetail` (decision 0080): measured only on Mesa lavapipe in a
+  cloud container; hardware GPU and headset numbers not yet taken.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
