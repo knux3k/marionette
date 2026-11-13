@@ -56,6 +56,13 @@ others). All six windows exited with code 0.
   foreground, so input latency, focus loss, resize and the minimize CPU check were not
   exercised (input counts 0, empty recording). The script now records `foreground` per run
   and says when input did not land.
+- Third run (Task View closed): keys reached the mailbox, immediate, capped and fullscreen
+  windows (40 events each; input latency mean 8.0 ms mailbox, 9.2 ms immediate, 9.4 ms capped,
+  16.5 ms fullscreen vsync), but not the first two windows (vsync, queue depth 1) in either of
+  two tries. The script's `foreground` flag did not match delivery, so it now also records
+  `recorded_events`. The held-key release and the minimize check stay unverified: CPU while
+  minimized was 62 and 172 ms per 2 s on two tries (219 ms before the fix), not the near zero
+  a sleeping loop should show. Next step: trace the minimized loop on Windows.
 - `resizes` is 2 on a plain windowed run with no resize: Windows sends start-up size
   changes after the first frame. Not yet explained.
 

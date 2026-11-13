@@ -91,7 +91,9 @@ foreach ($r in $runs) {
     $minCpu = Drive $p $r.disturb
     if (-not $p.WaitForExit(($Seconds + 15) * 1000)) { $p.Kill(); $summary[$r.name] = @{ error = "did not close" }; continue }
     $frames = Get-Content (Join-Path $Out "$($r.name).frames.json") -Raw | ConvertFrom-Json
-    $summary[$r.name] = @{ exit = $p.ExitCode; foreground = $script:foreground; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
+    # Whether the synthetic keys reached the game: the recording has events only if they did.
+    $events = (Get-Content (Join-Path $Out "$($r.name).inputs.json") -Raw | ConvertFrom-Json).events.Count
+    $summary[$r.name] = @{ exit = $p.ExitCode; foreground = $script:foreground; recorded_events = $events; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
     Start-Sleep -Seconds 1
 }
 $summary | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $Out "summary.json")
