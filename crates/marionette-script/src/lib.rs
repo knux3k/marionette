@@ -466,11 +466,11 @@ fn throw(ctx: &Ctx<'_>, msg: String) -> rquickjs::Error {
     Exception::throw_message(ctx, &msg)
 }
 
-/// `Entity.playClip` / `blendClip` / `stopClip`: the same `Animator` changes as the
-/// `anim_play`, `anim_blend` and `anim_stop` operations (one implementation, in
-/// `marionette-anim`). Unknown clips throw `anim.unknown_clip`.
+/// `Entity.playClip` / `blendClip` / `stopClip` / `setBlend` / `playOverlay` / `stopOverlay`:
+/// the same changes as the `anim_play`, `anim_blend`, `anim_stop`, `anim_space` and
+/// `anim_overlay` operations (one implementation, in `marionette-anim`). Unknown clips throw `anim.unknown_clip`.
 fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
-    use marionette_anim::{Animator, Rigs};
+    use marionette_anim::{AnimOverlays, Animator, BlendSpaces, Rigs};
     let v: serde_json::Value =
         serde_json::from_str(json).map_err(|err| format!("script.bad_value: {err}"))?;
     let num = |k: &str, d: f64| v.get(k).and_then(serde_json::Value::as_f64).unwrap_or(d) as f32;
@@ -478,7 +478,24 @@ fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
         .get("looping")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(true);
+    let op = v.get("op").and_then(serde_json::Value::as_str);
     let clip = v.get("clip").and_then(serde_json::Value::as_str);
+    let mut spaces = world.get::<BlendSpaces>(e).cloned();
+    if op == Some("param") {
+        let space = v.get("space").and_then(serde_json::Value::as_str).unwrap_or("");
+        let rate = v
+            .get("rate")
+            .and_then(serde_json::Value::as_f64)
+            .map(|r| r as f32);
+        let s = spaces.get_or_insert_with(BlendSpaces::default);
+        if !s.set_param(space, num("x", 0.0), num("y", 0.0), rate) {
+            return Err(format!(
+                "anim.unknown_space: this entity has no blend space `{space}` (define it with anim_space)"
+            ));
+        }
+        world.entity_mut(e).insert(s.clone());
+        return Ok(());
+    }
     if let Some(clip) = clip {
         let model = world
             .get::<marionette_core::spatial::Model>(e)
@@ -492,17 +509,49 @@ fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
                     model.asset
                 )
             })?;
-        if rig.clip(clip).is_none() {
+        if let Some(missing) = marionette_anim::blend::missing_clip(rig, spaces.as_ref(), clip) {
             let names: Vec<&str> = rig.clips.iter().map(|c| c.name.as_str()).collect();
             return Err(format!(
-                "anim.unknown_clip: `{}` has no clip `{clip}` (clips: {})",
+                "anim.unknown_clip: `{}` has no clip `{missing}` (clips: {})",
                 model.asset,
                 names.join(", ")
             ));
         }
     }
+    if matches!(op, Some("overlay") | Some("overlay_stop")) {
+        let name = v
+            .get("name")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("overlay");
+        let mut overlays = world.get::<AnimOverlays>(e).cloned().unwrap_or_default();
+        let fade = num("fade", 0.2);
+        let ov = overlays.entry(name);
+        if op == Some("overlay_stop") {
+            ov.set_weight(0.0, fade);
+            ov.stop(None, fade);
+        } else {
+            if let Some(mask) = v.get("mask").and_then(serde_json::Value::as_array) {
+                ov.mask = mask
+                    .iter()
+                    .filter_map(|m| m.as_str().map(str::to_string))
+                    .collect();
+            }
+            if let Some(a) = v.get("additive").and_then(serde_json::Value::as_bool) {
+                ov.additive = a;
+            }
+            ov.set_weight(num("weight", 1.0), fade);
+            if let Some(c) = clip {
+                ov.play(c, fade, num("speed", 1.0), looping);
+            }
+        }
+        world.entity_mut(e).insert(overlays);
+        if world.get::<Animator>(e).is_none() {
+            world.entity_mut(e).insert(Animator::default());
+        }
+        return Ok(());
+    }
     let mut animator = world.get::<Animator>(e).cloned().unwrap_or_default();
-    match (v.get("op").and_then(serde_json::Value::as_str), clip) {
+    match (op, clip) {
         (Some("play"), Some(c)) => animator.play(c, num("fade", 0.2), num("speed", 1.0), looping),
         (Some("blend"), Some(c)) => animator.blend(
             c,

@@ -16,6 +16,16 @@ Rust type: `marionette_physics::components::AngularVelocity`.
 | `y` | number | yes |  |
 | `z` | number | yes |  |
 
+### `AnimOverlays`
+
+Overlays applied in order on top of the entity's `Animator` pose.
+
+Rust type: `marionette_anim::blend::AnimOverlays`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `overlays` | array of object {additive, fade, layers, mask, name, target_weight, weight} | yes |  |
+
 ### `Animator`
 
 Plays skeletal animation clips of the entity's `Model` (a glTF file with animations), blended by layer weight. Change it through the `anim_play`, `anim_blend` and `anim_stop` operations or by editing the layers directly. An empty list shows the rest pose.
@@ -28,7 +38,7 @@ Rust type: `marionette_anim::Animator`.
 
 ### `AudioListener`
 
-Where sounds are heard from (usually on the camera). Pan follows the listener's right (+X) axis; gain falls off as `1 / (1 + distance)`.
+Where sounds are heard from (usually on the camera, or the head in VR). Pan follows the listener's right (+X) axis; front is its -Z axis. Without a `SoundSpatial` on the source, gain falls off as `1 / (1 + distance)`.
 
 Rust type: `marionette_audio::AudioListener`.
 
@@ -38,7 +48,7 @@ Rust type: `marionette_audio::AudioListener`.
 
 ### `AudioSource`
 
-A sound attached to an entity. `sound` is a WAV/OGG file relative to the scene or a built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`).
+A sound attached to an entity. `sound` is a WAV/OGG file relative to the scene or a built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`; music stems in `Music`). Add `SoundSpatial` for 3D distance, rear muffling and Doppler.
 
 Rust type: `marionette_audio::AudioSource`.
 
@@ -48,6 +58,16 @@ Rust type: `marionette_audio::AudioSource`.
 | `sound` | string | yes |  |
 | `trigger` | "OnStart" \| "OnCollision" \| "OnJump" \| {OnAction: {action: string}} | yes | When an `AudioSource` plays. |
 | `volume` | number | yes | Linear gain (1.0 = as recorded). |
+
+### `BlendSpaces`
+
+Blend spaces of an entity (used by its `Animator` and `AnimOverlays` layers).
+
+Rust type: `marionette_anim::blend::BlendSpaces`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `spaces` | array of object {name, points, rate, sync, target_x, target_y, x, y} | yes |  |
 
 ### `Camera`
 
@@ -272,6 +292,20 @@ Rust type: `marionette_core::spatial::ModelPlacement`.
 | `rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
 | `scale` | object {x, y, z} | yes |  |
 
+### `Music`
+
+Layered music, not positional. Raise `intensity` to bring layers in.
+
+Rust type: `marionette_audio::music::Music`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `fade` | number | yes | Seconds for a layer to fade fully in or out (0 = instant). |
+| `intensity` | number | yes |  |
+| `layers` | array of object {at, level, mix, sound} | yes |  |
+| `playing` | boolean | yes | False fades every layer out (the player stops the stems once all are silent). |
+| `volume` | number | yes | Master gain. |
+
 ### `PointLight`
 
 A light at the entity's position shining in every direction (a lamp, a torch, a glowing crystal). Brightness falls off with the square of the distance and reaches zero at `range`. The renderer uses the first 16 point and spot lights by entity id.
@@ -359,6 +393,20 @@ Rust type: `marionette_script::ScriptTimers`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `data` | string | yes |  |
+
+### `SoundSpatial`
+
+3D settings for the `AudioSource` on the same entity.
+
+Rust type: `marionette_audio::SoundSpatial`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `doppler` | number | yes | Doppler pitch shift: 0 off, 1 real speed of sound. Player only (needs velocities). |
+| `max_distance` | number | yes | See [`Rolloff`]. |
+| `min_distance` | number | yes | Full gain inside this distance (meters); also where panning reaches full width. |
+| `rear_muffle` | number | yes | 0..1: low-pass when the sound is behind the listener (1 = down to 4 kHz straight behind). Stereo panning alone cannot tell front from back; this can. |
+| `rolloff` | "Inverse" \| "Linear" \| "Constant" | yes | How gain falls with distance (between `min_distance` and `max_distance`). |
 
 ### `SpotLight`
 
