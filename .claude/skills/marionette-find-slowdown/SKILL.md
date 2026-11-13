@@ -55,3 +55,13 @@ time budgets over a long seeded run (skill `marionette-test-game`).
 
 Report before and after with: build type, machine class, GPU, scene, ticks, p99 and max.
 Never compare against another engine unless both ran the same content on the same machine.
+
+## Windowed play feel
+
+Opening a window on a person's machine needs their OK. `marionette run <scene> --seconds 10
+--mute --frame-stats frames.json` prints pacing under `frames`: `interval` (16.7 ms at 60 Hz
+vsync), `missed_refreshes`, `input_latency` (event to present; the display adds about
+`frame_latency` refreshes), `ticks_per_frame` (outside `1` at refresh = tick rate is judder).
+Lower latency: `--frame-latency 1`; no vsync: `--present mailbox` or `--present immediate
+--fps-cap 240`; `--fullscreen` (F11 or Alt+Enter toggles), `--grab-cursor` for mouse look,
+`--keep-escape` to give Escape to the game. Compare runs on the same display only.
