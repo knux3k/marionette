@@ -318,9 +318,22 @@ pub struct BulkDraw {
     pub transforms: Vec<[f32; 12]>,
 }
 
-/// A function that adds bulk draws for the current world. `alpha` (0..1) is how far the
-/// frame is between the last tick and the next, for smooth motion at display rate.
-pub type BulkDrawHook = fn(&bevy_ecs::world::World, alpha: f32, &mut Vec<BulkDraw>);
+/// What a bulk draw hook knows about the frame being drawn. Not simulation state.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct BulkDrawContext {
+    /// How far (0..1) the frame is between the last tick and the next, for smooth motion
+    /// at display rate.
+    pub alpha: f32,
+    /// World position of the camera the frame is drawn from (the first camera by scene id;
+    /// the head for a headset), or `None` without a camera. Lets a hook skip far copies,
+    /// pick a level of detail or turn flat copies toward the viewer.
+    pub eye: Option<[f32; 3]>,
+    /// The direction that camera looks (unit length), when there is one.
+    pub forward: Option<[f32; 3]>,
+}
+
+/// A function that adds bulk draws for the current world and frame.
+pub type BulkDrawHook = fn(&bevy_ecs::world::World, &BulkDrawContext, &mut Vec<BulkDraw>);
 
 /// Bulk draw hooks registered by modules in `Module::init`. Not simulation state: not in
 /// the scene, the schema or the state hash.
