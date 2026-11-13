@@ -143,14 +143,56 @@ fn downscale(uv: vec2<f32>) -> vec3<f32> {
     return sum * 0.25;
 }
 
+// Catmull-Rom from 9 bilinear taps (the middle two texels of each axis share one tap),
+// clamped to the 2x2 nearest texels (three gathers) so edges get no halos. Used when
+// foveation is off: no holes to fill, so the hardware filter can do the work.
+fn upscale_fast(uv: vec2<f32>) -> vec3<f32> {
+    let size = vec2<f32>(textureDimensions(src));
+    let inv = 1.0 / size;
+    let pos = uv * size;
+    let t1 = floor(pos - 0.5) + 0.5;
+    let f = pos - t1;
+    let w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+    let w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+    let w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+    let w3 = f * f * (-0.5 + 0.5 * f);
+    let w12 = w1 + w2;
+    let p0 = (t1 - 1.0) * inv;
+    let p12 = (t1 + w2 / w12) * inv;
+    let p3 = (t1 + 2.0) * inv;
+    let xs = array<f32, 3>(p0.x, p12.x, p3.x);
+    let ys = array<f32, 3>(p0.y, p12.y, p3.y);
+    let wxs = array<f32, 3>(w0.x, w12.x, w3.x);
+    let wys = array<f32, 3>(w0.y, w12.y, w3.y);
+    var sum = vec3<f32>(0.0);
+    for (var j = 0; j < 3; j = j + 1) {
+        for (var i = 0; i < 3; i = i + 1) {
+            sum += textureSampleLevel(src, samp, vec2<f32>(xs[i], ys[j]), 0.0).rgb * (wxs[i] * wys[j]);
+        }
+    }
+    let bilinear = textureSampleLevel(src, samp, uv, 0.0).rgb;
+    let r = textureGather(0, src, samp, uv);
+    let g = textureGather(1, src, samp, uv);
+    let b = textureGather(2, src, samp, uv);
+    let lo = vec3<f32>(min(min(r.x, r.y), min(r.z, r.w)), min(min(g.x, g.y), min(g.z, g.w)), min(min(b.x, b.y), min(b.z, b.w)));
+    let hi = vec3<f32>(max(max(r.x, r.y), max(r.z, r.w)), max(max(g.x, g.y), max(g.z, g.w)), max(max(b.x, b.y), max(b.z, b.w)));
+    let sharp = sum + (sum - bilinear) * u.params.y;
+    return clamp(sharp, lo, hi);
+}
+
 @fragment
 fn fs_resolve(in: FullOut) -> @location(0) vec4<f32> {
     let mode = u.params.z;
+    let foveated = u.params.x > 0.0;
     var c: vec3<f32>;
     if (mode < 0.5) {
         c = fetch(vec2<i32>(in.clip.xy));
     } else if (mode < 1.5) {
-        c = upscale(in.uv);
+        if (foveated) {
+            c = upscale(in.uv);
+        } else {
+            c = upscale_fast(in.uv);
+        }
     } else {
         c = downscale(in.uv);
     }
