@@ -63,12 +63,17 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
 | 0083 | No DLSS (license forbids open source use; owner chose not to use it); vendor-neutral upscaling only | accepted |
+| 0090 | Sun shadow cascades (`ShadowCascades`), sphere-fitted and texel-snapped | accepted |
+| 0091 | HDR environment files: Radiance `.hdr` (own decoder), OpenEXR `.exr` (feature `exr`) | accepted |
+| 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
+| 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |
 | 0100 | One shared performance suite with output checks (`perf_suite`, `perf_compare`), shared-machine lock and idle checks | accepted |
 | 0101 | Shipping builds use fat LTO with one codegen unit (`--profile dist`); `release` stays | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
 | 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |
+| 0190 | Headsets through OpenXR: poses enter as recorded input, gameplay in `marionette-xr`, the runtime in `marionette-openxr` (Vulkan through wgpu-hal, one swapchain per eye) | accepted |
 | 0220 | Real-time synth crate (lock-free commands, sample-accurate notes, generators, disk streaming), offline render with numeric checks, `audio-check` device run | accepted |
 | 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
 | 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |
@@ -76,4 +81,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0211 | Networked input is per-player actions `p<slot>.<action>` and a `NetPlayers` resource | accepted |
 | 0212 | Steam is an optional backend that loads the game's own steam_api library at run time (no SDK files) | accepted |
 | 0213 | Achievements, stats and cloud files behind interfaces, offline backend, three-way save-folder sync (`marionette-platform`) | accepted |
+| 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
+| 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
+| 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |

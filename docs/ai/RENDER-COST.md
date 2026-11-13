@@ -41,6 +41,11 @@ The world is drawn at `scale` times the output size (0.5 to 2.0) and resolved to
 at full resolution. Below 1: Catmull-Rom clamped against ringing, plus `sharpness` (0 to 1).
 Above 1: supersampled and box-filtered down (cleanest edges, costs about `scale` squared).
 
+The resolve is one extra full-size pass per view (about 0.2 to 0.35 ms for two 2160x2160 eyes
+on a desktop GPU), so scale pays only when shading the world costs more than that: on a
+desktop GPU, 0.5 saved 26% on a bloom scene and 0.75 broke even; on a light scene 0.75 was
+slower. Measure your scene before keeping it (numbers in proofs/render.md).
+
 ## Foveated rendering
 
 ```bash
@@ -49,8 +54,11 @@ marionette op resource_set '{"scene":"s.scene.json","resource":"Foveation","valu
 
 Outside an ellipse (`inner_radius` of the half width and height) every other 2x2 pixel quad is
 not shaded and is filled from its neighbours. For headset views; combine with `RenderScale`
-freely. wgpu has no variable-rate shading, so this is done with a depth mask.
+freely (with scale below 1 the periphery is upscaled bilinearly). wgpu has no variable-rate
+shading, so this is done with a depth mask. Without `RenderScale` it adds a copy pass, so it
+pays only where edge shading is costly; on the small example scenes it was slightly slower.
 
 ## Proofs
 
-In [proofs/render.md](proofs/render.md#culling-and-level-of-detail-decision-0080).
+In [proofs/render.md](proofs/render.md#culling-and-level-of-detail-decision-0080) and
+[desktop GPU numbers](proofs/render.md#render-cost-on-a-desktop-gpu-decisions-0080-to-0082).

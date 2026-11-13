@@ -107,6 +107,55 @@ pub(crate) fn from_rgba8(width: u32, height: u32, rgba: &[u8], srgb: bool) -> En
     EnvImage { w, h, px }
 }
 
+/// Brightest value kept from an HDR image: half floats end at 65504.
+pub(crate) const HDR_MAX: f32 = 60000.0;
+
+/// A linear HDR image (decision 0091) resampled to the base size. Each base texel averages
+/// the source texels it covers, so a small, very bright sun keeps its energy instead of
+/// being hit or missed by a bilinear tap; smaller sources are sampled bilinearly.
+pub(crate) fn from_linear(width: u32, height: u32, rgb: &[[f32; 3]]) -> EnvImage {
+    let (sw, sh) = (width.max(1) as usize, height.max(1) as usize);
+    let src: Vec<Vec3> = rgb
+        .iter()
+        .map(|c| Vec3::from(*c).clamp(Vec3::ZERO, Vec3::splat(HDR_MAX)))
+        .map(|c| if c.is_finite() { c } else { Vec3::ZERO })
+        .collect();
+    let (w, h) = (BASE_W, BASE_W / 2);
+    if sw < 2 * w || sh < 2 * h || src.len() < sw * sh {
+        let mut px = Vec::with_capacity(w * h);
+        for y in 0..h {
+            for x in 0..w {
+                let fx = (x as f32 + 0.5) / w as f32 * sw as f32 - 0.5;
+                let fy = ((y as f32 + 0.5) / h as f32 * sh as f32 - 0.5).clamp(0.0, (sh - 1) as f32);
+                let (x0, y0) = (fx.floor(), fy.floor());
+                let (tx, ty) = (fx - x0, fy - y0);
+                let at = |xx: f32, yy: f32| {
+                    let xi = (xx as i64).rem_euclid(sw as i64) as usize;
+                    let yi = (yy as usize).min(sh - 1);
+                    src.get(yi * sw + xi).copied().unwrap_or(Vec3::ZERO)
+                };
+                let top = at(x0, y0).lerp(at(x0 + 1.0, y0), tx);
+                let bottom = at(x0, y0 + 1.0).lerp(at(x0 + 1.0, y0 + 1.0), tx);
+                px.push(top.lerp(bottom, ty));
+            }
+        }
+        return EnvImage { w, h, px };
+    }
+    let mut px = Vec::with_capacity(w * h);
+    for y in 0..h {
+        let (y0, y1) = (y * sh / h, ((y + 1) * sh / h).max(y * sh / h + 1));
+        for x in 0..w {
+            let (x0, x1) = (x * sw / w, ((x + 1) * sw / w).max(x * sw / w + 1));
+            let mut c = Vec3::ZERO;
+            for row in src[y0 * sw..y1 * sw].chunks_exact(sw) {
+                c += row[x0..x1].iter().copied().sum::<Vec3>();
+            }
+            px.push(c / ((y1 - y0) * (x1 - x0)) as f32);
+        }
+    }
+    EnvImage { w, h, px }
+}
+
 /// Angular spread (radians, one standard deviation) of the blur for `roughness`.
 fn spread(roughness: f32) -> f32 {
     let a = roughness * roughness;

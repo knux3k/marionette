@@ -16,6 +16,7 @@ marionette-audio = { path = "../marionette-audio" }
 marionette-synth = { path = "../marionette-synth" }
 marionette-import = { path = "../marionette-import", optional = true }
 marionette-anim = { path = "../marionette-anim" }
+marionette-xr = { path = "../marionette-xr" }
 marionette-ui3d = { path = "../marionette-ui3d", optional = true }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
@@ -24,6 +25,7 @@ marionette-pool = { path = "../marionette-pool", optional = true }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-jobs-ts = { path = "../marionette-jobs-ts", optional = true }
+marionette-nav = { path = "../marionette-nav", optional = true }
 marionette-providers = { path = "../marionette-providers", optional = true }
 marionette-generate = { path = "../marionette-generate", optional = true }
 marionette-script = { path = "../marionette-script", optional = true }
@@ -41,7 +43,7 @@ tokio = { version = "1", features = ["rt"] }
 # Optional engine parts (decision 0062). A game that does not use one builds without it:
 # `default-features = false, features = ["script"]`. Each feature adds its operations (and
 # for `script`, the script module).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "nav"]
 # TypeScript game scripts (QuickJS and the oxc TypeScript stripper).
 script = ["dep:marionette-script"]
 # Owned-asset library and prefab import (library_*, prefab_* operations).
@@ -61,5 +63,7 @@ netplay = ["dep:marionette-net", "dep:marionette-platform"]
 # World-space UI: panels and text placed in the 3D world (ui3d_* operations; decision 0200).
 # Off by default: a game that wants it adds the feature or `Ui3dModule` itself.
 ui3d = ["dep:marionette-ui3d"]
+# Navigation on round, changing worlds (NavSurface, NavAgent; decision 0231).
+nav = ["dep:marionette-nav"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-providers/net"]

@@ -1,0 +1,822 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.8,
+            "g": 0.6,
+            "r": 0.5
+          },
+          "projection": {
+            "Perspective": {
+              "far": 200.0,
+              "fov_y_degrees": 50.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.9,
+            "z": -1.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 5.5,
+            "y": 2.3,
+            "z": 7.5
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.82,
+            "g": 0.93,
+            "r": 1.0
+          },
+          "direction": {
+            "x": 0.497,
+            "y": -0.5,
+            "z": 0.709
+          },
+          "illuminance": 3.0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.28,
+            "g": 0.3,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.6
+        },
+        "Model": {
+          "asset": "primitive:plane"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 400.0,
+            "y": 1.0,
+            "z": 400.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "ground"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.75,
+            "g": 0.72,
+            "r": 0.7
+          },
+          "metallic": 1.0,
+          "roughness": 0.06
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 6.0,
+            "y": 0.02,
+            "z": 3.0
+          },
+          "translation": {
+            "x": 0.3,
+            "y": 0.01,
+            "z": 1.2
+          }
+        }
+      },
+      "id": 4,
+      "name": "mirror floor"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.95,
+            "g": 0.95,
+            "r": 0.95
+          },
+          "metallic": 1.0,
+          "roughness": 0.04
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 2.0,
+            "y": 2.0,
+            "z": 2.0
+          },
+          "translation": {
+            "x": -1.6,
+            "y": 1.0,
+            "z": -0.6
+          }
+        }
+      },
+      "id": 5,
+      "name": "mirror ball"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.06,
+            "g": 0.08,
+            "r": 0.75
+          },
+          "metallic": 0.0,
+          "roughness": 0.25
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.976296,
+            "x": 0.0,
+            "y": 0.21643962,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 1.2,
+            "z": 1.2
+          },
+          "translation": {
+            "x": 1.3,
+            "y": 0.6,
+            "z": -0.8
+          }
+        }
+      },
+      "id": 6,
+      "name": "red box"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.34,
+            "g": 0.77,
+            "r": 1.0
+          },
+          "metallic": 1.0,
+          "roughness": 0.3
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.7,
+            "y": 0.7,
+            "z": 0.7
+          },
+          "translation": {
+            "x": 2.6,
+            "y": 0.35,
+            "z": 0.6
+          }
+        }
+      },
+      "id": 7,
+      "name": "gold box"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "../games/crystal-ward/assets/generated/crystal.glb"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.6,
+            "y": 1.6,
+            "z": 1.6
+          },
+          "translation": {
+            "x": -0.2,
+            "y": 0.0,
+            "z": -2.6
+          }
+        }
+      },
+      "id": 8,
+      "name": "crystal"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -6.0
+          }
+        }
+      },
+      "id": 9,
+      "name": "pillar 1"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -12.0
+          }
+        }
+      },
+      "id": 10,
+      "name": "pillar 2"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -18.0
+          }
+        }
+      },
+      "id": 11,
+      "name": "pillar 3"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -24.0
+          }
+        }
+      },
+      "id": 12,
+      "name": "pillar 4"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -30.0
+          }
+        }
+      },
+      "id": 13,
+      "name": "pillar 5"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -36.0
+          }
+        }
+      },
+      "id": 14,
+      "name": "pillar 6"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -42.0
+          }
+        }
+      },
+      "id": 15,
+      "name": "pillar 7"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -48.0
+          }
+        }
+      },
+      "id": 16,
+      "name": "pillar 8"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -54.0
+          }
+        }
+      },
+      "id": 17,
+      "name": "pillar 9"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.72,
+            "g": 0.78,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.5,
+            "y": 3.0,
+            "z": 0.5
+          },
+          "translation": {
+            "x": -4.5,
+            "y": 1.5,
+            "z": -60.0
+          }
+        }
+      },
+      "id": 18,
+      "name": "pillar 10"
+    },
+    {
+      "components": {
+        "CastShadows": {
+          "resolution": 512,
+          "softness": 1.0
+        },
+        "PointLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.7,
+            "r": 1.0
+          },
+          "intensity": 4.0,
+          "range": 6.0
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 2.8,
+            "y": 1.4,
+            "z": 2.2
+          }
+        }
+      },
+      "id": 19,
+      "name": "lamp"
+    },
+    {
+      "components": {
+        "Emissive": {
+          "color": {
+            "a": 1.0,
+            "b": 0.4,
+            "g": 0.7,
+            "r": 1.0
+          },
+          "intensity": 6.0
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.6,
+            "g": 0.8,
+            "r": 1.0
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.15,
+            "y": 0.15,
+            "z": 0.15
+          },
+          "translation": {
+            "x": 2.8,
+            "y": 1.4,
+            "z": 2.2
+          }
+        }
+      },
+      "id": 20,
+      "name": "lamp bulb"
+    },
+    {
+      "components": {
+        "ReflectionProbe": {
+          "extent": {
+            "x": 7.0,
+            "y": 2.5,
+            "z": 7.0
+          },
+          "resolution": 128
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 2.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 21,
+      "name": "probe"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "Bloom": {
+      "intensity": 0.12,
+      "threshold": 1.5
+    },
+    "Environment": {
+      "background": true,
+      "image": "assets/sky-sun.hdr",
+      "intensity": 0.45
+    },
+    "RayTracing": {
+      "max_roughness": 0.5,
+      "reflections": true,
+      "shadows": true,
+      "sun_size_degrees": 0.5
+    },
+    "ShadowCascades": {
+      "count": 3,
+      "far": 80.0
+    },
+    "Shadows": {
+      "distance": 12.0,
+      "resolution": 2048,
+      "softness": 1.5
+    },
+    "ToneMapping": {
+      "exposure": 0.55
+    }
+  },
+  "version": 1
+}
