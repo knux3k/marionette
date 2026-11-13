@@ -100,6 +100,10 @@ pub struct Stats {
     pub slow_blocks: AtomicU64,
     /// Longest callback in microseconds (set by the host adapter).
     pub max_block_us: AtomicU64,
+    /// Frames in the most recent callback (host adapter).
+    pub buffer_frames: AtomicU32,
+    /// Worst callback time as thousandths of its deadline (1000 = used all of it).
+    pub max_load_permille: AtomicU32,
     /// Stream reads that found no data ready (silence was played).
     pub underruns: AtomicU64,
     /// Generators that could not be handed back because the return queue was full.
@@ -417,7 +421,10 @@ pub fn soft_limit(x: f32) -> f32 {
     if a <= 0.8 {
         x
     } else {
-        x.signum() * (0.8 + 0.2 * ((a - 0.8) / 0.2).tanh())
+        let t = ((a - 0.8) * 5.0).min(3.0);
+        // tanh(t) as t(27 + t^2) / (27 + 9 t^2): within 2% up to 3, no libm call.
+        let th = t * (27.0 + t * t) / (27.0 + 9.0 * t * t);
+        x.signum() * (0.8 + 0.2 * th)
     }
 }
 
@@ -434,6 +441,8 @@ pub struct StatsSnapshot {
     pub peak: f32,
     pub slow_blocks: u64,
     pub max_block_us: u64,
+    pub buffer_frames: u32,
+    pub max_load_permille: u32,
     pub underruns: u64,
 }
 
@@ -450,6 +459,8 @@ impl StatsSnapshot {
             peak: f32::from_bits(s.peak.load(Relaxed)),
             slow_blocks: s.slow_blocks.load(Relaxed),
             max_block_us: s.max_block_us.load(Relaxed),
+            buffer_frames: s.buffer_frames.load(Relaxed),
+            max_load_permille: s.max_load_permille.load(Relaxed),
             underruns: s.underruns.load(Relaxed),
         }
     }
