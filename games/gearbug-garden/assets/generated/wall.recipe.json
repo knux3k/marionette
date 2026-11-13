@@ -1,0 +1,12 @@
+{
+  "format": "marionette.recipe/1",
+  "from": "wall_ref",
+  "model": {
+    "height_m": 1.0,
+    "max_texture_px": 512,
+    "max_triangles": 2000
+  },
+  "name": "wall",
+  "notes": "Starter slot `wall` of \"Gearbug Garden\" (game_make, decision 0150).",
+  "output": "model"
+}

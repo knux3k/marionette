@@ -1,0 +1,24 @@
+{
+  "assertions": [
+    {
+      "event": {
+        "kind": "won"
+      }
+    },
+    {
+      "field": {
+        "entity": 3,
+        "op": "eq",
+        "path": "ScriptState.data.result",
+        "value": "won"
+      }
+    },
+    {
+      "state_hash": "d1334361da53979f4f8d37bbab0d3ec7dd835a551d6d5292325e464357e3cb00"
+    }
+  ],
+  "input": "tests/autoplay.inputs.json",
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 1022
+}

@@ -1,0 +1,42 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "player",
+  "output": "texture",
+  "file": "player.png",
+  "sha256": "1b96932bcee1589555760b9ce4b1978dcf6de3f6d88a6412c4b5cf4d74701586",
+  "recipe": "player.recipe.json",
+  "recipe_sha256": "cf7910f40e671a3a19f74ce6d8073aaa81f69e26584592d135990fdb8fa310d5",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small round astronaut with a big glass helmet, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "f0b5bdbd48c06aab725b57df7eea4542a2e0770dacd95b6112ed869216016f81",
+    "raw_sha256": "41dc0613777c375891f15440399f29e5bcdb9a086113eacfa172a6d4ffba7d9f",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "background_removed": true,
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
