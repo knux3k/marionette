@@ -183,7 +183,7 @@ impl Skinning {
             bind_group_layouts: &[Some(groups[0]), Some(groups[1]), Some(groups[2]), Some(&layout)],
             immediate_size: 0,
         });
-        let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+        let mesh_attrs = crate::renderer::MESH_ATTRS;
         let instance_attrs = wgpu::vertex_attr_array![
             3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
             7 => Float32x4, 8 => Float32x4, 12 => Float32x4, 9 => Uint32x4

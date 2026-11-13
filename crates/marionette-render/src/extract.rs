@@ -41,6 +41,9 @@ pub struct FrameData {
     pub environment: Option<EnvironmentData>,
     /// Reduced levels of detail and hiding of small far things (decision 0080).
     pub lod: Option<crate::cull::Lod>,
+    /// Meshes the game built in code, drawn by `mesh:<name>` assets (decision 0180). One
+    /// shared copy: taking it costs a reference count.
+    pub game_meshes: marionette_core::mesh::MeshMap,
 }
 
 /// The `Environment` resource plus the sky colors a generated environment is made from.
@@ -447,6 +450,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     }
     local.sort_by_key(|(id, _)| *id);
     frame.local_lights = local.into_iter().map(|(_, l)| l).collect();
+    if let Some(meshes) = world.get_resource::<marionette_core::mesh::GameMeshes>() {
+        frame.game_meshes = meshes.snapshot();
+    }
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
         for hook in &hooks.0 {
             hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);

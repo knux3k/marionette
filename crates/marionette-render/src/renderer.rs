@@ -19,6 +19,8 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+mod game_mesh;
+
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
 /// Point and spot lights per frame (lowest entity ids win).
@@ -256,10 +258,27 @@ pub struct RenderStats {
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-struct MeshVertex {
-    position: [f32; 3],
-    normal: [f32; 3],
-    uv: [f32; 2],
+pub(crate) struct MeshVertex {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub uv: [f32; 2],
+    /// Vertex color (sRGB-free linear 0..1 in 8 bits); white when the mesh has none. Read
+    /// only when the instance's `params.w` has `PARAM_VERTEX_COLORS` (decision 0180).
+    pub color: [u8; 4],
+}
+
+/// Bit in `InstanceData::params[3]` (as an integer): the part has a normal map.
+pub(crate) const PARAM_NORMAL_MAP: f32 = 1.0;
+/// Bit in `InstanceData::params[3]`: multiply the base color by the vertex colors.
+pub(crate) const PARAM_VERTEX_COLORS: f32 = 2.0;
+
+/// Vertex buffer layout of [`MeshVertex`] (shared by every mesh pipeline).
+pub(crate) const MESH_ATTRS: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 13 => Unorm8x4];
+
+/// One vertex color as stored on the GPU.
+pub(crate) fn color8(c: [f32; 4]) -> [u8; 4] {
+    c.map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
 }
 
 #[repr(C)]
@@ -281,6 +300,8 @@ pub(crate) struct GpuPart {
     /// Skin and morph target data for parts the GPU deforms (drawn by `skinning.rs`, not
     /// the static path).
     pub deform: Option<crate::skinning::Deform>,
+    /// The mesh has vertex colors (decision 0180).
+    pub colors: bool,
     /// Bounding sphere of the vertices (part space), for culling (decision 0080).
     pub bounds: crate::cull::Sphere,
     /// Reduced levels of detail (index buffer, index count); empty unless a scene asked
@@ -308,17 +329,33 @@ pub(crate) fn instance_material(
     match over {
         Some(m) => {
             let c = m.base_color;
-            ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
+            (
+                [c.r, c.g, c.b, c.a],
+                [m.metallic, m.roughness, 1.0, color_bit(part)],
+            )
         }
         None => {
             let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-            let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
+            let has_normal = if md.normal_texture.is_some() {
+                PARAM_NORMAL_MAP
+            } else {
+                0.0
+            };
             (
                 md.base_color,
-                [md.metallic, md.roughness, md.normal_scale, has_normal],
+                [
+                    md.metallic,
+                    md.roughness,
+                    md.normal_scale,
+                    has_normal + color_bit(part),
+                ],
             )
         }
     }
+}
+
+fn color_bit(part: &GpuPart) -> f32 {
+    if part.colors { PARAM_VERTEX_COLORS } else { 0.0 }
 }
 
 struct GpuTexture {
@@ -378,6 +415,8 @@ pub struct Renderer {
     sprite_sampler: wgpu::Sampler,
     defaults: [wgpu::TextureView; 3], // white sRGB, white linear, flat normal
     models: BTreeMap<String, Result<GpuModel, String>>,
+    /// Version of each uploaded game mesh (`mesh:<name>` assets, decision 0180).
+    game_mesh_versions: BTreeMap<String, u64>,
     /// Background model decoding while streaming (decision 0068); `None` until first used.
     loader: Option<ModelLoader>,
     /// Models first needed after the first prepared frame decode in the background.
@@ -667,7 +706,7 @@ impl Renderer {
             bind_group_layouts: &[Some(&view_layout), Some(&lights_layout), Some(&material_layout)],
             immediate_size: 0,
         });
-        let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+        let mesh_attrs = MESH_ATTRS;
         let instance_attrs = wgpu::vertex_attr_array![
             3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
             7 => Float32x4, 8 => Float32x4, 12 => Float32x4
@@ -910,6 +949,7 @@ impl Renderer {
             sprite_sampler,
             defaults,
             models: BTreeMap::new(),
+            game_mesh_versions: BTreeMap::new(),
             loader: None,
             streaming: false,
             prepared_once: false,
@@ -1005,6 +1045,7 @@ impl Renderer {
             self.models.clear();
         }
         self.lod_wanted = frame.lod.is_some();
+        self.sync_game_meshes(frame);
         let stream = self.streaming && self.prepared_once;
         for draw in &frame.meshes {
             self.ensure_model(&draw.asset, stream);
@@ -1014,7 +1055,7 @@ impl Renderer {
                         .entity(draw.entity)
                         .component("Model")
                         .fix(
-                            "check the path (relative to the scene file) or use primitive:cube|sphere|plane",
+                            "check the path (relative to the scene file), use primitive:cube|sphere|plane, or store the mesh:<name> in GameMeshes",
                         ),
                 );
             }
@@ -1103,7 +1144,8 @@ impl Renderer {
 
     /// Loads a model now, or (streaming) asks the background thread for it.
     fn ensure_model(&mut self, asset: &str, stream: bool) {
-        if self.models.contains_key(asset) {
+        // Game meshes are uploaded by `sync_game_meshes`, never loaded from files.
+        if self.models.contains_key(asset) || marionette_core::mesh::mesh_name(asset).is_some() {
             return;
         }
         // Built-in shapes are cheap; only files go to the background.
@@ -1223,6 +1265,7 @@ impl Renderer {
                         position: p.mesh.positions[i],
                         normal: p.mesh.normals[i],
                         uv: p.mesh.uvs[i],
+                        color: p.mesh.colors.get(i).map_or([255; 4], |&c| color8(c)),
                     })
                     .collect();
                 GpuPart {
@@ -1241,6 +1284,7 @@ impl Renderer {
                     transform: p.transform,
                     node: p.node,
                     deform: crate::skinning::Deform::upload(&self.device, p, model.rig.skins.len()),
+                    colors: !p.mesh.colors.is_empty(),
                     bounds: crate::cull::Sphere::around(&p.mesh.positions),
                     lods: lod_indices
                         .get(i)
@@ -1575,20 +1619,7 @@ impl Renderer {
                 continue;
             };
             for (p, part) in model.parts.iter().enumerate() {
-                let (base_color, params) = match bulk.material {
-                    Some(m) => {
-                        let c = m.base_color;
-                        ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
-                    }
-                    None => {
-                        let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-                        let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
-                        (
-                            md.base_color,
-                            [md.metallic, md.roughness, md.normal_scale, has_normal],
-                        )
-                    }
-                };
+                let (base_color, params) = instance_material(model, part, bulk.material);
                 let identity = part.transform == Mat4::IDENTITY;
                 let levels = 1 + part.lods.len();
                 raw.reserve(bulk.transforms.len());

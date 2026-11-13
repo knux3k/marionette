@@ -64,6 +64,7 @@ struct VsIn {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(13) color: vec4<f32>, // vertex color (white when the mesh has none)
 };
 
 // Per-instance data: one entry per drawn copy of a mesh part (GPU instancing).
@@ -73,7 +74,8 @@ struct InstIn {
     @location(5) model2: vec4<f32>,
     @location(6) model3: vec4<f32>,
     @location(7) base_color: vec4<f32>,
-    @location(8) params: vec4<f32>, // metallic, roughness, normal_scale, has_normal_map (0/1)
+    // metallic, roughness, normal_scale, bits (1 = normal map, 2 = vertex colors)
+    @location(8) params: vec4<f32>,
     @location(12) emissive: vec4<f32>, // rgb = light given off
 };
 
@@ -85,7 +87,11 @@ struct VsOut {
     @location(3) @interpolate(flat) base_color: vec4<f32>,
     @location(4) @interpolate(flat) params: vec4<f32>,
     @location(5) @interpolate(flat) emissive: vec4<f32>,
+    @location(6) color: vec4<f32>,
 };
+
+const PARAM_NORMAL_MAP: u32 = 1u;
+const PARAM_VERTEX_COLORS: u32 = 2u;
 
 @vertex
 fn vs_main(in: VsIn, inst: InstIn) -> VsOut {
@@ -108,6 +114,7 @@ fn vs_main(in: VsIn, inst: InstIn) -> VsOut {
     out.base_color = inst.base_color;
     out.params = inst.params;
     out.emissive = inst.emissive;
+    out.color = in.color;
     return out;
 }
 
@@ -251,7 +258,12 @@ fn tonemap(c: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-    let base = in.base_color * textureSample(base_tex, samp, in.uv);
+    let bits = u32(in.params.w + 0.5);
+    var tint = in.base_color;
+    if ((bits & PARAM_VERTEX_COLORS) != 0u) {
+        tint = tint * in.color;
+    }
+    let base = tint * textureSample(base_tex, samp, in.uv);
     let mr = textureSample(mr_tex, samp, in.uv);
     let emissive = textureSample(emissive_tex, samp, in.uv);
     let metallic = clamp(in.params.x * mr.b, 0.0, 1.0);
@@ -262,7 +274,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         n = -n;
     }
     let nm = textureSample(normal_tex, samp, in.uv).xyz;
-    if (in.params.w > 0.5) {
+    if ((bits & PARAM_NORMAL_MAP) != 0u) {
         n = perturb_normal(n, in.world_pos, in.uv, nm, in.params.z);
     }
 

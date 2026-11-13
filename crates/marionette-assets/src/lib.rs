@@ -36,6 +36,10 @@ pub struct MeshData {
     pub positions: Vec<[f32; 3]>,
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
+    /// Linear RGBA per vertex, multiplied into the base color. Empty means white (no
+    /// vertex colors). Filled for meshes a game builds in code (decision 0180); glTF
+    /// `COLOR_0` is not read yet.
+    pub colors: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
     /// Up to four joints per vertex (indices into the part's skin). Empty when not skinned.
     pub joints: Vec<[u16; 4]>,
@@ -318,6 +322,7 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                         positions,
                         normals,
                         uvs,
+                        colors: Vec::new(),
                         indices,
                         joints,
                         weights,

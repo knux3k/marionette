@@ -107,6 +107,10 @@ CPU-prefiltered sky texture for diffuse and reflections and an optional sky back
 (`environment.rs`, decision 0066); glTF emissive comes through a per-material uniform
 (decision 0067).
 
+Meshes built in game code (`GameMeshes`, `mesh:<name>` assets, decision 0180) become
+ordinary one-part GPU models in `renderer/game_mesh.rs`, re-uploaded (in place when sizes
+match) when their version changes.
+
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so
 rendering cannot change simulation state. Offscreen capture: `gpu.rs`; window: `window.rs`.

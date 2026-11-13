@@ -51,6 +51,18 @@ Template: `examples/rust-module` (decision 0062).
 4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
    workspace's.
 
+## Build a mesh in game code (terrain, generated props)
+
+Decision 0180. In a module (or any code with `&mut World`):
+
+1. Make a `marionette_core::mesh::GameMesh` (positions and counter-clockwise indices; normals,
+   UVs, vertex colors and up to two reduced index lists optional), or start from
+   `GameMesh::grid(cells_x, cells_z, size_x, size_z, height)`.
+2. `GameMeshes::set_in(world, "name", mesh)?` (or `set` on the resource); errors are text.
+3. Draw it with `Model { asset: "mesh:name" }` on entities, or `BulkDraw { asset: "mesh:name" }`.
+4. Change it by calling `set` again with the same name (same sizes: written in place);
+   `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.
