@@ -1,0 +1,40 @@
+{
+  "format": "marionette.brief/1",
+  "title": "Knight And The Coins",
+  "pitch": "Collect all the coins, then reach the goal. From the prompt: \"a spooky dungeon maze where you play as a little knight who collects gold coins and avoids skeletons\"",
+  "template": "maze",
+  "view": "2d",
+  "style": "spooky moonlit cartoon, chunky fantasy cartoon, torchlight",
+  "difficulty": "normal",
+  "size": "medium",
+  "seed": 3529,
+  "words": {
+    "pickups": "coins",
+    "win": "YOU MADE IT",
+    "lose": "GAME OVER"
+  },
+  "colors": {
+    "background": "#120e14",
+    "accent": "#ffb347"
+  },
+  "assets": {
+    "enemy": {
+      "describe": "a skeleton"
+    },
+    "floor": {
+      "describe": "worn dungeon flagstones"
+    },
+    "goal": {
+      "describe": "an iron-bound dungeon door"
+    },
+    "pickup": {
+      "describe": "a gold coin"
+    },
+    "player": {
+      "describe": "a little knight"
+    },
+    "wall": {
+      "describe": "a grey stone brick wall"
+    }
+  }
+}

@@ -17,7 +17,15 @@ struct Theme {
 
 const THEMES: &[Theme] = &[
     Theme {
-        keys: &["space", "star", "planet", "alien", "rocket", "galaxy", "astronaut"],
+        keys: &[
+            "space",
+            "star",
+            "planet",
+            "alien",
+            "rocket",
+            "galaxy",
+            "astronaut",
+        ],
         style: "bright sci-fi cartoon, clean shapes, glowing accents",
         background: "#0b0d1f",
         accent: "#7ee8ff",
@@ -49,7 +57,9 @@ const THEMES: &[Theme] = &[
         ],
     },
     Theme {
-        keys: &["forest", "garden", "woods", "tree", "moth", "fairy", "mushroom", "leaf"],
+        keys: &[
+            "forest", "garden", "woods", "tree", "moth", "fairy", "mushroom", "leaf",
+        ],
         style: "cozy hand-painted storybook, warm soft light",
         background: "#10201a",
         accent: "#ffd166",
@@ -65,7 +75,9 @@ const THEMES: &[Theme] = &[
         ],
     },
     Theme {
-        keys: &["dungeon", "castle", "knight", "dragon", "skeleton", "crypt", "wizard"],
+        keys: &[
+            "dungeon", "castle", "knight", "dragon", "skeleton", "crypt", "wizard",
+        ],
         style: "chunky fantasy cartoon, torchlight",
         background: "#120e14",
         accent: "#ffb347",
@@ -210,7 +222,11 @@ fn singular(plural: &str) -> String {
     let last = words.pop().unwrap_or("");
     let one = if let Some(s) = last.strip_suffix("ies") {
         format!("{s}y")
-    } else if last.ends_with("ses") || last.ends_with("xes") || last.ends_with("ches") || last.ends_with("shes") {
+    } else if last.ends_with("ses")
+        || last.ends_with("xes")
+        || last.ends_with("ches")
+        || last.ends_with("shes")
+    {
         last[..last.len() - 2].to_string()
     } else if let Some(s) = last.strip_suffix('s').filter(|s| !s.ends_with('s')) {
         s.to_string()
@@ -221,22 +237,14 @@ fn singular(plural: &str) -> String {
     words.join(" ")
 }
 
-fn plural(one: &str) -> String {
-    if one.ends_with('s') {
-        one.to_string()
-    } else if let Some(s) = one.strip_suffix('y').filter(|s| !s.ends_with(['a', 'e', 'o', 'u'])) {
-        format!("{s}ies")
-    } else {
-        format!("{one}s")
-    }
-}
-
 fn title_case(s: &str) -> String {
     s.split(' ')
         .filter(|w| !w.is_empty())
         .map(|w| {
             let mut c = w.chars();
-            c.next().map_or(String::new(), |f| f.to_uppercase().collect::<String>() + c.as_str())
+            c.next().map_or(String::new(), |f| {
+                f.to_uppercase().collect::<String>() + c.as_str()
+            })
         })
         .collect::<Vec<_>>()
         .join(" ")
@@ -256,7 +264,19 @@ fn seed_of(prompt: &str) -> u64 {
 pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<View>) -> Brief {
     let ws = words(prompt);
     let template = template.unwrap_or(
-        if has(&ws, &["platform", "platformer", "jump", "side-scroller", "sidescroller", "scroller", "runner", "side"]) {
+        if has(
+            &ws,
+            &[
+                "platform",
+                "platformer",
+                "jump",
+                "side-scroller",
+                "sidescroller",
+                "scroller",
+                "runner",
+                "side",
+            ],
+        ) {
             Template::Platformer
         } else {
             Template::Maze
@@ -287,13 +307,53 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
     let theme = THEMES.iter().find(|t| has(&ws, t.keys)).unwrap_or(&DEFAULT);
 
     let player = phrase_after(&ws, &["as", "are", "playing"]).map(|p| format!("a {p}"));
-    let pickups = phrase_after(&ws, &["collect", "collects", "collecting", "gather", "gathers", "find", "finds", "grab", "grabs", "save", "saves", "rescue", "rescues", "light", "lights"]);
-    let enemy = phrase_after(&ws, &["avoid", "avoids", "avoiding", "dodge", "dodges", "escape", "escapes", "evade", "evades", "past", "fleeing", "chased", "by"])
-        .map(|e| format!("a {}", singular(&e)));
-    let goal = phrase_after(&ws, &["reach", "reaches", "exit", "escape-to", "home", "toward", "towards"]).map(|g| format!("a {g}"));
+    let pickups = phrase_after(
+        &ws,
+        &[
+            "collect",
+            "collects",
+            "collecting",
+            "gather",
+            "gathers",
+            "find",
+            "finds",
+            "grab",
+            "grabs",
+            "save",
+            "saves",
+            "rescue",
+            "rescues",
+            "light",
+            "lights",
+        ],
+    );
+    let enemy = phrase_after(
+        &ws,
+        &[
+            "avoid", "avoids", "avoiding", "dodge", "dodges", "escape", "escapes", "evade", "evades", "past",
+            "fleeing", "chased", "by",
+        ],
+    )
+    .map(|e| format!("a {}", singular(&e)));
+    let goal = phrase_after(
+        &ws,
+        &[
+            "reach",
+            "reaches",
+            "exit",
+            "escape-to",
+            "home",
+            "toward",
+            "towards",
+        ],
+    )
+    .map(|g| format!("a {g}"));
 
     let pickups_plural = pickups.clone().unwrap_or_else(|| theme.slots[3].to_string());
-    let pickup_one = pickups.as_deref().map(|p| format!("a {}", singular(p))).unwrap_or_else(|| theme.slots[2].to_string());
+    let pickup_one = pickups
+        .as_deref()
+        .map(|p| format!("a {}", singular(p)))
+        .unwrap_or_else(|| theme.slots[2].to_string());
     let style = [
         ("pixel", "crisp pixel art"),
         ("watercolor", "soft watercolor"),
@@ -329,7 +389,10 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
             put("wall", theme.slots[5].into());
             put("floor", theme.slots[6].into());
         }
-        (Template::Maze, View::ThreeD) => put("wall", format!("a square block of {}", theme.slots[5].trim_start_matches("a "))),
+        (Template::Maze, View::ThreeD) => put(
+            "wall",
+            format!("a square block of {}", theme.slots[5].trim_start_matches("a ")),
+        ),
         (Template::Platformer, _) => {
             put("ground", theme.slots[6].into());
             put("spikes", "a row of sharp spikes".into());
@@ -339,15 +402,28 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
 
     let hero = player
         .as_deref()
-        .map(|p| p.trim_start_matches("a ").rsplit(' ').next().unwrap_or("hero").to_string())
+        .map(|p| {
+            p.trim_start_matches("a ")
+                .rsplit(' ')
+                .next()
+                .unwrap_or("hero")
+                .to_string()
+        })
         .unwrap_or_else(|| theme.slots[0].rsplit(' ').next().unwrap_or("hero").to_string());
     let last = pickups_plural.rsplit(' ').next().unwrap_or("gems").to_string();
     let title = title_case(&format!("{hero} and the {last}"));
-    let verb = if template == Template::Maze { "Collect every" } else { "Run, jump and grab" };
+    let verb = if template == Template::Maze {
+        "Collect all the"
+    } else {
+        "Run, jump and grab the"
+    };
     Brief {
         format: crate::BRIEF_FORMAT.into(),
         title: title.chars().take(60).collect(),
-        pitch: format!("{verb} {}, then reach the goal. From the prompt: \"{}\"", plural(&last), prompt.trim()),
+        pitch: format!(
+            "{verb} {last}, then reach the goal. From the prompt: \"{}\"",
+            prompt.trim()
+        ),
         template,
         view,
         style,
@@ -372,7 +448,11 @@ mod tests {
 
     #[test]
     fn reads_the_main_phrases() {
-        let b = brief_from_prompt("a cozy 3d game where you play as a moth who collects paper lanterns and avoids bats", None, None);
+        let b = brief_from_prompt(
+            "a cozy 3d game where you play as a moth who collects paper lanterns and avoids bats",
+            None,
+            None,
+        );
         assert_eq!(b.template, Template::Maze);
         assert_eq!(b.view, View::ThreeD);
         assert_eq!(b.difficulty, Difficulty::Easy);
@@ -393,7 +473,10 @@ mod tests {
         assert_eq!(b.colors.background, "#0b0d1f");
         assert!(b.assets.contains_key("background"));
         b.check().unwrap();
-        assert_eq!(b.seed, brief_from_prompt("a hard space platformer, jump over alien slime", None, None).seed);
+        assert_eq!(
+            b.seed,
+            brief_from_prompt("a hard space platformer, jump over alien slime", None, None).seed
+        );
     }
 
     #[test]
@@ -402,6 +485,5 @@ mod tests {
         b.check().unwrap();
         assert_eq!(singular("berries"), "berry");
         assert_eq!(singular("glowing boxes"), "glowing box");
-        assert_eq!(plural("berry"), "berries");
     }
 }

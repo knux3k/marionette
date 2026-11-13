@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "enemy",
+  "notes": "Starter slot `enemy` of \"Knight And The Coins\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a skeleton, spooky moonlit cartoon, chunky fantasy cartoon, torchlight, single game sprite seen from directly above, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "texture": {
+    "remove_background": true,
+    "resize": [
+      256,
+      256
+    ]
+  }
+}

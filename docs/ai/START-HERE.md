@@ -32,6 +32,7 @@ when the task calls for it, and then only the section that matters.
 | Stability modes | [STABILITY.md](STABILITY.md) |
 | Generating images and models | [GENERATION.md](GENERATION.md) |
 | The six proof games and their gaps | [PROOF-SCENES.md](PROOF-SCENES.md) |
+| Make a game from an idea (`marionette make`, briefs, templates) | [STARTER.md](STARTER.md) |
 | Terms | [GLOSSARY.md](GLOSSARY.md) |
 
 Generated reference in `docs/ai/reference/` (large; search it, do not read it whole):

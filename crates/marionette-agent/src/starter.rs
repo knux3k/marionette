@@ -30,7 +30,9 @@ pub(crate) fn ops() -> Vec<Op> {
 }
 
 fn bad(msg: impl Into<String>, fix: impl Into<String>) -> Errors {
-    Diagnostic::error(codes::BAD_INPUT, msg.into()).fix(fix.into()).into()
+    Diagnostic::error(codes::BAD_INPUT, msg.into())
+        .fix(fix.into())
+        .into()
 }
 
 // ---------------------------------------------------------------------------------------
@@ -75,11 +77,21 @@ fn kind_name(k: SlotKind) -> &'static str {
     }
 }
 
-fn brief_from(prompt_text: Option<&str>, brief: Option<Brief>, t: Option<Template>, v: Option<View>) -> Result<Brief, Errors> {
+fn brief_from(
+    prompt_text: Option<&str>,
+    brief: Option<Brief>,
+    t: Option<Template>,
+    v: Option<View>,
+) -> Result<Brief, Errors> {
     let b = match (brief, prompt_text) {
         (Some(b), _) => b,
         (None, Some(p)) if !p.trim().is_empty() => prompt::brief_from_prompt(p, t, v),
-        _ => return Err(bad("give a `prompt` or a `brief`", "for example {\"prompt\": \"a 3d maze about a moth collecting lanterns\"}")),
+        _ => {
+            return Err(bad(
+                "give a `prompt` or a `brief`",
+                "for example {\"prompt\": \"a 3d maze about a moth collecting lanterns\"}",
+            ));
+        }
     };
     b.check()?;
     Ok(b)
@@ -164,8 +176,9 @@ struct MakeOutput {
     autoplay: Autoplay,
     tests_passed: usize,
     tests_failed: usize,
-    /// AI handoff files for agents working on the game: `written`, or why not.
-    handoff: String,
+    /// AI handoff files and skills for agents working on the game: per operation, `written`
+    /// or why not.
+    handoff: Vec<String>,
 }
 
 const BRIEF_FILE: &str = "brief.json";
@@ -178,7 +191,10 @@ fn pretty(v: &impl Serialize) -> String {
 
 fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     let dir = agent.resolve(&input.path)?;
-    let has_files = dir.is_dir() && std::fs::read_dir(&dir).map(|mut d| d.next().is_some()).unwrap_or(false);
+    let has_files = dir.is_dir()
+        && std::fs::read_dir(&dir)
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false);
     let brief = if input.refresh {
         if !has_files {
             return Err(bad(
@@ -190,7 +206,10 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
             Some(b) => b,
             None => {
                 let text = std::fs::read_to_string(dir.join(BRIEF_FILE)).map_err(|e| {
-                    bad(format!("cannot read {}/{BRIEF_FILE}: {e}", input.path), "refresh needs the project's brief.json")
+                    bad(
+                        format!("cannot read {}/{BRIEF_FILE}: {e}", input.path),
+                        "refresh needs the project's brief.json",
+                    )
                 })?;
                 serde_json::from_str::<Brief>(&text).map_err(|e| {
                     Errors::from(
@@ -203,9 +222,11 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         }
     } else {
         if has_files {
-            return Err(Diagnostic::error(codes::EXISTS, format!("`{}` already has files", input.path))
-                .fix("pick a new folder, or pass `refresh: true` to re-make a starter project")
-                .into());
+            return Err(
+                Diagnostic::error(codes::EXISTS, format!("`{}` already has files", input.path))
+                    .fix("pick a new folder, or pass `refresh: true` to re-make a starter project")
+                    .into(),
+            );
         }
         brief_from(input.prompt.as_deref(), input.brief, input.template, input.view)?
     };
@@ -213,7 +234,8 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     if agent.read_only() {
         return Err(Diagnostic::error(codes::READ_ONLY, "game_make writes files").into());
     }
-    std::fs::create_dir_all(&dir).map_err(|e| bad(format!("cannot create `{}`: {e}", input.path), "check the path"))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| bad(format!("cannot create `{}`: {e}", input.path), "check the path"))?;
     let mut game = Agent::with_engine(&dir, false, agent.engine().clone());
     let mut files = Vec::new();
     let write = |game: &Agent, path: &str, text: String, files: &mut Vec<String>| -> Result<(), Errors> {
@@ -223,14 +245,24 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     };
 
     if !dir.join("marionette.json").exists() {
-        let name = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "game".into());
-        write(&game, "marionette.json", pretty(&json!({"format": "marionette.project", "name": name, "version": 1})), &mut files)?;
+        let name = dir
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "game".into());
+        write(
+            &game,
+            "marionette.json",
+            pretty(&json!({"format": "marionette.project", "name": name, "version": 1})),
+            &mut files,
+        )?;
     }
     if !dir.join("providers.json").exists() {
         write(
             &game,
             "providers.json",
-            pretty(&json!({"format": "marionette.providers/1", "image": {"provider": "qwen"}, "model3d": {"provider": "tripo"}})),
+            pretty(
+                &json!({"format": "marionette.providers/1", "image": {"provider": "qwen"}, "model3d": {"provider": "tripo"}}),
+            ),
             &mut files,
         )?;
     }
@@ -247,8 +279,18 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         (art, results, pending) = resolve_art(&mut game, &brief, &mut files)?;
     }
 
-    write(&game, "scenes/main.actions.json", pretty(&template::actions(brief.template)), &mut files)?;
-    write(&game, "tests/autoplay.inputs.json", pretty(&template::autoplay_inputs()), &mut files)?;
+    write(
+        &game,
+        "scenes/main.actions.json",
+        pretty(&template::actions(brief.template)),
+        &mut files,
+    )?;
+    write(
+        &game,
+        "tests/autoplay.inputs.json",
+        pretty(&template::autoplay_inputs()),
+        &mut files,
+    )?;
 
     // The brief goes in first, so a project whose level could not be won can still be
     // fixed and refreshed.
@@ -271,7 +313,10 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     let Some((won_tick, tried)) = outcome else {
         return Err(Diagnostic::error(
             starter_codes::UNWINNABLE,
-            format!("the autopilot could not win any of {tries} levels (seeds {} to {seed})", brief.seed),
+            format!(
+                "the autopilot could not win any of {tries} levels (seeds {} to {seed})",
+                brief.seed
+            ),
         )
         .fix("try another seed or an easier difficulty in the brief, or raise `tries`")
         .into());
@@ -282,25 +327,61 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     // Pin the tests to what this build does.
     let auto_ticks = won_tick + 30;
     let auto_hash = run_hash(&game, auto_ticks, Some("tests/autoplay.inputs.json"))?;
-    write(&game, "tests/autoplay.test.json", pretty(&template::autoplay_test(auto_ticks, &auto_hash)), &mut files)?;
+    write(
+        &game,
+        "tests/autoplay.test.json",
+        pretty(&template::autoplay_test(auto_ticks, &auto_hash)),
+        &mut files,
+    )?;
     let idle_hash = run_hash(&game, template::IDLE_TICKS, None)?;
-    write(&game, "tests/idle.test.json", pretty(&template::idle_test(template::IDLE_TICKS, &idle_hash)), &mut files)?;
+    write(
+        &game,
+        "tests/idle.test.json",
+        pretty(&template::idle_test(template::IDLE_TICKS, &idle_hash)),
+        &mut files,
+    )?;
     write(&game, BRIEF_FILE, pretty(&brief), &mut files)?;
     write(&game, "README.md", template::readme(&brief), &mut files)?;
-    files.extend([template::SCRIPT.to_string(), "build.ops.json".into(), template::SCENE.to_string()]);
+    files.extend([
+        template::SCRIPT.to_string(),
+        "build.ops.json".into(),
+        template::SCENE.to_string(),
+    ]);
     files.sort();
     files.dedup();
 
-    // AI handoff files for the game (owned by the skills work; the operation may not be in
-    // this build yet, which is reported and not an error).
-    let handoff = match agent.call(
-        "handoff_write",
-        json!({"path": input.path, "kind": "game", "title": brief.title, "summary": brief.pitch}),
-    ) {
-        Ok(_) => "written".to_string(),
-        Err(e) if e.0.iter().any(|d| d.code == codes::UNKNOWN_OPERATION) => "not available in this build".into(),
-        Err(e) => e.0.iter().map(|d| format!("{}: {}", d.code, d.message)).collect::<Vec<_>>().join("; "),
-    };
+    // AI handoff files and skills for agents working on the game (the handoff operations of
+    // the skills work, decisions 0160 and 0161). A build without them reports it; that is not
+    // an error. Existing handoff files are never overwritten.
+    let notes = [
+        "`brief.json`: the whole design (template, words, colors, one line per asset slot, seed). Change it, then run game_make with `refresh`.",
+        "`scenes/scripts/game.ts`: the game. game_make rewrites only its CONFIG block; the rest is yours.",
+        "`build.ops.json`: the scene recipe, rebuilt by game_make. Own scene operations go in `custom.ops.json`.",
+        "`assets/generated/*.recipe.json`: art still to generate (`marionette generate run`, then game_make `refresh`).",
+        "`tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); refresh re-pins them.",
+    ];
+    let mut handoff = Vec::new();
+    for (name, input_json) in [
+        (
+            "handoff_init",
+            json!({"path": input.path, "title": brief.title, "summary": brief.pitch, "notes": notes}),
+        ),
+        ("skills_install", json!({"path": input.path})),
+    ] {
+        handoff.push(match agent.call(name, input_json) {
+            Ok(_) => format!("{name}: written"),
+            Err(e) if e.0.iter().any(|d| d.code == codes::UNKNOWN_OPERATION) => {
+                format!("{name}: not available in this build")
+            }
+            Err(e) => format!(
+                "{name}: {}",
+                e.0.iter()
+                    .map(|d| format!("{}: {}", d.code, d.message))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            ),
+        });
+    }
 
     let tests = game.call("test_run", json!({}))?;
     let passed = tests["passed"].as_u64().unwrap_or(0) as usize;
@@ -337,7 +418,11 @@ fn compact(report: &Value) -> String {
 }
 
 fn generated_file(dir: &Path, slot: &str, kind: SlotKind) -> Option<String> {
-    let ext = if matches!(kind, SlotKind::Model { .. }) { "glb" } else { "png" };
+    let ext = if matches!(kind, SlotKind::Model { .. }) {
+        "glb"
+    } else {
+        "png"
+    };
     let rel = format!("assets/generated/{slot}.{ext}");
     dir.join(&rel).is_file().then_some(rel)
 }
@@ -345,7 +430,11 @@ fn generated_file(dir: &Path, slot: &str, kind: SlotKind) -> Option<String> {
 /// Art for every slot through the lookup order: the brief's `use`, a built recipe output,
 /// then project files and the CC0 pool (with the slot's `search` words); otherwise a
 /// placeholder and the slot's generation recipes.
-fn resolve_art(game: &mut Agent, brief: &Brief, files: &mut Vec<String>) -> Result<(ArtMap, Vec<SlotResult>, Vec<String>), Errors> {
+fn resolve_art(
+    game: &mut Agent,
+    brief: &Brief,
+    files: &mut Vec<String>,
+) -> Result<(ArtMap, Vec<SlotResult>, Vec<String>), Errors> {
     let dir = game.root().to_path_buf();
     let mut art = ArtMap::new();
     let mut results = Vec::new();
@@ -357,14 +446,22 @@ fn resolve_art(game: &mut Agent, brief: &Brief, files: &mut Vec<String>) -> Resu
         if let Some(u) = sb.use_asset.as_deref() {
             if let Some(id) = u.strip_prefix("pool:") {
                 let out = game.call("pool_fetch", json!({"id": id}))?;
-                let main = out["main"].as_str().ok_or_else(|| bad(format!("pool asset `{id}` has no main file"), "pick another asset"))?;
+                let main = out["main"].as_str().ok_or_else(|| {
+                    bad(
+                        format!("pool asset `{id}` has no main file"),
+                        "pick another asset",
+                    )
+                })?;
                 found = Some(("brief".into(), main.to_string()));
             } else if dir.join(u).is_file() {
                 found = Some(("brief".into(), u.to_string()));
             } else {
-                return Err(Diagnostic::error(starter_codes::BAD_BRIEF, format!("assets.{}.use: `{u}` not found", slot.name))
-                    .fix("give a path relative to the game folder, or pool:<id>")
-                    .into());
+                return Err(Diagnostic::error(
+                    starter_codes::BAD_BRIEF,
+                    format!("assets.{}.use: `{u}` not found", slot.name),
+                )
+                .fix("give a path relative to the game folder, or pool:<id>")
+                .into());
             }
         }
         if found.is_none() {
@@ -376,7 +473,9 @@ fn resolve_art(game: &mut Agent, brief: &Brief, files: &mut Vec<String>) -> Resu
             let kind = if model { "model" } else { "texture" };
             if let Ok(r) = game.call("asset_search", json!({"query": words, "kind": kind, "limit": 1})) {
                 for step in r["steps"].as_array().into_iter().flatten() {
-                    let Some(hit) = step["results"].as_array().and_then(|a| a.first()) else { continue };
+                    let Some(hit) = step["results"].as_array().and_then(|a| a.first()) else {
+                        continue;
+                    };
                     let id = hit["id"].as_str().unwrap_or_default();
                     match step["name"].as_str() {
                         Some("project_files") if !id.starts_with("assets/generated/") => {
@@ -405,7 +504,9 @@ fn resolve_art(game: &mut Agent, brief: &Brief, files: &mut Vec<String>) -> Resu
                         scale: 1.0,
                     })
                 } else {
-                    std::fs::read(dir.join(file)).ok().and_then(|bytes| marionette_starter::sprite_art(&bytes, from_scene))
+                    std::fs::read(dir.join(file))
+                        .ok()
+                        .and_then(|bytes| marionette_starter::sprite_art(&bytes, from_scene))
                 }
             }
             None => None,
@@ -444,12 +545,18 @@ fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh:
     let config = template::config(brief, art, map);
     let script_path = game.root().join(template::SCRIPT);
     let script = if refresh && script_path.is_file() {
-        let old = std::fs::read_to_string(&script_path).map_err(|e| bad(format!("cannot read the script: {e}"), "check the file"))?;
+        let old = std::fs::read_to_string(&script_path)
+            .map_err(|e| bad(format!("cannot read the script: {e}"), "check the file"))?;
         template::replace_config(&old, &template::config_block(&config)).ok_or_else(|| {
             Errors::from(
                 Diagnostic::error(
                     starter_codes::NO_CONFIG_BLOCK,
-                    format!("{} has no `{}` ... `{}` block", template::SCRIPT, template::CONFIG_BEGIN, template::CONFIG_END),
+                    format!(
+                        "{} has no `{}` ... `{}` block",
+                        template::SCRIPT,
+                        template::CONFIG_BEGIN,
+                        template::CONFIG_END
+                    ),
                 )
                 .file(template::SCRIPT)
                 .fix("put the markers back around `const CONFIG`, or delete the script to get a fresh one"),
@@ -463,8 +570,10 @@ fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh:
     // A person's own scene operations run after the template's.
     let custom = game.root().join("custom.ops.json");
     if custom.is_file() {
-        let text = std::fs::read_to_string(&custom).map_err(|e| bad(format!("custom.ops.json: {e}"), "check the file"))?;
-        let extra: Value = serde_json::from_str(&text).map_err(|e| bad(format!("custom.ops.json: {e}"), "format marionette.ops"))?;
+        let text = std::fs::read_to_string(&custom)
+            .map_err(|e| bad(format!("custom.ops.json: {e}"), "check the file"))?;
+        let extra: Value = serde_json::from_str(&text)
+            .map_err(|e| bad(format!("custom.ops.json: {e}"), "format marionette.ops"))?;
         let list = ops["ops"].as_array_mut().expect("ops list");
         let validate = list.pop();
         list.extend(extra["ops"].as_array().cloned().unwrap_or_default());
@@ -473,7 +582,8 @@ fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh:
     game.write_file("build.ops.json", pretty(&ops).as_bytes())?;
     let scene = game.root().join(template::SCENE);
     if scene.exists() {
-        std::fs::remove_file(&scene).map_err(|e| bad(format!("cannot replace the scene: {e}"), "check the file"))?;
+        std::fs::remove_file(&scene)
+            .map_err(|e| bad(format!("cannot replace the scene: {e}"), "check the file"))?;
     }
     game.call("batch_run", json!({"file": "build.ops.json"}))?;
     Ok(())

@@ -62,15 +62,44 @@ pub fn slots(template: Template, view: View) -> Vec<Slot> {
             s("enemy", TOP, "a grumpy wandering ghost", [1.0, 0.3, 0.35]),
             s("pickup", TOP, "a shiny gem", [1.0, 0.8, 0.3]),
             s("goal", TOP, "a glowing exit door", [0.9, 0.75, 0.3]),
-            s("wall", SlotKind::Tile { seen: "from directly above" }, "a mossy stone wall", [0.35, 0.4, 0.45]),
-            s("floor", SlotKind::Tile { seen: "from directly above" }, "a dusty stone floor", [0.12, 0.13, 0.16]),
+            s(
+                "wall",
+                SlotKind::Tile {
+                    seen: "from directly above",
+                },
+                "a mossy stone wall",
+                [0.35, 0.4, 0.45],
+            ),
+            s(
+                "floor",
+                SlotKind::Tile {
+                    seen: "from directly above",
+                },
+                "a dusty stone floor",
+                [0.12, 0.13, 0.16],
+            ),
         ],
         (Template::Maze, View::ThreeD) => vec![
-            s("player", model(0.9, 8000), "a small brave explorer", [0.3, 0.8, 1.0]),
-            s("enemy", model(0.9, 8000), "a grumpy wandering ghost", [1.0, 0.3, 0.35]),
+            s(
+                "player",
+                model(0.9, 8000),
+                "a small brave explorer",
+                [0.3, 0.8, 1.0],
+            ),
+            s(
+                "enemy",
+                model(0.9, 8000),
+                "a grumpy wandering ghost",
+                [1.0, 0.3, 0.35],
+            ),
             s("pickup", model(0.55, 4000), "a shiny gem", [1.0, 0.8, 0.3]),
             s("goal", model(1.4, 8000), "a glowing exit door", [0.9, 0.75, 0.3]),
-            s("wall", model(1.0, 2000), "a square mossy stone wall block", [0.35, 0.4, 0.45]),
+            s(
+                "wall",
+                model(1.0, 2000),
+                "a square mossy stone wall block",
+                [0.35, 0.4, 0.45],
+            ),
         ],
         (Template::Platformer, _) => vec![
             s("player", SIDE, "a small brave explorer", [0.3, 0.8, 1.0]),
@@ -78,8 +107,20 @@ pub fn slots(template: Template, view: View) -> Vec<Slot> {
             s("pickup", SIDE, "a shiny coin", [1.0, 0.8, 0.3]),
             s("goal", SIDE, "a tall checkered goal flag", [0.9, 0.75, 0.3]),
             s("spikes", SIDE, "a row of sharp metal spikes", [0.85, 0.85, 0.9]),
-            s("ground", SlotKind::Tile { seen: "from the front" }, "grassy earth", [0.45, 0.33, 0.22]),
-            s("background", SlotKind::Backdrop, "rolling hills under a bright sky", [0.0, 0.0, 0.0]),
+            s(
+                "ground",
+                SlotKind::Tile {
+                    seen: "from the front",
+                },
+                "grassy earth",
+                [0.45, 0.33, 0.22],
+            ),
+            s(
+                "background",
+                SlotKind::Backdrop,
+                "rolling hills under a bright sky",
+                [0.0, 0.0, 0.0],
+            ),
         ],
     }
 }
@@ -101,7 +142,10 @@ pub fn recipes(brief: &Brief, slot: &Slot) -> Vec<(String, Value)> {
     } else {
         format!(", {}", brief.style.trim())
     };
-    let note = format!("Starter slot `{}` of \"{}\" (game_make, decision 0150).", slot.name, brief.title);
+    let note = format!(
+        "Starter slot `{}` of \"{}\" (game_make, decision 0150).",
+        slot.name, brief.title
+    );
     match slot.kind {
         SlotKind::Sprite { facing } => vec![(
             slot.name.to_string(),
@@ -372,11 +416,20 @@ pub fn build_ops(brief: &Brief, map: &[String]) -> Value {
             let tan_half_h = tan_half_v * 16.0 / 9.0;
             let d = ((w / 2.0 + 1.0) / tan_half_h).max((h / 2.0 + 1.5) / tan_half_v) * 1.08;
             let pitch = 58f64.to_radians();
-            let (cy, cz) = ((d * pitch.sin() * 100.0).round() / 100.0, (d * pitch.cos() * 100.0).round() / 100.0);
+            let (cy, cz) = (
+                (d * pitch.sin() * 100.0).round() / 100.0,
+                (d * pitch.cos() * 100.0).round() / 100.0,
+            );
             let sky = [bg[0] * 0.5 + 0.35, bg[1] * 0.5 + 0.38, bg[2] * 0.5 + 0.45];
-            ops.push(resource("AmbientLight", json!({"color": rgba(sky), "intensity": 0.2})));
+            ops.push(resource(
+                "AmbientLight",
+                json!({"color": rgba(sky), "intensity": 0.2}),
+            ));
             ops.push(resource("SkyLight", json!({"sky": rgba(sky), "ground": rgba([bg[0] + 0.05, bg[1] + 0.04, bg[2] + 0.03]), "intensity": 0.6})));
-            ops.push(resource("Shadows", json!({"distance": (w.max(h) * 0.75).ceil(), "resolution": 2048, "softness": 1.5})));
+            ops.push(resource(
+                "Shadows",
+                json!({"distance": (w.max(h) * 0.75).ceil(), "resolution": 2048, "softness": 1.5}),
+            ));
             ops.push(resource("ToneMapping", json!({"exposure": 1.0})));
             ops.push(resource("Bloom", json!({"intensity": 0.15, "threshold": 1.0})));
             let mut cam = json!({
@@ -416,7 +469,11 @@ pub fn build_ops(brief: &Brief, map: &[String]) -> Value {
             ));
         }
     }
-    ops.push(entity(GAME_ENTITY, "game", json!({"Script": {"path": "scripts/game.ts"}})));
+    ops.push(entity(
+        GAME_ENTITY,
+        "game",
+        json!({"Script": {"path": "scripts/game.ts"}}),
+    ));
     ops.push(entity(
         4,
         "hud",

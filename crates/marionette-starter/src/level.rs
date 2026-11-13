@@ -12,7 +12,7 @@ impl Rng {
         Self(seed ^ 0x5EED_5EED_5EED_5EED)
     }
 
-    pub fn next(&mut self) -> u64 {
+    pub fn next_u64(&mut self) -> u64 {
         self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
         let mut z = self.0;
         z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
@@ -22,12 +22,12 @@ impl Rng {
 
     /// Uniform in `lo..=hi`.
     pub fn range(&mut self, lo: i64, hi: i64) -> i64 {
-        lo + (self.next() % ((hi - lo + 1) as u64)) as i64
+        lo + (self.next_u64() % ((hi - lo + 1) as u64)) as i64
     }
 
     /// True with probability `percent` / 100.
     pub fn chance(&mut self, percent: u64) -> bool {
-        self.next() % 100 < percent
+        self.next_u64() % 100 < percent
     }
 }
 
@@ -51,7 +51,12 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
         let mut next = Vec::new();
         for (dx, dy) in [(1i64, 0i64), (-1, 0), (0, 1), (0, -1)] {
             let (nx, ny) = (cx as i64 + dx, cy as i64 + dy);
-            if nx >= 0 && ny >= 0 && (nx as usize) < cw && (ny as usize) < ch && !seen[ny as usize][nx as usize] {
+            if nx >= 0
+                && ny >= 0
+                && (nx as usize) < cw
+                && (ny as usize) < ch
+                && !seen[ny as usize][nx as usize]
+            {
                 next.push((nx as usize, ny as usize));
             }
         }
@@ -77,8 +82,10 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
             if g[y][x] != b'#' {
                 continue;
             }
-            let horizontal = g[y][x - 1] == b'.' && g[y][x + 1] == b'.' && g[y - 1][x] == b'#' && g[y + 1][x] == b'#';
-            let vertical = g[y - 1][x] == b'.' && g[y + 1][x] == b'.' && g[y][x - 1] == b'#' && g[y][x + 1] == b'#';
+            let horizontal =
+                g[y][x - 1] == b'.' && g[y][x + 1] == b'.' && g[y - 1][x] == b'#' && g[y + 1][x] == b'#';
+            let vertical =
+                g[y - 1][x] == b'.' && g[y + 1][x] == b'.' && g[y][x - 1] == b'#' && g[y][x + 1] == b'#';
             if (horizontal || vertical) && rng.chance(loops) {
                 g[y][x] = b'.';
             }
@@ -93,7 +100,10 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
         .filter(|&(x, y)| g[y][x] == b'.' && dist[y][x] != usize::MAX)
         .collect();
     // Goal: the farthest cell from the start.
-    let goal = *open.iter().max_by_key(|&&(x, y)| (dist[y][x], x, y)).expect("a maze has floor");
+    let goal = *open
+        .iter()
+        .max_by_key(|&&(x, y)| (dist[y][x], x, y))
+        .expect("a maze has floor");
     g[goal.1][goal.0] = b'E';
 
     let pickups = match size {
@@ -125,7 +135,7 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
                     .min()
                     .unwrap_or(0);
                 // A little noise breaks ties differently per seed.
-                (d * 8 + (rng.next() % 5) as usize, (x, y))
+                (d * 8 + (rng.next_u64() % 5) as usize, (x, y))
             })
             .max();
         if let Some((_, (x, y))) = best {
@@ -139,7 +149,9 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
     for _ in 0..enemies {
         pick(&mut g, b'G', 8, &mut rng);
     }
-    g.into_iter().map(|r| String::from_utf8(r).expect("ascii")).collect()
+    g.into_iter()
+        .map(|r| String::from_utf8(r).expect("ascii"))
+        .collect()
 }
 
 fn bfs(g: &[Vec<u8>], from: (usize, usize)) -> Vec<Vec<usize>> {
@@ -162,6 +174,7 @@ fn bfs(g: &[Vec<u8>], from: (usize, usize)) -> Vec<Vec<usize>> {
 /// `e` walking enemy, `*` pickup, `P` player start, `G` goal, `.` air.
 pub const PLATFORMER_ROWS: usize = 12;
 
+#[allow(clippy::needless_range_loop)] // two rows change per column
 pub fn platformer(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
     let h = PLATFORMER_ROWS;
     let length = match size {
@@ -279,12 +292,18 @@ mod tests {
 
     #[test]
     fn same_seed_same_level() {
-        assert_eq!(maze(7, Size::Medium, Difficulty::Hard), maze(7, Size::Medium, Difficulty::Hard));
+        assert_eq!(
+            maze(7, Size::Medium, Difficulty::Hard),
+            maze(7, Size::Medium, Difficulty::Hard)
+        );
         assert_eq!(
             platformer(7, Size::Medium, Difficulty::Hard),
             platformer(7, Size::Medium, Difficulty::Hard)
         );
-        assert_ne!(maze(7, Size::Medium, Difficulty::Hard), maze(8, Size::Medium, Difficulty::Hard));
+        assert_ne!(
+            maze(7, Size::Medium, Difficulty::Hard),
+            maze(8, Size::Medium, Difficulty::Hard)
+        );
     }
 
     #[test]
@@ -295,8 +314,8 @@ mod tests {
             assert_eq!(g.iter().flat_map(|r| r.iter()).filter(|&&b| b == b'P').count(), 1);
             assert_eq!(g.iter().flat_map(|r| r.iter()).filter(|&&b| b == b'G').count(), 1);
             let mut gap = 0;
-            for x in 0..g[0].len() {
-                if g[PLATFORMER_ROWS - 1][x] == b'#' {
+            for (x, &c) in g[PLATFORMER_ROWS - 1].iter().enumerate() {
+                if c == b'#' {
                     gap = 0;
                 } else {
                     gap += 1;

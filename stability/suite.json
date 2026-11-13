@@ -336,6 +336,69 @@
       "long_ticks": 54000,
       "frame_budget_ms": 11.1,
       "memory_growth_mib": 64
+    },
+    {
+      "name": "starter-maze-2d",
+      "description": "Game starter, maze template in 2D (made from a prompt, placeholder art): played with random input, headless.",
+      "kind": "sim",
+      "scene": "examples/starter-maze/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "starter-maze-2d-render",
+      "description": "Game starter, maze template in 2D (made from a prompt, placeholder art): played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "examples/starter-maze/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
+    },
+    {
+      "name": "proof-gearbug-garden",
+      "description": "Game starter demo, maze template in 3D (models, shadows, bloom): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/gearbug-garden/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-gearbug-garden-render",
+      "description": "Game starter demo, maze template in 3D (models, shadows, bloom): played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/gearbug-garden/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
+    },
+    {
+      "name": "proof-comet-hopper",
+      "description": "Game starter demo, platformer template (scrolling camera, stomps, spikes): played with random input, headless.",
+      "kind": "sim",
+      "scene": "games/comet-hopper/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "proof-comet-hopper-render",
+      "description": "Game starter demo, platformer template (scrolling camera, stomps, spikes): played with random input and rendered every tick.",
+      "kind": "render",
+      "scene": "games/comet-hopper/scenes/main.scene.json",
+      "random_input": true,
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1,
+      "memory_growth_mib": 64
     }
   ],
   "exempt": {

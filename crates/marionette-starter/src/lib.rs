@@ -244,9 +244,15 @@ impl Brief {
                 ));
             }
         }
-        for (name, c) in [("background", &self.colors.background), ("accent", &self.colors.accent)] {
+        for (name, c) in [
+            ("background", &self.colors.background),
+            ("accent", &self.colors.accent),
+        ] {
             if parse_hex(c).is_none() {
-                problems.push(bad(format!("colors.{name} `{c}` is not #rrggbb"), "write it like #ffd166"));
+                problems.push(bad(
+                    format!("colors.{name} `{c}` is not #rrggbb"),
+                    "write it like #ffd166",
+                ));
             }
         }
         if self.words.pickups.trim().is_empty() || self.words.pickups.chars().count() > 20 {
@@ -269,7 +275,11 @@ pub fn parse_hex(s: &str) -> Option<[f32; 3]> {
     if h.len() != 6 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
         return None;
     }
-    let ch = |i: usize| u8::from_str_radix(&h[i..i + 2], 16).ok().map(|v| srgb_to_linear(v as f32 / 255.0));
+    let ch = |i: usize| {
+        u8::from_str_radix(&h[i..i + 2], 16)
+            .ok()
+            .map(|v| srgb_to_linear(v as f32 / 255.0))
+    };
     Some([ch(0)?, ch(2)?, ch(4)?])
 }
 
@@ -308,7 +318,9 @@ pub type ArtMap = BTreeMap<String, Art>;
 /// generated subject in the middle of a square canvas fills its tile. An opaque image (a
 /// tile or a backdrop) is used whole.
 pub fn sprite_art(png: &[u8], image: String) -> Option<Art> {
-    let img = image::load_from_memory_with_format(png, image::ImageFormat::Png).ok()?.to_rgba8();
+    let img = image::load_from_memory_with_format(png, image::ImageFormat::Png)
+        .ok()?
+        .to_rgba8();
     let (w, h) = img.dimensions();
     if w == 0 || h == 0 {
         return None;

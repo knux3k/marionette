@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "event": {
+        "at_most": 0,
+        "kind": "won"
+      }
+    },
+    {
+      "state_hash": "cfdd65f52b9bba1bbfb2fe0191a1362805b78c4e34f5370d43a9d14fdd8e2325"
+    }
+  ],
+  "scene": "scenes/main.scene.json",
+  "seed": 1,
+  "ticks": 1200
+}

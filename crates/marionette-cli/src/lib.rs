@@ -763,9 +763,8 @@ fn make(
     let mut input = json!({ "generate": generate, "refresh": refresh });
     let mut ask = json!({});
     if let Some(file) = brief {
-        let text = std::fs::read_to_string(&file).map_err(|e| {
-            Errors::from(Diagnostic::error("io.read", format!("cannot read {file}: {e}")))
-        })?;
+        let text = std::fs::read_to_string(&file)
+            .map_err(|e| Errors::from(Diagnostic::error("io.read", format!("cannot read {file}: {e}"))))?;
         let b: Value = serde_json::from_str(&text).map_err(|e| {
             Errors::from(Diagnostic::error("agent.bad_input", format!("{file}: {e}")).file(file.clone()))
         })?;
@@ -787,10 +786,10 @@ fn make(
         }
     };
     input["path"] = json!(path);
-    if !refresh || ask.get("brief").is_some() {
-        if let Value::Object(m) = ask {
-            input.as_object_mut().expect("object").extend(m);
-        }
+    if (!refresh || ask.get("brief").is_some())
+        && let Value::Object(m) = ask
+    {
+        input.as_object_mut().expect("object").extend(m);
     }
     agent.call("game_make", input).map(|v| merge("make", v))
 }
@@ -802,7 +801,11 @@ fn slug(title: &str) -> String {
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect();
-    let s = s.split('-').filter(|w| !w.is_empty()).collect::<Vec<_>>().join("-");
+    let s = s
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
     if s.is_empty() { "game".into() } else { s }
 }
 

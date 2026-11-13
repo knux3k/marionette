@@ -15,6 +15,8 @@ that play the game with scripted input. Decision 0050. Proof test:
 | Crystal Ward | top-down 3D | `games/crystal-ward/` | done: survives five waves with scripted input (crystal at 5 of 10); idle loses in wave 3 |
 | Dust Circuit | racing | `games/dust-circuit/` | done: three laps against an AI rival; the scripted drive (analog steering) wins in about 24.6 s with no wall contact; idle loses to the rival |
 | Signal Yard | first-person shooter | `games/signal-yard/` | done: an agent played it through the MCP server (closed loop, aim speed capped) and its recording clears three drone waves in about 24.6 s, taking 3 hits; idle loses to wave 1 |
+| Gearbug Garden | 3D maze (game starter) | `games/gearbug-garden/` | done: made by `marionette make` from a brief (decision 0150); the autopilot wins; idle does not |
+| Comet Hopper | 2D platformer (game starter) | `games/comet-hopper/` | done: made by `marionette make` from a brief (decision 0150); the autopilot wins; idle does not |
 
 ## Recipe for a new proof game
 

@@ -19,6 +19,7 @@ Commands:
   op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
   provider    AI providers: list them, show this project's choices and spending, switch one
   generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
+  make        Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
   mcp         Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
   docs        Write the generated reference docs (operations, components, CLI help)
   help        Print this message or the help of the given subcommand(s)
@@ -451,6 +452,52 @@ Options:
 
       --read-only
           Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette make`
+
+```text
+Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+
+Usage: make [OPTIONS] [PROMPT]
+
+Arguments:
+  [PROMPT]
+          The game idea in plain words
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --path <PATH>
+          Game folder (default: the title as a folder name)
+
+      --brief <BRIEF>
+          A brief file (marionette.brief/1) to use instead of the prompt
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --template <TEMPLATE>
+          maze or platformer
+
+      --view <VIEW>
+          2d or 3d
+
+      --generate
+          Generate missing art first, with the game's providers (paid ones need keys)
+
+      --refresh
+          Re-make the game in --path from its brief.json: new art in, tests re-pinned
 
   -h, --help
           Print help
