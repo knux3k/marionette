@@ -15,6 +15,7 @@ use marionette_core::{Diagnostic, Errors};
 use serde_json::{Value, json};
 use std::process::ExitCode;
 
+mod audio_check;
 mod render;
 mod stability;
 
@@ -112,6 +113,10 @@ enum Command {
         /// Untimed ticks (each with a frame) before measuring.
         #[arg(long, default_value_t = 30)]
         warmup: u32,
+        /// Draw every instance in every view (frustum culling off), to measure what culling
+        /// saves (decision 0080).
+        #[arg(long)]
+        no_cull: bool,
     },
     /// Stability suite (operation `stability_run`): run every game mode with seeded random
     /// input and check no panic, no hang, replay and snapshot determinism, time budgets and
@@ -183,6 +188,20 @@ enum Command {
         /// Leave output schemas out of the tool listing (smaller context for the client).
         #[arg(long)]
         lean: bool,
+    },
+    /// Play a synth stress test through the real audio device and report glitch counters:
+    /// callbacks that ran longer than the audio they made, stream underruns, dropped commands,
+    /// stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device.
+    AudioCheck {
+        /// Seconds to play.
+        #[arg(long, default_value_t = 8.0)]
+        seconds: f64,
+        /// Synth voices sounding at once (notes start at this many per second, each held 1 s).
+        #[arg(long, default_value_t = 64)]
+        voices: usize,
+        /// Stream this WAV or OGG in a loop alongside (default: a generated music file).
+        #[arg(long)]
+        stream: Option<String>,
     },
     /// Write the generated reference docs (operations, components, CLI help).
     Docs {
@@ -303,6 +322,13 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                 }
             };
         }
+        Command::AudioCheck {
+            seconds,
+            voices,
+            stream,
+        } => {
+            return audio_check::run(seconds, voices, stream.as_deref(), cli.json);
+        }
         Command::Docs { out, check } => docs(&agent, &out, check),
         Command::Ops { brief, tools } => ops(&agent, brief, &tools),
         Command::Op { name, input } => parse_input(input.as_deref())
@@ -375,9 +401,11 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             eyes,
             headset,
             warmup,
+            no_cull,
         } => render::bench(render::BenchOptions {
             engine: &engine,
             warmup,
+            no_cull,
             path: &scene,
             frames,
             seed,

@@ -8,20 +8,21 @@ Marionette game engine CLI
 Usage: marionette [OPTIONS] <COMMAND>
 
 Commands:
-  schema      Print the JSON Schema of the scene format and every component and resource
-  validate    Check a scene file against the schema
-  run         Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
-  screenshot  Simulate N ticks, then render one image with no window and save it as PNG
-  bench       Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
-  stability   Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
-  scene       Scene file tools
-  ops         List operations with their descriptions and JSON Schemas. `--brief` gives one line each
-  op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
-  provider    AI providers: list them, show this project's choices and spending, switch one
-  generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
-  mcp         Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
-  docs        Write the generated reference docs (operations, components, CLI help)
-  help        Print this message or the help of the given subcommand(s)
+  schema       Print the JSON Schema of the scene format and every component and resource
+  validate     Check a scene file against the schema
+  run          Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
+  screenshot   Simulate N ticks, then render one image with no window and save it as PNG
+  bench        Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
+  stability    Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
+  scene        Scene file tools
+  ops          List operations with their descriptions and JSON Schemas. `--brief` gives one line each
+  op           Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
+  provider     AI providers: list them, show this project's choices and spending, switch one
+  generate     Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
+  mcp          Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
+  audio-check  Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
+  docs         Write the generated reference docs (operations, components, CLI help)
+  help         Print this message or the help of the given subcommand(s)
 
 Options:
       --json
@@ -249,6 +250,9 @@ Options:
           Untimed ticks (each with a frame) before measuring
           
           [default: 30]
+
+      --no-cull
+          Draw every instance in every view (frustum culling off), to measure what culling saves (decision 0080)
 
   -h, --help
           Print help
@@ -481,6 +485,43 @@ Options:
 
       --read-only
           Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette audio-check`
+
+```text
+Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
+
+Usage: audio-check [OPTIONS]
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --seconds <SECONDS>
+          Seconds to play
+          
+          [default: 8]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --voices <VOICES>
+          Synth voices sounding at once (notes start at this many per second, each held 1 s)
+          
+          [default: 64]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --stream <STREAM>
+          Stream this WAV or OGG in a loop alongside (default: a generated music file)
 
   -h, --help
           Print help

@@ -358,7 +358,8 @@ fn skinned_draw_calls_stay_flat_as_the_crowd_grows() {
     std::fs::write(&path, serde_json::to_string_pretty(&scene).unwrap()).unwrap();
     let (_, stats) = render(&gpu, &path, 10, (160, 90));
     assert_eq!(stats.draw_calls, 4, "{stats:?}");
-    assert_eq!(stats.instances, 1 + 64 * 3, "{stats:?}");
+    // Static hats outside the small view are culled (decision 0080).
+    assert_eq!(stats.instances + stats.culled, 1 + 64 * 3, "{stats:?}");
 }
 
 #[test]

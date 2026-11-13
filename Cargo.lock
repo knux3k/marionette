@@ -2262,6 +2262,7 @@ dependencies = [
  "marionette-providers",
  "marionette-render",
  "marionette-script",
+ "marionette-synth",
  "marionette-ui3d",
  "rmcp",
  "schemars",
@@ -2299,6 +2300,7 @@ dependencies = [
  "bevy_reflect",
  "kira",
  "marionette-core",
+ "marionette-synth",
  "serde",
  "serde_json",
 ]
@@ -2502,6 +2504,7 @@ dependencies = [
  "glam 0.34.3",
  "marionette-assets",
  "marionette-core",
+ "meshopt",
  "pollster",
  "serde",
  "serde_json",
@@ -2521,6 +2524,17 @@ dependencies = [
  "oxc",
  "rquickjs",
  "serde_json",
+]
+
+[[package]]
+name = "marionette-synth"
+version = "0.1.0"
+dependencies = [
+ "marionette-host",
+ "rtrb",
+ "serde",
+ "serde_json",
+ "symphonia",
 ]
 
 [[package]]

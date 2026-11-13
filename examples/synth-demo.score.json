@@ -1,0 +1,17 @@
+{
+  "rate": 48000,
+  "voices": 32,
+  "seconds": 4.0,
+  "notes": [
+    { "at": 0.0, "dur": 3.0, "note": 48, "patch": "pad" },
+    { "at": 0.0, "dur": 3.0, "note": 55, "patch": "pad" },
+    { "at": 0.0, "dur": 3.0, "note": 64, "patch": "pad" },
+    { "at": 0.5, "dur": 0.2, "note": 36, "patch": "thump" },
+    { "at": 1.0, "dur": 0.4, "note": 60, "patch": "pluck" },
+    { "at": 1.5, "dur": 0.4, "note": 64, "patch": "pluck" },
+    { "at": 2.0, "dur": 0.4, "note": 67, "patch": "pluck" },
+    { "at": 2.5, "dur": 0.2, "note": 84, "patch": "bell" },
+    { "at": 1.0, "dur": 2.0, "note": 36, "patch": "bass" }
+  ],
+  "master": [{ "at": 3.0, "gain": 0.0 }]
+}
