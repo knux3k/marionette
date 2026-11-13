@@ -41,7 +41,7 @@ Template: `examples/rust-module` (decision 0062).
 
 1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
    `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
-   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`).
+   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`).
 2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
    with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
    `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.
@@ -50,6 +50,26 @@ Template: `examples/rust-module` (decision 0062).
    `crates/marionette-cli/src/main.rs`. Tests use `Agent::with_engine` or `Engine::load_file`.
 4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
    workspace's.
+
+## Add save games to a game
+
+Decision 0076; code `crates/marionette-save`.
+
+1. Add resource `SaveFormat` to the game's scene: `game` (id), `version` (start at 1),
+   `autosave_every` (ticks, 0 for requests only), `autosave_slots`, `migrations` (file
+   relative to the scene, or `""`). Everything the player keeps must be in registered
+   components or resources; anything else is lost on load.
+2. Ask for saves at safe moments from scripts: `engine.emit("save_request")` (autosave slot)
+   or `engine.emit("save_request", JSON.stringify({ slot: "checkpoint", label: "Gate" }))`.
+3. Changing saved data: raise `version` and add a step `{ "from": <old>, "changes": [...] }`
+   to the migrations file (`rename_type`, `remove_type`, `rename_field`, `set_field`,
+   `remove_field`), or a Rust step with `SaveModule::with(Migrations::new().rust(old, f))`
+   and `Engine::builder().replace(...)`. Test it: keep an old save under `tests/` and run
+   `save_check`, then `save_load`.
+4. Agents: `save_write`, `save_load`, `save_list`, `save_check`, `save_delete` on a live
+   session. Windowed: `marionette run <scene> --saves <dir>` (autosave, F5, F9). A game's
+   own binary: `SaveWriter::new(SaveStore::open(dir)?, registry)` plus
+   `Autosaver::after_step` after each step, and `marionette_save::load` to load.
 
 ## Add a game mode, example or proof scene
 

@@ -144,6 +144,9 @@ Options:
       --mute
           Windowed mode: do not open the audio device
 
+      --saves <SAVES>
+          Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request` events, F5 quick save and F9 quick load (slot `quick`)
+
   -h, --help
           Print help
 

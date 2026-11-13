@@ -67,6 +67,10 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        /// Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request`
+        /// events, F5 quick save and F9 quick load (slot `quick`).
+        #[arg(long)]
+        saves: Option<String>,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -332,6 +336,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            saves,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -342,6 +347,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            saves: saves.as_deref(),
         }),
         Command::Screenshot {
             scene,

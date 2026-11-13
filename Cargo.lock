@@ -2224,6 +2224,7 @@ dependencies = [
  "marionette-port",
  "marionette-providers",
  "marionette-render",
+ "marionette-save",
  "marionette-script",
  "rmcp",
  "schemars",
@@ -2277,6 +2278,7 @@ dependencies = [
  "marionette-host",
  "marionette-jobs",
  "marionette-render",
+ "marionette-save",
  "serde",
  "serde_json",
 ]
@@ -2469,6 +2471,18 @@ dependencies = [
  "serde_json",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "marionette-save"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-core",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]

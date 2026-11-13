@@ -597,6 +597,20 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
 
+### `SaveFormat`
+
+How a game's saves are named and versioned. Put it in the game's scene; a world without it saves as game `""`, version 1, with autosave off.
+
+Rust type: `marionette_save::SaveFormat`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `autosave_every` | integer | yes | Autosave every this many ticks (0: only on `save_request` events). |
+| `autosave_slots` | integer | yes | Autosave slots `auto-0` .. `auto-(n-1)`, overwritten oldest first (at least 1). |
+| `game` | string | yes | Game id written in every save; a save of another game is refused on load. |
+| `migrations` | string | yes | Data migrations file (JSON, relative to the scene folder); empty for none. |
+| `version` | integer | yes | Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. |
+
 ### `Shadows`
 
 Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed.

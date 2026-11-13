@@ -10,7 +10,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | Line | Topic | Status |
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
-| 2 | Core | Done. |
+| 2 | Core | Done. Save games: slots, crash-safe files, migrations, autosave (decision 0076). |
 | 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
@@ -21,6 +21,11 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
 
 ## UNVERIFIED
+
+- Save games (decision 0076): crash safety tested by simulating the states a crash leaves,
+  not by killing a process mid-write or cutting power; the rename-then-rename order on
+  Windows is from the documented `MoveFileExW` behavior (CI runs the tests there). Windowed
+  autosave, F5 and F9 never run on a screen.
 
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.

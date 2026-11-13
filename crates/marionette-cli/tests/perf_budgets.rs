@@ -22,6 +22,9 @@ const LOAD_32X_MS: f64 = 5000.0;
 /// Main-thread part of saving a 4x factory (`Sim::capture`); writing the text runs on
 /// another thread (decision 0073).
 const SAVE_CAPTURE_4X_MS: f64 = 2.0;
+/// Main-thread part of a whole save game of a 4x factory (`save_write`: state copy plus
+/// module bytes); scene text, checksum and file go to the save thread (decision 0076).
+const SAVE_GAME_4X_MS: f64 = 2.0;
 /// CPU side of a stereo frame of the 32x factory: extract plus record and submit, median.
 const RENDER_CPU_32X_STEREO_MS: f64 = 4.0;
 
@@ -110,6 +113,37 @@ fn save_capture_budget() {
         t.elapsed().as_secs_f64() * 1000.0,
         text.len() / 1024
     );
+}
+
+#[test]
+#[cfg(feature = "save")]
+#[ignore = "timing: release builds only, see the file header"]
+fn save_game_budget() {
+    let d = dir();
+    let mut agent = Agent::new(&d, false);
+    let s4 = factory(&mut agent, &d, 4);
+    let s = call(&mut agent, "session_start", json!({ "scene": s4, "ticks": 600 }));
+    let saves = d.join("saves").to_string_lossy().to_string();
+    let (mut best, mut write, mut bytes) = (f64::MAX, 0.0, 0);
+    for _ in 0..5 {
+        let w = call(
+            &mut agent,
+            "save_write",
+            json!({ "session": s["session"], "slot": "budget", "dir": saves }),
+        );
+        best = best.min(w["capture_ms"].as_f64().unwrap());
+        write = w["write_ms"].as_f64().unwrap();
+        bytes = w["bytes"].as_u64().unwrap();
+    }
+    check("save game 4x (main thread)", best, SAVE_GAME_4X_MS);
+    eprintln!("  (save thread: {write:.1} ms for {} KB)", bytes / 1024);
+    let t = Instant::now();
+    call(
+        &mut agent,
+        "save_load",
+        json!({ "session": s["session"], "slot": "budget", "dir": saves }),
+    );
+    eprintln!("  (load: {:.1} ms)", t.elapsed().as_secs_f64() * 1000.0);
 }
 
 #[test]

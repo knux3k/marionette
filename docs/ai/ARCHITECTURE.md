@@ -19,8 +19,9 @@
 | `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028) | core, assets | render, input, physics, audio, script |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts`, `JobsModule` (`JobSchedule` steps over `JobData`, the `JobRunner` for scripts, decision 0070) | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
+| `crates/marionette-save` | Save games: `SaveFormat`, `.msave` files (header line plus checksummed body), slots with backups, migrations, `SaveWriter` thread, `Autosaver` (decision 0076) | core, serde, sha2 | render, input, physics, audio, agent |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
-| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
+| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts, save behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary and `main_with(engine)` for a game's binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
 Planned crates (not created yet): marionette-ai-runtime (line 10).
@@ -81,7 +82,8 @@ A session (`session_start`) is an in-memory copy of a scene with its own tick an
 long as the process holding it (the MCP server). Edits name exactly one target: `scene` (file:
 validated, written atomically, canonical) or `session` (live world: validated, reloaded keeping
 tick and RNG). File edits never touch sessions; session edits never touch files;
-`session_save` writes a session to a file. Snapshots (`session_snapshot`, `session_restore`) use
+`session_save` writes a session to a file. Save games (`save_*`, decision 0076) write the same
+state as snapshots into crash-safe `.msave` slot files. Snapshots (`session_snapshot`, `session_restore`) use
 `Sim::save_state` / `Sim::restore`. See decision 0009.
 
 ## Renderer

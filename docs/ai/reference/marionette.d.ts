@@ -684,6 +684,20 @@ type RigidBody = {
   lock_rotations: boolean;
 };
 
+/** How a game's saves are named and versioned. Put it in the game's scene; a world without it saves as game `""`, version 1, with autosave off. */
+type SaveFormat = {
+  /** Autosave every this many ticks (0: only on `save_request` events). */
+  autosave_every: number;
+  /** Autosave slots `auto-0` .. `auto-(n-1)`, overwritten oldest first (at least 1). */
+  autosave_slots: number;
+  /** Game id written in every save; a save of another game is refused on load. */
+  game: string;
+  /** Data migrations file (JSON, relative to the scene folder); empty for none. */
+  migrations: string;
+  /** Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. */
+  version: number;
+};
+
 /** Runs a TypeScript file every tick. `path` is relative to the scene file. The module must export `function update(self: Entity): void` (see the generated `marionette.d.ts`). */
 type Script = {
   path: string;
@@ -931,6 +945,7 @@ interface Resources {
   Fog: Fog;
   InputConfig: InputConfig;
   PhysicsSettings: PhysicsSettings;
+  SaveFormat: SaveFormat;
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
