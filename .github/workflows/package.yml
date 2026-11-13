@@ -93,6 +93,18 @@ jobs:
           hash=$(cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1)
           echo "$hash"
           test "$hash" = 7441258fdf64141911d44e0608c48498897564168684fdd86cd244e149926558
+      - name: Stability modes one by one (temporary diagnostic)
+        continue-on-error: true
+        env:
+          WGPU_BACKEND: vulkan
+        run: |
+          cargo build --locked -q -p marionette-cli
+          for m in $(python3 -c "import json; print(' '.join(m['name'] for m in json.load(open('stability/suite.json'))['modes']))"); do
+            ./target/debug/marionette --json stability --mode "$m" --out target/stab > /dev/null 2> target/stab-err.txt
+            code=$?
+            echo "$m exit=$code"
+            if [ $code -gt 1 ]; then tail -20 target/stab-err.txt; fi
+          done
       - name: Test (GPU tests on lavapipe, one thread)
         run: cargo test --locked -- --test-threads=1
         env:
