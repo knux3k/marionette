@@ -51,6 +51,7 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-generate-assets` | generate images, textures and models from recipes |
 | `marionette-handoff` | start, claim and hand off work in a game project |
 | `marionette-light-scene` | lighting and post-processing |
+| `marionette-play-window` | windowed play feel, gamepads, frame pacing numbers |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
 | `marionette-test-game` | scenarios, replays, stability soaks |
 | `marionette-write-job` | hot loops in job TypeScript |
