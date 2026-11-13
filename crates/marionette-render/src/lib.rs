@@ -15,6 +15,7 @@ mod raytrace;
 pub mod renderer;
 mod skinning;
 pub mod window;
+mod worldquads;
 
 pub use extract::{EnvironmentData, FrameData, ProbeData, View, extract, extract_at};
 pub use gpu::{FrameTiming, Gpu, GpuObjects, Offscreen};

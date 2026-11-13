@@ -10,6 +10,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Scripting and job TypeScript (plan line 4) | [proofs/scripting.md](proofs/scripting.md) |
 | Agent interface, game Rust modules, skills and handoffs (plan line 5) | [proofs/agent.md](proofs/agent.md) |
 | Input, physics, audio, UI and animation (plan line 6) | [proofs/play.md](proofs/play.md) |
+| World-space UI and text (decisions 0200, 0201) | [proofs/ui3d.md](proofs/ui3d.md) |
 | Providers, import, pool and generation (plan lines 7 and 8) | [proofs/assets.md](proofs/assets.md) |
 | Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
 | Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
