@@ -217,6 +217,32 @@ fn phrase_after(ws: &[String], cues: &[&str]) -> Option<String> {
     None
 }
 
+/// The noun just before the first of `verbs`, e.g. "a maze where a cat collects fish" gives
+/// "cat". Skips "who"/"that"; gives nothing for "you" or a game word.
+fn subject_before(ws: &[String], verbs: &[&str]) -> Option<String> {
+    let i = ws.iter().position(|w| verbs.contains(&w.as_str()))?;
+    let w = ws[..i]
+        .iter()
+        .rev()
+        .find(|w| !["who", "that", "which"].contains(&w.as_str()))?;
+    let skip = [
+        "you",
+        "i",
+        "we",
+        "player",
+        "a",
+        "an",
+        "the",
+        "game",
+        "maze",
+        "platformer",
+        "level",
+        "3d",
+        "2d",
+    ];
+    (!STOP.contains(&w.as_str()) && !skip.contains(&w.as_str())).then(|| w.clone())
+}
+
 fn singular(plural: &str) -> String {
     let mut words: Vec<&str> = plural.split(' ').collect();
     let last = words.pop().unwrap_or("");
@@ -306,7 +332,17 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
     };
     let theme = THEMES.iter().find(|t| has(&ws, t.keys)).unwrap_or(&DEFAULT);
 
-    let player = phrase_after(&ws, &["as", "are", "playing"]).map(|p| format!("a {p}"));
+    let player = phrase_after(&ws, &["as", "are", "playing"])
+        .or_else(|| {
+            subject_before(
+                &ws,
+                &[
+                    "collects", "gathers", "finds", "grabs", "saves", "rescues", "lights", "avoids",
+                    "dodges", "escapes", "evades", "jumps", "runs", "explores", "reaches",
+                ],
+            )
+        })
+        .map(|p| format!("a {p}"));
     let pickups = phrase_after(
         &ws,
         &[
@@ -463,6 +499,15 @@ mod tests {
         assert_eq!(b.words.pickups, "lanterns");
         assert_eq!(b.title, "Moth And The Lanterns");
         b.check().unwrap();
+    }
+
+    #[test]
+    fn finds_the_hero_before_its_verb() {
+        let b = brief_from_prompt("a maze where a cat collects fish", None, None);
+        assert_eq!(b.assets["player"].describe, "a cat");
+        assert_eq!(b.title, "Cat And The Fish");
+        let b = brief_from_prompt("a maze where you collect fish", None, None);
+        assert_ne!(b.assets["player"].describe, "a you");
     }
 
     #[test]

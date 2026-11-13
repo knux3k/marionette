@@ -39,13 +39,4 @@ and refresh.
 
 ## Proofs
 
-- `cargo test -p marionette-cli --test starter`: every template from a prompt is won by its
-  autopilot and passes its own tests; the same brief gives byte-identical files; refresh keeps
-  edits outside CONFIG and refuses a script without markers; bad briefs list every problem.
-- `cargo test -p marionette-starter`: mazes are connected, platformer gaps are at most 3 wide,
-  same seed same level, prompt reading.
-- Demo games (in `proof_scenes.rs` and the stability suite): `games/gearbug-garden` (3D maze),
-  `games/comet-hopper` (platformer); `examples/starter-maze` (2D maze from a prompt, placeholder
-  art).
-- First-try autopilot wins on sampled seeds (container, 2026-11-13): mazes 32 of 32; platformer
-  about 90% (spikes, edges and walking enemies cause the rest); `game_make` tries further seeds.
+In [proofs/games.md](proofs/games.md#game-starter-decision-0150).
