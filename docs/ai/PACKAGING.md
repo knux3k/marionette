@@ -86,5 +86,7 @@ headless for 60 ticks (`package.smoke`).
 
 - No gamepad backend: on Deck and Frame the player uses a Steam Input keyboard-and-mouse layout.
 - VR packages never ran on a real headset or in the Frame's runtime.
+- Ray tracing is not tested on ARM64: Mesa's llvmpipe crashes in its JIT with ray queries
+  on, so the ARM64 CI job sets `MARIONETTE_RAY_TRACING=0`. The Frame's own GPU is unchecked.
 - No code signing (Windows SmartScreen warns on first start), no macOS target, no Steam depot
   upload (use SteamPipe with the zip contents).
