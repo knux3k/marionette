@@ -35,6 +35,10 @@ stability modes turn it on, because they are the game loop.
 
 ## Consequences
 
+- Measured on the same GPU after the change: worst frames 5 to 7 ms in both modes (PROOFS.md).
+- A model still decoding when the stability warm-up sample is taken is counted as memory
+  growth once (seen once: 12.6 MiB against a 64 MiB limit).
+
 - A newly spawned model appears one or more frames after its entity (about 30 ms of decode on
   the owner's desktop CPU). Rendering is not part of the state hash, so determinism is
   unchanged.

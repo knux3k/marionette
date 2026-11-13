@@ -62,7 +62,7 @@ fn pool_operations_search_fetch_add_and_refuse() {
     let (ok, v) = op(&project, "pool_info", &json!({}));
     assert!(ok, "{v:#}");
     assert!(v["result"]["problem"].as_str().unwrap().contains("no CC0 pool"));
-    assert_eq!(v["result"]["libraries"].as_array().unwrap().len(), 4);
+    assert_eq!(v["result"]["libraries"].as_array().unwrap().len(), 6);
     let (ok, v) = op(&project, "pool_info", &json!({ "pool": pool }));
     assert!(ok);
     assert_eq!(v["result"]["assets"], 5);

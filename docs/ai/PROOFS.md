@@ -145,6 +145,13 @@ Stability suite (decision 0031, `docs/ai/STABILITY.md`):
 - Late model streaming (decision 0068), lavapipe, release, seed 1, worst frame after warm-up
   before and after: `proof-crystal-ward-render` 61.1 to 29.5 ms (p50 about 19 ms, the
   software rasterizer), `proof-signal-yard-render` 48.8 to 20.5 ms.
+- The same on the hardware GPU (RTX 2080, branch head `9a4b679`): the full fast suite passed
+  again, every mode with the heap probe (growth 0 to 0.24 MiB, `factory-sim` 4.0,
+  `factory-vr` 1.06, job modes about 1.0). Worst frame after warm-up, in the suite and three
+  more runs each: `proof-crystal-ward-render` 5.1 to 6.2 ms (was 42), `proof-signal-yard-render`
+  5.4 to 7.3 ms (was 32.5); p99 1.9 to 5.7 ms. In one of four `proof-signal-yard-render` runs the
+  heap grew 12.6 MiB (limit 64; others 0.15): a streamed model that finished decoding after the
+  warm-up sample is counted as growth. One-time, not a leak.
 - Heap probe (decision 0069), `factory-sim` seed 1, debug: counted heap +4.0 MiB after warm-up
   at 300 and at 1,500 ticks (resident +33.8 and +23.6 MiB): no leak.
 - Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670

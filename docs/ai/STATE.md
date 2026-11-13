@@ -27,7 +27,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
   nor on AMD or Intel GPUs.
-- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
+- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
+  cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
   build machine's network blocks those sites, so no live search or download has run.
 
@@ -88,9 +89,9 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 - Stability suite: frame budgets checked on one hardware GPU (RTX 2080, Windows; all 31 fast
   modes pass, PROOFS.md); not on AMD, Intel or a headset, and the long soak has not run on a
-  hardware GPU. Late model streaming (decision 0068) measured on lavapipe; the hardware GPU
-  rerun of the two spawning modes is in PROOFS.md when done. The heap memory probe (decision
-  0069) on Windows: first seen in the CI run of its merge. CI job `stability` and the nightly
+  hardware GPU. Late model streaming (decision 0068) and the heap memory probe (decision
+  0069) checked on that GPU (PROOFS.md); a model still decoding at the warm-up sample can show
+  as one-time growth in render modes. CI job `stability` and the nightly
   soak results: see the workflow runs.
 
 - Unreal importer on real files: nothing from a real Unreal project has been imported. T3D

@@ -54,3 +54,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0068 | Models first needed mid-game decode on a background thread (`set_streaming`; window loop and render stability modes) | accepted |
 | 0069 | Stability memory checks read the counted heap when the binary installs it (all platforms) | accepted |
 | 0070 | Scenes and scripts run job TypeScript over job arrays saved with the scene (`JobData`, `JobSchedule`, `engine.jobs`, `JobDraw`) | accepted |
+| 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
