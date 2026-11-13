@@ -13,9 +13,10 @@ use crate::extract::{FrameData, View};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3};
 use marionette_core::Diagnostic;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU64;
 use std::path::PathBuf;
+use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -352,6 +353,12 @@ pub struct Renderer {
     sprite_sampler: wgpu::Sampler,
     defaults: [wgpu::TextureView; 3], // white sRGB, white linear, flat normal
     models: BTreeMap<String, Result<GpuModel, String>>,
+    /// Background model decoding while streaming (decision 0068); `None` until first used.
+    loader: Option<ModelLoader>,
+    /// Models first needed after the first prepared frame decode in the background.
+    streaming: bool,
+    /// At least one frame was prepared (the first frame always loads everything at once).
+    prepared_once: bool,
     /// Textures for `Material` overrides (all defaults).
     plain_material: wgpu::BindGroup,
     sprite_textures: BTreeMap<String, Result<GpuTexture, String>>,
@@ -410,6 +417,39 @@ fn buffer_resource(buffer: &wgpu::Buffer, size: u64) -> wgpu::BindingResource<'_
         offset: 0,
         size: NonZeroU64::new(size),
     })
+}
+
+/// One background thread decoding model files (decision 0068). It ends when the renderer
+/// drops its sender; at most one request per distinct asset is in flight, so the queues are
+/// bounded by the scene's asset count.
+struct ModelLoader {
+    ask: mpsc::Sender<(String, PathBuf)>,
+    done: mpsc::Receiver<(String, Result<ModelData, String>)>,
+    pending: BTreeSet<String>,
+}
+
+impl ModelLoader {
+    fn start() -> Self {
+        let (ask, requests) = mpsc::channel::<(String, PathBuf)>();
+        let (reply, done) = mpsc::channel();
+        let spawned = std::thread::Builder::new()
+            .name("marionette-model-loader".into())
+            .spawn(move || {
+                for (asset, base) in requests {
+                    let loaded = assets::load_model(&asset, &base);
+                    if reply.send((asset, loaded)).is_err() {
+                        break;
+                    }
+                }
+            });
+        // Without a thread the request channel is closed, so `ensure_model` loads in place.
+        drop(spawned);
+        Self {
+            ask,
+            done,
+            pending: BTreeSet::new(),
+        }
+    }
 }
 
 fn mat(m: Mat4) -> [[f32; 4]; 4] {
@@ -812,6 +852,9 @@ impl Renderer {
             sprite_sampler,
             defaults,
             models: BTreeMap::new(),
+            loader: None,
+            streaming: false,
+            prepared_once: false,
             plain_material,
             sprite_textures: BTreeMap::new(),
             sprite_vertices: None,
@@ -888,11 +931,10 @@ impl Renderer {
     /// Loads (once) every asset the frame needs. Returns a diagnostic per asset that failed.
     pub fn prepare(&mut self, frame: &FrameData) -> Vec<Diagnostic> {
         let mut errors = Vec::new();
+        self.receive_models();
+        let stream = self.streaming && self.prepared_once;
         for draw in &frame.meshes {
-            if !self.models.contains_key(&*draw.asset) {
-                let loaded = assets::load_model(&draw.asset, &self.base_dir).map(|m| self.upload_model(&m));
-                self.models.insert(draw.asset.to_string(), loaded);
-            }
+            self.ensure_model(&draw.asset, stream);
             if let Some(Err(msg)) = self.models.get(&*draw.asset) {
                 errors.push(
                     Diagnostic::error(codes::ASSET, msg.clone())
@@ -905,10 +947,7 @@ impl Renderer {
             }
         }
         for bulk in &frame.bulk {
-            if !self.models.contains_key(&bulk.asset) {
-                let loaded = assets::load_model(&bulk.asset, &self.base_dir).map(|m| self.upload_model(&m));
-                self.models.insert(bulk.asset.clone(), loaded);
-            }
+            self.ensure_model(&bulk.asset, stream);
             if let Some(Err(msg)) = self.models.get(&bulk.asset) {
                 errors.push(
                     Diagnostic::error(codes::ASSET, msg.clone()).fix(
@@ -951,7 +990,79 @@ impl Renderer {
                     .fix("give an equirectangular PNG (2:1) relative to the scene file, or \"\" for a sky from SkyLight colors"),
             );
         }
+        self.prepared_once = true;
         errors
+    }
+
+    /// Streaming (decision 0068): after the first prepared frame, a model no earlier frame
+    /// needed is decoded on a background thread and drawn from the first frame after it
+    /// arrives, instead of stalling the frame that first needs it (a generated model takes
+    /// about 30 ms to decode). Off by default so offscreen pictures are exact; the window
+    /// loop and render stability modes turn it on.
+    pub fn set_streaming(&mut self, on: bool) {
+        self.streaming = on;
+    }
+
+    /// Models still decoding in the background.
+    pub fn models_loading(&self) -> usize {
+        self.loader.as_ref().map_or(0, |l| l.pending.len())
+    }
+
+    /// Blocks until every model being decoded in the background is uploaded.
+    pub fn finish_loading(&mut self) {
+        while self.models_loading() > 0 {
+            let Some(loader) = self.loader.as_mut() else {
+                return;
+            };
+            match loader.done.recv() {
+                Ok((asset, loaded)) => {
+                    loader.pending.remove(&asset);
+                    let gpu = loaded.map(|m| self.upload_model(&m));
+                    self.models.insert(asset, gpu);
+                }
+                Err(_) => {
+                    self.loader = None; // the thread is gone; later loads start a new one
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Loads a model now, or (streaming) asks the background thread for it.
+    fn ensure_model(&mut self, asset: &str, stream: bool) {
+        if self.models.contains_key(asset) {
+            return;
+        }
+        // Built-in shapes are cheap; only files go to the background.
+        if stream && !asset.starts_with("primitive:") {
+            let base = self.base_dir.clone();
+            let loader = self.loader.get_or_insert_with(ModelLoader::start);
+            if loader.pending.contains(asset) {
+                return;
+            }
+            if loader.ask.send((asset.to_string(), base)).is_ok() {
+                loader.pending.insert(asset.to_string());
+                return;
+            }
+            self.loader = None; // thread gone: load in place below
+        }
+        let loaded = assets::load_model(asset, &self.base_dir).map(|m| self.upload_model(&m));
+        self.models.insert(asset.to_string(), loaded);
+    }
+
+    /// Uploads models the background thread finished, without waiting.
+    fn receive_models(&mut self) {
+        let Some(loader) = self.loader.as_mut() else {
+            return;
+        };
+        let done: Vec<_> = loader.done.try_iter().collect();
+        for (asset, loaded) in done {
+            if let Some(l) = self.loader.as_mut() {
+                l.pending.remove(&asset);
+            }
+            let gpu = loaded.map(|m| self.upload_model(&m));
+            self.models.insert(asset, gpu);
+        }
     }
 
     /// Builds the environment texture when the scene's source changed (decision 0066).

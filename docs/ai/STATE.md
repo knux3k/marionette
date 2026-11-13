@@ -87,12 +87,13 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
-- Stability suite frame budgets: CI has only software GPUs (lavapipe, WARP), so frame budgets
-  are checked only on a hardware GPU; no hardware-GPU run of the suite yet. On WARP the
-  factory-vr frame p99 was 44 ms at 256x256 per eye (software rasterizer).
-- Stability suite: CI job `stability` and the nightly soak have not run on GitHub yet; Windows
-  runs have no memory check (resident size is read on Linux only) until the counting allocator
-  from the memory work is installed as the probe.
+- Stability suite: frame budgets checked on one hardware GPU (RTX 2080, Windows; all 31 fast
+  modes pass, PROOFS.md); not on AMD, Intel or a headset, and the long soak has not run on a
+  hardware GPU. Late model streaming (decision 0068) and the heap memory probe (decision
+  0069) checked on that GPU (PROOFS.md); a model still decoding at the warm-up sample can show
+  as one-time growth in render modes. CI job `stability` and the nightly
+  soak results: see the workflow runs.
+
 - Unreal importer on real files: nothing from a real Unreal project has been imported. T3D
   material text is hand-written from knowledge of the editor's export format; the package
   class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter

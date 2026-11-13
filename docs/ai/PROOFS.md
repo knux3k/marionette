@@ -114,7 +114,7 @@ Line 5 (agent interface): `crates/marionette-cli/tests/agent_e2e.rs`
 `invalid_edits_are_refused_and_leave_the_file_alone`, `cli_read_only_refuses_mutations`).
 
 Stability suite (decision 0031, `docs/ai/STABILITY.md`):
-- `cargo run --release -q -p marionette-cli -- stability` passes all twenty-seven modes
+- `cargo run --release -q -p marionette-cli -- stability` passes every mode (twenty-seven when first written)
   (core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d,
   render-3d-play, render-2d, render-2d-play, render-ui, animation, vr-headset, factory-sim,
   factory-vr, proof-lantern-keeper, proof-cloudstep, proof-ember-run, proof-crystal-ward,
@@ -129,6 +129,31 @@ Stability suite (decision 0031, `docs/ai/STABILITY.md`):
   `every_scene_has_a_stability_mode`, `bad_suites_and_modes_are_refused_as_data`).
 - CI: job `stability` in `.github/workflows/ci.yml` (fast, release, budgets x2);
   `.github/workflows/stability-soak.yml` (nightly long soak, 3 seeds).
+- Hardware GPU (2026-11-13, main at `e8814b5`, NVIDIA GeForce RTX 2080 on Vulkan, Windows,
+  release, budget scale 1, timing enforced): all 31 fast modes passed, frame budgets checked
+  (`frame_budget_checked: true`) in every render mode; no panic, hang or driver warning. Tick
+  p99 (budget 2 ms): highest `proof-signal-yard` 1.19 ms, `proof-crystal-ward` 0.90,
+  `proof-ember-run` 0.84, `agent-session` 0.69 (budget 4), `factory-sim` 0.036. Frame p99
+  (budget 11.1 ms, size per mode in the suite): `proof-crystal-ward-render` 1.61 ms,
+  `proof-ember-run-render` 1.45, `proof-signal-yard-render` 1.38, `proof-cloudstep-render`
+  1.32, `render-3d-looks` (two eyes) 1.18, `job-swarm-render` 1.00, `animation` 0.91,
+  `factory-vr` (two eyes) 0.50, `vr-headset` (two eyes) 0.42, the rest 0.40 to 0.69. Worst
+  single frames after warm-up were over budget in two modes, `proof-crystal-ward-render` 42 ms
+  and `proof-signal-yard-render` 32.5 ms: a script spawns a model no earlier frame drew and it
+  was decoded inside the frame (about 28 ms). Fixed by decision 0068. Windows had no memory
+  check in that run (resident size only on Linux); decision 0069 adds one.
+- Late model streaming (decision 0068), lavapipe, release, seed 1, worst frame after warm-up
+  before and after: `proof-crystal-ward-render` 61.1 to 29.5 ms (p50 about 19 ms, the
+  software rasterizer), `proof-signal-yard-render` 48.8 to 20.5 ms.
+- The same on the hardware GPU (RTX 2080, branch head `9a4b679`): the full fast suite passed
+  again, every mode with the heap probe (growth 0 to 0.24 MiB, `factory-sim` 4.0,
+  `factory-vr` 1.06, job modes about 1.0). Worst frame after warm-up, in the suite and three
+  more runs each: `proof-crystal-ward-render` 5.1 to 6.2 ms (was 42), `proof-signal-yard-render`
+  5.4 to 7.3 ms (was 32.5); p99 1.9 to 5.7 ms. In one of four `proof-signal-yard-render` runs the
+  heap grew 12.6 MiB (limit 64; others 0.15): a streamed model that finished decoding after the
+  warm-up sample is counted as growth. One-time, not a leak.
+- Heap probe (decision 0069), `factory-sim` seed 1, debug: counted heap +4.0 MiB after warm-up
+  at 300 and at 1,500 ticks (resident +33.8 and +23.6 MiB): no leak.
 - Known finding: `scripted` at 216,000 ticks grows 48 MiB (unbounded `EventLog`, about 670
   bytes per event); the nightly soak fails on it until the event log is bounded.
 Memory and crash hygiene (decision 0032, rules in `docs/ai/MEMORY-AND-CRASHES.md`):
