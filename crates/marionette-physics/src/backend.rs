@@ -206,6 +206,30 @@ macro_rules! backend {
                 Vec::new()
             };
 
+            // A script that set a dynamic body's Velocity or AngularVelocity since the last
+            // write-back (a throw, a held object moved by velocity) sets the body's velocity.
+            // Checked before character controllers run, so their pushes this tick stay.
+            for (&id, h) in &state.entities {
+                if h.kind != 0 {
+                    continue;
+                }
+                let Some(&e) = ids.get(&id) else { continue };
+                if let Some(v) = world.get::<Velocity>(e) {
+                    let want = [v.x, v.y, v.z];
+                    let body = &mut pw.bodies[h.body];
+                    if conv::to3(body.linvel()) != want {
+                        body.set_linvel(conv::vector(want), true);
+                    }
+                }
+                if let Some(w) = world.get::<AngularVelocity>(e) {
+                    let want = [w.x, w.y, w.z];
+                    let body = &mut pw.bodies[h.body];
+                    if conv::angular_to3(body) != want {
+                        body.set_angvel(conv::angular(want), true);
+                    }
+                }
+            }
+
             for (&id, h) in &state.entities {
                 let Some(&e) = ids.get(&id) else { continue };
                 // A script that moved a dynamic body or a character (its Transform no longer

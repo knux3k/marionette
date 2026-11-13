@@ -212,6 +212,16 @@ Rust type: `marionette_core::builtin::Follow`.
 | `gain` | number | yes |  |
 | `target` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
 
+### `Grabbable`
+
+Can be picked up by an [`XrHand`]. With a dynamic `RigidBody` the object is moved by velocity while held, so it still collides (it cannot pass through walls); without one its `Transform` follows the hand exactly.
+
+Rust type: `marionette_xr::Grabbable`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap` | boolean | yes | Snap the object's origin and rotation to the grip (tools, guns); otherwise keep the offset it had when grabbed (boxes, loose items). |
+
 ### `GravityWell`
 
 A point gravity source at the entity's `Transform` translation (a planet, a moon). Gravity is `surface_gravity * (radius / r)²` at distance `r >= radius` and falls off linearly to zero at the centre inside (a body of even density), so it is finite everywhere. Set the scene's `PhysicsSettings.gravity` to zero when wells are used.
@@ -223,6 +233,18 @@ Rust type: `marionette_physics::planet::GravityWell`.
 | `radius` | number | yes | Reference radius in metres (the ground level). |
 | `range` | number | yes | No pull beyond this distance from the centre (sphere of influence); 0 = everywhere. |
 | `surface_gravity` | number | yes | Acceleration in m/s² at `radius`. |
+
+### `Held`
+
+On an object while a hand holds it. Written by the XR module.
+
+Rust type: `marionette_xr::Held`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hand` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+| `offset_rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
+| `offset_translation` | object {x, y, z} | yes | The object's pose relative to the grip. |
 
 ### `JobData`
 
@@ -644,6 +666,85 @@ Rust type: `marionette_core::builtin::Velocity`.
 | `x` | number | yes |  |
 | `y` | number | yes |  |
 | `z` | number | yes |  |
+
+### `XrHand`
+
+A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`.
+
+Rust type: `marionette_xr::XrHand`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `grab_action` | string | yes |  |
+| `grab_radius` | number | yes | Metres from the grip to an object's centre. |
+| `throw_scale` | number | yes | Multiplies the release velocity (1 = as moved). |
+
+### `XrHandMotion`
+
+Hand motion over the last few ticks. Written by the XR module.
+
+Rust type: `marionette_xr::XrHandMotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `angular_velocity` | object {x, y, z} | yes | Rotation speed over the last tick (radians per second, world axes). |
+| `last_rotation` | object {w, x, y, z} | yes | Grip rotation last tick. |
+| `positions` | array of object {x, y, z} | yes | Recent grip positions (world), oldest first, at most [`MOTION_TICKS`]. |
+| `velocity` | object {x, y, z} | yes | Average velocity over `positions` (m/s): a held object leaves the hand with this. |
+
+### `XrLocomotion`
+
+Stick movement, turning and teleport for the rig it is on. An empty action name turns that part off.
+
+Rust type: `marionette_xr::XrLocomotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `direction` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | Forward is where this source points, flattened (`Head`, or `LeftAim` for hand-relative). |
+| `move_x` | string | yes | Strafe action (-1 left .. 1 right). |
+| `move_y` | string | yes | Forward action (-1 back .. 1 forward). |
+| `smooth_degrees_per_second` | number | yes |  |
+| `snap_degrees` | number | yes |  |
+| `speed` | number | yes | Metres per second at full stick. |
+| `teleport` | string | yes | Hold to aim, release to teleport (needs physics: the aim ray must hit ground). |
+| `teleport_aim` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | The ray used to aim a teleport. |
+| `teleport_range` | number | yes | Longest teleport in metres. |
+| `turn` | string | yes | Turn action (-1 left .. 1 right). |
+| `turn_mode` | "Snap" \| "Smooth" \| "Off" | yes | How turning works. |
+| `vignette` | number | yes | Comfort vignette strength while moving or turning smoothly (0 off .. 1 strong). |
+
+### `XrLocomotionState`
+
+Locomotion state. Written by the XR module.
+
+Rust type: `marionette_xr::XrLocomotionState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap_armed` | boolean | yes | The turn stick returned to centre since the last snap. |
+| `teleport_point` | object {x, y, z} | yes | Where a teleport would land now (only meaningful while `teleport_valid`). |
+| `teleport_valid` | boolean | yes |  |
+
+### `XrRig`
+
+The play space: where the tracked area sits in the world. Tracked poses are relative to this entity's `Transform` (translation and rotation; scale is ignored). Locomotion moves and turns it.
+
+Rust type: `marionette_xr::XrRig`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `height_offset` | number | yes | Added to every tracked height: 0 for a standing play space (floor at 0); a seated player on a space whose origin is at eye level uses about 1.2. |
+
+### `XrTracked`
+
+Follows a tracked pose inside a rig every tick (its `Transform` is overwritten). While the source is not tracked the entity keeps its last pose.
+
+Rust type: `marionette_xr::XrTracked`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rig` | integer | yes | The entity with [`XrRig`]. |
+| `source` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | A tracked thing. |
 
 ## Resources
 
