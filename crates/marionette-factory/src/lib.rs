@@ -24,7 +24,7 @@ use bevy_reflect::Reflect;
 use marionette_core::builtin::SceneRef;
 use marionette_core::module::Stage;
 use marionette_core::scene::SceneId;
-use marionette_core::spatial::{BulkDraw, BulkDrawHooks, Color, Material, Transform};
+use marionette_core::spatial::{BulkDraw, BulkDrawContext, BulkDrawHooks, Color, Material, Transform};
 use marionette_core::{Diagnostic, Module, Registry, Result};
 use marionette_jobs::Jobs;
 use std::collections::BTreeMap;
@@ -573,7 +573,8 @@ fn craft(m: &mut MachineRow, r: &CRecipe) -> u64 {
 
 /// Render hook: every item on a belt, one bulk draw per item kind, placed between its slot
 /// and the previous one by how far it has travelled (smooth at any display rate).
-fn draw_items(world: &World, alpha: f32, out: &mut Vec<BulkDraw>) {
+fn draw_items(world: &World, frame: &BulkDrawContext, out: &mut Vec<BulkDraw>) {
+    let alpha = frame.alpha;
     let (Some(tables), Some(state)) = (
         world.get_resource::<FactoryTables>(),
         world.get_resource::<FactoryState>(),

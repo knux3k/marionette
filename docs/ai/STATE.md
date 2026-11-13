@@ -9,7 +9,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
+| 1 | Workspace, CI | Done. CI runs on Linux and Windows (`.github/workflows/ci.yml`). |
 | 2 | Core | Done. |
 | 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
@@ -18,10 +18,12 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
+| 10 | Later (OpenXR, AI while playing, inspector) | Not started. Co-op networking, achievements, cloud saves, optional Steam backend done (0210-0213). |
 
 ## UNVERIFIED
 
+- Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
+  never run against a Steam client (first check: `steam_check`, app id 480, owner login).
 - Synth and streamed audio (decision 0220): rendered and checked as numbers only; never played
   through a real audio device (`marionette audio-check` is written, exits 2 without one; the PC
   run is planned in proofs/play.md). OGG streaming untested (WAV is).
@@ -51,8 +53,6 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
-- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
-  passes clippy for a Windows target; first run is the CI run of its merge.
 
 - Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
   passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
