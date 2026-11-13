@@ -8,7 +8,13 @@ fn main() {
         for preset in ["pad", "bass", "lead"] {
             let (mut synth, mut h) = create(48_000, voices);
             for i in 0..voices {
-                h.note_on(0, i as u32, 80.0 + i as f32 * 7.0, 1.0, Patch::preset(preset).unwrap());
+                h.note_on(
+                    0,
+                    i as u32,
+                    80.0 + i as f32 * 7.0,
+                    1.0,
+                    Patch::preset(preset).unwrap(),
+                );
             }
             let mut out = vec![[0.0f32; 2]; 480];
             synth.render(&mut out);
@@ -18,8 +24,11 @@ fn main() {
                 synth.render(&mut out);
             }
             let secs = t.elapsed().as_secs_f64();
-            println!("{voices:4} voices {preset:6}: {:6.2}% of one core ({:.1} us per 10 ms block)",
-                secs / (blocks as f64 * 0.01) * 100.0, secs / blocks as f64 * 1e6);
+            println!(
+                "{voices:4} voices {preset:6}: {:6.2}% of one core ({:.1} us per 10 ms block)",
+                secs / (blocks as f64 * 0.01) * 100.0,
+                secs / blocks as f64 * 1e6
+            );
         }
     }
 }

@@ -56,7 +56,12 @@ impl Default for Patch {
             filter_env: 0.0,
             key_track: 0.0,
             amp: Adsr::default(),
-            filter_adsr: Adsr { attack: 0.005, decay: 0.2, sustain: 0.3, release: 0.2 },
+            filter_adsr: Adsr {
+                attack: 0.005,
+                decay: 0.2,
+                sustain: 0.3,
+                release: 0.2,
+            },
             vibrato_hz: 5.0,
             vibrato_cents: 0.0,
             pan: 0.0,
@@ -184,7 +189,7 @@ impl Voice {
                 s += self.o2.next(self.patch.wave2, self.inc2, &mut self.rng) * mix2 * 0.5;
             }
             if noise > 0.0 {
-                s += self.rng.next() * noise;
+                s += self.rng.sample() * noise;
             }
             if self.patch.filter != FilterKind::Off {
                 s = self.filter.process(s);

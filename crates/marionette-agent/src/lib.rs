@@ -8,7 +8,6 @@
 
 pub mod anim;
 pub mod audio;
-pub mod synth;
 pub mod batch;
 pub mod docs;
 pub mod edit;
@@ -38,6 +37,7 @@ pub mod script;
 pub mod session;
 pub mod skills;
 pub mod stability;
+pub mod synth;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;

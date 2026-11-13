@@ -39,7 +39,12 @@ pub struct StreamSettings {
 
 impl Default for StreamSettings {
     fn default() -> Self {
-        Self { looping: false, gain: 1.0, start_at: 0, blocking: false }
+        Self {
+            looping: false,
+            gain: 1.0,
+            start_at: 0,
+            blocking: false,
+        }
     }
 }
 
@@ -119,12 +124,19 @@ impl FileDecoder {
             Some(CodecParameters::Audio(p)) => p,
             _ => return Err(format!("{} has no audio track", path.display())),
         };
-        let rate = params.sample_rate.ok_or_else(|| format!("{} has no sample rate", path.display()))?;
+        let rate = params
+            .sample_rate
+            .ok_or_else(|| format!("{} has no sample rate", path.display()))?;
         let decoder = symphonia::default::get_codecs()
             .make_audio_decoder(params, &Default::default())
             .map_err(|e| format!("cannot decode {}: {e}", path.display()))?;
         let track = track.id;
-        Ok(Self { format, decoder, track, rate })
+        Ok(Self {
+            format,
+            decoder,
+            track,
+            rate,
+        })
     }
 
     /// Next packet as stereo frames pushed onto `out`; false at the end of the file.
@@ -153,7 +165,10 @@ impl FileDecoder {
     }
 }
 
-fn append<S: Sample + IntoSample<f32> + Copy>(b: &symphonia::core::audio::AudioBuffer<S>, out: &mut Vec<[f32; 2]>) {
+fn append<S: Sample + IntoSample<f32> + Copy>(
+    b: &symphonia::core::audio::AudioBuffer<S>,
+    out: &mut Vec<[f32; 2]>,
+) {
     let l = b.plane(0).unwrap_or(&[]);
     let r = b.plane(1).unwrap_or(l);
     for (a, c) in l.iter().zip(r.iter()) {
@@ -258,7 +273,10 @@ pub fn open_stream(
             blocking: settings.blocking,
             gain_now: settings.gain.max(0.0),
         },
-        StreamHandle { shared, thread: Some(thread) },
+        StreamHandle {
+            shared,
+            thread: Some(thread),
+        },
     ))
 }
 

@@ -76,7 +76,11 @@ pub fn analyze(frames: &[[f32; 2]], rate: u32) -> Report {
         silent_frames: silent,
         first_sound_frame: first,
         max_step,
-        dominant_hz: if peak > 1e-4 { dominant_hz(&mono, rate) } else { None },
+        dominant_hz: if peak > 1e-4 {
+            dominant_hz(&mono, rate)
+        } else {
+            None
+        },
     }
 }
 
@@ -124,14 +128,16 @@ pub fn spectrum(mono: &[f32], start: usize, size: usize) -> Vec<f32> {
     let size = size.next_power_of_two();
     let mut re = vec![0.0f32; size];
     let mut im = vec![0.0f32; size];
-    for i in 0..size {
+    for (i, r) in re.iter_mut().enumerate() {
         if let Some(&x) = mono.get(start + i) {
             let w = 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / size as f32).cos();
-            re[i] = x * w;
+            *r = x * w;
         }
     }
     fft(&mut re, &mut im);
-    (0..size / 2).map(|k| (re[k] * re[k] + im[k] * im[k]).sqrt() / size as f32).collect()
+    (0..size / 2)
+        .map(|k| (re[k] * re[k] + im[k] * im[k]).sqrt() / size as f32)
+        .collect()
 }
 
 /// Strongest frequency in the loudest 16384-sample window.
@@ -141,7 +147,10 @@ pub fn dominant_hz(mono: &[f32], rate: u32) -> Option<f32> {
     let mut best = (0usize, 0.0f64);
     let mut s = 0;
     while s < mono.len().max(1) {
-        let e: f64 = mono[s..(s + W).min(mono.len())].iter().map(|x| f64::from(*x) * f64::from(*x)).sum();
+        let e: f64 = mono[s..(s + W).min(mono.len())]
+            .iter()
+            .map(|x| f64::from(*x) * f64::from(*x))
+            .sum();
         if e > best.1 {
             best = (s, e);
         }
@@ -155,7 +164,11 @@ pub fn dominant_hz(mono: &[f32], rate: u32) -> Option<f32> {
     // Parabolic interpolation around the peak.
     let (a, b, c) = (sp[k.saturating_sub(1)], sp[k], sp[(k + 1).min(sp.len() - 1)]);
     let denom = a - 2.0 * b + c;
-    let off = if denom.abs() > 1e-12 { 0.5 * (a - c) / denom } else { 0.0 };
+    let off = if denom.abs() > 1e-12 {
+        0.5 * (a - c) / denom
+    } else {
+        0.0
+    };
     Some((k as f32 + off) * rate as f32 / W as f32)
 }
 

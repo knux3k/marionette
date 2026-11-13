@@ -15,7 +15,7 @@ impl Rng {
     }
     /// Next value in -1..1.
     #[inline]
-    pub fn next(&mut self) -> f32 {
+    pub fn sample(&mut self) -> f32 {
         let mut x = self.0;
         x ^= x << 13;
         x ^= x >> 17;
@@ -69,7 +69,7 @@ impl Osc {
         let p = self.phase;
         let out = match wave {
             Wave::Off => 0.0,
-            Wave::Noise => rng.next(),
+            Wave::Noise => rng.sample(),
             Wave::Sine => (p * TAU).sin(),
             Wave::Saw => 2.0 * p - 1.0 - blep(p, inc),
             Wave::Square => {
@@ -118,7 +118,15 @@ pub struct Biquad {
 
 impl Default for Biquad {
     fn default() -> Self {
-        Self { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0, z1: 0.0, z2: 0.0 }
+        Self {
+            b0: 1.0,
+            b1: 0.0,
+            b2: 0.0,
+            a1: 0.0,
+            a2: 0.0,
+            z1: 0.0,
+            z2: 0.0,
+        }
     }
 }
 
@@ -173,7 +181,12 @@ pub struct Adsr {
 
 impl Default for Adsr {
     fn default() -> Self {
-        Self { attack: 0.005, decay: 0.1, sustain: 0.8, release: 0.15 }
+        Self {
+            attack: 0.005,
+            decay: 0.1,
+            sustain: 0.8,
+            release: 0.15,
+        }
     }
 }
 
@@ -194,13 +207,20 @@ pub struct Envelope {
 
 impl Default for Envelope {
     fn default() -> Self {
-        Self { stage: Stage::Idle, level: 0.0 }
+        Self {
+            stage: Stage::Idle,
+            level: 0.0,
+        }
     }
 }
 
 #[inline]
 fn coef(secs: f32, rate: f32) -> f32 {
-    if secs <= 1e-4 { 0.0 } else { (-6.9 / (secs * rate)).exp() }
+    if secs <= 1e-4 {
+        0.0
+    } else {
+        (-6.9 / (secs * rate)).exp()
+    }
 }
 
 impl Envelope {

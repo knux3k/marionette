@@ -41,7 +41,8 @@ fn render_never_allocates() {
     let mut out = vec![[0.0f32; 2]; 480];
     h.install(0, Box::new(Hum(0.0)));
     for i in 0..200u32 {
-        let p = Patch::preset(["pluck", "pad", "bass", "lead", "thump", "wind", "bell"][(i % 7) as usize]).unwrap();
+        let p = Patch::preset(["pluck", "pad", "bass", "lead", "thump", "wind", "bell"][(i % 7) as usize])
+            .unwrap();
         h.note_on(u64::from(i) * 777, i, 100.0 + i as f32, 0.8, p);
         h.note_off(u64::from(i) * 777 + 5000, i);
     }
@@ -53,5 +54,8 @@ fn render_never_allocates() {
     }
     let after = COUNT.with(Cell::get);
     assert_eq!(after - before, 0, "render allocated or freed memory");
-    assert!(synth.stats().stolen.load(std::sync::atomic::Ordering::Relaxed) > 0, "stealing was exercised");
+    assert!(
+        synth.stats().stolen.load(std::sync::atomic::Ordering::Relaxed) > 0,
+        "stealing was exercised"
+    );
 }

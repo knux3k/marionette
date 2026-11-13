@@ -30,8 +30,8 @@ pub mod music;
 mod player;
 mod synth_host;
 
-pub use music::{Music, MusicLayer};
 pub use marionette_synth as synth;
+pub use music::{Music, MusicLayer};
 pub use player::{MAX_VOICES, Player};
 pub use synth_host::SynthHost;
 

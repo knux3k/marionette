@@ -318,7 +318,11 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                 }
             };
         }
-        Command::AudioCheck { seconds, voices, stream } => {
+        Command::AudioCheck {
+            seconds,
+            voices,
+            stream,
+        } => {
             return audio_check::run(seconds, voices, stream.as_deref(), cli.json);
         }
         Command::Docs { out, check } => docs(&agent, &out, check),

@@ -32,7 +32,10 @@ impl Sound for SynthSound {
             let buf = &mut self.scratch[..chunk.len()];
             self.synth.render(buf);
             for (o, f) in chunk.iter_mut().zip(buf.iter()) {
-                *o = Frame { left: f[0], right: f[1] };
+                *o = Frame {
+                    left: f[0],
+                    right: f[1],
+                };
             }
         }
         let took = started.elapsed();
@@ -58,7 +61,11 @@ impl SoundData for SynthData {
     type Handle = ();
     fn into_sound(self) -> Result<(Box<dyn Sound>, ()), Self::Error> {
         Ok((
-            Box::new(SynthSound { synth: self.synth, scratch: vec![[0.0; 2]; SCRATCH], closed: self.closed }),
+            Box::new(SynthSound {
+                synth: self.synth,
+                scratch: vec![[0.0; 2]; SCRATCH],
+                closed: self.closed,
+            }),
             (),
         ))
     }
@@ -83,7 +90,10 @@ impl Player {
         let (synth, handle) = create(48_000, voices);
         let closed = Arc::new(AtomicBool::new(false));
         self.manager_mut()
-            .play(SynthData { synth, closed: closed.clone() })
+            .play(SynthData {
+                synth,
+                closed: closed.clone(),
+            })
             .map_err(|e| format!("cannot start the synth: {e}"))?;
         Ok(SynthHost { handle, closed })
     }

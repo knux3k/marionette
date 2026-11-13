@@ -5,7 +5,9 @@
 
 use crate::{Agent, Op, op, write_atomic};
 use marionette_core::{Diagnostic, Errors};
-use marionette_synth::{Patch, PRESETS, Report, Score, StatsSnapshot, analyze, hash_frames, render_score, wav_stereo_bytes};
+use marionette_synth::{
+    PRESETS, Patch, Report, Score, StatsSnapshot, analyze, hash_frames, render_score, wav_stereo_bytes,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,16 +16,13 @@ pub(crate) fn ops() -> Vec<Op> {
     vec![
         op(
             "synth_render",
-            "Render a score (timed synth notes and disk streams) offline and report it as numbers: \
-             peak, rms, DC, clipping, largest sample step (clicks), dominant pitch, first sound \
-             frame, hash, voice and underrun counters. Optionally write a WAV and an rms envelope. \
-             Give `score` inline or `file` (JSON in the project). Same code as the real audio thread.",
+            "Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers.",
             false,
             render,
         ),
         op(
             "synth_patches",
-            "The built-in synth presets and every Patch field with its default, as JSON.",
+            "Synth presets and every Patch field with its default.",
             false,
             patches,
         ),
@@ -33,6 +32,8 @@ pub(crate) fn ops() -> Vec<Op> {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RenderInput {
+    // Report: peak, rms, dc, clipped, max_step (clicks), dominant_hz, first_sound_frame, hash and
+    // stats (stolen, dropped, late, underruns). Same code as the real audio thread.
     /// Inline score: `{rate, voices, seconds, block, notes:[{at, dur, note|hz, velocity,
     /// patch|custom}], streams:[{file, at, gain, looping}], master:[{at, gain}]}`. Times in seconds.
     pub score: Option<Value>,
@@ -68,7 +69,8 @@ fn render(agent: &mut Agent, input: RenderInput) -> Result<RenderOutput, Errors>
     let score: Score = match (input.score, &input.file) {
         (Some(v), _) => serde_json::from_value(v).map_err(|e| bad(format!("bad score: {e}")))?,
         (None, Some(f)) => {
-            let text = std::fs::read_to_string(agent.resolve(f)?).map_err(|e| bad(format!("cannot read {f}: {e}")))?;
+            let text = std::fs::read_to_string(agent.resolve(f)?)
+                .map_err(|e| bad(format!("cannot read {f}: {e}")))?;
             serde_json::from_str(&text).map_err(|e| bad(format!("bad score in {f}: {e}")))?
         }
         (None, None) => return Err(bad("give `score` or `file`".into())),
@@ -97,7 +99,13 @@ fn render(agent: &mut Agent, input: RenderInput) -> Result<RenderOutput, Errors>
     if let Some(w) = &input.wav {
         write_atomic(&agent.resolve(w)?, w, &wav_stereo_bytes(&r.frames, r.rate))?;
     }
-    Ok(RenderOutput { report, stats: r.stats, hash, wav: input.wav, envelope })
+    Ok(RenderOutput {
+        report,
+        stats: r.stats,
+        hash,
+        wav: input.wav,
+        envelope,
+    })
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -117,7 +125,14 @@ pub struct PatchesOutput {
 fn patches(_: &mut Agent, _: PatchesInput) -> Result<PatchesOutput, Errors> {
     let mut map = serde_json::Map::new();
     for n in PRESETS {
-        map.insert(n.into(), serde_json::to_value(Patch::preset(n).expect("preset exists")).unwrap_or_default());
+        map.insert(
+            n.into(),
+            serde_json::to_value(Patch::preset(n).expect("preset exists")).unwrap_or_default(),
+        );
     }
-    Ok(PatchesOutput { presets: PRESETS.iter().map(|s| (*s).into()).collect(), default: Patch::default(), patches: map })
+    Ok(PatchesOutput {
+        presets: PRESETS.iter().map(|s| (*s).into()).collect(),
+        default: Patch::default(),
+        patches: map,
+    })
 }

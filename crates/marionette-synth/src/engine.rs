@@ -36,15 +36,34 @@ pub trait Generator: Send {
 /// frame means now).
 pub enum Command {
     /// Start a note. `id` names it for `NoteOff`; reusing an id retriggers.
-    NoteOn { at: u64, id: u32, freq: f32, velocity: f32, patch: Patch },
+    NoteOn {
+        at: u64,
+        id: u32,
+        freq: f32,
+        velocity: f32,
+        patch: Patch,
+    },
     /// Release every voice with this id.
-    NoteOff { at: u64, id: u32 },
-    AllOff { at: u64 },
+    NoteOff {
+        at: u64,
+        id: u32,
+    },
+    AllOff {
+        at: u64,
+    },
     /// Master gain, glided so it does not click.
-    Master { at: u64, gain: f32 },
+    Master {
+        at: u64,
+        gain: f32,
+    },
     /// Put a generator in a slot (replacing and returning the old one).
-    Install { slot: u8, generator: Box<dyn Generator> },
-    Remove { slot: u8 },
+    Install {
+        slot: u8,
+        generator: Box<dyn Generator>,
+    },
+    Remove {
+        slot: u8,
+    },
 }
 
 impl Command {
@@ -125,7 +144,13 @@ impl SynthHandle {
         (secs * f64::from(self.stats.rate())).round().max(0.0) as u64
     }
     pub fn note_on(&mut self, at: u64, id: u32, freq: f32, velocity: f32, patch: Patch) -> bool {
-        self.send(Command::NoteOn { at, id, freq, velocity, patch })
+        self.send(Command::NoteOn {
+            at,
+            id,
+            freq,
+            velocity,
+            patch,
+        })
     }
     pub fn note_off(&mut self, at: u64, id: u32) -> bool {
         self.send(Command::NoteOff { at, id })
@@ -183,7 +208,14 @@ pub fn create(rate: u32, voices: usize) -> (Synth, SynthHandle) {
         master_target: 1.0,
         born: 0,
     };
-    (synth, SynthHandle { tx, trash: trash_rx, stats })
+    (
+        synth,
+        SynthHandle {
+            tx,
+            trash: trash_rx,
+            stats,
+        },
+    )
 }
 
 impl Synth {
@@ -250,7 +282,13 @@ impl Synth {
 
     fn apply(&mut self, c: Command) {
         match c {
-            Command::NoteOn { at, id, freq, velocity, patch } => {
+            Command::NoteOn {
+                at,
+                id,
+                freq,
+                velocity,
+                patch,
+            } => {
                 if at < self.frame {
                     self.stats.late.fetch_add(1, Relaxed);
                 }
@@ -339,10 +377,8 @@ impl Synth {
                 }
                 None => false,
             };
-            if finished {
-                if let Some(g) = self.generators[s].take() {
-                    self.give_back(g);
-                }
+            if finished && let Some(g) = self.generators[s].take() {
+                self.give_back(g);
             }
         }
         self.finish(out);

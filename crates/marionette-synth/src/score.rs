@@ -43,7 +43,15 @@ pub struct ScoreNote {
 
 impl Default for ScoreNote {
     fn default() -> Self {
-        Self { at: 0.0, dur: 0.5, note: None, hz: None, velocity: 1.0, patch: None, custom: None }
+        Self {
+            at: 0.0,
+            dur: 0.5,
+            note: None,
+            hz: None,
+            velocity: 1.0,
+            patch: None,
+            custom: None,
+        }
     }
 }
 
@@ -59,7 +67,12 @@ pub struct ScoreStream {
 
 impl Default for ScoreStream {
     fn default() -> Self {
-        Self { file: String::new(), at: 0.0, gain: 1.0, looping: false }
+        Self {
+            file: String::new(),
+            at: 0.0,
+            gain: 1.0,
+            looping: false,
+        }
     }
 }
 
@@ -76,7 +89,12 @@ impl Patch {
     /// A named starting sound. Unknown names return `None`.
     pub fn preset(name: &str) -> Option<Patch> {
         use crate::dsp::{Adsr, FilterKind, Wave};
-        let a = |attack, decay, sustain, release| Adsr { attack, decay, sustain, release };
+        let a = |attack, decay, sustain, release| Adsr {
+            attack,
+            decay,
+            sustain,
+            release,
+        };
         Some(match name {
             "pluck" => Patch {
                 wave: Wave::Saw,
@@ -174,9 +192,21 @@ fn secs_to_frames(s: f64, rate: u32) -> u64 {
 /// Renders a score. `base` resolves stream files. Fails on an unknown preset, missing pitch
 /// or unreadable stream; nothing is rendered then. Output is capped at 10 minutes.
 pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
-    let rate = if score.rate == 0 { 48_000 } else { score.rate.clamp(8_000, 192_000) };
-    let voices = if score.voices == 0 { 64 } else { score.voices.min(1024) };
-    let block = if score.block == 0 { 256 } else { score.block.min(1 << 16) };
+    let rate = if score.rate == 0 {
+        48_000
+    } else {
+        score.rate.clamp(8_000, 192_000)
+    };
+    let voices = if score.voices == 0 {
+        64
+    } else {
+        score.voices.min(1024)
+    };
+    let block = if score.block == 0 {
+        256
+    } else {
+        score.block.min(1 << 16)
+    };
     let (mut synth, mut handle) = create(rate, voices);
 
     // Queue is bounded: feed it in order and let the synth drain as time passes. Events are
@@ -190,8 +220,9 @@ pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
     for (i, n) in score.notes.iter().enumerate() {
         let patch = match (&n.custom, &n.patch) {
             (Some(p), _) => *p,
-            (None, Some(name)) => Patch::preset(name)
-                .ok_or_else(|| format!("note {i}: unknown patch `{name}` (pluck, pad, bass, lead, thump, wind, bell)"))?,
+            (None, Some(name)) => Patch::preset(name).ok_or_else(|| {
+                format!("note {i}: unknown patch `{name}` (pluck, pad, bass, lead, thump, wind, bell)")
+            })?,
             (None, None) => Patch::default(),
         };
         let hz = match (n.hz, n.note) {
@@ -202,13 +233,28 @@ pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
         let at = secs_to_frames(n.at, rate);
         let off = secs_to_frames(n.at + n.dur.max(0.0), rate);
         let id = i as u32;
-        events.push(Ev { at, cmd: Command::NoteOn { at, id, freq: hz, velocity: n.velocity, patch } });
-        events.push(Ev { at: off, cmd: Command::NoteOff { at: off, id } });
+        events.push(Ev {
+            at,
+            cmd: Command::NoteOn {
+                at,
+                id,
+                freq: hz,
+                velocity: n.velocity,
+                patch,
+            },
+        });
+        events.push(Ev {
+            at: off,
+            cmd: Command::NoteOff { at: off, id },
+        });
         last = last.max(n.at + n.dur + patch.amp.release as f64);
     }
     for m in &score.master {
         let at = secs_to_frames(m.at, rate);
-        events.push(Ev { at, cmd: Command::Master { at, gain: m.gain } });
+        events.push(Ev {
+            at,
+            cmd: Command::Master { at, gain: m.gain },
+        });
         last = last.max(m.at);
     }
     let mut streams = Vec::new();
@@ -227,7 +273,12 @@ pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
     // Stable sort keeps note-on before note-off at the same frame only if pushed so; make it
     // explicit: offs after ons at equal time by pushing order (sort_by_key is stable).
     events.sort_by_key(|e| e.at);
-    let total = if score.seconds > 0.0 { score.seconds } else { last + 1.0 }.min(600.0);
+    let total = if score.seconds > 0.0 {
+        score.seconds
+    } else {
+        last + 1.0
+    }
+    .min(600.0);
     let total_frames = secs_to_frames(total, rate) as usize;
 
     let mut out = vec![[0.0f32; 2]; total_frames];
@@ -251,7 +302,11 @@ pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
     }
     let stats = crate::engine::StatsSnapshot::of(synth_stats(&synth));
     drop(streams);
-    Ok(Rendered { frames: out, rate, stats })
+    Ok(Rendered {
+        frames: out,
+        rate,
+        stats,
+    })
 }
 
 fn synth_stats(s: &Synth) -> &crate::engine::Stats {

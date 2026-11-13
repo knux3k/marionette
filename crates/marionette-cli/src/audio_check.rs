@@ -11,8 +11,19 @@ use std::time::{Duration, Instant};
 /// A 12 s looping chord bed, rendered offline, so the check exercises a disk stream with no
 /// files in the repository.
 fn make_stream_file(dir: &Path) -> Result<PathBuf, String> {
-    let mut score = synth::Score { seconds: 12.0, ..Default::default() };
-    for (i, chord) in [[48.0, 55.0, 64.0], [45.0, 52.0, 60.0], [41.0, 48.0, 57.0], [43.0, 50.0, 59.0]].iter().enumerate() {
+    let mut score = synth::Score {
+        seconds: 12.0,
+        ..Default::default()
+    };
+    for (i, chord) in [
+        [48.0, 55.0, 64.0],
+        [45.0, 52.0, 60.0],
+        [41.0, 48.0, 57.0],
+        [43.0, 50.0, 59.0],
+    ]
+    .iter()
+    .enumerate()
+    {
         for n in chord {
             score.notes.push(synth::score::ScoreNote {
                 at: i as f64 * 3.0,
@@ -65,7 +76,11 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
     let (source, stream_handle) = match synth::open_stream(
         &stream_path,
         &stats,
-        synth::StreamSettings { looping: true, gain: 0.5, ..Default::default() },
+        synth::StreamSettings {
+            looping: true,
+            gain: 0.5,
+            ..Default::default()
+        },
     ) {
         Ok(s) => s,
         Err(e) => {
@@ -109,7 +124,8 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
         std::thread::sleep(Duration::from_millis(5));
     }
     let snap = synth::StatsSnapshot::of(&stats);
-    let pass = snap.slow_blocks == 0 && snap.underruns == 0 && snap.dropped == 0 && stream_handle.error().is_none();
+    let pass =
+        snap.slow_blocks == 0 && snap.underruns == 0 && snap.dropped == 0 && stream_handle.error().is_none();
     let report = json!({
         "pass": pass,
         "seconds": seconds,
@@ -130,5 +146,9 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
     }
     drop(stream_handle);
     drop(host);
-    if pass { ExitCode::SUCCESS } else { ExitCode::FAILURE }
+    if pass {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }
