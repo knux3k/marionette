@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "input": "key:F1",
+      "tick": 0,
+      "value": 1
+    },
+    {
+      "input": "key:F1",
+      "tick": 2,
+      "value": 0
+    }
+  ],
+  "format": "marionette.input-events",
+  "version": 1
+}

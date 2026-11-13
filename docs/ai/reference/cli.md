@@ -20,6 +20,7 @@ Commands:
   op           Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
   provider     AI providers: list them, show this project's choices and spending, switch one
   generate     Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
+  make         Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
   mcp          Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
   audio-check  Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
   docs         Write the generated reference docs (operations, components, CLI help)
@@ -145,6 +146,37 @@ Options:
 
       --mute
           Windowed mode: do not open the audio device
+
+      --present <PRESENT>
+          Windowed mode: vsync (default), mailbox or immediate; falls back when unsupported
+          
+          [default: vsync]
+
+      --frame-latency <FRAME_LATENCY>
+          Windowed mode: frames queued ahead of the display, 1 (lowest latency) to 3
+          
+          [default: 2]
+
+      --fps-cap <FPS_CAP>
+          Windowed mode: most frames per second when not using vsync
+
+      --fullscreen
+          Windowed mode: start in borderless fullscreen (F11 or Alt+Enter toggles)
+
+      --keep-escape
+          Windowed mode: Escape goes to the game instead of closing the window
+
+      --grab-cursor
+          Windowed mode: hide and lock the cursor while focused (mouse look)
+
+      --run-in-background
+          Windowed mode: keep simulating while minimized
+
+      --seconds <SECONDS>
+          Windowed mode: close after this many seconds
+
+      --frame-stats <FRAME_STATS>
+          Windowed mode: also write the frame numbers to this JSON file
 
   -h, --help
           Print help
@@ -518,6 +550,52 @@ Options:
 
       --read-only
           Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette make`
+
+```text
+Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+
+Usage: make [OPTIONS] [PROMPT]
+
+Arguments:
+  [PROMPT]
+          The game idea in plain words
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --path <PATH>
+          Game folder (default: the title as a folder name)
+
+      --brief <BRIEF>
+          A brief file (marionette.brief/1) to use instead of the prompt
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --template <TEMPLATE>
+          maze or platformer
+
+      --view <VIEW>
+          2d or 3d
+
+      --generate
+          Generate missing art first, with the game's providers (paid ones need keys)
+
+      --refresh
+          Re-make the game in --path from its brief.json: new art in, tests re-pinned
 
   -h, --help
           Print help

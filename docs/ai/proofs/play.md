@@ -16,7 +16,7 @@ Line 6 (input, physics, audio, UI):
   `crates/marionette-input/src/lib.rs` and `crates/marionette-render/src/window.rs`.
 - UI scene matches its reference image (line 3 proofs).
 - Window: live keyboard and mouse into the input queue, `UiButton` clicks, sound playback,
-  `--input`, `--record`, `--mute` (decision 0017).
+  `--input`, `--record`, `--mute` (decision 0017). Real screens: [window.md](window.md).
 - `enhanced-determinism` cost: within noise (decision 0012, measured with
   `cargo run --release -p marionette-physics --example step_cost -- 1000`).
 - Modules: decision 0011; input 0013; physics 0012; audio 0014; UI 0015.

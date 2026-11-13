@@ -1,0 +1,42 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pickup",
+  "output": "texture",
+  "file": "pickup.png",
+  "sha256": "bdfc4fe84364600f8be7890cfd17ddb44149ea0c84de331f92af255f9cc014fd",
+  "recipe": "pickup.recipe.json",
+  "recipe_sha256": "1612def44357ed66dd54f42c06c7f53776bc2f63cdb3265d8c59ee7c5cde3f2b",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a glowing yellow five-pointed star, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "42cf1cea43d4c68e4435588746b1394258ae2b71c5da7e2b689d905e575783d5",
+    "raw_sha256": "425920851815b6b1d80f35dcc90576f15aa1f9197623ba88f5a1f197e680787a",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "background_removed": true,
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

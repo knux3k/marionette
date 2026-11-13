@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav", "gamepad", "starter"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
@@ -25,7 +25,10 @@ jobs-ts = ["marionette-agent/jobs-ts"]
 # Headsets through OpenXR (`marionette xr`; decision 0190). The OpenXR loader is opened at
 # run time, so this adds no system dependency.
 xr = ["dep:marionette-openxr"]
+# Controllers in windowed play (decision 0172; Linux builds need libudev).
+gamepad = ["dep:marionette-gamepad"]
 netplay = ["marionette-agent/netplay"]
+starter = ["marionette-agent/starter"]
 # World-space UI (off by default; decision 0200).
 ui3d = ["marionette-agent/ui3d"]
 nav = ["marionette-agent/nav"]
@@ -40,6 +43,7 @@ marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent", default-features = false }
 marionette-generate = { path = "../marionette-generate", optional = true }
 marionette-openxr = { path = "../marionette-openxr", optional = true }
+marionette-gamepad = { path = "../marionette-gamepad", optional = true }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

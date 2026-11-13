@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pickup_ref",
+  "output": "image",
+  "file": "pickup_ref.png",
+  "sha256": "8c087c156f97170469e80a9209aef446cf29e11f845d454f09c67175c29afa67",
+  "recipe": "pickup_ref.recipe.json",
+  "recipe_sha256": "dfb20a6da17306837bb22f623054745d6edf81acfeeb91493ad5872c3e6dd962",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a shiny golden cog gear, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "c646bb417504a10f0f37de839a51e5191e00b40a17ab5f046c2b0a1d7191475e",
+    "raw_sha256": "e2760265013def766ea9b90b438091c6948dab10f3df9d25a3c8beedb9e7ca52",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

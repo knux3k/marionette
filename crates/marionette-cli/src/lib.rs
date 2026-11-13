@@ -70,6 +70,8 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        #[command(flatten)]
+        window: render::WindowFlags,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -218,6 +220,34 @@ enum Command {
     Generate {
         #[command(subcommand)]
         command: GenerateCommand,
+    },
+    /// Make a playable game from one idea (operations `game_brief` and `game_make`):
+    /// `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`.
+    /// The level is proven winnable by the template's autopilot; art not found by the asset
+    /// lookup order is drawn as placeholders until generated (`--generate`, or later
+    /// `marionette generate run` in the game folder and `make --refresh`).
+    Make {
+        /// The game idea in plain words.
+        #[arg(required_unless_present_any = ["brief", "refresh"])]
+        prompt: Option<String>,
+        /// Game folder (default: the title as a folder name).
+        #[arg(long)]
+        path: Option<String>,
+        /// A brief file (marionette.brief/1) to use instead of the prompt.
+        #[arg(long)]
+        brief: Option<String>,
+        /// maze or platformer.
+        #[arg(long)]
+        template: Option<String>,
+        /// 2d or 3d.
+        #[arg(long)]
+        view: Option<String>,
+        /// Generate missing art first, with the game's providers (paid ones need keys).
+        #[arg(long)]
+        generate: bool,
+        /// Re-make the game in --path from its brief.json: new art in, tests re-pinned.
+        #[arg(long, requires = "path")]
+        refresh: bool,
     },
     /// Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise).
     Mcp {
@@ -405,6 +435,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -415,6 +446,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            window,
         }),
         Command::Screenshot {
             scene,
@@ -537,6 +569,15 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                     .map(|v| merge("provider_use", v))
             }
         },
+        Command::Make {
+            prompt,
+            path,
+            brief,
+            template,
+            view,
+            generate,
+            refresh,
+        } => make(&mut agent, prompt, path, brief, template, view, generate, refresh),
         Command::Generate { command } => match command {
             GenerateCommand::Plan { names, dir } => agent
                 .call("generate_plan", json!({ "names": names, "dir": dir }))
@@ -821,6 +862,67 @@ fn approve_all(project: &str, read_only: bool) -> Result<Value, Errors> {
 }
 
 /// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.
+/// `marionette make`: a brief from the prompt (or file), then `game_make`.
+#[allow(clippy::too_many_arguments)]
+fn make(
+    agent: &mut Agent,
+    prompt: Option<String>,
+    path: Option<String>,
+    brief: Option<String>,
+    template: Option<String>,
+    view: Option<String>,
+    generate: bool,
+    refresh: bool,
+) -> Result<Value, Errors> {
+    let mut input = json!({ "generate": generate, "refresh": refresh });
+    let mut ask = json!({});
+    if let Some(file) = brief {
+        let text = std::fs::read_to_string(&file)
+            .map_err(|e| Errors::from(Diagnostic::error("io.read", format!("cannot read {file}: {e}"))))?;
+        let b: Value = serde_json::from_str(&text).map_err(|e| {
+            Errors::from(Diagnostic::error("agent.bad_input", format!("{file}: {e}")).file(file.clone()))
+        })?;
+        ask["brief"] = b;
+    } else if let Some(p) = prompt {
+        ask["prompt"] = json!(p);
+    }
+    if let Some(t) = template {
+        ask["template"] = json!(t);
+    }
+    if let Some(v) = view {
+        ask["view"] = json!(v);
+    }
+    let path = match path {
+        Some(p) => p,
+        None => {
+            let b = agent.call("game_brief", ask.clone())?;
+            slug(b["brief"]["title"].as_str().unwrap_or("game"))
+        }
+    };
+    input["path"] = json!(path);
+    if (!refresh || ask.get("brief").is_some())
+        && let Value::Object(m) = ask
+    {
+        input.as_object_mut().expect("object").extend(m);
+    }
+    agent.call("game_make", input).map(|v| merge("make", v))
+}
+
+/// A folder name from a title: lowercase letters and digits joined by `-`.
+fn slug(title: &str) -> String {
+    let s: String = title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let s = s
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if s.is_empty() { "game".into() } else { s }
+}
+
 fn merge(command: &str, v: Value) -> Value {
     let mut out = json!({ "ok": true, "command": command });
     if let (Value::Object(o), Value::Object(m)) = (&mut out, v) {
@@ -867,6 +969,38 @@ fn human(value: &Value) -> String {
             value["render"]["triangles"]
         ),
         Some("stability") => stability::human(value),
+        Some("make") => {
+            let placeholders: Vec<&str> = value["assets"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|a| a["source"] == "placeholder")
+                .filter_map(|a| a["slot"].as_str())
+                .collect();
+            let art = if placeholders.is_empty() {
+                "all art in place".to_string()
+            } else {
+                format!(
+                    "placeholders for {} (run `marionette generate run` in {}, then `marionette make --refresh --path {}`)",
+                    placeholders.join(", "),
+                    s("path"),
+                    s("path")
+                )
+            };
+            format!(
+                "made \"{}\" ({} {}) in {}: the autopilot wins in {} s (seed {}); tests {} passed, {} failed; {}.\nplay: marionette run scenes/main.scene.json --project {}",
+                s("title"),
+                value["view"].as_str().unwrap_or(""),
+                value["template"].as_str().unwrap_or(""),
+                s("path"),
+                value["autoplay"]["seconds"],
+                value["autoplay"]["seed"],
+                s("tests_passed"),
+                s("tests_failed"),
+                art,
+                s("path")
+            )
+        }
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),
         Some("provider_use") => format!(
