@@ -94,6 +94,10 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<spatial::ToneMapping>();
     registry.register_resource::<spatial::Fog>();
     registry.register_resource::<spatial::SkyLight>();
+    // More opt-in looks (decisions 0064 to 0066).
+    registry.register_resource::<spatial::Bloom>();
+    registry.register_component::<spatial::CastShadows>();
+    registry.register_resource::<spatial::Environment>();
     registry.register_component::<ui::UiNode>();
     registry.register_component::<ui::UiRect>();
     registry.register_component::<ui::UiText>();

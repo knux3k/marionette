@@ -2,17 +2,23 @@
 // lights plus an ambient term. Output is linear; the sRGB target encodes it.
 // Opt-in looks (decision 0063), each off unless its flag is set: shadows from the first
 // directional light, point and spot lights, sky (hemisphere) ambient, emissive, filmic tone
-// mapping and fog. With every flag off the result is the plain look, bit for bit.
+// mapping and fog. Later looks (decisions 0064 to 0067): output to a floating-point target
+// for bloom, shadows from point and spot lights, environment lighting and reflections, a sky
+// background, and glTF emissive. With every flag off the result is the plain look, bit for bit.
 
 struct ViewU {
     view_proj: mat4x4<f32>,
     eye: vec4<f32>,
+    inv_view_proj: mat4x4<f32>,
 };
 
 const FLAG_SHADOWS: u32 = 1u;
 const FLAG_TONEMAP: u32 = 2u;
 const FLAG_FOG: u32 = 4u;
 const FLAG_SKY: u32 = 8u;
+// Write unclamped linear light for the bloom pass; tone mapping happens there.
+const FLAG_HDR: u32 = 16u;
+const FLAG_ENV: u32 = 32u;
 const MAX_LOCAL: u32 = 16u;
 
 struct LightsU {
@@ -27,6 +33,16 @@ struct LightsU {
     local_pos: array<vec4<f32>, 16>, // xyz = position, w = range
     local_rad: array<vec4<f32>, 16>, // rgb = color * intensity, w = cos outer (< -1: point)
     local_dir: array<vec4<f32>, 16>, // xyz = direction, w = cos inner
+    // x = first shadow layer (< 0: no shadow), y = normal offset per meter of distance,
+    // z = shadow texel size (uv), w = softness (texels)
+    local_shadow: array<vec4<f32>, 16>,
+    shadow_mats: array<mat4x4<f32>, 24>, // view-projection per shadow layer
+    env: vec4<f32>,                      // intensity, last mip level
+    sh: array<vec4<f32>, 9>,             // environment irradiance / PI (SH9, rgb)
+};
+
+struct MaterialU {
+    emissive: vec4<f32>, // rgb = glTF emissive factor times strength
 };
 
 
@@ -34,10 +50,15 @@ struct LightsU {
 @group(1) @binding(0) var<uniform> lights: LightsU;
 @group(1) @binding(1) var shadow_map: texture_depth_2d;
 @group(1) @binding(2) var shadow_samp: sampler_comparison;
+@group(1) @binding(3) var local_shadow_map: texture_depth_2d_array;
+@group(1) @binding(4) var env_tex: texture_2d<f32>;
+@group(1) @binding(5) var env_samp: sampler;
+@group(2) @binding(0) var<uniform> material: MaterialU;
 @group(2) @binding(1) var base_tex: texture_2d<f32>;
 @group(2) @binding(2) var mr_tex: texture_2d<f32>;
 @group(2) @binding(3) var normal_tex: texture_2d<f32>;
 @group(2) @binding(4) var samp: sampler;
+@group(2) @binding(5) var emissive_tex: texture_2d<f32>;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -121,8 +142,11 @@ fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, sample: vec3<f32>, 
 }
 
 // Fraction of the first directional light reaching `p` (1 = lit), filtered over 3x3 taps.
-fn shadow_factor(p: vec3<f32>, n: vec3<f32>) -> f32 {
-    let offset = n * lights.post.w;
+// The normal offset grows with the angle between surface and light (none when the light is
+// straight on, where it would only push the shadow away from its caster's base).
+fn shadow_factor(p: vec3<f32>, n: vec3<f32>, l: vec3<f32>) -> f32 {
+    let n_dot_l = clamp(dot(n, l), 0.0, 1.0);
+    let offset = n * (lights.post.w * sqrt(1.0 - n_dot_l * n_dot_l));
     let clip = lights.shadow_view_proj * vec4<f32>(p + offset, 1.0);
     let ndc = clip.xyz / clip.w;
     let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
@@ -138,6 +162,69 @@ fn shadow_factor(p: vec3<f32>, n: vec3<f32>) -> f32 {
         }
     }
     return lit / 9.0;
+}
+
+// Fraction of local light `j` reaching `p` (1 = lit). A spot light has one shadow layer; a
+// point light six, one per cube face (+x, -x, +y, -y, +z, -z), picked by the major axis.
+fn local_shadow_factor(j: u32, p: vec3<f32>, n: vec3<f32>, l: vec3<f32>, dist: f32) -> f32 {
+    let info = lights.local_shadow[j];
+    var layer = u32(info.x);
+    if (lights.local_rad[j].w < -1.0) {
+        let d = p - lights.local_pos[j].xyz;
+        let a = abs(d);
+        if (a.x >= a.y && a.x >= a.z) {
+            layer = layer + select(1u, 0u, d.x > 0.0);
+        } else if (a.y >= a.z) {
+            layer = layer + select(3u, 2u, d.y > 0.0);
+        } else {
+            layer = layer + select(5u, 4u, d.z > 0.0);
+        }
+    }
+    let n_dot_l = clamp(dot(n, l), 0.0, 1.0);
+    let offset = n * (info.y * dist * (0.5 + sqrt(1.0 - n_dot_l * n_dot_l)));
+    let clip = lights.shadow_mats[layer] * vec4<f32>(p + offset, 1.0);
+    let ndc = clip.xyz / clip.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    if (clip.w <= 0.0 || uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z > 1.0) {
+        return 1.0;
+    }
+    let step = info.z * info.w;
+    var lit = 0.0;
+    for (var y = -1; y <= 1; y = y + 1) {
+        for (var x = -1; x <= 1; x = x + 1) {
+            let o = vec2<f32>(f32(x), f32(y)) * step;
+            lit += textureSampleCompareLevel(local_shadow_map, shadow_samp, clamp(uv + o, vec2<f32>(0.0), vec2<f32>(1.0)), i32(layer), ndc.z);
+        }
+    }
+    return lit / 9.0;
+}
+
+// Equirectangular lookup: u turns around +y starting at -z, v runs from up (0) to down (1).
+fn env_uv(d: vec3<f32>) -> vec2<f32> {
+    let u = atan2(d.x, -d.z) / (2.0 * PI) + 0.5;
+    let v = acos(clamp(d.y, -1.0, 1.0)) / PI;
+    return vec2<f32>(u, v);
+}
+
+// Irradiance / PI from the environment's nine spherical harmonics coefficients.
+fn sh_irradiance(n: vec3<f32>) -> vec3<f32> {
+    let c = lights.sh;
+    let r = c[0].rgb * 0.282095
+        + c[1].rgb * 0.488603 * n.y + c[2].rgb * 0.488603 * n.z + c[3].rgb * 0.488603 * n.x
+        + c[4].rgb * 1.092548 * n.x * n.y + c[5].rgb * 1.092548 * n.y * n.z
+        + c[6].rgb * 0.315392 * (3.0 * n.z * n.z - 1.0)
+        + c[7].rgb * 1.092548 * n.x * n.z + c[8].rgb * 0.546274 * (n.x * n.x - n.y * n.y);
+    return max(r, vec3<f32>(0.0));
+}
+
+// Split-sum environment BRDF, analytic fit (Karis, "Physically based shading on mobile").
+fn env_brdf(f0: vec3<f32>, roughness: f32, n_dot_v: f32) -> vec3<f32> {
+    let c0 = vec4<f32>(-1.0, -0.0275, -0.572, 0.022);
+    let c1 = vec4<f32>(1.0, 0.0425, 1.04, -0.04);
+    let r = roughness * c0 + c1;
+    let a004 = min(r.x * r.x, exp2(-9.28 * n_dot_v)) * r.x + r.y;
+    let ab = vec2<f32>(-1.04, 1.04) * a004 + r.zw;
+    return f0 * ab.x + ab.y;
 }
 
 // GGX specular plus Lambert diffuse for one light arriving from direction `l`.
@@ -166,6 +253,7 @@ fn tonemap(c: vec3<f32>) -> vec3<f32> {
 fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
     let base = in.base_color * textureSample(base_tex, samp, in.uv);
     let mr = textureSample(mr_tex, samp, in.uv);
+    let emissive = textureSample(emissive_tex, samp, in.uv);
     let metallic = clamp(in.params.x * mr.b, 0.0, 1.0);
     let roughness = clamp(in.params.y * mr.g, 0.045, 1.0);
 
@@ -204,7 +292,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         // Scaled by PI so illuminance 1.0 lights a white diffuse surface to 1.0.
         var lit = (diffuse + d * vis * f) * lights.radiance[i].rgb * n_dot_l * PI;
         if (i == 0u && (flags & FLAG_SHADOWS) != 0u) {
-            lit = lit * shadow_factor(in.world_pos, normalize(in.normal));
+            lit = lit * shadow_factor(in.world_pos, normalize(in.normal), l);
         }
         color += lit;
     }
@@ -223,6 +311,9 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
             let cd = dot(-l, lights.local_dir[j].xyz);
             atten = atten * smoothstep(cos_outer, cos_inner, cd);
         }
+        if (atten > 0.0 && lights.local_shadow[j].x >= 0.0) {
+            atten = atten * local_shadow_factor(j, in.world_pos, normalize(in.normal), l, sqrt(dist2));
+        }
         if (atten > 0.0) {
             color += shade(n, v, l, base.rgb, f0, metallic, a2) * lights.local_rad[j].rgb * atten;
         }
@@ -232,15 +323,65 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     if ((flags & FLAG_SKY) != 0u) {
         ambient_light = mix(lights.ground.rgb, lights.ambient.rgb, n.y * 0.5 + 0.5);
     }
-    let ambient = ambient_light * (base.rgb * (1.0 - metallic) + f0 * (1.0 - 0.5 * roughness));
-    color += ambient;
-    color += in.emissive.rgb;
+    if ((flags & FLAG_ENV) != 0u) {
+        // Environment: diffuse from its irradiance, specular from the mip blurred to match
+        // the roughness, weighted by the split-sum BRDF.
+        let r = reflect(-v, n);
+        let spec = textureSampleLevel(env_tex, env_samp, env_uv(r), roughness * lights.env.y).rgb;
+        color += lights.env.x * (sh_irradiance(n) * base.rgb * (1.0 - metallic)
+            + spec * env_brdf(f0, roughness, n_dot_v));
+    } else {
+        color += ambient_light * (base.rgb * (1.0 - metallic) + f0 * (1.0 - 0.5 * roughness));
+    }
+    color += in.emissive.rgb + material.emissive.rgb * emissive.rgb;
+    return finish(color, length(view.eye.xyz - in.world_pos), base.a);
+}
+
+// Tone mapping and fog, or (for bloom) fog only, in linear light: `fog.rgb` then holds the
+// fog color mapped back through the tone curve, so fully fogged pixels end up the same.
+fn finish(lit: vec3<f32>, distance: f32, alpha: f32) -> vec4<f32> {
+    let flags = lights.count.z;
+    var color = lit;
+    if ((flags & FLAG_HDR) != 0u) {
+        if ((flags & FLAG_FOG) != 0u) {
+            let dist = distance * lights.fog.w;
+            color = mix(lights.fog.rgb, color, exp(-dist * dist));
+        }
+        return vec4<f32>(max(color, vec3<f32>(0.0)), alpha);
+    }
     if ((flags & FLAG_TONEMAP) != 0u) {
         color = tonemap(color * lights.post.x);
     }
     if ((flags & FLAG_FOG) != 0u) {
-        let dist = length(view.eye.xyz - in.world_pos) * lights.fog.w;
+        let dist = distance * lights.fog.w;
         color = mix(lights.fog.rgb, color, exp(-dist * dist));
     }
-    return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(1.0)), base.a);
+    return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(1.0)), alpha);
+}
+
+// Sky background (decision 0066): a full-screen triangle at the far plane, drawn after
+// models so only uncovered pixels run it. Fog thickens toward and below the horizon.
+struct SkyOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) ndc: vec2<f32>,
+};
+
+@vertex
+fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
+    var out: SkyOut;
+    let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u)) * 2.0 - 1.0;
+    out.clip = vec4<f32>(p, 1.0, 1.0);
+    out.ndc = p;
+    return out;
+}
+
+@fragment
+fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
+    let near = view.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
+    let far = view.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
+    let d = normalize(far.xyz / far.w - near.xyz / near.w);
+    let color = textureSampleLevel(env_tex, env_samp, env_uv(d), 0.0).rgb;
+    // Fog: as if the sky were 3 / density meters away at the horizon, farther upward.
+    let up = max(d.y, 0.0);
+    return finish(color, 3.0 / max(lights.fog.w, 1e-4) / (1.0 + 8.0 * up), 1.0);
 }

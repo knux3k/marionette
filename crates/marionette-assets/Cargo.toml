@@ -8,5 +8,5 @@ rust-version.workspace = true
 
 [dependencies]
 glam = "0.34"
-gltf = { version = "1.4.1", default-features = false, features = ["import", "utils", "names"] }
+gltf = { version = "1.4.1", default-features = false, features = ["import", "utils", "names", "KHR_materials_emissive_strength"] }
 png = "0.18.1"

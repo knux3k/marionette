@@ -99,6 +99,12 @@ Opt-in looks (decision 0063): with resource `Shadows`, a depth pass from the fir
 light runs before the views (view-buffer slot after the last view); `PointLight`, `SpotLight`,
 `Emissive`, `SkyLight`, `ToneMapping` and `Fog` are uniforms and instance data read by the same
 PBR shader behind flag bits. Absent data means the plain look, bit for bit.
+Later looks: `Bloom` draws models into an HDR target, then a glow chain and a composite into
+the final pass before sprites and UI (`post.rs`, decision 0064); `CastShadows` on a point or
+spot light adds depth passes into one shadow map array (decision 0065); `Environment` adds a
+CPU-prefiltered sky texture for diffuse and reflections and an optional sky background
+(`environment.rs`, decision 0066); glTF emissive comes through a per-material uniform
+(decision 0067).
 
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so

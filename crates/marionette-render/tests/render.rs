@@ -50,6 +50,7 @@ fn same_inputs_give_identical_images() {
         "sprites.scene.json",
         "ui.scene.json",
         "lighting.scene.json",
+        "looks.scene.json",
     ] {
         let a = render(&gpu, scene, (480, 270));
         let b = render(&gpu, scene, (480, 270));
@@ -72,7 +73,7 @@ fn rendering_does_not_change_simulation_state() {
 fn matches_reference_images() {
     let Some(gpu) = gpu() else { return };
     let update = std::env::var("MARIONETTE_UPDATE_REFERENCES").as_deref() == Ok("1");
-    for name in ["showcase", "sprites", "ui", "lighting"] {
+    for name in ["showcase", "sprites", "ui", "lighting", "looks"] {
         let pixels = render(&gpu, &format!("{name}.scene.json"), REF_SIZE);
         let path = repo().join(format!("examples/reference/{name}.png"));
         if update {
@@ -136,10 +137,15 @@ fn gpu_objects_come_back_after_repeated_setups_and_trims() {
     let settle = || {
         gpu.device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
     };
-    let frames: Vec<_> = ["showcase.scene.json", "sprites.scene.json", "ui.scene.json"]
-        .iter()
-        .map(|s| extract(&sim(s).world))
-        .collect();
+    let frames: Vec<_> = [
+        "showcase.scene.json",
+        "looks.scene.json",
+        "sprites.scene.json",
+        "ui.scene.json",
+    ]
+    .iter()
+    .map(|s| extract(&sim(s).world))
+    .collect();
     // One warm-up round so lazily created driver-side objects exist before the baseline.
     let mut off = Offscreen::new(&gpu, 64, 64, 4, repo().join("examples"));
     for f in &frames {
@@ -159,7 +165,7 @@ fn gpu_objects_come_back_after_repeated_setups_and_trims() {
         }
         // Scene switch: only the last scene's assets stay cached.
         let held = off.cached_assets();
-        let freed = off.trim(&frames[2]);
+        let freed = off.trim(&frames[3]);
         assert!(
             freed > 0 && off.cached_assets() < held,
             "trim frees the other scenes' assets"
@@ -304,4 +310,187 @@ fn model_placement_moves_turns_and_sizes_only_the_drawn_model() {
     );
     // The entity itself is unchanged.
     assert_eq!(*s.world.get::<Transform>(e).unwrap(), before);
+}
+
+/// A top-down test stage: a gray ground, a 1 m red box at x = 2, a camera 12 m up looking
+/// down (x to the right, z down in the image), plus `extra` entities and `resources`.
+fn stage(extra: &str, resources: &str) -> Sim {
+    let text = format!(
+        r#"{{"format": "marionette.scene", "version": 1,
+        "resources": {{ {resources} }},
+        "entities": [
+          {{"id": 1, "name": "camera", "components": {{
+            "Camera": {{"clear_color": {{"r": 0, "g": 0, "b": 0, "a": 1}},
+              "projection": {{"Perspective": {{"far": 100.0, "fov_y_degrees": 60.0, "near": 0.1}}}}}},
+            "LookAt": {{"target": {{"x": 0, "y": 0, "z": 0}}, "up": {{"x": 0, "y": 0, "z": -1}}}},
+            "Transform": {{"translation": {{"x": 0, "y": 12, "z": 0.01}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": 1, "z": 1}}}}}}}},
+          {{"id": 2, "name": "ground", "components": {{
+            "Model": {{"asset": "primitive:plane"}},
+            "Material": {{"base_color": {{"r": 0.8, "g": 0.8, "b": 0.8, "a": 1}}, "metallic": 0, "roughness": 0.9}},
+            "Transform": {{"translation": {{"x": 0, "y": 0, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 30, "y": 1, "z": 30}}}}}}}},
+          {{"id": 3, "name": "box", "components": {{
+            "Model": {{"asset": "primitive:cube"}},
+            "Material": {{"base_color": {{"r": 0.8, "g": 0.2, "b": 0.2, "a": 1}}, "metallic": 0, "roughness": 0.9}},
+            "Transform": {{"translation": {{"x": 2, "y": 0.5, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": 1, "z": 1}}}}}}}}
+          {extra}
+        ]}}"#
+    );
+    Sim::from_text(&text, None, default_registry(), SEED).unwrap()
+}
+
+/// Pixel x of world x on the stage at 160x90 (12 m up, 60 degree vertical view).
+fn stage_x(x: f32) -> u32 {
+    let half_h = 12.0 * (30f32).to_radians().tan();
+    (80.0 + x / half_h * 45.0).round() as u32
+}
+
+/// Decision 0065: a point light with `CastShadows` darkens the ground behind a box (as seen
+/// from the light) and leaves the near side lit; a spot light does the same; without the
+/// component the ground there is lit. Each point light map is six depth passes.
+#[test]
+fn point_and_spot_lights_cast_shadows_only_with_cast_shadows() {
+    let Some(gpu) = gpu() else { return };
+    let point = |shadow: &str| {
+        format!(
+            r#", {{"id": 4, "name": "lamp", "components": {{
+              "PointLight": {{"color": {{"r": 1, "g": 1, "b": 1, "a": 1}}, "intensity": 6.0, "range": 10.0}},
+              {shadow}
+              "Transform": {{"translation": {{"x": 0, "y": 2, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": 1, "z": 1}}}}}}}}"#
+        )
+    };
+    let cast = r#""CastShadows": {"resolution": 512, "softness": 1.0},"#;
+    let (lit, plain_stats) = render_sim(&gpu, &stage(&point(""), ""));
+    let (shadowed, stats) = render_sim(&gpu, &stage(&point(cast), ""));
+    // Behind the box (x = 3.5 m), in front of it (x = -1.5 m, same distance from the lamp).
+    let behind = (stage_x(3.5) - 1, 43, stage_x(3.5) + 2, 47);
+    let front = (stage_x(-1.5) - 1, 43, stage_x(-1.5) + 2, 47);
+    assert!(
+        mean(&shadowed, behind) + 20.0 < mean(&lit, behind),
+        "{} vs {}",
+        mean(&shadowed, behind),
+        mean(&lit, behind)
+    );
+    assert!((mean(&shadowed, front) - mean(&lit, front)).abs() < 3.0);
+    assert!(stats.draw_calls >= plain_stats.draw_calls + 6 * 2);
+
+    let spot = format!(
+        r#", {{"id": 4, "name": "spot", "components": {{
+          "SpotLight": {{"direction": {{"x": 0.0, "y": -1.0, "z": 0.0}}, "color": {{"r": 1, "g": 1, "b": 1, "a": 1}},
+            "intensity": 8.0, "range": 10.0, "inner_angle_degrees": 65.0, "outer_angle_degrees": 75.0}},
+          {cast}
+          "Transform": {{"translation": {{"x": 0, "y": 2, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": 1, "z": 1}}}}}}}}"#
+    );
+    let (spot_shadowed, _) = render_sim(&gpu, &stage(&spot, ""));
+    let (spot_lit, _) = render_sim(&gpu, &stage(&spot.replace(cast, ""), ""));
+    assert!(mean(&spot_shadowed, behind) + 20.0 < mean(&spot_lit, behind));
+    assert!((mean(&spot_shadowed, front) - mean(&spot_lit, front)).abs() < 3.0);
+}
+
+/// Decision 0064: bloom spreads a bright emissive box's light onto the ground around it,
+/// adds the glow passes, and changes nothing far from bright light.
+#[test]
+fn bloom_spreads_bright_light_and_only_with_bloom() {
+    let Some(gpu) = gpu() else { return };
+    let glow = r#", {"id": 4, "name": "glow", "components": {
+        "Model": {"asset": "primitive:cube"},
+        "Material": {"base_color": {"r": 1, "g": 1, "b": 1, "a": 1}, "metallic": 0, "roughness": 0.9},
+        "Emissive": {"color": {"r": 1, "g": 0.8, "b": 0.5, "a": 1}, "intensity": 6.0},
+        "Transform": {"translation": {"x": -3, "y": 0.5, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0, "w": 1}, "scale": {"x": 1, "y": 1, "z": 1}}}}"#;
+    let light = r#""AmbientLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "intensity": 0.2},
+        "ToneMapping": {"exposure": 1.0}"#;
+    let bloom = r#", "Bloom": {"threshold": 1.0, "intensity": 0.8}"#;
+    let (plain, plain_stats) = render_sim(&gpu, &stage(glow, light));
+    let (bloomed, stats) = render_sim(&gpu, &stage(glow, &format!("{light}{bloom}")));
+    // Ground just right of the glowing box (box spans x = -3.5 .. -2.5 m).
+    let beside = (stage_x(-2.2), 43, stage_x(-2.2) + 2, 47);
+    assert!(
+        mean(&bloomed, beside) > mean(&plain, beside) + 5.0,
+        "{} vs {}",
+        mean(&bloomed, beside),
+        mean(&plain, beside)
+    );
+    // Far corner: no bright light nearby, same image (within rounding).
+    let far = (150, 80, 158, 88);
+    assert!((mean(&bloomed, far) - mean(&plain, far)).abs() < 1.5);
+    assert!(stats.draw_calls > plain_stats.draw_calls + 3);
+}
+
+/// Decision 0066: with `Environment`, a mirror ball reflects the sky (its top turns sky
+/// colored), a bad image path is an error as data, and the sky background replaces the
+/// clear color.
+#[test]
+fn environment_lights_reflects_and_draws_the_sky() {
+    let Some(gpu) = gpu() else { return };
+    let ball = r#", {"id": 4, "name": "mirror", "components": {
+        "Model": {"asset": "primitive:sphere"},
+        "Material": {"base_color": {"r": 1, "g": 1, "b": 1, "a": 1}, "metallic": 1.0, "roughness": 0.05},
+        "Transform": {"translation": {"x": -2, "y": 1, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0, "w": 1}, "scale": {"x": 2, "y": 2, "z": 2}}}}"#;
+    let sky = r#""SkyLight": {"sky": {"r": 0.2, "g": 0.4, "b": 1.0, "a": 1}, "ground": {"r": 0.1, "g": 0.1, "b": 0.1, "a": 1}, "intensity": 0.3}"#;
+    let env = r#", "Environment": {"image": "", "intensity": 1.0, "background": false}"#;
+    let (flat, _) = render_sim(&gpu, &stage(ball, sky));
+    let (reflecting, _) = render_sim(&gpu, &stage(ball, &format!("{sky}{env}")));
+    let top = (stage_x(-2.0) - 1, 44, stage_x(-2.0) + 2, 46);
+    let blue = |p: &[u8], (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        let mut s = 0.0;
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let i = ((y * 160 + x) * 4) as usize;
+                s += p[i + 2] as f32 - p[i] as f32;
+            }
+        }
+        s / ((x1 - x0) * (y1 - y0)) as f32
+    };
+    assert!(
+        blue(&reflecting, top) > blue(&flat, top) + 30.0,
+        "{} vs {}",
+        blue(&reflecting, top),
+        blue(&flat, top)
+    );
+
+    // Background: a camera looking at the horizon sees sky instead of black.
+    let mut s = stage(ball, &format!("{sky}{}", env.replace("false", "true")));
+    let mut q = s.world.query::<&mut marionette_core::spatial::Transform>();
+    for mut t in q.iter_mut(&mut s.world) {
+        if t.translation.y == 12.0 {
+            t.translation = marionette_core::spatial::Vec3 {
+                x: 0.0,
+                y: 0.5,
+                z: 8.0,
+            };
+        }
+    }
+    let camera = s
+        .world
+        .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<marionette_core::spatial::Camera>>()
+        .iter(&s.world)
+        .next()
+        .unwrap();
+    s.world
+        .entity_mut(camera)
+        .remove::<marionette_core::spatial::LookAt>();
+    let (with_sky, _) = render_sim(&gpu, &s);
+    assert!(mean(&with_sky, (0, 0, 160, 10)) > 40.0);
+
+    let bad = stage(
+        ball,
+        &format!(
+            "{sky}{}",
+            env.replace(r#""image": """#, r#""image": "missing/sky.png""#)
+        ),
+    );
+    let mut off = Offscreen::new(&gpu, 32, 32, 1, repo().join("examples"));
+    let err = off.render(&gpu, &extract(&bad.world), None).unwrap_err();
+    assert_eq!(err.0[0].component.as_deref(), Some("Environment"));
+}
+
+/// Decision 0067: glTF emissive factors, `KHR_materials_emissive_strength` and emissive
+/// textures are imported; the lamp's lit panes glow.
+#[test]
+fn imports_gltf_emissive() {
+    let model = load_gltf(&repo().join("examples/assets/lamp.glb")).unwrap();
+    let lantern = &model.materials[1];
+    assert_eq!(lantern.emissive, [4.0, 2.88, 1.52]);
+    let t = lantern.emissive_texture.expect("emissive texture");
+    assert!(model.images[t].srgb);
+    assert_eq!(model.materials[0].emissive, [0.0; 3]);
 }

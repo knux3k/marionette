@@ -1,0 +1,617 @@
+{
+ "format": "marionette.ops",
+ "version": 1,
+ "ops": [
+  {
+   "op": "scene_create",
+   "input": {
+    "scene": "examples/looks.scene.json"
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "SkyLight",
+    "value": {
+     "sky": {
+      "r": 0.16,
+      "g": 0.22,
+      "b": 0.42,
+      "a": 1.0
+     },
+     "ground": {
+      "r": 0.08,
+      "g": 0.07,
+      "b": 0.07,
+      "a": 1.0
+     },
+     "intensity": 0.3
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "Environment",
+    "value": {
+     "image": "",
+     "intensity": 0.5,
+     "background": true
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "Shadows",
+    "value": {
+     "distance": 10.0,
+     "resolution": 2048,
+     "softness": 1.5
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "ToneMapping",
+    "value": {
+     "exposure": 1.0
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "Bloom",
+    "value": {
+     "threshold": 1.0,
+     "intensity": 1.0
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "resource": "Fog",
+    "value": {
+     "color": {
+      "r": 0.1,
+      "g": 0.13,
+      "b": 0.24,
+      "a": 1.0
+     },
+     "density": 0.03
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "camera",
+    "components": {
+     "Camera": {
+      "clear_color": {
+       "r": 0.1,
+       "g": 0.13,
+       "b": 0.24,
+       "a": 1.0
+      },
+      "projection": {
+       "Perspective": {
+        "far": 150.0,
+        "fov_y_degrees": 50.0,
+        "near": 0.1
+       }
+      }
+     },
+     "LookAt": {
+      "target": {
+       "x": 0,
+       "y": 0.9,
+       "z": 0
+      },
+      "up": {
+       "x": 0,
+       "y": 1,
+       "z": 0
+      }
+     },
+     "Transform": {
+      "translation": {
+       "x": 3.0,
+       "y": 2.6,
+       "z": 7.8
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "sun",
+    "components": {
+     "DirectionalLight": {
+      "color": {
+       "r": 0.6,
+       "g": 0.7,
+       "b": 1.0,
+       "a": 1.0
+      },
+      "direction": {
+       "x": -0.5,
+       "y": -0.6,
+       "z": -0.6
+      },
+      "illuminance": 0.25
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "ground",
+    "components": {
+     "Model": {
+      "asset": "primitive:plane"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.3,
+       "g": 0.31,
+       "b": 0.3,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.55
+     },
+     "Transform": {
+      "translation": {
+       "x": 0,
+       "y": 0,
+       "z": 0
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 300,
+       "y": 1,
+       "z": 300
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "mirror ball",
+    "components": {
+     "Model": {
+      "asset": "primitive:sphere"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.95,
+       "g": 0.95,
+       "b": 0.95,
+       "a": 1.0
+      },
+      "metallic": 1.0,
+      "roughness": 0.05
+     },
+     "Transform": {
+      "translation": {
+       "x": -2.2,
+       "y": 0.6,
+       "z": -0.6
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1.2,
+       "y": 1.2,
+       "z": 1.2
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "brushed ball",
+    "components": {
+     "Model": {
+      "asset": "primitive:sphere"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.95,
+       "g": 0.75,
+       "b": 0.45,
+       "a": 1.0
+      },
+      "metallic": 1.0,
+      "roughness": 0.45
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 0.6,
+       "z": -1.6
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1.2,
+       "y": 1.2,
+       "z": 1.2
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "glossy ball",
+    "components": {
+     "Model": {
+      "asset": "primitive:sphere"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.75,
+       "g": 0.12,
+       "b": 0.1,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.15
+     },
+     "Transform": {
+      "translation": {
+       "x": 2.3,
+       "y": 0.6,
+       "z": -0.4
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1.2,
+       "y": 1.2,
+       "z": 1.2
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "crate",
+    "components": {
+     "Model": {
+      "asset": "primitive:cube"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.6,
+       "g": 0.5,
+       "b": 0.38,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.8
+     },
+     "Transform": {
+      "translation": {
+       "x": 2.6,
+       "y": 0.4,
+       "z": 2.2
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0.3827,
+       "z": 0,
+       "w": 0.9239
+      },
+      "scale": {
+       "x": 0.8,
+       "y": 0.8,
+       "z": 0.8
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "spot",
+    "components": {
+     "SpotLight": {
+      "direction": {
+       "x": -0.25,
+       "y": -1.0,
+       "z": -0.1
+      },
+      "color": {
+       "r": 0.85,
+       "g": 0.92,
+       "b": 1.0,
+       "a": 1.0
+      },
+      "intensity": 8.0,
+      "range": 9.0,
+      "inner_angle_degrees": 18.0,
+      "outer_angle_degrees": 30.0
+     },
+     "CastShadows": {
+      "resolution": 1024,
+      "softness": 1.5
+     },
+     "Transform": {
+      "translation": {
+       "x": 3.2,
+       "y": 3.4,
+       "z": 2.6
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "lamp",
+    "components": {
+     "Model": {
+      "asset": "assets/lamp.glb"
+     },
+     "ModelPlacement": {
+      "offset": {
+       "x": 0,
+       "y": -2.45,
+       "z": 0
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     },
+     "PointLight": {
+      "color": {
+       "r": 1.0,
+       "g": 0.7,
+       "b": 0.38,
+       "a": 1.0
+      },
+      "intensity": 4.0,
+      "range": 7.0
+     },
+     "CastShadows": {
+      "resolution": 512,
+      "softness": 1.0
+     },
+     "Transform": {
+      "translation": {
+       "x": -0.6,
+       "y": 2.45,
+       "z": 1.6
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "post",
+    "components": {
+     "Model": {
+      "asset": "primitive:cube"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.55,
+       "g": 0.53,
+       "b": 0.5,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.85
+     },
+     "Transform": {
+      "translation": {
+       "x": -1.6,
+       "y": 0.6,
+       "z": 0.9
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 0.25,
+       "y": 1.2,
+       "z": 0.25
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "post",
+    "components": {
+     "Model": {
+      "asset": "primitive:cube"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.55,
+       "g": 0.53,
+       "b": 0.5,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.85
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.4,
+       "y": 0.6,
+       "z": 0.9
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 0.25,
+       "y": 1.2,
+       "z": 0.25
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/looks.scene.json",
+    "name": "crystal",
+    "components": {
+     "Model": {
+      "asset": "primitive:cube"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.3,
+       "g": 0.9,
+       "b": 1.0,
+       "a": 1.0
+      },
+      "metallic": 0.2,
+      "roughness": 0.2
+     },
+     "Emissive": {
+      "color": {
+       "r": 0.2,
+       "g": 0.8,
+       "b": 1.0,
+       "a": 1.0
+      },
+      "intensity": 2.5
+     },
+     "Transform": {
+      "translation": {
+       "x": -3.4,
+       "y": 0.5,
+       "z": 1.4
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0.3827,
+       "z": 0,
+       "w": 0.9239
+      },
+      "scale": {
+       "x": 0.4,
+       "y": 1.0,
+       "z": 0.4
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "scene_validate",
+   "input": {
+    "scene": "examples/looks.scene.json"
+   }
+  }
+ ]
+}

@@ -238,6 +238,14 @@ type AudioSource = {
   volume: number;
 };
 
+/** Turns on bloom: light brighter than `threshold` spills into a soft glow around it (lamps, emissive screens, the sun on metal). Works best with `ToneMapping`, which keeps colors above 1.0 for the glow to pick up. Renders models into a floating-point target first (decision 0064). */
+type Bloom = {
+  /** How strong the glow is; 0.05 to 0.3 is subtle to strong. */
+  intensity: number;
+  /** Brightness (linear, before exposure) where glow starts; 1.0 is a good default. */
+  threshold: number;
+};
+
 /** A viewpoint that can be rendered. Placement comes from `Transform` (and `LookAt`). */
 type Camera = {
   /** Background color. */
@@ -261,6 +269,14 @@ type Camera = {
       near: number;
     };
   };
+};
+
+/** Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows. A spot light uses one shadow map, a point light six (one per cube face); at most 24 maps per frame, given to lights in entity id order (decision 0065). A model on the same entity (a lantern around its light) does not block its own light. */
+type CastShadows = {
+  /** Size of each shadow map in texels (128 to 1024; 512 is a good default). All maps share the largest size asked for (24 maps of 1024 take 100 MB of GPU memory). */
+  resolution: number;
+  /** Edge blur in texels (0 = hard edges, 1 to 2 = soft). */
+  softness: number;
 };
 
 /** Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X. */
@@ -375,6 +391,15 @@ type Emissive = {
     g: number;
     r: number;
   };
+  intensity: number;
+};
+
+/** Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. */
+type Environment = {
+  /** Draw the environment behind everything instead of the camera's clear color. */
+  background: boolean;
+  image: string;
+  /** Strength of the light and reflections from the environment. */
   intensity: number;
 };
 
@@ -856,6 +881,7 @@ interface Components {
   AudioListener: AudioListener;
   AudioSource: AudioSource;
   Camera: Camera;
+  CastShadows: CastShadows;
   CharacterController: CharacterController;
   CharacterInput: CharacterInput;
   CharacterState: CharacterState;
@@ -897,6 +923,8 @@ interface Components {
 interface Resources {
   ActionState: ActionState;
   AmbientLight: AmbientLight;
+  Bloom: Bloom;
+  Environment: Environment;
   FactoryRecipes: FactoryRecipes;
   FactoryState: FactoryState;
   FixedStep: FixedStep;

@@ -117,6 +117,8 @@ pub(crate) struct SkinnedCall<'a> {
 
 pub(crate) struct Skinning {
     pub pipeline: wgpu::RenderPipeline,
+    /// The same pipeline writing the floating-point target used for bloom (decision 0064).
+    pub hdr_pipeline: wgpu::RenderPipeline,
     /// Depth-only pass from the shadow-casting light (decision 0063).
     pub shadow_pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
@@ -187,50 +189,54 @@ impl Skinning {
             7 => Float32x4, 8 => Float32x4, 12 => Float32x4, 9 => Uint32x4
         ];
         let skin_attrs = wgpu::vertex_attr_array![10 => Uint16x4, 11 => Float32x4];
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("pbr skinned"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_skinned"),
-                compilation_options: Default::default(),
-                buffers: &[
-                    Some(wgpu::VertexBufferLayout {
-                        array_stride: mesh_stride,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &mesh_attrs,
-                    }),
-                    Some(wgpu::VertexBufferLayout {
-                        array_stride: size_of::<SkinnedInstance>() as u64,
-                        step_mode: wgpu::VertexStepMode::Instance,
-                        attributes: &instance_attrs,
-                    }),
-                    Some(wgpu::VertexBufferLayout {
-                        array_stride: size_of::<SkinVertex>() as u64,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &skin_attrs,
-                    }),
-                ],
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: Some(wgpu::Face::Back),
-                ..Default::default()
-            },
-            depth_stencil: Some(depth),
-            multisample,
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let lit = |format: wgpu::TextureFormat| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("pbr skinned"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_skinned"),
+                    compilation_options: Default::default(),
+                    buffers: &[
+                        Some(wgpu::VertexBufferLayout {
+                            array_stride: mesh_stride,
+                            step_mode: wgpu::VertexStepMode::Vertex,
+                            attributes: &mesh_attrs,
+                        }),
+                        Some(wgpu::VertexBufferLayout {
+                            array_stride: size_of::<SkinnedInstance>() as u64,
+                            step_mode: wgpu::VertexStepMode::Instance,
+                            attributes: &instance_attrs,
+                        }),
+                        Some(wgpu::VertexBufferLayout {
+                            array_stride: size_of::<SkinVertex>() as u64,
+                            step_mode: wgpu::VertexStepMode::Vertex,
+                            attributes: &skin_attrs,
+                        }),
+                    ],
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..Default::default()
+                },
+                depth_stencil: Some(depth.clone()),
+                multisample,
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let pipeline = lit(color_format);
+        let hdr_pipeline = lit(crate::post::HDR_FORMAT);
         let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("pbr skinned shadow"),
             bind_group_layouts: &[Some(groups[0]), None, None, Some(&layout)],
@@ -274,6 +280,7 @@ impl Skinning {
         let plain = Self::bind(device, &layout, &palettes, &weights, &no_deltas);
         Self {
             pipeline,
+            hdr_pipeline,
             shadow_pipeline,
             layout,
             palettes,

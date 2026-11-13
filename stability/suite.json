@@ -69,6 +69,17 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "render-3d-looks",
+      "description": "3D rendering with bloom, point and spot light shadows, environment reflections and sky background, glTF emissive (decisions 0064 to 0067), both eyes of an emulated headset.",
+      "kind": "render",
+      "scene": "examples/looks.scene.json",
+      "views": 2,
+      "size": "640x360",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "render-3d-play",
       "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
       "kind": "render",

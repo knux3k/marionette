@@ -6,12 +6,14 @@
 
 pub use marionette_assets as assets;
 pub mod compare;
+mod environment;
 pub mod extract;
 pub mod gpu;
+mod post;
 pub mod renderer;
 mod skinning;
 pub mod window;
 
-pub use extract::{FrameData, View, extract, extract_at};
+pub use extract::{EnvironmentData, FrameData, View, extract, extract_at};
 pub use gpu::{FrameTiming, Gpu, GpuObjects, Offscreen};
 pub use renderer::{MAX_VIEWS, RenderStats, Renderer};
