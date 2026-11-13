@@ -294,7 +294,8 @@ impl Percentiles {
 
 #[derive(Serialize, JsonSchema, Clone, Debug, Default)]
 pub struct Memory {
-    /// What was measured: `resident` (process RSS) or the name of a custom probe.
+    /// What was measured: `heap` (counted heap, decision 0069), `resident` (process RSS) or
+    /// the name of a custom probe.
     pub probe: String,
     pub start_mib: f64,
     pub after_warmup_mib: f64,
@@ -302,6 +303,10 @@ pub struct Memory {
     pub peak_mib: f64,
     pub growth_mib: f64,
     pub limit_mib: f64,
+    /// Resident size growth after warm-up, for information when the check used another
+    /// probe (not judged: allocator arenas and drivers move it).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resident_growth_mib: Option<f64>,
 }
 
 #[derive(Serialize, JsonSchema, Clone, Debug)]
@@ -388,7 +393,24 @@ fn probe() -> (&'static str, MemoryProbe) {
     PROBE
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .unwrap_or(("resident", resident_bytes))
+        .unwrap_or_else(default_probe)
+}
+
+/// The counted heap when the binary installed `marionette_host::alloc::Counting` (the
+/// `marionette` binary does): it measures what the engine keeps on every platform and is not
+/// moved by allocator arenas the way resident size is (decision 0069). Otherwise resident
+/// size where the platform has one.
+fn default_probe() -> (&'static str, MemoryProbe) {
+    if heap_bytes().is_some() {
+        ("heap", heap_bytes)
+    } else {
+        ("resident", resident_bytes)
+    }
+}
+
+/// Live bytes of the counted heap; `None` unless `Counting` is the global allocator.
+pub fn heap_bytes() -> Option<u64> {
+    Some(marionette_host::alloc::stats().live_bytes).filter(|b| *b > 0)
 }
 
 /// Process resident set size (Linux: `/proc/self/statm`). `None` elsewhere.
@@ -805,6 +827,8 @@ struct Meter {
     probe: (&'static str, MemoryProbe),
     start: Option<u64>,
     after_warmup: Option<u64>,
+    /// Resident size after warm-up, kept for information when `probe` is another probe.
+    resident_after_warmup: Option<u64>,
     peak: u64,
     leak: Vec<Vec<u8>>,
     /// Frames are drawn by a software rasterizer: frame times are not checked.
@@ -822,6 +846,7 @@ impl Meter {
             probe,
             start,
             after_warmup: None,
+            resident_after_warmup: None,
             peak: start.unwrap_or(0),
             leak: Vec::new(),
             software_gpu: false,
@@ -836,6 +861,7 @@ impl Meter {
             self.peak = self.peak.max(b);
             if tick + 1 >= self.warmup && self.after_warmup.is_none() {
                 self.after_warmup = Some(b);
+                self.resident_after_warmup = resident_bytes();
             }
         }
     }
@@ -895,6 +921,11 @@ impl Meter {
                 peak_mib: mib(self.peak.max(end)),
                 growth_mib: growth,
                 limit_mib: limit,
+                resident_growth_mib: match (self.probe.0, self.resident_after_warmup, resident_bytes()) {
+                    ("resident", ..) => None,
+                    (_, Some(w), Some(e)) => Some(mib(e.saturating_sub(w))),
+                    _ => None,
+                },
             });
         }
         r.frame_budget_checked = job.timing_enforced
@@ -943,7 +974,9 @@ fn work_sim(job: &Job, progress: &Progress, out: &Mutex<ModeResult>) -> Result<(
             Ok(gpu) => {
                 let (w, h) = crate::observe::parse_size(job.mode.size.as_deref().unwrap_or("320x180"))?;
                 let dir = job.scene_path.parent().map(Path::to_path_buf).unwrap_or_default();
-                let off = marionette_render::Offscreen::new(&gpu, w, h, 1, dir);
+                let mut off = marionette_render::Offscreen::new(&gpu, w, h, 1, dir);
+                // As the window loop does: late models decode off the frame (decision 0068).
+                off.set_streaming(true);
                 render = Some((gpu, off));
             }
             Err(e) if !require_gpu() => {

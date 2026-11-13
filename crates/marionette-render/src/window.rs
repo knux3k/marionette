@@ -198,13 +198,15 @@ impl App<'_> {
         }
         config.present_mode = wgpu::PresentMode::AutoVsync;
         surface.configure(&gpu.device, &config);
-        let renderer = Renderer::new(
+        let mut renderer = Renderer::new(
             &gpu.device,
             &gpu.queue,
             config.format,
             self.opts.sample_count,
             self.opts.base_dir.clone(),
         );
+        // Models first seen mid-game decode in the background, not in the frame (decision 0068).
+        renderer.set_streaming(true);
         let (msaa, depth) = attachments(&gpu.device, &config, self.opts.sample_count);
         Ok(Running {
             window,
