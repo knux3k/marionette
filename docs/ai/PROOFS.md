@@ -1,20 +1,22 @@
 # Proofs
 
-Commands and tests that prove each done part of the engine. Read only the section for the
-part you are changing. Moved out of STATE.md (decision 0061); add new proofs here.
+Commands and tests that prove each done part of the engine, one file per area in
+`docs/ai/proofs/`. Read only the file for the part you are changing.
 
-Line 1: `cargo build`, `cargo test`, `cargo clippy --all-targets -- -D warnings`,
-`cargo fmt --all -- --check` all pass. Workflow: `.github/workflows/ci.yml`.
+| Area | File |
+| --- | --- |
+| Core and workspace (plan lines 1 and 2) | [proofs/core.md](proofs/core.md) |
+| Renderer and looks (plan line 3) | [proofs/render.md](proofs/render.md) |
+| Scripting and job TypeScript (plan line 4) | [proofs/scripting.md](proofs/scripting.md) |
+| Agent interface, game Rust modules, skills and handoffs (plan line 5) | [proofs/agent.md](proofs/agent.md) |
+| Input, physics, audio, UI and animation (plan line 6) | [proofs/play.md](proofs/play.md) |
+| Providers, import, pool and generation (plan lines 7 and 8) | [proofs/assets.md](proofs/assets.md) |
+| Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
+| Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
 
-Line 2 (core):
-- `cargo run -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1`
-  prints `7441258fdf64141911d44e0608c48498897564168684fdd86cd244e149926558` (twice in a row).
-- Same with `--seed 2` prints `2ae633b60710c744b5aff29d9a534d6732872f5278451ef3351b976558d0af15`.
-- Tests: `crates/marionette-core/tests/acceptance.rs` (`same_seed_gives_identical_hash_after_1000_ticks`,
-  `different_seed_gives_different_hash`, `load_then_save_is_byte_identical`,
-  `diagnostic_positions_are_exact`); `drift_hash_is_unchanged_from_plan_line_2` in
-  `crates/marionette-cli/tests/cli.rs`.
+## Adding a proof
 
+<<<<<<< HEAD
 Line 3 (renderer):
 - Reference images (320x180, 60 ticks, seed 1, MSAA 4), SHA-256 of the committed files:
   - `examples/reference/showcase.png`: `9563bd7152cc2ac32f2aff9119ad9ce8475e07cd96a085fc6c22651e6adab996`
@@ -433,3 +435,13 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
   snapshot byte for byte.
 - `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_capture_budget`:
   4x factory capture 0.75 ms (budget 2 ms); the whole snapshot as text 72 ms, 2.3 MB (container).
+=======
+- Add it to the file of its area, under a heading that names the feature and its decision.
+  Say what was run, on what class of machine, and what was not checked.
+- A new area gets a new file `docs/ai/proofs/<area>.md` and a row here. Do not create other
+  overflow files in `docs/ai/`.
+- Each file stays under the size limit in `crates/marionette-cli/tests/doc_budget.rs`; when
+  one fills up, split it by feature.
+- Measurement tables that a doc explains (budgets, frame cost) stay with that doc; the proof
+  entry links to it.
+>>>>>>> origin/main
