@@ -24,6 +24,7 @@ const LOAD_32X_MS: f64 = 5000.0;
 const SAVE_CAPTURE_4X_MS: f64 = 2.0;
 /// Main-thread part of a whole save game of a 4x factory (`save_write`: state copy plus
 /// module bytes); scene text, checksum and file go to the save thread (decision 0076).
+#[cfg(feature = "save")]
 const SAVE_GAME_4X_MS: f64 = 2.0;
 /// CPU side of a stereo frame of the 32x factory: extract plus record and submit, median.
 const RENDER_CPU_32X_STEREO_MS: f64 = 4.0;
