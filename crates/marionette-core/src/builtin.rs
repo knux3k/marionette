@@ -102,6 +102,10 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<spatial::LevelOfDetail>();
     registry.register_resource::<spatial::RenderScale>();
     registry.register_resource::<spatial::Foveation>();
+    // Remaining lighting (decisions 0090 to 0093).
+    registry.register_resource::<spatial::ShadowCascades>();
+    registry.register_component::<spatial::ReflectionProbe>();
+    registry.register_resource::<spatial::RayTracing>();
     registry.register_component::<ui::UiNode>();
     registry.register_component::<ui::UiRect>();
     registry.register_component::<ui::UiText>();

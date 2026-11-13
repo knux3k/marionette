@@ -125,7 +125,10 @@ pub struct Culler {
     /// Off: every instance is `Seen` at level 0 (the old behavior, for comparisons).
     pub enabled: bool,
     views: Vec<Frustum>,
-    shadow: Option<Frustum>,
+    /// Sun shadow volumes (one per cascade).
+    shadow: Vec<Frustum>,
+    /// Ray-traced frames (decision 0093) keep everything: rays see behind the camera.
+    keep_all: bool,
     /// Shadow-casting point and spot lights: (position, range).
     lamps: Vec<(Vec3, f32)>,
     /// Screen-size measure from the first view: (view-projection, vertical scale).
@@ -137,18 +140,26 @@ impl Culler {
     pub fn new(
         enabled: bool,
         views: &[Mat4],
-        shadow: Option<Mat4>,
+        shadow: &[Mat4],
         lamps: Vec<(Vec3, f32)>,
         lod: Option<Lod>,
     ) -> Self {
         Self {
             enabled,
             views: views.iter().map(Frustum::from_view_proj).collect(),
-            shadow: shadow.as_ref().map(Frustum::from_view_proj),
+            shadow: shadow.iter().map(Frustum::from_view_proj).collect(),
+            keep_all: false,
             lamps,
             first_view: views.first().map(|vp| (*vp, 1.0)),
             lod,
         }
+    }
+
+    /// Keeps every instance at least for shadows (never `Hidden`): ray-traced shadows and
+    /// reflections need the whole scene in the acceleration structure.
+    pub fn keeping_all(mut self, keep: bool) -> Self {
+        self.keep_all = keep;
+        self
     }
 
     /// Sets the vertical projection scale of the first view (`proj.y_axis.y`), which turns a
@@ -183,7 +194,8 @@ impl Culler {
         if seen && !hidden_by_size {
             return (Class::Seen, level);
         }
-        let shadowed = self.shadow.as_ref().is_some_and(|f| f.touches(s))
+        let shadowed = self.keep_all
+            || self.shadow.iter().any(|f| f.touches(s))
             || self
                 .lamps
                 .iter()
@@ -279,16 +291,22 @@ mod tests {
     }
 
     #[test]
+    fn ray_traced_frames_keep_everything_for_rays() {
+        let c = Culler::new(true, &[persp()], &[], vec![], None).keeping_all(true);
+        assert_eq!(c.classify(&sphere(0.0, 0.0, 500.0, 0.5), 1).0, Class::ShadowOnly);
+    }
+
+    #[test]
     fn things_behind_the_camera_stay_in_shadow_maps_when_they_could_cast() {
         let shadow = glam::camera::rh::proj::directx::orthographic(-20.0, 20.0, -20.0, 20.0, -50.0, 50.0)
             * glam::camera::rh::view::look_at_mat4(Vec3::new(0.0, 10.0, 0.0), Vec3::ZERO, Vec3::Z);
-        let c = Culler::new(true, &[persp()], Some(shadow), vec![], None);
+        let c = Culler::new(true, &[persp()], &[shadow], vec![], None);
         assert_eq!(c.classify(&sphere(0.0, 0.0, 5.0, 0.5), 1).0, Class::ShadowOnly);
         assert_eq!(c.classify(&sphere(0.0, 0.0, 500.0, 0.5), 1).0, Class::Hidden);
         let lamp = Culler::new(
             true,
             &[persp()],
-            None,
+            &[],
             vec![(Vec3::new(0.0, 0.0, 600.0), 150.0)],
             None,
         );
@@ -306,14 +324,14 @@ mod tests {
             hide_below: 0.005,
         };
         let proj_y = 1.0 / 30f32.to_radians().tan();
-        let c = Culler::new(true, &[persp()], None, vec![], Some(lod)).with_projection_scale(proj_y);
+        let c = Culler::new(true, &[persp()], &[], vec![], Some(lod)).with_projection_scale(proj_y);
         assert_eq!(c.classify(&sphere(0.0, 0.0, -2.0, 1.0), 3), (Class::Seen, 0));
         assert_eq!(c.classify(&sphere(0.0, 0.0, -20.0, 1.0), 3), (Class::Seen, 1));
         assert_eq!(c.classify(&sphere(0.0, 0.0, -60.0, 1.0), 3), (Class::Seen, 2));
         // A part with fewer levels uses the most reduced one it has.
         assert_eq!(c.classify(&sphere(0.0, 0.0, -60.0, 1.0), 2), (Class::Seen, 1));
         assert_eq!(c.classify(&sphere(0.0, 0.0, -60.0, 0.01), 3).0, Class::Hidden);
-        let off = Culler::new(false, &[persp()], None, vec![], Some(lod));
+        let off = Culler::new(false, &[persp()], &[], vec![], Some(lod));
         assert_eq!(off.classify(&sphere(0.0, 0.0, 50.0, 1.0), 3), (Class::Seen, 0));
     }
 
