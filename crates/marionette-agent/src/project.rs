@@ -13,7 +13,8 @@ pub(crate) fn ops() -> Vec<Op> {
         op(
             "project_init",
             "Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), \
-             AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json.",
+             AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, \
+             docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`).",
             true,
             init,
         ),
@@ -179,9 +180,15 @@ fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
         let shown = format!("{}/{rel}", input.path);
         write_atomic(&dir.join(rel), &shown, text.as_bytes())?;
     }
+    let mut files: Vec<String> = files.iter().map(|(f, _)| f.to_string()).collect();
+    files.extend(crate::handoff::write_templates(agent, &input.path)?);
+    for (_, folder) in crate::skills::TARGETS {
+        crate::skills::install_into(agent, &[format!("{}/{folder}", input.path)])?;
+        files.push(format!("{folder}/"));
+    }
     Ok(InitOutput {
         path: input.path,
-        files: files.iter().map(|(f, _)| f.to_string()).collect(),
+        files,
     })
 }
 
