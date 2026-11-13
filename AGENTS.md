@@ -54,5 +54,6 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
 | `marionette-save-games` | save slots, autosave, versions and migrations |
 | `marionette-test-game` | scenarios, replays, stability soaks |
+| `marionette-world-ui` | panels, buttons and text in the 3D world, pointer and touch input |
 | `marionette-write-job` | hot loops in job TypeScript |
 | `marionette-write-script` | gameplay scripts in TypeScript |
