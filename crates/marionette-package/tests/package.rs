@@ -59,14 +59,15 @@ fn job_typescript_is_detected_and_unreferenced_assets_are_listed() {
     .unwrap();
     std::fs::write(
         d.join("scenes/main.scene.json"),
-        r#"{"JobSchedule":{},"model":"../assets/used.glb"}"#,
+        r#"{"JobSchedule":{},"XrRig":{},"model":"../assets/used.glb"}"#,
     )
     .unwrap();
     std::fs::write(d.join("assets/used.glb"), b"x").unwrap();
     std::fs::write(d.join("assets/spare.png"), b"x").unwrap();
     std::fs::write(d.join("assets/spare.provenance.json"), b"{}").unwrap();
     let g = read_game(d).unwrap();
-    assert_eq!(g.features, vec!["jobs-ts".to_string()]);
+    assert_eq!(g.features, vec!["jobs-ts".to_string(), "xr".to_string()]);
+    assert!(marionette_package::is_vr(&g));
     assert_eq!(
         g.left_out,
         vec![

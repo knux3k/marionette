@@ -17,6 +17,8 @@
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend caps and ledger, keys files, network transport behind feature `net` | core, assets, sha2, schemars, ureq (optional) | render, input, physics, audio (decisions 0019, 0045) |
 | `crates/marionette-generate` | Asset generation: recipes, request-keyed cache, provenance, image approval, PNG and GLB post-processing (decision 0045) | core, assets, providers, glam, gltf | render, input, physics, audio, script |
 | `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028); blend spaces and masked or additive overlays (decision 0074) | core, assets | render, input, physics, audio, script |
+| `crates/marionette-xr` | XR gameplay on the tick: rig, tracked head and hands (poses are input actions), grab and throw, snap or smooth turn, stick movement, teleport, comfort vignette value (decision 0190) | core, input, physics, libm | render, wgpu, openxr |
+| `crates/marionette-openxr` | Headsets through OpenXR: Vulkan device via wgpu-hal, a swapchain per eye rendered by `Renderer::render_views`, controller actions and hand tracking fed as input, haptics, vignette pass, `probe` (decision 0190) | core, render, input, xr, openxr, wgpu, ash | agent, physics |
 | `crates/marionette-ui3d` | World-space UI (optional, feature `ui3d`): `UiPanel` and `UiContent`, distance-field font atlas, layout, pointer and touch hook (`UiPointers`), draws through `QuadDrawHooks` (decisions 0200, 0201) | core, assets, fontdue | render, input, agent |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts`, `JobsModule` (`JobSchedule` steps over `JobData`, the `JobRunner` for scripts, decision 0070) | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
@@ -111,7 +113,13 @@ the final pass before sprites and UI (`post.rs`, decision 0064); `CastShadows` o
 spot light adds depth passes into one shadow map array (decision 0065); `Environment` adds a
 CPU-prefiltered sky texture for diffuse and reflections and an optional sky background
 (`environment.rs`, decision 0066); glTF emissive comes through a per-material uniform
-(decision 0067).
+(decision 0067). Remaining lighting (decisions 0090 to 0093): `ShadowCascades` puts 2 to 4 sun
+maps in the sun's shadow map array; `Environment` reads `.hdr`/`.exr` (`marionette-assets`
+`hdr.rs`); `ReflectionProbe` pictures are captured in `prepare` and prefiltered like the
+environment (`probes.rs`); `RayTracing` uses a variant of the PBR shader with ray queries
+(`raytrace.rs`, `shaders/raytrace.wgsl`; stubs between `RT:BEGIN` and `RT:END` in `pbr.wgsl`),
+its own pipelines and lights group, a BLAS per static part and a TLAS per frame, only on GPUs
+with ray queries.
 
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so
@@ -150,3 +158,15 @@ followed by `tick=<n>` and `rng=<state>`.
 Not in the hash: `EventLog` (collisions, jumps, sounds), `SceneDir`, input `DeviceState`,
 `InputQueue`, `InputRecording`, Rapier internals (`Physics` resource), session logs and stats.
 Rapier internals and input state are carried by snapshots instead.
+
+## Headsets (decision 0190)
+
+`marionette xr <scene>` (`crates/marionette-cli/src/xr.rs`) loads the scene and calls
+`marionette_openxr::run`: OpenXR instance, Vulkan made by the runtime and wrapped by wgpu
+(`gpu.rs`), session, play space (stage, else local), one swapchain per eye. Per frame:
+`xrWaitFrame`, controls read at the predicted display time and fed as input events
+(`controls.rs`), ticks run to catch up, eyes located and rendered (`render_eyes`), vignette
+(`vignette.rs`), `xrEndFrame` with one projection layer. In the tick, `marionette-xr`
+(`systems.rs`, `Stage::Logic`) moves the rig, places tracked entities, keeps hand history and
+grabs or throws. Scripted poses (`marionette_xr::pose::events`) drive the same systems with no
+headset (`crates/marionette-cli/tests/xr.rs`).

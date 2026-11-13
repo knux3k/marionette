@@ -34,6 +34,8 @@ seen by the reference check: list it in a scene or set `keep_unreferenced`.
   script that makes them). Error `package.toolchain` names what is missing.
 - `package.glibc`: the binary was linked against a newer glibc; build through zigbuild.
 - A game with its own `Cargo.toml` is built from it and needs exactly one binary.
-- Steam Frame packages play as a flat window (no VR yet). On Deck and Frame, controls need a
+- A scene with `XrRig` makes a VR package: headset first, window if none. On Windows put
+  `openxr_loader.dll` in the game folder.
+- Flat games on Deck and Frame: controls need a
   Steam Input keyboard and mouse layout (no gamepad backend yet).
 - Uploading to Steam, signing, or sending a package to anyone is the owner's call: ask first.

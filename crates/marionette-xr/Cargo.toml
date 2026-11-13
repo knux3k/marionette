@@ -1,0 +1,15 @@
+[package]
+name = "marionette-xr"
+description = "Marionette XR gameplay: tracked head and hands, grab and throw, comfortable locomotion. Deterministic; no headset code."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-input = { path = "../marionette-input" }
+marionette-physics = { path = "../marionette-physics" }
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+libm = "0.2"

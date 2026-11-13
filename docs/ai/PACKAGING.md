@@ -38,9 +38,14 @@ Same as operations `package_build` and `package_targets` (MCP group `package`). 
   linked crate with its license and license files (identical texts once).
 - `README.txt` for the player, with Steam Deck and Steam Frame steps on those targets.
 
+VR games (a scene with `XrRig`, decision 0190) get `"vr": true` in the manifest: the binary
+tries the headset through OpenXR first and opens a window when no runtime or headset answers
+(`xr.no_*`). Linux and the Frame use the system OpenXR loader; on Windows put
+`openxr_loader.dll` in the game folder (the build warns when it is missing).
+
 The engine binary gets only the runtime features the game uses: `script` when it has
 TypeScript, `jobs-ts` when text names `JobData`, `JobSchedule` or `engine.jobs` (wasmtime is
-about 12 MB). A game with its own `Cargo.toml` (decision 0062) is built from that package.
+about 12 MB), `xr` when a scene has an `XrRig`. A game with its own `Cargo.toml` (decision 0062) is built from that package.
 
 Game settings in `marionette.json` (all optional):
 
@@ -75,11 +80,11 @@ headless for 60 ticks (`package.smoke`).
   SteamOS Devkit Client upload (fields: Local Folder, Start Command, Runtime).
 - VR: OpenXR recommended; Frame Verified needs at least 72 fps at 1728x1728 per eye in normal
   play and support for the Frame controllers.
-- Marionette has no OpenXR module yet, so a Steam Frame package plays as a flat window.
+- VR games start in the headset through OpenXR; other games play as a flat window.
 
 ## Gaps
 
 - No gamepad backend: on Deck and Frame the player uses a Steam Input keyboard-and-mouse layout.
-- No OpenXR module: no VR on the Frame.
+- VR packages never ran on a real headset or in the Frame's runtime.
 - No code signing (Windows SmartScreen warns on first start), no macOS target, no Steam depot
   upload (use SteamPipe with the zip contents).

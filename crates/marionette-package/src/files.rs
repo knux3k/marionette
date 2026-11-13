@@ -215,6 +215,10 @@ pub(crate) fn readme(game: &Game, target: &Target, bin: &str) -> String {
     }
     s += "Needs a GPU with Vulkan (Linux), or DirectX 12 or Vulkan (Windows).\n\
           Escape closes the game.\n\n";
+    if crate::is_vr(game) {
+        s += "VR: with an OpenXR runtime active (SteamVR, Monado) and a headset on, the game starts\n\
+              in the headset; otherwise it opens in a window.\n\n";
+    }
     match target.name {
         "steamdeck" => {
             s += &format!(
@@ -229,8 +233,8 @@ pub(crate) fn readme(game: &Game, target: &Target, bin: &str) -> String {
             s += &format!(
                 "Steam Frame (Linux ARM64)\n\
                  - Through the SteamOS Devkit Client: Title Upload with this folder, Start Command `{bin}`, Runtime \"Steam Linux Runtime 3.0 ARM64 (sniper)\".\n\
-                 - The game runs as a flat window; VR needs the engine's OpenXR module, which does not exist yet.\n\
-                 - Controls are keyboard and mouse: map the controllers with Steam Input.\n"
+                 - VR games start in the headset through OpenXR; other games run as a flat window.\n\
+                 - Flat games use keyboard and mouse (map the controllers with Steam Input); VR games read the controllers through OpenXR.\n"
             )
         }
         _ => {}

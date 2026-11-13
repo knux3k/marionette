@@ -16,6 +16,8 @@ pub(crate) struct Packaged {
     title: String,
     entry: String,
     window: String,
+    /// The game has an `XrRig`: try the headset first (decision 0190).
+    vr: bool,
 }
 
 /// The manifest beside the running executable, if any.
@@ -35,6 +37,7 @@ pub(crate) fn read(dir: &Path) -> Option<Packaged> {
         title: v["title"].as_str().unwrap_or("Marionette").to_string(),
         entry: v["entry"].as_str()?.to_string(),
         window: v["window"].as_str().unwrap_or("1280x720").to_string(),
+        vr: v["vr"] == true,
     })
 }
 
@@ -46,6 +49,10 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
     // Scene paths are relative to the package folder.
     let _ = std::env::set_current_dir(&game.dir);
     let scene = game.dir.join(&game.entry).display().to_string();
+    if let Some(code) = play_vr(engine, game, &scene) {
+        marionette_host::shutdown();
+        return code;
+    }
     let result = crate::render::windowed(crate::render::WindowedRun {
         engine,
         path: &scene,
@@ -66,6 +73,43 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// A VR game plays in the headset when an OpenXR runtime and headset are there; `None` means
+/// no headset (or not a VR game), so the caller opens a window instead.
+#[cfg(feature = "xr")]
+fn play_vr(engine: &Engine, game: &Packaged, scene: &str) -> Option<ExitCode> {
+    if !game.vr {
+        return None;
+    }
+    let result = crate::xr::run(crate::xr::XrRun {
+        engine,
+        path: scene,
+        seed: 0,
+        camera: None,
+        msaa: 4,
+        frames: None,
+        ticks: None,
+        scale: 1.0,
+        input: None,
+        record: None,
+        mute: false,
+    });
+    match result {
+        Ok(_) => Some(ExitCode::SUCCESS),
+        Err(e) if e.0.iter().any(|d| d.code.starts_with("xr.no_")) => None,
+        Err(e) => {
+            report(&game.title, &e.to_string());
+            Some(ExitCode::FAILURE)
+        }
+    }
+}
+
+#[cfg(not(feature = "xr"))]
+fn play_vr(_: &Engine, game: &Packaged, _: &str) -> Option<ExitCode> {
+    // Built without OpenXR: a VR game opens in a window.
+    let _ = game.vr;
+    None
 }
 
 /// On Windows, a game started by double-click gets a console window of its own (the binary

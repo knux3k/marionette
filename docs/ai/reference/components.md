@@ -212,6 +212,28 @@ Rust type: `marionette_core::builtin::Follow`.
 | `gain` | number | yes |  |
 | `target` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
 
+### `Grabbable`
+
+Can be picked up by an [`XrHand`]. With a dynamic `RigidBody` the object is moved by velocity while held, so it still collides (it cannot pass through walls); without one its `Transform` follows the hand exactly.
+
+Rust type: `marionette_xr::Grabbable`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap` | boolean | yes | Snap the object's origin and rotation to the grip (tools, guns); otherwise keep the offset it had when grabbed (boxes, loose items). |
+
+### `Held`
+
+On an object while a hand holds it. Written by the XR module.
+
+Rust type: `marionette_xr::Held`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hand` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+| `offset_rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
+| `offset_translation` | object {x, y, z} | yes | The object's pose relative to the grip. |
+
 ### `JobData`
 
 Named typed arrays that job functions read and write in place (decision 0070). Names are unique per entity. Saved with the scene and part of the state hash; keep arrays to what the game needs (every element is written in snapshots).
@@ -339,6 +361,17 @@ Rust type: `marionette_core::builtin::RandomImpulse`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `strength` | number | yes |  |
+
+### `ReflectionProbe`
+
+A box where shiny surfaces reflect a picture of the scene taken from the entity's position instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is taken when the probe first appears and again when it moves or changes; objects that move later are not in it (`RayTracing` reflections show those). Up to four probes; a point inside several uses the one with the lowest entity id.
+
+Rust type: `marionette_core::spatial::ReflectionProbe`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extent` | object {x, y, z} | yes | Half size of the box in meters along x, y and z, centered on the entity. Reflections are corrected for the box's walls, so match it to the room. |
+| `resolution` | integer | yes | Size of each of the six captured faces in texels (32 to 512; 128 is a good default). |
 
 ### `RigidBody`
 
@@ -529,6 +562,85 @@ Rust type: `marionette_core::builtin::Velocity`.
 | `y` | number | yes |  |
 | `z` | number | yes |  |
 
+### `XrHand`
+
+A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`.
+
+Rust type: `marionette_xr::XrHand`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `grab_action` | string | yes |  |
+| `grab_radius` | number | yes | Metres from the grip to an object's centre. |
+| `throw_scale` | number | yes | Multiplies the release velocity (1 = as moved). |
+
+### `XrHandMotion`
+
+Hand motion over the last few ticks. Written by the XR module.
+
+Rust type: `marionette_xr::XrHandMotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `angular_velocity` | object {x, y, z} | yes | Rotation speed over the last tick (radians per second, world axes). |
+| `last_rotation` | object {w, x, y, z} | yes | Grip rotation last tick. |
+| `positions` | array of object {x, y, z} | yes | Recent grip positions (world), oldest first, at most [`MOTION_TICKS`]. |
+| `velocity` | object {x, y, z} | yes | Average velocity over `positions` (m/s): a held object leaves the hand with this. |
+
+### `XrLocomotion`
+
+Stick movement, turning and teleport for the rig it is on. An empty action name turns that part off.
+
+Rust type: `marionette_xr::XrLocomotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `direction` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | Forward is where this source points, flattened (`Head`, or `LeftAim` for hand-relative). |
+| `move_x` | string | yes | Strafe action (-1 left .. 1 right). |
+| `move_y` | string | yes | Forward action (-1 back .. 1 forward). |
+| `smooth_degrees_per_second` | number | yes |  |
+| `snap_degrees` | number | yes |  |
+| `speed` | number | yes | Metres per second at full stick. |
+| `teleport` | string | yes | Hold to aim, release to teleport (needs physics: the aim ray must hit ground). |
+| `teleport_aim` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | The ray used to aim a teleport. |
+| `teleport_range` | number | yes | Longest teleport in metres. |
+| `turn` | string | yes | Turn action (-1 left .. 1 right). |
+| `turn_mode` | "Snap" \| "Smooth" \| "Off" | yes | How turning works. |
+| `vignette` | number | yes | Comfort vignette strength while moving or turning smoothly (0 off .. 1 strong). |
+
+### `XrLocomotionState`
+
+Locomotion state. Written by the XR module.
+
+Rust type: `marionette_xr::XrLocomotionState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap_armed` | boolean | yes | The turn stick returned to centre since the last snap. |
+| `teleport_point` | object {x, y, z} | yes | Where a teleport would land now (only meaningful while `teleport_valid`). |
+| `teleport_valid` | boolean | yes |  |
+
+### `XrRig`
+
+The play space: where the tracked area sits in the world. Tracked poses are relative to this entity's `Transform` (translation and rotation; scale is ignored). Locomotion moves and turns it.
+
+Rust type: `marionette_xr::XrRig`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `height_offset` | number | yes | Added to every tracked height: 0 for a standing play space (floor at 0); a seated player on a space whose origin is at eye level uses about 1.2. |
+
+### `XrTracked`
+
+Follows a tracked pose inside a rig every tick (its `Transform` is overwritten). While the source is not tracked the entity keeps its last pose.
+
+Rust type: `marionette_xr::XrTracked`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rig` | integer | yes | The entity with [`XrRig`]. |
+| `source` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | A tracked thing. |
+
 ## Resources
 
 ### `ActionState`
@@ -566,7 +678,7 @@ Rust type: `marionette_core::spatial::Bloom`.
 
 ### `Environment`
 
-Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models.
+Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1, relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. An image with a bright sun also lights surfaces through it: with a `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`.
 
 Rust type: `marionette_core::spatial::Environment`.
 
@@ -677,6 +789,19 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
 
+### `RayTracing`
+
+Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`, `Environment`), so add those as the fallback. Skinned models are not in the ray-traced scene yet.
+
+Rust type: `marionette_core::spatial::RayTracing`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `max_roughness` | number | yes | Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a good default. |
+| `reflections` | boolean | yes | Ray-traced reflections of other objects on surfaces smoother than `max_roughness`. |
+| `shadows` | boolean | yes | Ray-traced shadows for every directional, point and spot light, replacing shadow maps. |
+| `sun_size_degrees` | number | yes | Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5). |
+
 ### `RenderScale`
 
 Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0.
@@ -687,6 +812,17 @@ Rust type: `marionette_core::spatial::RenderScale`.
 | --- | --- | --- | --- |
 | `scale` | number | yes |  |
 | `sharpness` | number | yes |  |
+
+### `ShadowCascades`
+
+Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map).
+
+Rust type: `marionette_core::spatial::ShadowCascades`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `count` | integer | yes |  |
+| `far` | number | yes | Distance from the camera where shadows end, in meters (capped at the camera's far plane). |
 
 ### `Shadows`
 

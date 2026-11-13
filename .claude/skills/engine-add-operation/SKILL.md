@@ -1,6 +1,6 @@
 ---
 name: engine-add-operation
-description: Add or change an engine operation, component, resource or simulation system with schema, registration, tests and regenerated docs. Use when engine work (crates under crates/) needs a new operation, MCP tool, component type, resource or system.
+description: Add or change an engine operation, component, resource or system (crates under crates/) with schema, registration, tests and regenerated reference docs. Use when engine work needs a new operation, MCP tool, component type, resource or system.
 ---
 
 # Add an operation, component or system (engine work)

@@ -5,7 +5,8 @@
 // 2x2 pixel quad outside an inner ellipse, so nothing is shaded there; `fetch` fills those
 // pixels back in from the four neighbouring quads. The resolve pass then maps the internal
 // image to the output: a straight copy at scale 1, Catmull-Rom with ringing clamped to the
-// nearest texels (and optional sharpening) below 1, a box filter above 1.
+// nearest texels (and optional sharpening) below 1, a box filter above 1. With foveation and
+// scale below 1, the periphery (outside the inner ellipse) is upscaled bilinearly instead.
 
 struct ScaleU {
     // inner foveation radius (<= 0: off), sharpening 0..1, mode (0 copy, 1 up, 1 + ratio
@@ -85,47 +86,25 @@ fn fetch(p_in: vec2<i32>) -> vec3<f32> {
     return sum / max(weight, 1e-4);
 }
 
-fn cubic(x: f32) -> vec4<f32> {
-    // Catmull-Rom weights for the four texels around a sample at fraction x.
-    let x2 = x * x;
-    let x3 = x2 * x;
-    return vec4<f32>(
-        -0.5 * x3 + x2 - 0.5 * x,
-        1.5 * x3 - 2.5 * x2 + 1.0,
-        -1.5 * x3 + 2.0 * x2 + 0.5 * x,
-        0.5 * x3 - 0.5 * x2,
-    );
-}
-
-fn upscale(uv: vec2<f32>) -> vec3<f32> {
+// Bilinear from the four nearest texels, holes filled. Used outside the inner ellipse with
+// foveation: that region is shaded at a quarter of the quads already, so the 16-tap filter
+// costs more than it shows.
+fn upscale_periphery(uv: vec2<f32>) -> vec3<f32> {
     let size = vec2<f32>(textureDimensions(src));
     let pos = uv * size - 0.5;
     let base = vec2<i32>(floor(pos));
     let f = pos - floor(pos);
-    let wx = cubic(f.x);
-    let wy = cubic(f.y);
-    var sum = vec3<f32>(0.0);
-    var lo = vec3<f32>(1e9);
-    var hi = vec3<f32>(-1e9);
-    var bilinear = vec3<f32>(0.0);
-    for (var y = 0; y < 4; y = y + 1) {
-        var row = vec3<f32>(0.0);
-        for (var x = 0; x < 4; x = x + 1) {
-            let c = fetch(base + vec2<i32>(x - 1, y - 1));
-            row += c * wx[x];
-            if (x >= 1 && x <= 2 && y >= 1 && y <= 2) {
-                // The 2x2 texels around the sample bound the result (no ringing halos) and
-                // give the plain bilinear value the sharpening pushes away from.
-                lo = min(lo, c);
-                hi = max(hi, c);
-                let bw = select(1.0 - f.x, f.x, x == 2) * select(1.0 - f.y, f.y, y == 2);
-                bilinear += c * bw;
-            }
-        }
-        sum += row * wy[y];
-    }
-    let sharp = sum + (sum - bilinear) * u.params.y;
-    return clamp(sharp, lo, hi);
+    let a = mix(fetch(base), fetch(base + vec2<i32>(1, 0)), f.x);
+    let b = mix(fetch(base + vec2<i32>(0, 1)), fetch(base + vec2<i32>(1, 1)), f.x);
+    return mix(a, b, f.y);
+}
+
+// The sample at `uv` and every texel the fast filter reads lie inside the unmasked ellipse.
+fn inside_inner(uv: vec2<f32>) -> bool {
+    let size = vec2<f32>(textureDimensions(src));
+    let inner = u.params.x - 6.0 / min(size.x, size.y);
+    let d = uv * 2.0 - 1.0;
+    return inner > 0.0 && dot(d, d) <= inner * inner;
 }
 
 fn downscale(uv: vec2<f32>) -> vec3<f32> {
@@ -144,8 +123,9 @@ fn downscale(uv: vec2<f32>) -> vec3<f32> {
 }
 
 // Catmull-Rom from 9 bilinear taps (the middle two texels of each axis share one tap),
-// clamped to the 2x2 nearest texels (three gathers) so edges get no halos. Used when
-// foveation is off: no holes to fill, so the hardware filter can do the work.
+// clamped to the 2x2 nearest texels (three gathers) so edges get no halos. Used where there
+// are no holes to fill (no foveation, or inside the inner ellipse), so the hardware filter
+// can do the work.
 fn upscale_fast(uv: vec2<f32>) -> vec3<f32> {
     let size = vec2<f32>(textureDimensions(src));
     let inv = 1.0 / size;
@@ -188,10 +168,10 @@ fn fs_resolve(in: FullOut) -> @location(0) vec4<f32> {
     if (mode < 0.5) {
         c = fetch(vec2<i32>(in.clip.xy));
     } else if (mode < 1.5) {
-        if (foveated) {
-            c = upscale(in.uv);
-        } else {
+        if (!foveated || inside_inner(in.uv)) {
             c = upscale_fast(in.uv);
+        } else {
+            c = upscale_periphery(in.uv);
         }
     } else {
         c = downscale(in.uv);

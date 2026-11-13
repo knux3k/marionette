@@ -54,11 +54,11 @@ pub const GLIBC_FLOOR: (u32, u32) = (2, 31);
 /// Engine features a packaged game may get when it has no binary of its own: scripts and job
 /// TypeScript, each only when the game uses it ([`detect_features`]). Import, pool,
 /// generation, porting and packaging are editor tools and stay out.
-pub const RUNTIME_FEATURES: &[&str] = &["script", "jobs-ts"];
+pub const RUNTIME_FEATURES: &[&str] = &["script", "jobs-ts", "xr"];
 
 /// The runtime features a game's files use: `script` when it has TypeScript files,
 /// `jobs-ts` when any text names `JobData`, `JobSchedule` or `engine.jobs` (job TypeScript
-/// brings wasmtime, about 12 MB of binary).
+/// brings wasmtime, about 12 MB of binary), `xr` when a scene has an `XrRig` (decision 0190).
 pub fn detect_features(dir: &Path, files: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     if files.iter().any(|f| f.ends_with(".ts")) {
@@ -70,6 +70,13 @@ pub fn detect_features(dir: &Path, files: &[String]) -> Vec<String> {
     });
     if uses_jobs {
         out.push("jobs-ts".to_string());
+    }
+    let uses_xr = files
+        .iter()
+        .filter(|f| f.ends_with(".scene.json"))
+        .any(|f| std::fs::read_to_string(dir.join(f)).is_ok_and(|t| t.contains("\"XrRig\"")));
+    if uses_xr {
+        out.push("xr".to_string());
     }
     out
 }
@@ -117,7 +124,7 @@ pub const TARGETS: &[Target] = &[
         triple: "aarch64-unknown-linux-gnu",
         linux: true,
         window: "1920x1080",
-        summary: "Steam Frame (SteamOS on Linux ARM64); runs in Steam Linux Runtime 3.0 ARM64 (sniper), as a flat window until the OpenXR module exists",
+        summary: "Steam Frame (SteamOS on Linux ARM64); runs in Steam Linux Runtime 3.0 ARM64 (sniper); VR through OpenXR when the game has an XrRig, else a flat window",
     },
 ];
 
@@ -484,6 +491,8 @@ pub struct Built {
     pub smoke: String,
     /// Third-party crates whose licenses were bundled.
     pub crates: usize,
+    /// Things the package may miss (for example the OpenXR loader on Windows).
+    pub warnings: Vec<String>,
 }
 
 /// A compiled binary, kept so two targets with the same triple build once.
@@ -711,7 +720,29 @@ fn assemble(opts: &Options, game: &Game, target: &Target, binary: &Binary) -> Re
         glibc_required: manifest["glibc_required"].as_str().map(str::to_string),
         smoke,
         crates,
+        warnings: warnings(game, target),
     })
+}
+
+/// Whether the game plays in VR (its default binary has the `xr` feature).
+pub fn is_vr(game: &Game) -> bool {
+    game.features.iter().any(|f| f == "xr")
+}
+
+fn warnings(game: &Game, target: &Target) -> Vec<String> {
+    let mut out = Vec::new();
+    if is_vr(game)
+        && !target.linux
+        && !game
+            .files
+            .iter()
+            .any(|f| f.eq_ignore_ascii_case("openxr_loader.dll"))
+    {
+        out.push(
+            "VR game without openxr_loader.dll: put the OpenXR loader in the game folder (beside marionette.json) so it ships next to the executable; until then the game starts flat".into(),
+        );
+    }
+    out
 }
 
 fn fill(
@@ -767,6 +798,7 @@ fn fill(
         "binary": bin_name,
         "entry": game.entry,
         "window": game.settings.window.clone().unwrap_or_else(|| target.window.to_string()),
+        "vr": is_vr(game),
         "engine_version": env!("CARGO_PKG_VERSION"),
         "features": if game.rust_package.is_some() { Value::Null } else { json!(game.features) },
         "glibc_required": glibc,
