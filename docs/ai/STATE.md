@@ -24,9 +24,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 - World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
   not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
-- Shared performance suite (decision 0100): GPU time is submit-to-idle wall time, not
-  timestamp queries; desktop idle check runs on Windows only. `dist` profile gain (decision
-  0101) shown by alternated runs in a cloud VM; on the desktop only by single runs so far.
+- Perf suite (decision 0100): GPU time is submit-to-idle, not timestamps. `dist` gain
+  (decision 0101): alternated runs in the cloud; desktop single runs only.
 
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
   been worked on by several real agents through it, and claims are not checked against a

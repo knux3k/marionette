@@ -71,6 +71,6 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | Performance | Saving a large scene held the tick for 50 to 70 ms at 4x (a real port's budget is 2 ms) | done: `Sim::capture`, text written off the tick (decision 0073) |
 | Modularity | Porting tools could not see Unity Burst jobs and crashed on real code | done: job role, `jobs.rs` skeletons, partial classes (decision 0072) |
 | Performance | Every instance drawn in every view; far parts drawn at full detail | done: frustum culling always on, `LevelOfDetail` (decision 0080); render scale, upscaling and foveation open |
-| Performance | No shared benchmark: every session measured differently, no check that a speedup kept results identical | done: `perf_suite`, `perf_compare`, skill `engine-measure-performance` (decision 0100) |
-| Performance | Default `release` build leaves 5 to 30 percent CPU on the table | done for shipping: `--profile dist` (decision 0101) |
-| Performance | Script-driven games allocate 900 to 2,200 times per tick (suite `allocs/tick`) | open |
+| Performance | No shared benchmark with an output check | done: `perf_suite`, `perf_compare` (decision 0100) |
+| Performance | `release` leaves 5 to 30 percent CPU unused | done: `--profile dist` (decision 0101) |
+| Performance | Script games allocate 900 to 2,200 times per tick | open |
