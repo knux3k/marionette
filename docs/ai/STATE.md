@@ -18,7 +18,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | Editor view done (decision 0130); rest not started. |
+| 10 | Later (OpenXR, AI while playing, inspector) | Inspector (0130) only. |
 
 ## UNVERIFIED
 
@@ -65,8 +65,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
   container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
-- Editor window (0130): Linux virtual display only.
-- Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
+- Windows (`marionette run`, no `--headless`; `marionette edit`) never ran on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
@@ -122,3 +121,5 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
   is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
   check: a dry run over a project the owner has, with their permission.
+
+- `port_serde` (0240): field order and float text unchecked against real JsonUtility files.
