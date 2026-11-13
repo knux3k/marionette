@@ -24,6 +24,7 @@ public static class W {
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hgt, bool repaint);
   [DllImport("user32.dll")] public static extern IntPtr GetShellWindow();
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
   public static void Down(byte vk) { keybd_event(vk, 0, 0, UIntPtr.Zero); }
   public static void Up(byte vk) { keybd_event(vk, 0, 2, UIntPtr.Zero); }
 }
@@ -36,8 +37,10 @@ function Start-Run([string]$name, [string[]]$extra) {
     $argv = @("run", $Scene, "--mute", "--seconds", "$Seconds", "--frame-stats", $stats, "--record", $rec) + $extra
     $p = Start-Process -FilePath $Exe -ArgumentList $argv -PassThru -RedirectStandardOutput $log -WindowStyle Normal
     $null = $p.Handle  # keeps the exit code readable in Windows PowerShell 5.1
-    # Wait for the window.
-    for ($i = 0; $i -lt 50 -and $p.MainWindowHandle -eq 0; $i++) { Start-Sleep -Milliseconds 100; $p.Refresh() }
+    # Wait for the window. A freshly built exe can take many seconds to start (the virus scanner
+    # reads it first); a handle of 0 here made every later step a silent no-op.
+    for ($i = 0; $i -lt 300 -and $p.MainWindowHandle -eq 0; $i++) { Start-Sleep -Milliseconds 100; $p.Refresh() }
+    if ($p.MainWindowHandle -eq 0) { throw "${name}: no window after 30 s" }
     return $p
 }
 
@@ -68,8 +71,12 @@ function Drive($p, [bool]$disturb) {
     # Resize twice, minimize for 2 s (CPU time while minimized is measured), restore.
     [W]::MoveWindow($h, 100, 100, 1600, 900, $true) | Out-Null; Start-Sleep -Milliseconds 500
     [W]::MoveWindow($h, 100, 100, 960, 540, $true) | Out-Null; Start-Sleep -Milliseconds 500
+    # Measured only once Windows reports the window minimized, after the animation settles.
+    [W]::ShowWindow($h, 6) | Out-Null; Start-Sleep -Seconds 1
+    $script:minimized = [W]::IsIconic($h)
+    if (-not $script:minimized) { Write-Warning "window did not minimize: the CPU number tests nothing" }
     $p.Refresh(); $cpu0 = $p.TotalProcessorTime
-    [W]::ShowWindow($h, 6) | Out-Null; Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 2
     $p.Refresh(); $cpu1 = $p.TotalProcessorTime
     [W]::ShowWindow($h, 9) | Out-Null
     [W]::SetForegroundWindow($h) | Out-Null
@@ -88,12 +95,13 @@ $summary = @{}
 foreach ($r in $runs) {
     $p = Start-Run $r.name $r.extra
     $script:foreground = $false
+    $script:minimized = $null
     $minCpu = Drive $p $r.disturb
     if (-not $p.WaitForExit(($Seconds + 15) * 1000)) { $p.Kill(); $summary[$r.name] = @{ error = "did not close" }; continue }
     $frames = Get-Content (Join-Path $Out "$($r.name).frames.json") -Raw | ConvertFrom-Json
     # Whether the synthetic keys reached the game: the recording has events only if they did.
     $events = (Get-Content (Join-Path $Out "$($r.name).inputs.json") -Raw | ConvertFrom-Json).events.Count
-    $summary[$r.name] = @{ exit = $p.ExitCode; foreground = $script:foreground; recorded_events = $events; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
+    $summary[$r.name] = @{ exit = $p.ExitCode; foreground = $script:foreground; minimized = $script:minimized; recorded_events = $events; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
     Start-Sleep -Seconds 1
 }
 $summary | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $Out "summary.json")
