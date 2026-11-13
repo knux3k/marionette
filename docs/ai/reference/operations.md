@@ -87,6 +87,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
+| `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 | `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
 | `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
@@ -2081,6 +2083,62 @@ Output:
 | `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
+
+## `net_simulate`
+
+Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array \| null |  | Actions that travel. Default: the scene's action map. |
+| `drop_at` | integer \| null |  |  |
+| `drop_slot` | integer \| null |  | A client slot whose game vanishes at `drop_at`. |
+| `hash_interval` | integer \| null |  | Compare state hashes every this many ticks (0 = never). Default 60. |
+| `input_change` | number \| null |  | Chance per tick per action that a player changes it. Default 0.05. |
+| `late_join_at` | integer \| null |  | A player who joins at this host tick (gets a snapshot). |
+| `link` | LinkConditions \| null |  | Simulated link, each direction. Default 40 ms, 10 ms jitter, 2% loss. |
+| `players` | integer \| null |  | Players at the start, including the host (1 to 8). Default 2. |
+| `scene` | string | yes | Scene file, relative to the project root. |
+| `seed` | integer \| null |  | Seed of the sims, the inputs and the network. Default 1. |
+| `ticks` | integer \| null |  | Ticks the host runs. Default 600. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string | yes |  |
+| `all_equal` | boolean | yes | Every peer still playing ended in the host's state. |
+| `desyncs` | array of array of any | yes | (slot, tick) of each hash mismatch the session itself reported. |
+| `final_tick` | integer | yes |  |
+| `hash_checks` | integer | yes | Hash comparisons made by the session protocol. |
+| `host_bytes_per_tick` | number | yes | Host bytes sent per tick, average. |
+| `host_hash` | string | yes |  |
+| `peers` | array of PeerReport | yes |  |
+| `seconds` | number | yes | Virtual seconds of play. |
+
+## `achievements_check`
+
+Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes | Definitions file, relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `achievements` | array of string | yes |  |
+| `stat_driven` | integer | yes | Achievements unlocked by a stat threshold. |
+| `stats` | array of string | yes |  |
 
 ## `batch_run`
 
