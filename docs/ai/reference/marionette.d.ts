@@ -601,6 +601,16 @@ type Grabbable = {
   snap: boolean;
 };
 
+/** A point gravity source at the entity's `Transform` translation (a planet, a moon). Gravity is `surface_gravity * (radius / r)²` at distance `r >= radius` and falls off linearly to zero at the centre inside (a body of even density), so it is finite everywhere. Set the scene's `PhysicsSettings.gravity` to zero when wells are used. */
+type GravityWell = {
+  /** Reference radius in metres (the ground level). */
+  radius: number;
+  /** No pull beyond this distance from the centre (sphere of influence); 0 = everywhere. */
+  range: number;
+  /** Acceleration in m/s² at `radius`. */
+  surface_gravity: number;
+};
+
 /** On an object while a hand holds it. Written by the XR module. */
 type Held = {
   /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
@@ -739,6 +749,16 @@ type ModelPlacement = {
   };
 };
 
+/** A movement request in world space, written by one system and read by another without either depending on the other (decision 0232): navigation writes it, a character controller (`PlanetCharacter` in physics) or a game's own system reads it. `velocity` is in m/s; a reader uses the part along the ground and caps it at its own speed. `jump` asks for one jump; the reader sets it back to false. */
+type MoveIntent = {
+  jump: boolean;
+  velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
 /** Layered music, not positional. Raise `intensity` to bring layers in. */
 type Music = {
   /** Seconds for a layer to fade fully in or out (0 = instant). */
@@ -760,6 +780,79 @@ type Music = {
   volume: number;
 };
 
+/** An agent that walks to `goal` over a `NavSurface`. */
+type NavAgent = {
+  /** m/s². */
+  acceleration: number;
+  /** False stands still (and drops the route). */
+  active: boolean;
+  /** Counts as arrived within this many metres of the goal. */
+  arrive_distance: number;
+  drive: "Direct" | "Intent";
+  /** Destination in world space. Changing it plans a new route. */
+  goal: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** `Direct` only: height of the entity's origin above the ground. */
+  height: number;
+  /** Body radius for avoidance, in metres. */
+  radius: number;
+  /** Top speed in m/s. */
+  speed: number;
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  surface: number;
+};
+
+/** Navigation's view of an agent. Written by navigation. */
+type NavAgentState = {
+  /** Route corners left before the goal. */
+  corners: number;
+  status: "Idle" | "Waiting" | "Moving" | "Partial" | "Arrived" | "Unreachable";
+  /** World-space velocity in m/s. */
+  velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
+/** Blocks the surface cells within `radius` (plus the surface's clearance) of this entity's `Transform` translation, while the entity exists. */
+type NavObstacle = {
+  radius: number;
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  surface: number;
+};
+
+/** Navigation tunables (optional resource; these defaults apply without it). */
+type NavSettings = {
+  /** Seconds ahead that avoidance looks. */
+  horizon: number;
+  /** Agents closer than this (metres) are considered for avoidance. */
+  neighbour_distance: number;
+  /** Cells one search may expand before it settles for the closest place. */
+  search_budget: number;
+  /** Route searches started per tick at most (agents beyond wait in order). */
+  searches_per_tick: number;
+};
+
+/** A walkable round world. Put it on the world's entity; its `Transform` translation is the centre and its rotation turns the grid with the world. */
+type NavSurface = {
+  /** Extra metres added around every obstacle (agent body clearance). */
+  clearance: number;
+  /** Steepest walkable ground as rise over run (1 = 45°). */
+  max_grade: number;
+  /** Ground is probed from `radius + probe` down to `radius - probe` (0 = no probing: a smooth sphere at `radius`). */
+  probe: number;
+  /** Ground radius in metres where there is no terrain to probe. */
+  radius: number;
+  /** Cells per cube-face edge (6 × resolution² cells; 128 gives cells of about radius / 80 metres). 4 to 1024. */
+  resolution: number;
+  /** Ground below this distance from the centre is water and not walkable (0 = none). */
+  sea_level: number;
+};
+
 /** The players in a networked session, by slot (0 is the host). Part of the state hash, so a peer that disagrees about who is playing is caught as a desync. */
 type NetPlayers = {
   /** Occupied slots, ascending. */
@@ -775,6 +868,35 @@ type PhysicsSettings = {
     z: number;
   };
   mode: "Dim3" | "Dim2";
+};
+
+/** Walk on round worlds. Needs a `CharacterController` (its speed, jump speed, mass and actions are used; its `gravity` is used only where no `GravityWell` pulls). */
+type PlanetCharacter = {
+  /** How fast up turns toward minus gravity, in radians per second (0 = at once). */
+  align_speed: number;
+  /** Turn to face the walking direction (AI characters); off for player-turned characters. */
+  face_movement: boolean;
+  /** Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none. Inside a `SphereFluid` it is the swim-up acceleration. */
+  thrust: number;
+  /** Action that fires `thrust` (empty = none). */
+  thrust_action: string;
+};
+
+/** What a `PlanetCharacter` currently feels. Written by physics. */
+type PlanetState = {
+  /** The gravity acting on the character in m/s² (zero in empty space). */
+  gravity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  swimming: boolean;
+  /** The character's up (unit length). */
+  up: {
+    x: number;
+    y: number;
+    z: number;
+  };
 };
 
 /** A light at the entity's position shining in every direction (a lamp, a torch, a glowing crystal). Brightness falls off with the square of the distance and reaches zero at `range`. The renderer uses the first 16 point and spot lights by entity id. */
@@ -931,6 +1053,16 @@ type SoundSpatial = {
 /** The next scene id for entities that scripts spawn. Added the first time a script spawns or destroys an entity; ids are never reused, so an id kept in `self.state` can never point at a newer entity. */
 type SpawnIds = {
   next: number;
+};
+
+/** A spherical fluid (ocean, thick atmosphere) around the centre of the entity's `Transform`. Bodies and characters closer to the centre than `radius` are inside it. */
+type SphereFluid = {
+  /** Fraction of gravity cancelled inside (1 = floats in place, above 1 rises). */
+  buoyancy: number;
+  /** Velocity damping per second inside (0 = none). */
+  drag: number;
+  /** Fluid surface distance from the centre in metres. */
+  radius: number;
 };
 
 /** A cone of light from the entity's position along `direction` (a flashlight, a street lamp). Full brightness inside `inner_angle_degrees` from the axis, fading to zero at `outer_angle_degrees`. Shares the 16-light limit with `PointLight`. */
@@ -1181,6 +1313,7 @@ interface Components {
   FactoryMachine: FactoryMachine;
   Follow: Follow;
   Grabbable: Grabbable;
+  GravityWell: GravityWell;
   Held: Held;
   JobData: JobData;
   JobDraw: JobDraw;
@@ -1189,7 +1322,14 @@ interface Components {
   Material: Material;
   Model: Model;
   ModelPlacement: ModelPlacement;
+  MoveIntent: MoveIntent;
   Music: Music;
+  NavAgent: NavAgent;
+  NavAgentState: NavAgentState;
+  NavObstacle: NavObstacle;
+  NavSurface: NavSurface;
+  PlanetCharacter: PlanetCharacter;
+  PlanetState: PlanetState;
   PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;
@@ -1200,6 +1340,7 @@ interface Components {
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
   SoundSpatial: SoundSpatial;
+  SphereFluid: SphereFluid;
   SpotLight: SpotLight;
   Sprite: Sprite;
   SpriteRegion: SpriteRegion;
@@ -1231,6 +1372,7 @@ interface Resources {
   Foveation: Foveation;
   InputConfig: InputConfig;
   LevelOfDetail: LevelOfDetail;
+  NavSettings: NavSettings;
   NetPlayers: NetPlayers;
   PhysicsSettings: PhysicsSettings;
   RayTracing: RayTracing;

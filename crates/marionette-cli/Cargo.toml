@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "save"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav", "save"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
@@ -29,6 +29,7 @@ xr = ["dep:marionette-openxr"]
 netplay = ["marionette-agent/netplay"]
 # World-space UI (off by default; decision 0200).
 ui3d = ["marionette-agent/ui3d"]
+nav = ["marionette-agent/nav"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-agent/net"]
 

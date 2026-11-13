@@ -68,6 +68,8 @@ impl EngineBuilder {
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
                 #[cfg(feature = "save")]
                 Part::Module(Box::new(marionette_save::SaveModule::default())),
+                #[cfg(feature = "nav")]
+                Part::Module(Box::new(marionette_nav::NavModule)),
                 #[cfg(feature = "netplay")]
                 Part::Module(Box::new(marionette_net::NetModule)),
             ],

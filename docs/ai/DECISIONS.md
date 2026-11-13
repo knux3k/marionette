@@ -80,4 +80,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0211 | Networked input is per-player actions `p<slot>.<action>` and a `NetPlayers` resource | accepted |
 | 0212 | Steam is an optional backend that loads the game's own steam_api library at run time (no SDK files) | accepted |
 | 0213 | Achievements, stats and cloud files behind interfaces, offline backend, three-way save-folder sync (`marionette-platform`) | accepted |
+| 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
+| 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
+| 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |

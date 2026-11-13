@@ -17,6 +17,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Save games (decision 0076) | [proofs/save-games.md](proofs/save-games.md) |
 | Headsets through OpenXR (decision 0190) | [proofs/xr.md](proofs/xr.md) |
 | Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
+| Round worlds and navigation | [proofs/navigation.md](proofs/navigation.md) |
 
 ## Adding a proof
 
