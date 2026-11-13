@@ -11,7 +11,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
 | 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063). |
+| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). |
 | 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
@@ -24,6 +24,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
+- Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
+  on Mesa lavapipe only (tests, reference image `looks.png`); no hardware-GPU frame cost yet.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
   build machine's network blocks those sites, so no live search or download has run.

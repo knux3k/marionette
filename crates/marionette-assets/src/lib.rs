@@ -63,6 +63,11 @@ pub struct MaterialData {
     pub metallic_roughness_texture: Option<usize>,
     pub normal_texture: Option<usize>,
     pub normal_scale: f32,
+    /// Light given off (linear RGB): glTF `emissiveFactor` times
+    /// `KHR_materials_emissive_strength` (decision 0067). Zero for most materials.
+    pub emissive: [f32; 3],
+    /// sRGB image multiplying `emissive`.
+    pub emissive_texture: Option<usize>,
 }
 
 impl Default for MaterialData {
@@ -75,6 +80,8 @@ impl Default for MaterialData {
             metallic_roughness_texture: None,
             normal_texture: None,
             normal_scale: 1.0,
+            emissive: [0.0; 3],
+            emissive_texture: None,
         }
     }
 }
@@ -222,6 +229,9 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
         if let Some(info) = mat.pbr_metallic_roughness().base_color_texture() {
             srgb[info.texture().source().index()] = true;
         }
+        if let Some(info) = mat.emissive_texture() {
+            srgb[info.texture().source().index()] = true;
+        }
     }
     let images: Vec<Image> = images.iter().zip(srgb).map(|(d, s)| gltf_image(d, s)).collect();
 
@@ -242,6 +252,11 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                 .map(|t| t.texture().source().index()),
             normal_texture: mat.normal_texture().map(|t| t.texture().source().index()),
             normal_scale: mat.normal_texture().map_or(1.0, |t| t.scale()),
+            emissive: {
+                let strength = mat.emissive_strength().unwrap_or(1.0).max(0.0);
+                mat.emissive_factor().map(|c| c * strength)
+            },
+            emissive_texture: mat.emissive_texture().map(|t| t.texture().source().index()),
         });
     }
     let default_material = model.materials.len();

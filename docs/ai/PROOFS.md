@@ -35,12 +35,29 @@ Opt-in looks (decision 0063):
 - Example `examples/lighting.scene.json`, built by `examples/lighting.ops.json`
   (`marionette op batch_run '{"file":"examples/lighting.ops.json"}'` after deleting the scene).
   `run examples/lighting.scene.json --headless --ticks 60 --seed 1` prints
-  `3ee41e1c69d935cd056e877c62b1e2ae6920860b188147c6478bea364b529841`.
+  `5c7cb06da50ec51e24fafdaea3ba1a00c05902d7ecc570c2ef6535c6e8c0cecb` (ground widened to 300 m
+  on 2026-11-13 so fog hides its edge, decision 0066).
 - Reference image `examples/reference/lighting.png` (320x180, 60 ticks, seed 1, MSAA 4, made on
-  Mesa lavapipe): `343fa9e737f9d2ae626e0ad0cf684819399e8c139db06240bd44fd9bc2d4dff7`.
+  Mesa lavapipe): `2e870ee61d22184d0e725de331ae613d9fe149dd17fb381948176565aec1787e`.
 - Tests: `opt_in_looks_change_the_image_only_when_present` and the lighting entries of
   `matches_reference_images` and `same_inputs_give_identical_images` in
   `crates/marionette-render/tests/render.rs`; stability mode `render-3d-lighting`.
+
+More looks (decisions 0064 to 0067):
+- Example `examples/looks.scene.json` (bloom, a street lamp with a glTF emissive lantern and a
+  shadow-casting point light, a shadow-casting spot light, mirror, brushed and glossy balls,
+  environment from `SkyLight` colors with sky background, fog), built by
+  `examples/looks.ops.json`. `run examples/looks.scene.json --headless --ticks 60 --seed 1`
+  prints `8ef0a4c6887a8796e767348f6176bacf231f761c81155244ddb80e55ac7042e4`.
+- Reference image `examples/reference/looks.png` (320x180, as above, Mesa lavapipe):
+  `c338965a9568ec8fb3ec7a464fb2dd64057ef97967b68047dd9bc98161f56b16`.
+- Tests in `crates/marionette-render/tests/render.rs`:
+  `point_and_spot_lights_cast_shadows_only_with_cast_shadows`,
+  `bloom_spreads_bright_light_and_only_with_bloom`,
+  `environment_lights_reflects_and_draws_the_sky`, `imports_gltf_emissive`, the looks entries
+  of the reference, determinism and GPU-object tests; unit tests in `post.rs` and
+  `environment.rs`. Existing reference images (showcase, sprites, ui) unchanged; lighting
+  within tolerance before its ground change. Stability mode `render-3d-looks` (two eyes).
 
 Line 4 (scripting, decision 0022):
 - Spike numbers and how to rerun them: decision 0022, harness `spikes/script-spike` (not a

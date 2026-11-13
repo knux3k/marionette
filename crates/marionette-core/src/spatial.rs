@@ -266,6 +266,44 @@ pub struct SkyLight {
     pub intensity: f32,
 }
 
+/// Turns on bloom: light brighter than `threshold` spills into a soft glow around it
+/// (lamps, emissive screens, the sun on metal). Works best with `ToneMapping`, which keeps
+/// colors above 1.0 for the glow to pick up. Renders models into a floating-point target
+/// first (decision 0064).
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Bloom {
+    /// Brightness (linear, before exposure) where glow starts; 1.0 is a good default.
+    pub threshold: f32,
+    /// How strong the glow is; 0.05 to 0.3 is subtle to strong.
+    pub intensity: f32,
+}
+
+/// Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows.
+/// A spot light uses one shadow map, a point light six (one per cube face); at most 24
+/// maps per frame, given to lights in entity id order (decision 0065). A model on the same
+/// entity (a lantern around its light) does not block its own light.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct CastShadows {
+    /// Size of each shadow map in texels (128 to 1024; 512 is a good default). All maps
+    /// share the largest size asked for (24 maps of 1024 take 100 MB of GPU memory).
+    pub resolution: u32,
+    /// Edge blur in texels (0 = hard edges, 1 to 2 = soft).
+    pub softness: f32,
+}
+
+/// Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces
+/// reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1,
+/// relative to the scene file); empty makes one from `SkyLight` colors (or a default sky).
+/// Replaces `AmbientLight` and `SkyLight` ambient for models.
+#[derive(Resource, Reflect, Debug, Clone, PartialEq)]
+pub struct Environment {
+    pub image: String,
+    /// Strength of the light and reflections from the environment.
+    pub intensity: f32,
+    /// Draw the environment behind everything instead of the camera's clear color.
+    pub background: bool,
+}
+
 /// Many copies of one model drawn from a module's own arrays (belt items, crowds,
 /// particles), without one entity per copy. Built at render time by a [`BulkDrawHooks`]
 /// function, so the simulation pays nothing for it.

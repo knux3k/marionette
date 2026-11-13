@@ -6,8 +6,9 @@ use marionette_core::Kind;
 use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
-    AmbientLight, Camera, DirectionalLight, Emissive, Fog, LookAt, Material, Model, ModelPlacement,
-    PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion, ToneMapping, Transform,
+    AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, LookAt, Material,
+    Model, ModelPlacement, PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
+    ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -34,6 +35,22 @@ pub struct FrameData {
     pub fog: Option<(Vec3, f32)>,
     /// Sky and ground ambient (color times intensity), replacing `ambient`.
     pub sky: Option<(Vec3, Vec3)>,
+    /// Bloom threshold and intensity (decision 0064).
+    pub bloom: Option<(f32, f32)>,
+    /// Environment lighting and reflections (decision 0066).
+    pub environment: Option<EnvironmentData>,
+}
+
+/// The `Environment` resource plus the sky colors a generated environment is made from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnvironmentData {
+    /// Equirectangular image path; empty for a sky made from `sky` and `ground`.
+    pub image: String,
+    pub intensity: f32,
+    pub background: bool,
+    /// `SkyLight` colors (without its intensity), or a default sky.
+    pub sky: Vec3,
+    pub ground: Vec3,
 }
 
 /// A point light (`cos_outer` below -1) or a spot light.
@@ -47,6 +64,8 @@ pub struct LocalLightData {
     pub direction: Vec3,
     pub cos_inner: f32,
     pub cos_outer: f32,
+    /// Shadow map size and softness, from `CastShadows` (decision 0065).
+    pub shadow: Option<(u32, f32)>,
 }
 
 /// What a UI node looks like.
@@ -137,6 +156,8 @@ pub struct MeshDraw {
     pub pose: Option<std::sync::Arc<marionette_core::spatial::Pose>>,
     /// Light given off (color times intensity), from `Emissive`; zero for most models.
     pub emissive: Vec3,
+    /// The entity also has `CastShadows` (a lamp): the model does not block its own light.
+    pub lamp: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -228,6 +249,23 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame.sky = world
         .get_resource::<SkyLight>()
         .map(|s| (rgb(s.sky) * s.intensity, rgb(s.ground) * s.intensity));
+    frame.bloom = world
+        .get_resource::<Bloom>()
+        .map(|b| (b.threshold.max(0.0), b.intensity.max(0.0)));
+    frame.environment = world.get_resource::<Environment>().map(|e| {
+        let (sky, ground) = world
+            .get_resource::<SkyLight>()
+            .map_or((Vec3::new(0.45, 0.62, 0.9), Vec3::new(0.32, 0.29, 0.26)), |s| {
+                (rgb(s.sky), rgb(s.ground))
+            });
+        EnvironmentData {
+            image: e.image.clone(),
+            intensity: e.intensity.max(0.0),
+            background: e.background,
+            sky,
+            ground,
+        }
+    });
     type Place<'a> = (Option<&'a Transform>, Option<&'a Position>, Option<&'a LookAt>);
 
     if let Some(mut q) = world.try_query::<(&SceneId, &Camera, Place)>() {
@@ -258,6 +296,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         frame.meshes.reserve(q.iter(world).len());
         let emissives = world.components().component_id::<Emissive>().is_some();
         let placements = world.components().component_id::<ModelPlacement>().is_some();
+        let lamps = world.components().component_id::<CastShadows>().is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
             let emissive = if emissives {
                 world
@@ -290,6 +329,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 material: material.copied(),
                 pose: pose.map(|p| std::sync::Arc::new(p.clone())),
                 emissive,
+                lamp: lamps && world.get::<CastShadows>(e).is_some(),
             });
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
@@ -355,8 +395,17 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         frame.lights = lights.into_iter().map(|(_, l)| l).collect();
     }
     let mut local: Vec<(u64, LocalLightData)> = Vec::new();
-    if let Some(mut q) = world.try_query::<(&SceneId, &PointLight, Place)>() {
-        for (id, light, (t, p, l)) in q.iter(world) {
+    let casters = world.components().component_id::<CastShadows>().is_some();
+    let shadow_of = |e: bevy_ecs::entity::Entity| {
+        if !casters {
+            return None;
+        }
+        world
+            .get::<CastShadows>(e)
+            .map(|c| (c.resolution.clamp(128, 1024), c.softness.clamp(0.0, 4.0)))
+    };
+    if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId, &PointLight, Place)>() {
+        for (e, id, light, (t, p, l)) in q.iter(world) {
             local.push((
                 id.0,
                 LocalLightData {
@@ -366,12 +415,13 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                     direction: Vec3::NEG_Y,
                     cos_inner: -2.0,
                     cos_outer: -3.0,
+                    shadow: shadow_of(e),
                 },
             ));
         }
     }
-    if let Some(mut q) = world.try_query::<(&SceneId, &SpotLight, Place)>() {
-        for (id, light, (t, p, l)) in q.iter(world) {
+    if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId, &SpotLight, Place)>() {
+        for (e, id, light, (t, p, l)) in q.iter(world) {
             let outer = light.outer_angle_degrees.clamp(0.1, 89.9);
             let inner = light.inner_angle_degrees.clamp(0.0, outer - 0.05);
             local.push((
@@ -383,6 +433,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                     direction: v3(light.direction).normalize_or(Vec3::NEG_Y),
                     cos_inner: inner.to_radians().cos(),
                     cos_outer: outer.to_radians().cos(),
+                    shadow: shadow_of(e),
                 },
             ));
         }
@@ -401,7 +452,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 17] = [
+pub const READS: [(&str, Kind); 20] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -419,4 +470,7 @@ pub const READS: [(&str, Kind); 17] = [
     ("ToneMapping", Kind::Resource),
     ("Fog", Kind::Resource),
     ("SkyLight", Kind::Resource),
+    ("Bloom", Kind::Resource),
+    ("CastShadows", Kind::Component),
+    ("Environment", Kind::Resource),
 ];

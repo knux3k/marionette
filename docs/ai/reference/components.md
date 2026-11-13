@@ -60,6 +60,17 @@ Rust type: `marionette_core::spatial::Camera`.
 | `clear_color` | object {a, b, g, r} | yes | Background color. |
 | `projection` | {Perspective: object {far, fov_y_degrees, near}} \| {Orthographic: object {far, height, near}} | yes | How a camera projects the world onto the image. |
 
+### `CastShadows`
+
+Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows. A spot light uses one shadow map, a point light six (one per cube face); at most 24 maps per frame, given to lights in entity id order (decision 0065). A model on the same entity (a lantern around its light) does not block its own light.
+
+Rust type: `marionette_core::spatial::CastShadows`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resolution` | integer | yes | Size of each shadow map in texels (128 to 1024; 512 is a good default). All maps share the largest size asked for (24 maps of 1024 take 100 MB of GPU memory). |
+| `softness` | number | yes | Edge blur in texels (0 = hard edges, 1 to 2 = soft). |
+
 ### `CharacterController`
 
 Walks a kinematic body with input actions: slides along walls, climbs small slopes, stands on ground, jumps, and pushes dynamic bodies. 3D moves in X/Z relative to the entity's facing (`Transform.rotation`; a script turns the character by setting it), 2D in X.
@@ -458,6 +469,29 @@ Rust type: `marionette_core::spatial::AmbientLight`.
 | --- | --- | --- | --- |
 | `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
 | `intensity` | number | yes |  |
+
+### `Bloom`
+
+Turns on bloom: light brighter than `threshold` spills into a soft glow around it (lamps, emissive screens, the sun on metal). Works best with `ToneMapping`, which keeps colors above 1.0 for the glow to pick up. Renders models into a floating-point target first (decision 0064).
+
+Rust type: `marionette_core::spatial::Bloom`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `intensity` | number | yes | How strong the glow is; 0.05 to 0.3 is subtle to strong. |
+| `threshold` | number | yes | Brightness (linear, before exposure) where glow starts; 1.0 is a good default. |
+
+### `Environment`
+
+Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models.
+
+Rust type: `marionette_core::spatial::Environment`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `background` | boolean | yes | Draw the environment behind everything instead of the camera's clear color. |
+| `image` | string | yes |  |
+| `intensity` | number | yes | Strength of the light and reflections from the environment. |
 
 ### `FactoryRecipes`
 
