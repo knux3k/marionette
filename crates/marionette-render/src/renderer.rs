@@ -132,7 +132,12 @@ pub(crate) struct DrawCall<'a> {
     pub lamp: bool,
     pub part: &'a GpuPart,
     pub material: &'a wgpu::BindGroup,
+    /// Index buffer and count of the level drawn (full detail or a reduced level).
+    pub indices: (&'a wgpu::Buffer, u32),
+    /// All instances (shadow maps draw them all) ...
     pub instances: std::ops::Range<u32>,
+    /// ... of which the first `seen` are inside a view (views draw only those).
+    pub seen: u32,
 }
 
 /// Everything a frame draws for models, shared by the shadow, HDR and final passes.
@@ -155,7 +160,19 @@ impl MeshCalls<'_> {
         local: bool,
         stats: &mut RenderStats,
     ) {
-        self.draw(pass, pipelines, (view_group, offset), (None, local), stats);
+        self.draw(pass, pipelines, (view_group, offset), (None, local, false), stats);
+    }
+
+    /// Depth of what the view draws (decision 0093 prepass): only the instances in view.
+    fn draw_prepass(
+        &self,
+        pass: &mut wgpu::RenderPass,
+        pipelines: (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+        view_group: &wgpu::BindGroup,
+        offset: u32,
+        stats: &mut RenderStats,
+    ) {
+        self.draw(pass, pipelines, (view_group, offset), (None, false, true), stats);
     }
 
     /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material).
@@ -172,7 +189,7 @@ impl MeshCalls<'_> {
             pass,
             pipelines,
             (view_group, offset),
-            (Some(lights), false),
+            (Some(lights), false, true),
             stats,
         );
     }
@@ -182,8 +199,9 @@ impl MeshCalls<'_> {
         pass: &mut wgpu::RenderPass,
         (plain, skinned): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
         (view_group, offset): (&wgpu::BindGroup, u32),
-        // Lights group (lit draws), or none (depth); skip models holding a lamp.
-        (lights, skip_lamps): (Option<&wgpu::BindGroup>, bool),
+        // Lights group (lit draws), or none (depth); skip models holding a lamp; draw only
+        // the instances inside a view (views) or every caster (shadow maps).
+        (lights, skip_lamps, in_view): (Option<&wgpu::BindGroup>, bool, bool),
         stats: &mut RenderStats,
     ) {
         if let (Some(ib), false) = (self.instances, self.calls.is_empty()) {
@@ -194,12 +212,21 @@ impl MeshCalls<'_> {
             }
             pass.set_vertex_buffer(1, ib.slice(..));
             for call in self.calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
+                // Views draw the instances inside them; shadow maps draw every caster.
+                let range = if in_view {
+                    call.instances.start..call.instances.start + call.seen
+                } else {
+                    call.instances.clone()
+                };
+                if range.is_empty() {
+                    continue;
+                }
                 if lights.is_some() {
                     pass.set_bind_group(2, call.material, &[]);
                 }
                 pass.set_vertex_buffer(0, call.part.vertices.slice(..));
-                pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..call.part.index_count, 0, call.instances.clone());
+                pass.set_index_buffer(call.indices.0.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..call.indices.1, 0, range);
                 stats.draw_calls += 1;
             }
         }
@@ -253,6 +280,10 @@ pub struct RenderStats {
     pub instances: u32,
     /// Mesh triangles per view (sprites and UI not counted).
     pub triangles: u64,
+    /// Mesh instances not drawn in views (decision 0080): outside every view, or hidden by
+    /// `LevelOfDetail`. Those in a shadow volume are still drawn into shadow maps.
+    /// `instances + culled` is every static mesh instance of the frame.
+    pub culled: u32,
 }
 
 /// Bytes per mesh vertex (position first, as ray tracing structures read it).
@@ -285,6 +316,11 @@ pub(crate) struct GpuPart {
     /// Skin and morph target data for parts the GPU deforms (drawn by `skinning.rs`, not
     /// the static path).
     pub deform: Option<crate::skinning::Deform>,
+    /// Bounding sphere of the vertices (part space), for culling (decision 0080).
+    pub bounds: crate::cull::Sphere,
+    /// Reduced levels of detail (index buffer, index count); empty unless a scene asked
+    /// for `LevelOfDetail` when the model was uploaded.
+    pub lods: Vec<(wgpu::Buffer, u32)>,
     /// Ray tracing data (decision 0093), on devices that can trace rays.
     pub rt: Option<crate::raytrace::RtPart>,
 }
@@ -372,9 +408,13 @@ pub struct Renderer {
     /// Drawing a probe's faces: linear light into the HDR target, no bloom, sprites or UI.
     capturing: bool,
     post: crate::post::Post,
+    /// Render scale and foveation (decisions 0081, 0082).
+    scale: crate::scale::Scale,
     instance_buffer: Option<wgpu::Buffer>,
     /// Reused per-frame arrays: instances in frame order, their group, instances by group.
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
+    /// Reused per-frame array: the culling class of each instance in `scratch.0`.
+    scratch_class: Vec<crate::cull::Class>,
     material_layout: wgpu::BindGroupLayout,
     sprite_tex_layout: wgpu::BindGroupLayout,
     sprite_pipeline: wgpu::RenderPipeline,
@@ -394,11 +434,16 @@ pub struct Renderer {
     sprite_vertices: Option<wgpu::Buffer>,
     sprite_indices: Option<wgpu::Buffer>,
     ui_pipeline: wgpu::RenderPipeline,
+    ui_output_pipeline: wgpu::RenderPipeline,
     world_quads: crate::worldquads::WorldQuadPass,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
     skinning: crate::skinning::Skinning,
+    /// Frustum culling on (the default; decision 0080). Off only for comparisons.
+    culling: bool,
+    /// The last prepared frame asked for `LevelOfDetail`: uploads build reduced levels.
+    lod_wanted: bool,
 }
 
 fn uniform_entry(
@@ -453,20 +498,21 @@ fn buffer_resource(buffer: &wgpu::Buffer, size: u64) -> wgpu::BindingResource<'_
 /// drops its sender; at most one request per distinct asset is in flight, so the queues are
 /// bounded by the scene's asset count.
 struct ModelLoader {
-    ask: mpsc::Sender<(String, PathBuf)>,
-    done: mpsc::Receiver<(String, Result<ModelData, String>)>,
+    /// (asset, base folder, build reduced levels of detail)
+    ask: mpsc::Sender<(String, PathBuf, bool)>,
+    done: mpsc::Receiver<(String, Result<Decoded, String>)>,
     pending: BTreeSet<String>,
 }
 
 impl ModelLoader {
     fn start() -> Self {
-        let (ask, requests) = mpsc::channel::<(String, PathBuf)>();
+        let (ask, requests) = mpsc::channel::<(String, PathBuf, bool)>();
         let (reply, done) = mpsc::channel();
         let spawned = std::thread::Builder::new()
             .name("marionette-model-loader".into())
             .spawn(move || {
-                for (asset, base) in requests {
-                    let loaded = assets::load_model(&asset, &base);
+                for (asset, base, lod) in requests {
+                    let loaded = decode_model(&asset, &base, lod);
                     if reply.send((asset, loaded)).is_err() {
                         break;
                     }
@@ -480,6 +526,34 @@ impl ModelLoader {
             pending: BTreeSet::new(),
         }
     }
+}
+
+/// A decoded model and, when asked for, the reduced levels of each part (decision 0080),
+/// both made off the render thread while streaming.
+struct Decoded {
+    model: ModelData,
+    /// Per part, the index lists of its reduced levels (empty for parts that keep one).
+    lods: Vec<Vec<Vec<u32>>>,
+}
+
+fn decode_model(asset: &str, base: &std::path::Path, lod: bool) -> Result<Decoded, String> {
+    let model = assets::load_model(asset, base)?;
+    let lods = if lod {
+        model
+            .parts
+            .iter()
+            .map(|p| {
+                if p.skin.is_none() && p.mesh.morph_targets.is_empty() {
+                    crate::cull::reduced_levels(&p.mesh.indices, &p.mesh.positions)
+                } else {
+                    Vec::new()
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Ok(Decoded { model, lods })
 }
 
 fn mat(m: Mat4) -> [[f32; 4]; 4] {
@@ -615,6 +689,7 @@ impl Renderer {
             multisample,
         );
         let post = crate::post::Post::new(device, color_format, sample_count, depth_stencil(false));
+        let scale = crate::scale::Scale::new(device, color_format, sample_count);
 
         // Depth-only pass from the shadow-casting light: only the view group is used.
         let shadow_pipeline = depth_pipeline(
@@ -646,7 +721,7 @@ impl Renderer {
             immediate_size: 0,
         });
         let sprite_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
-        let sprite_pipeline_for = |label, depth: wgpu::DepthStencilState| {
+        let sprite_pipeline_for = |label, depth: Option<wgpu::DepthStencilState>, multisample| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&sprite_layout),
@@ -661,7 +736,7 @@ impl Renderer {
                     })],
                 },
                 primitive: wgpu::PrimitiveState::default(), // sprites are visible from both sides
-                depth_stencil: Some(depth),
+                depth_stencil: depth,
                 multisample,
                 fragment: Some(wgpu::FragmentState {
                     module: &sprite_shader,
@@ -677,15 +752,19 @@ impl Renderer {
                 cache: None,
             })
         };
-        let sprite_pipeline = sprite_pipeline_for("sprite", depth_stencil(false));
+        let sprite_pipeline = sprite_pipeline_for("sprite", Some(depth_stencil(false)), multisample);
         // UI: same shader, drawn over everything (no depth test).
         let ui_pipeline = sprite_pipeline_for(
             "ui",
-            wgpu::DepthStencilState {
+            Some(wgpu::DepthStencilState {
                 depth_compare: Some(wgpu::CompareFunction::Always),
                 ..depth_stencil(false)
-            },
+            }),
+            multisample,
         );
+        // UI in the output pass of render scale and foveation: single-sampled, no depth
+        // (decision 0081). UI quads are pixel-aligned, so multisampling adds nothing there.
+        let ui_output_pipeline = sprite_pipeline_for("ui output", None, wgpu::MultisampleState::default());
 
         let world_quads = crate::worldquads::WorldQuadPass::new(
             device,
@@ -754,6 +833,7 @@ impl Renderer {
             env_sampler,
             lit,
             post,
+            scale,
             instance_buffer: None,
             scratch: Default::default(),
             material_layout,
@@ -771,12 +851,22 @@ impl Renderer {
             sprite_vertices: None,
             sprite_indices: None,
             ui_pipeline,
+            ui_output_pipeline,
             world_quads,
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
             skinning,
+            culling: true,
+            lod_wanted: false,
+            scratch_class: Vec::new(),
         }
+    }
+
+    /// Frustum culling (decision 0080) is on by default and never changes a pixel; turning
+    /// it off draws every instance in every view, for before/after measurements.
+    pub fn set_culling(&mut self, on: bool) {
+        self.culling = on;
     }
 
     /// Loads an image (once) as a sprite/UI texture.
@@ -845,6 +935,12 @@ impl Renderer {
     pub fn prepare(&mut self, frame: &FrameData) -> Vec<Diagnostic> {
         let mut errors = Vec::new();
         self.receive_models();
+        if frame.lod.is_some() && !self.lod_wanted {
+            // Reduced levels are built at upload: upload loaded models again (once).
+            self.finish_loading();
+            self.models.clear();
+        }
+        self.lod_wanted = frame.lod.is_some();
         let stream = self.streaming && self.prepared_once;
         for draw in &frame.meshes {
             self.ensure_model(&draw.asset, stream);
@@ -1030,13 +1126,17 @@ impl Renderer {
             if loader.pending.contains(asset) {
                 return;
             }
-            if loader.ask.send((asset.to_string(), base)).is_ok() {
+            if loader
+                .ask
+                .send((asset.to_string(), base, self.lod_wanted))
+                .is_ok()
+            {
                 loader.pending.insert(asset.to_string());
                 return;
             }
             self.loader = None; // thread gone: load in place below
         }
-        let loaded = assets::load_model(asset, &self.base_dir).map(|m| self.upload_model(&m));
+        let loaded = decode_model(asset, &self.base_dir, self.lod_wanted).map(|m| self.upload_model(&m));
         self.models.insert(asset.to_string(), loaded);
     }
 
@@ -1110,7 +1210,8 @@ impl Renderer {
         );
     }
 
-    fn upload_model(&self, model: &ModelData) -> GpuModel {
+    fn upload_model(&self, decoded: &Decoded) -> GpuModel {
+        let (model, lod_indices) = (&decoded.model, &decoded.lods);
         let views: Vec<wgpu::TextureView> = model
             .images
             .iter()
@@ -1147,7 +1248,8 @@ impl Renderer {
         let parts = model
             .parts
             .iter()
-            .map(|p| {
+            .enumerate()
+            .map(|(i, p)| {
                 let vertices: Vec<MeshVertex> = (0..p.mesh.positions.len())
                     .map(|i| MeshVertex {
                         position: p.mesh.positions[i],
@@ -1171,6 +1273,20 @@ impl Renderer {
                     transform: p.transform,
                     node: p.node,
                     deform: crate::skinning::Deform::upload(&self.device, p, model.rig.skins.len()),
+                    bounds: crate::cull::Sphere::around(&p.mesh.positions),
+                    lods: lod_indices
+                        .get(i)
+                        .into_iter()
+                        .flatten()
+                        .map(|idx| {
+                            let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("mesh lod indices"),
+                                contents: bytemuck::cast_slice(idx),
+                                usage: wgpu::BufferUsages::INDEX,
+                            });
+                            (buffer, idx.len() as u32)
+                        })
+                        .collect(),
                     rt: (rt && p.mesh.joints.is_empty()).then(|| {
                         crate::raytrace::RtPart::new(&p.mesh, model.materials.get(p.material), &model.images)
                     }),
@@ -1319,6 +1435,8 @@ impl Renderer {
             flags |= FLAG_FOG;
             lu.fog = color.extend(density).to_array();
         }
+        // Sun shadow volumes, so culling keeps casters outside the views (decision 0080).
+        let mut shadow_vps: Vec<Mat4> = Vec::new();
         // Shadows: the first directional light, seen from the first view; one map, or
         // cascades split along the view (decision 0090).
         let cascades: Vec<Mat4> = match (frame.shadows, frame.lights.first(), views.first()) {
@@ -1339,6 +1457,7 @@ impl Renderer {
                     lu.cascade_offsets[k] = texel * 1.5;
                 }
                 lu.count[3] = maps.len() as u32;
+                shadow_vps = maps.iter().map(|(m, _)| *m).collect();
                 lu.post[1] = 1.0 / resolution as f32;
                 lu.post[2] = s.softness.clamp(0.0, 4.0);
                 lu.post[3] = maps[0].1 * 1.5;
@@ -1455,9 +1574,23 @@ impl Renderer {
         }
         // Bloom: models go to the HDR target untone-mapped; the clear and fog colors are
         // mapped back through the tone curve so they come out unchanged (decision 0064).
-        // A probe capture writes linear light the same way, without the glow.
+        // A probe capture writes linear light the same way, without the glow, at full size.
         let capture = self.capturing;
         let bloom = if capture { None } else { frame.bloom };
+        // Render scale and foveation: the world goes to an internal image per view size.
+        let scaled = frame
+            .scale
+            .and_then(crate::scale::ScaleSettings::active)
+            .filter(|_| !capture);
+        let world_size = |t: &Target| match scaled {
+            Some(s) => s.internal((t.width, t.height)),
+            None => (t.width, t.height),
+        };
+        let outputs: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
+        if !capture {
+            // A capture leaves the views' internal images alone.
+            self.scale.prepare(&self.device, &self.queue, scaled, &outputs);
+        }
         let hdr_color = |c: Vec3| match frame.exposure {
             Some(e) => {
                 Vec3::new(
@@ -1476,7 +1609,7 @@ impl Renderer {
             }
         }
         if bloom.is_some() {
-            let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
+            let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| world_size(t)).collect();
             self.post.prepare(&self.device, &sizes);
         } else if !capture {
             // Frees the HDR targets of earlier frames with bloom.
@@ -1493,9 +1626,26 @@ impl Renderer {
         // scatters them into one buffer ordered by group key. The model lookup and the group
         // lookup are skipped while the key repeats (entities come sorted by id, so runs of
         // the same model are the common case).
-        // (asset, part, material overridden, holds a shadow-casting lamp)
-        type Key<'k> = (&'k str, usize, bool, bool);
+        // (asset, part, material overridden, holds a shadow-casting lamp, level of detail)
+        type Key<'k> = (&'k str, usize, bool, bool, usize);
         let mut group_of: BTreeMap<Key, u32> = BTreeMap::new();
+        let culler = {
+            let vps: Vec<Mat4> = views.iter().map(|(v, _)| v.proj * v.view).collect();
+            let lamps = frame
+                .local_lights
+                .iter()
+                .take(MAX_LOCAL_LIGHTS)
+                .filter(|l| l.shadow.is_some())
+                .map(|l| (l.position, l.range))
+                .collect();
+            let lod = frame.lod.filter(|_| self.lod_wanted);
+            crate::cull::Culler::new(self.culling, &vps, &shadow_vps, lamps, lod)
+                .keeping_all(rt_cfg.is_some())
+                .with_projection_scale(views.first().map_or(1.0, |(v, _)| v.proj.y_axis.y))
+        };
+        // Which passes draw each instance (`cull::Class`), parallel to `gid`.
+        let mut class_of: Vec<crate::cull::Class> = std::mem::take(&mut self.scratch_class);
+        class_of.clear();
         // Scratch arrays live across frames: fresh multi-megabyte allocations every frame
         // cost more in page faults than filling them does.
         let (mut raw, mut gid, mut instances) = std::mem::take(&mut self.scratch);
@@ -1528,8 +1678,13 @@ impl Renderer {
                     _ => part.transform,
                 };
                 let model_m = draw.world * local;
+                let (class, level) = culler.classify(&part.bounds.transformed(&model_m), 1 + part.lods.len());
+                if class == crate::cull::Class::Hidden {
+                    stats.culled += 1;
+                    continue;
+                }
                 let (base_color, params) = instance_material(model, part, draw.material);
-                let key = (&*draw.asset, p, draw.material.is_some(), draw.lamp);
+                let key = (&*draw.asset, p, draw.material.is_some(), draw.lamp, level);
                 let g = match last_key {
                     Some((k, g)) if k == key => g,
                     _ => {
@@ -1546,6 +1701,7 @@ impl Renderer {
                     emissive: draw.emissive.extend(0.0).to_array(),
                 });
                 gid.push(g);
+                class_of.push(class);
             }
         }
         for bulk in &frame.bulk {
@@ -1567,36 +1723,60 @@ impl Renderer {
                         )
                     }
                 };
-                let key = (bulk.asset.as_str(), p, bulk.material.is_some(), false);
-                let n = group_of.len() as u32;
-                let g = *group_of.entry(key).or_insert(n);
                 let identity = part.transform == Mat4::IDENTITY;
+                let levels = 1 + part.lods.len();
                 raw.reserve(bulk.transforms.len());
                 gid.reserve(bulk.transforms.len());
+                class_of.reserve(bulk.transforms.len());
+                let mut last: Option<(usize, u32)> = None;
                 for t in &bulk.transforms {
                     let world = Mat4::from_cols_array(&[
                         t[0], t[1], t[2], 0.0, t[3], t[4], t[5], 0.0, t[6], t[7], t[8], 0.0, t[9], t[10],
                         t[11], 1.0,
                     ]);
+                    let model_m = if identity { world } else { world * part.transform };
+                    let (class, level) = culler.classify(&part.bounds.transformed(&model_m), levels);
+                    if class == crate::cull::Class::Hidden {
+                        stats.culled += 1;
+                        continue;
+                    }
+                    let g = match last {
+                        Some((l, g)) if l == level => g,
+                        _ => {
+                            let key = (bulk.asset.as_str(), p, bulk.material.is_some(), false, level);
+                            let n = group_of.len() as u32;
+                            let g = *group_of.entry(key).or_insert(n);
+                            last = Some((level, g));
+                            g
+                        }
+                    };
                     raw.push(InstanceData {
-                        model: mat(if identity { world } else { world * part.transform }),
+                        model: mat(model_m),
                         base_color,
                         params,
                         emissive: [0.0; 4],
                     });
                     gid.push(g);
+                    class_of.push(class);
                 }
             }
         }
         // Group order = key order; counts give each group's start in the final buffer.
+        // Within a group, instances inside a view come first (views draw that prefix) and
+        // shadow-only casters after them.
         let mut counts = vec![0u32; group_of.len()];
-        for &g in &gid {
+        let mut seen_counts = vec![0u32; group_of.len()];
+        for (&g, &c) in gid.iter().zip(&class_of) {
             counts[g as usize] += 1;
+            if c == crate::cull::Class::Seen {
+                seen_counts[g as usize] += 1;
+            }
         }
         let mut start_of = vec![0u32; group_of.len()];
+        let mut shadow_start_of = vec![0u32; group_of.len()];
         let mut calls = Vec::with_capacity(group_of.len());
         let mut at = 0u32;
-        for (&(asset, p, overridden, lamp), &g) in &group_of {
+        for (&(asset, p, overridden, lamp, level), &g) in &group_of {
             let Some(Ok(model)) = self.models.get(asset) else {
                 continue;
             };
@@ -1606,25 +1786,39 @@ impl Renderer {
             } else {
                 &model.materials[part.material.min(model.materials.len() - 1)].0
             };
-            let n = counts[g as usize];
+            let (n, seen) = (counts[g as usize], seen_counts[g as usize]);
             start_of[g as usize] = at;
-            stats.instances += n;
-            stats.triangles += (part.index_count / 3) as u64 * n as u64;
+            shadow_start_of[g as usize] = at + seen;
+            let indices = match level.checked_sub(1).and_then(|l| part.lods.get(l)) {
+                Some((buffer, count)) => (buffer, *count),
+                None => (&part.indices, part.index_count),
+            };
+            stats.instances += seen;
+            stats.triangles += (indices.1 / 3) as u64 * seen as u64;
+            stats.culled += n - seen;
             calls.push(DrawCall {
                 lamp,
                 part,
                 material,
+                indices,
                 instances: at..at + n,
+                seen,
             });
             at += n;
         }
         instances.clear();
         instances.resize(raw.len(), InstanceData::zeroed());
-        let mut next = start_of;
-        for (inst, &g) in raw.iter().zip(&gid) {
-            instances[next[g as usize] as usize] = *inst;
-            next[g as usize] += 1;
+        let (mut next, mut next_shadow) = (start_of, shadow_start_of);
+        for ((inst, &g), &c) in raw.iter().zip(&gid).zip(&class_of) {
+            let slot = if c == crate::cull::Class::Seen {
+                &mut next[g as usize]
+            } else {
+                &mut next_shadow[g as usize]
+            };
+            instances[*slot as usize] = *inst;
+            *slot += 1;
         }
+        self.scratch_class = class_of;
         if !instances.is_empty() {
             write_growable(
                 &self.device,
@@ -1893,9 +2087,38 @@ impl Renderer {
             depth_pass(encoder, layer, offset, true, &mut stats);
         }
 
-        for (i, (view, target)) in views.iter().enumerate() {
+        // UI quads in screen pixels, on top of everything in the output target.
+        let draw_ui = |pass: &mut wgpu::RenderPass,
+                       pipeline: &wgpu::RenderPipeline,
+                       i: usize,
+                       ui_offset: u32,
+                       stats: &mut RenderStats| {
+            if let (Some(vb), Some(ib), false) = (
+                &self.ui_vertices,
+                &self.ui_indices,
+                ui_batches[i].is_empty() || capture,
+            ) {
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, &self.view_group, &[ui_offset]);
+                pass.set_vertex_buffer(0, vb.slice(..));
+                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                for (image, range) in &ui_batches[i] {
+                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
+                        pass.set_bind_group(1, &tex.bind_group, &[]);
+                        pass.draw_indexed(range.clone(), 0, 0..1);
+                        stats.draw_calls += 1;
+                    }
+                }
+            }
+        };
+        for (i, (view, output)) in views.iter().enumerate() {
             let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
             let ui_offset = world_offset + VIEW_STRIDE as u32;
+            // The world is drawn into `target`: the output, or its internal image.
+            let internal = scaled.map(|s| self.scale.targets(s.internal((output.width, output.height))));
+            let internal_target = internal.map(crate::scale::ScaleTargets::target);
+            let target: &Target = internal_target.as_ref().unwrap_or(output);
+            let foveate = internal.filter(|_| scaled.is_some_and(|s| s.foveation > 0.0));
             let c = view.clear;
             let clear = |c: Vec3, a: f32| wgpu::Color {
                 r: c.x as f64,
@@ -1942,15 +2165,12 @@ impl Renderer {
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
+                if let Some(t) = foveate {
+                    self.scale.mask(t, &mut pass, true);
+                    stats.draw_calls += 1;
+                }
                 if let Some([_, [p, s]]) = prepass {
-                    meshes.draw_depth(
-                        &mut pass,
-                        (p, s),
-                        &self.view_group,
-                        world_offset,
-                        false,
-                        &mut stats,
-                    );
+                    meshes.draw_prepass(&mut pass, (p, s), &self.view_group, world_offset, &mut stats);
                 }
                 meshes.draw_lit(
                     &mut pass,
@@ -2011,16 +2231,13 @@ impl Renderer {
                 None => {
                     // A probe capture draws into the floating-point target.
                     let fi = usize::from(capture);
+                    if let Some(t) = foveate {
+                        self.scale.mask(t, &mut pass, false);
+                        stats.draw_calls += 1;
+                    }
                     if let Some(depth) = prepass {
                         let [p, s] = &depth[fi];
-                        meshes.draw_depth(
-                            &mut pass,
-                            (p, s),
-                            &self.view_group,
-                            world_offset,
-                            false,
-                            &mut stats,
-                        );
+                        meshes.draw_prepass(&mut pass, (p, s), &self.view_group, world_offset, &mut stats);
                     }
                     meshes.draw_lit(
                         &mut pass,
@@ -2067,23 +2284,34 @@ impl Renderer {
                                 .map(|t| &t.bind_group)
                         });
             }
-            if let (Some(vb), Some(ib), false) = (
-                &self.ui_vertices,
-                &self.ui_indices,
-                ui_batches[i].is_empty() || capture,
-            ) {
-                pass.set_pipeline(&self.ui_pipeline);
-                pass.set_bind_group(0, &self.view_group, &[ui_offset]);
-                pass.set_vertex_buffer(0, vb.slice(..));
-                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
-                for (image, range) in &ui_batches[i] {
-                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
-                        pass.set_bind_group(1, &tex.bind_group, &[]);
-                        pass.draw_indexed(range.clone(), 0, 0..1);
-                        stats.draw_calls += 1;
-                    }
-                }
-            }
+            let Some(internal) = internal else {
+                draw_ui(&mut pass, &self.ui_pipeline, i, ui_offset, &mut stats);
+                continue;
+            };
+            drop(pass);
+            // Output pass: the internal image resolved to the output size, then UI. It
+            // writes the single-sampled final image directly: the resolve covers every pixel,
+            // so a multisampled pass here would only add a full-size clear and resolve.
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("output"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: output.resolve.unwrap_or(output.color),
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        // Every pixel is written; a clear is cheaper than loading.
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            self.scale.resolve(internal, &mut pass);
+            stats.draw_calls += 1;
+            draw_ui(&mut pass, &self.ui_output_pipeline, i, ui_offset, &mut stats);
         }
         drop(calls);
         drop(skinned_calls);

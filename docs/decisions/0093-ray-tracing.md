@@ -40,6 +40,9 @@ Resource `RayTracing { shadows, reflections, max_roughness, sun_size_degrees }`.
   an empty fragment shader with no color writes), then the lit pass with `LessEqual`, so the
   rays and shading run once per pixel instead of once per overlapping surface. Costs one more
   draw per mesh; on lavapipe the example scene went from about 67 to 60 ms at 640x360.
+- Culling (decision 0080): ray-traced frames hide nothing; instances outside the views stay
+  in the TLAS (drawn only into shadow maps, if any), so off-screen things still cast traced
+  shadows and show in reflections. Sun shadow culling uses every cascade's volume.
 - Reflections: one mirror ray on surfaces smoother than `max_roughness`, fading to the probe or
   environment reflection between half the limit and the limit. Hits are lit by every light
   (sun shadows traced again), environment or ambient, and emissive.

@@ -98,6 +98,10 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<spatial::Bloom>();
     registry.register_component::<spatial::CastShadows>();
     registry.register_resource::<spatial::Environment>();
+    // Rendering cost controls (decision 0080).
+    registry.register_resource::<spatial::LevelOfDetail>();
+    registry.register_resource::<spatial::RenderScale>();
+    registry.register_resource::<spatial::Foveation>();
     // Remaining lighting (decisions 0090 to 0093).
     registry.register_resource::<spatial::ShadowCascades>();
     registry.register_component::<spatial::ReflectionProbe>();

@@ -230,6 +230,11 @@ impl Offscreen {
         (self.width, self.height)
     }
 
+    /// See [`Renderer::set_culling`].
+    pub fn set_culling(&mut self, on: bool) {
+        self.renderer.set_culling(on);
+    }
+
     /// See [`Renderer::set_streaming`].
     pub fn set_streaming(&mut self, on: bool) {
         self.renderer.set_streaming(on);
