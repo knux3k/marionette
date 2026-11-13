@@ -68,6 +68,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
 | 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
+| 0150 | Game starter: a brief (or a prompt) and genre templates with an autopilot make a playable, tested game (`game_brief`, `game_make`, `marionette make`) | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
 | 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |

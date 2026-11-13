@@ -1,0 +1,118 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.014,
+            "g": 0.004,
+            "r": 0.003
+          },
+          "projection": {
+            "Orthographic": {
+              "far": 100.0,
+              "height": 12.5,
+              "near": 0.1
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 11.2,
+            "y": 6.0,
+            "z": 10.0
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "Script": {
+          "path": "scripts/game.ts"
+        }
+      },
+      "id": 3,
+      "name": "game"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "TopLeft",
+          "layer": 1,
+          "offset": {
+            "x": 12.0,
+            "y": 10.0
+          },
+          "size": {
+            "x": 700.0,
+            "y": 18.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 0.807,
+            "r": 0.209
+          },
+          "size": 18.0,
+          "text": ""
+        }
+      },
+      "id": 4,
+      "name": "hud"
+    },
+    {
+      "components": {
+        "UiNode": {
+          "anchor": "Center",
+          "layer": 1,
+          "offset": {
+            "x": 0.0,
+            "y": -60.0
+          },
+          "size": {
+            "x": 700.0,
+            "y": 32.0
+          }
+        },
+        "UiText": {
+          "color": {
+            "a": 1.0,
+            "b": 1.0,
+            "g": 0.807,
+            "r": 0.209
+          },
+          "size": 32.0,
+          "text": ""
+        }
+      },
+      "id": 5,
+      "name": "banner"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "main.actions.json"
+    }
+  },
+  "version": 1
+}

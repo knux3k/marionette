@@ -20,3 +20,16 @@ Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
   plunge falls repeatedly. Same `test_run` command with their `--project`.
 - Also tested in `game_api.rs`: `characters_pass_through_sensors_trigger_them_and_can_be_teleported`.
 - Not yet: 90 fps measured on a mid-range desktop GPU per game; pooled or generated assets.
+
+## Game starter (decision 0150)
+
+- `cargo test -p marionette-cli --test starter`: every template from a prompt is won by its
+  autopilot and passes its own tests; the same brief gives byte-identical files; refresh keeps
+  edits outside CONFIG and refuses a script without markers; bad briefs list every problem.
+- `cargo test -p marionette-starter`: mazes are connected, platformer gaps are at most 3 wide,
+  same seed same level, prompt reading.
+- Demo games (in `proof_scenes.rs` and the stability suite): `games/gearbug-garden` (3D maze),
+  `games/comet-hopper` (platformer); `examples/starter-maze` (2D maze from a prompt, placeholder
+  art).
+- First-try autopilot wins on sampled seeds (container, 2026-11-13): mazes 32 of 32; platformer
+  about 90% (spikes, edges and walking enemies cause the rest); `game_make` tries further seeds.

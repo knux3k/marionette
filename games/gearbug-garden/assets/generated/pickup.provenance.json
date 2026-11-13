@@ -1,0 +1,70 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "pickup",
+  "output": "model",
+  "file": "pickup.glb",
+  "sha256": "0cb155602587e1e4f49fc6c86ff1628a52272f0032ab4ee45dbb9b36c0d5fc32",
+  "recipe": "pickup.recipe.json",
+  "recipe_sha256": "146e060ece608ca2619fa2be7d26335b8254ae4c5ffade3e2ae7b4cacfeff1aa",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "pickup_ref",
+      "file": "pickup_ref.png",
+      "sha256": "8c087c156f97170469e80a9209aef446cf29e11f845d454f09c67175c29afa67",
+      "approved": false,
+      "approval_waived": true
+    },
+    "cache_key": "4617fd5aca35e0ab4f94f42bbda87380ab5296aad4ed27cb8161960a2a9be1bd",
+    "raw_sha256": "b4117b3fcaabb6a6e6b57e508223797868b5a38a2518acf20acc7f8c6803cf05",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.044997,
+        0.0,
+        -0.270297
+      ],
+      [
+        0.044997,
+        0.55,
+        0.270297
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 441910 to 4000 triangles (budget 4000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 0.551524,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.081616,
+        -0.497574,
+        -0.489542
+      ],
+      [
+        0.081556,
+        0.499663,
+        0.490641
+      ]
+    ],
+    "textures": 3,
+    "triangles": 4000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

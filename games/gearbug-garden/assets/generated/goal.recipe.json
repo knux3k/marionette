@@ -1,0 +1,12 @@
+{
+  "format": "marionette.recipe/1",
+  "from": "goal_ref",
+  "model": {
+    "height_m": 1.4,
+    "max_texture_px": 512,
+    "max_triangles": 8000
+  },
+  "name": "goal",
+  "notes": "Starter slot `goal` of \"Gearbug Garden\" (game_make, decision 0150).",
+  "output": "model"
+}

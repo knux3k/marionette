@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "spikes",
+  "notes": "Starter slot `spikes` of \"Comet Hopper\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a row of jagged blue crystal spikes, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "texture": {
+    "remove_background": true,
+    "resize": [
+      256,
+      256
+    ]
+  }
+}

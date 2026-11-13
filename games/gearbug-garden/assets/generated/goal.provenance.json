@@ -1,0 +1,70 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "goal",
+  "output": "model",
+  "file": "goal.glb",
+  "sha256": "e9c2fc1802f42b2e15921e8bb9b65b3f2e46832e4bd6b0f77a26e823d43e363e",
+  "recipe": "goal.recipe.json",
+  "recipe_sha256": "f73f95dc2477d712d9d940b1622531fd9316b944a7883c3dd70654224024a9df",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "goal_ref",
+      "file": "goal_ref.png",
+      "sha256": "979570f66faf0b85c9230073c23c1b40ec11b729d98e45918d1eca528b3fe8e8",
+      "approved": false,
+      "approval_waived": true
+    },
+    "cache_key": "b9274e23a3453f1341522272a40da5fd872d48ccce4ebe8d4ee72ff1cb50f607",
+    "raw_sha256": "37a6a67c42f165f87a3768bac89c0e90f0cc5ffdf27c1702503e53e23d785cc9",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.494594,
+        0.0,
+        -0.087384
+      ],
+      [
+        0.494594,
+        1.4,
+        0.087384
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 324836 to 8000 triangles (budget 8000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 1.401694,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.353677,
+        -0.499981,
+        -0.062835
+      ],
+      [
+        0.352032,
+        0.49881,
+        0.061849
+      ]
+    ],
+    "textures": 3,
+    "triangles": 8000
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}
