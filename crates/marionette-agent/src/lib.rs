@@ -7,12 +7,14 @@
 //! and produce them.
 
 pub mod anim;
+pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
+pub mod handoff;
 #[cfg(feature = "jobs-ts")]
 pub mod jobs_ts;
 #[cfg(feature = "import")]
@@ -34,6 +36,7 @@ pub mod scenario;
 #[cfg(feature = "script")]
 pub mod script;
 pub mod session;
+pub mod skills;
 pub mod stability;
 
 use marionette_core::{Diagnostic, Errors, Registry};
@@ -166,6 +169,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        audio::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]
@@ -178,6 +182,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "import")]
         prefab::ops(),
         batch::ops(),
+        skills::ops(),
+        handoff::ops(),
     ];
     groups.into_iter().flatten().collect()
 }

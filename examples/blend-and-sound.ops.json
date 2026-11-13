@@ -1,0 +1,364 @@
+{
+ "format": "marionette.ops",
+ "version": 1,
+ "ops": [
+  {
+   "op": "scene_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json"
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "resource": "AmbientLight",
+    "value": {
+     "color": {
+      "r": 0.6,
+      "g": 0.7,
+      "b": 1.0,
+      "a": 1.0
+     },
+     "intensity": 0.35
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "camera",
+    "components": {
+     "Camera": {
+      "clear_color": {
+       "r": 0.55,
+       "g": 0.68,
+       "b": 0.85,
+       "a": 1.0
+      },
+      "projection": {
+       "Perspective": {
+        "far": 100.0,
+        "fov_y_degrees": 40.0,
+        "near": 0.1
+       }
+      }
+     },
+     "LookAt": {
+      "target": {
+       "x": 0.0,
+       "y": 0.95,
+       "z": 0.0
+      },
+      "up": {
+       "x": 0.0,
+       "y": 1.0,
+       "z": 0.0
+      }
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 1.6,
+       "z": 6.2
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0,
+       "z": 1.0
+      }
+     },
+     "AudioListener": {
+      "volume": 1.0
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "sun",
+    "components": {
+     "DirectionalLight": {
+      "color": {
+       "r": 1.0,
+       "g": 0.96,
+       "b": 0.9,
+       "a": 1.0
+      },
+      "direction": {
+       "x": -0.5,
+       "y": -1.0,
+       "z": -0.6
+      },
+      "illuminance": 1.1
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "ground",
+    "components": {
+     "Model": {
+      "asset": "primitive:plane"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.4,
+       "g": 0.5,
+       "b": 0.4,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.9
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 12.0,
+       "y": 1.0,
+       "z": 12.0
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "strider",
+    "components": {
+     "Model": {
+      "asset": "assets/puppet.glb"
+     },
+     "Transform": {
+      "translation": {
+       "x": -1.2,
+       "y": 0.0,
+       "z": 0.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.300706,
+       "z": 0.0,
+       "w": 0.953717
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0,
+       "z": 1.0
+      }
+     },
+     "Script": {
+      "path": "scripts/strider.ts"
+     }
+    }
+   }
+  },
+  {
+   "op": "anim_space",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "id": 4,
+    "name": "move",
+    "points": [
+     {
+      "clip": "idle",
+      "x": 0.0
+     },
+     {
+      "clip": "walk",
+      "x": 1.5
+     }
+    ],
+    "sync": true,
+    "x": 0.0
+   }
+  },
+  {
+   "op": "anim_play",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "id": 4,
+    "clip": "move",
+    "fade": 0.0
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "nodder",
+    "components": {
+     "Model": {
+      "asset": "assets/puppet.glb"
+     },
+     "Transform": {
+      "translation": {
+       "x": 1.2,
+       "y": 0.0,
+       "z": 0.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": -0.300706,
+       "z": 0.0,
+       "w": 0.953717
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0,
+       "z": 1.0
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "anim_play",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "id": 5,
+    "clip": "walk",
+    "fade": 0.0
+   }
+  },
+  {
+   "op": "anim_overlay",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "id": 5,
+    "name": "greet",
+    "clip": "wave",
+    "mask": [
+     "head"
+    ],
+    "additive": true,
+    "weight": 0.8,
+    "fade": 0.0
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "hum",
+    "components": {
+     "Model": {
+      "asset": "primitive:sphere"
+     },
+     "Material": {
+      "base_color": {
+       "r": 1.0,
+       "g": 0.75,
+       "b": 0.3,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.5
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 1.2,
+       "z": 1.2
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 0.2,
+       "y": 0.2,
+       "z": 0.2
+      }
+     },
+     "AudioSource": {
+      "sound": "builtin:beep",
+      "volume": 0.6,
+      "looping": true,
+      "trigger": "OnStart"
+     },
+     "SoundSpatial": {
+      "min_distance": 1.0,
+      "max_distance": 20.0,
+      "rolloff": "Inverse",
+      "rear_muffle": 1.0,
+      "doppler": 1.0
+     },
+     "Script": {
+      "path": "scripts/orbit.ts"
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/blend-and-sound.scene.json",
+    "name": "music",
+    "components": {
+     "Music": {
+      "layers": [
+       {
+        "sound": "builtin:music_pad",
+        "at": 0.0,
+        "mix": 0.8,
+        "level": 0.0
+       },
+       {
+        "sound": "builtin:music_bass",
+        "at": 1.0,
+        "mix": 0.9,
+        "level": 0.0
+       },
+       {
+        "sound": "builtin:music_drums",
+        "at": 2.0,
+        "mix": 0.8,
+        "level": 0.0
+       },
+       {
+        "sound": "builtin:music_lead",
+        "at": 3.0,
+        "mix": 0.6,
+        "level": 0.0
+       }
+      ],
+      "intensity": 0.0,
+      "volume": 0.7,
+      "fade": 1.5,
+      "playing": true
+     },
+     "Script": {
+      "path": "scripts/conductor.ts"
+     }
+    }
+   }
+  }
+ ]
+}

@@ -53,15 +53,17 @@ fn always_read_docs_fit_the_budget() {
 
 #[test]
 fn every_hand_written_doc_stays_splittable() {
-    let dir = repo().join("docs/ai");
     let mut over = Vec::new();
-    for entry in std::fs::read_dir(&dir).unwrap() {
-        let path = entry.unwrap().path();
-        if path.extension().is_some_and(|e| e == "md") {
-            let rel = format!("docs/ai/{}", path.file_name().unwrap().to_string_lossy());
-            let s = size(&rel);
-            if s > DOC_LIMIT {
-                over.push((rel, s));
+    // `docs/ai/proofs/` holds one proof file per area (index: PROOFS.md).
+    for folder in ["docs/ai", "docs/ai/proofs"] {
+        for entry in std::fs::read_dir(repo().join(folder)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|e| e == "md") {
+                let rel = format!("{folder}/{}", path.file_name().unwrap().to_string_lossy());
+                let s = size(&rel);
+                if s > DOC_LIMIT {
+                    over.push((rel, s));
+                }
             }
         }
     }
