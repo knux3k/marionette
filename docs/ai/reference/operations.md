@@ -47,6 +47,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
 | `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
 | `jobs_run` | no | Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time. |
+| `jobs_reload` | yes | Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned. |
 | `jobs_types` | yes | Write `jobs.d.ts` (the job prelude: `type i32 = number`) into the project, for editors and `tsc`. |
 | `provider_list` | no | Lists every AI provider: kinds offered (language, image, model3d), key environment variable and whether it is set, network need, default models, and whether its API format has been verified live. |
 | `provider_status` | no | Shows which provider and model each kind uses in this project (providers.json; mock when unset), whether each can run now, money spent (ledger) and the spend cap set by the project owner. |
@@ -1043,6 +1044,26 @@ Output:
 | `results` | array of number | yes | One return value per chunk, in chunk order (empty for `void` functions). |
 | `run_ms` | number | yes |  |
 | `sum` | number | yes | The per-chunk results added in chunk order. |
+
+## `jobs_reload`
+
+Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `session` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | array of ReloadedFile | yes | Job files loaded by the session so far (schedules and scripts). |
+| `session` | string | yes |  |
+| `tick` | integer | yes |  |
 
 ## `jobs_types`
 

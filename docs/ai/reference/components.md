@@ -192,6 +192,41 @@ Rust type: `marionette_core::builtin::Follow`.
 | `gain` | number | yes |  |
 | `target` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
 
+### `JobData`
+
+Named typed arrays that job functions read and write in place (decision 0070). Names are unique per entity. Saved with the scene and part of the state hash; keep arrays to what the game needs (every element is written in snapshots).
+
+Rust type: `marionette_core::jobdata::JobData`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `arrays` | array of object {name, values} | yes |  |
+
+### `JobDraw`
+
+Draws one copy of a model per element of the entity's [`JobData`] arrays `x`, `y` and `z` (element `i` is copy `i`), placed by the entity's `Transform` when it has one. `z` may be empty for flat scenes (then 0). Built at render time: the simulation pays nothing for it, and it is drawn as one instanced batch (decision 0025).
+
+Rust type: `marionette_core::jobdata::JobDraw`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `asset` | string | yes | Model asset, as in `Model.asset` (`primitive:cube`, `primitive:sphere`, a file). |
+| `material` | object {base_color, metallic, roughness} \| null | yes | One material for every copy (null uses the model's own). |
+| `scale` | number | yes | Uniform scale of each copy. |
+| `x` | string | yes |  |
+| `y` | string | yes |  |
+| `z` | string | yes |  |
+
+### `JobSchedule`
+
+Job steps run every tick over this entity's [`JobData`] (decision 0070). Steps run in order, after scripts and before physics.
+
+Rust type: `marionette_jobs_ts::scene::JobSchedule`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `steps` | array of object {args, chunk, function, path} | yes |  |
+
 ### `LookAt`
 
 Points the entity's -Z axis at `target` (world space), keeping `up` as close to its +Y as possible. Overrides `Transform.rotation`. Useful for cameras.

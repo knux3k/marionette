@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 marionette-core.workspace = true
 bevy_ecs.workspace = true
+bevy_reflect.workspace = true
 marionette-jobs.workspace = true
 serde.workspace = true
 serde_json.workspace = true

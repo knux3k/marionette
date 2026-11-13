@@ -12,7 +12,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
 | 2 | Core | Done. |
 | 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067). |
-| 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). |
+| 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
@@ -47,7 +47,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
   Linux are expected from CI on the job TypeScript branch; not yet observed.
 - Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
-  container measured).
+  container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
+  in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
 - Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
   live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
   are untested beyond unit tests.

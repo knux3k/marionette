@@ -72,6 +72,8 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<Velocity>();
     registry.register_component::<RandomImpulse>();
     registry.register_component::<Follow>();
+    registry.register_component::<crate::jobdata::JobData>();
+    registry.register_component::<crate::jobdata::JobDraw>();
     registry.register_resource::<FixedStep>();
     // Data read by renderers (see `spatial`).
     registry.register_component::<spatial::Transform>();

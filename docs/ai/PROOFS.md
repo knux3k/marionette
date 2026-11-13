@@ -342,7 +342,19 @@ Proofs: `cargo test -p marionette-jobs-ts` (same hash on 1, 2, 3 and 8 threads; 
 bit-identical to the Rust job body and to the QuickJS interpreter; errors with code, line,
 column and fix; index trap; time limit; hot reload); `cargo test -p marionette-cli --test
 jobs_ts_e2e`. Benchmark: `cargo run --release -p marionette-jobs-ts --example jobs_ts_bench`
-(decision 0030). Guide: `docs/ai/JOBS-TS.md`. Not yet usable from scenes or scripts (WJ next).
+(decision 0030). Guide: `docs/ai/JOBS-TS.md`.
+
+From scenes and scripts (decision 0070): `cargo test -p marionette-cli --test job_scenes`:
+`examples/swarm.scene.json` 600 ticks seed 1 gives
+`f39ab44c85fbb75a1edcf1182caf6249ad8b069953c616d238dacf4f49286f33` on 1, 2 and 4 threads;
+snapshot and restore continue identically; schedule steps run in place every tick; bad steps
+fail the load (`jobts.args`, `jobts.no_function`, `jobts.syntax`, with entity and component);
+a trapping step records `job_error` and the tick goes on; scripts run jobs on job arrays and
+on their own typed arrays and catch `jobts.*` errors; `jobs_reload` swaps a changed file and
+keeps the last good one; `JobDraw` gives one batch of 4,096 copies and matches
+`examples/reference/swarm.png` (lavapipe). Stability modes `job-swarm` (debug: 0.28 ms per
+tick average) and `job-swarm-render`. Speed (release, 4-core container, `perf_sim`): 4,096
+particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on four.
 
 ## Game Rust modules and cargo features (decision 0062)
 

@@ -39,6 +39,9 @@
 - **Job file**: a `*.job.ts` file in job TypeScript, a typed numbers-only TypeScript subset the
   engine compiles to WebAssembly and runs over arrays in chunks on all cores (decision 0030,
   `docs/ai/JOBS-TS.md`).
+- **Job array**: a named typed array in an entity's `JobData` component; scene data that job
+  functions read and write in place. `JobSchedule` runs job steps on them every tick,
+  `engine.jobs` from scripts, `JobDraw` draws them (decision 0070).
 - **Chunk**: one piece of a job run (`chunk` elements); chunk boundaries come from the data, never
   from the thread count (decision 0024).
 - **Hook**: a function a script exports (`start`, `update`, `onCollisionEnter`, ...).
