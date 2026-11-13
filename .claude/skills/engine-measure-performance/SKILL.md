@@ -10,7 +10,8 @@ different machines, builds or suite versions are never compared.
 
 ## Before and after
 
-1. Build release from the commit you start from: `cargo build --release -p marionette-cli`.
+1. Build release from the commit you start from: `cargo build --release -p marionette-cli`
+   (numbers quoted against other engines: `--profile dist`, binary in `target/dist/`).
 2. `target/release/marionette op perf_suite '{"label": "before"}'` writes
    `.marionette/perf/before.json` and prints one line per case.
 3. Change the code, rebuild, run again with `"label": "after"`.
@@ -48,7 +49,7 @@ another thread's worktree.
 
 ## Traps
 
-- A software GPU (`gpu_kind` `Cpu`: lavapipe, WARP) measures the CPU, not GPU time.
+- A software GPU (`gpu_kind` is "Cpu": lavapipe, WARP) measures the CPU, not GPU time.
 - `gpu_wait` is time from submit to idle, not exact GPU time.
 - Debug builds: numbers mean nothing.
 - Fewer than 3 repeats or `noise_pct` above 10: do not claim a change under that size.

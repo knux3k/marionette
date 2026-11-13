@@ -28,16 +28,12 @@ debug = "line-tables-only"
 debug = false
 opt-level = 1
 
-# Build-setting experiments (decision 0100); temporary.
-[profile.x-thin]
-inherits = "release"
-lto = "thin"
-
-[profile.x-fat]
+# Shipping builds and benchmarks of record (decision 0101): whole-program optimization. Same
+# simulation results and images as `release` (checked by `perf_compare`), 5 to 30 percent less
+# CPU time in scripts, physics, game ticks and loading, about twice the build time, so daily
+# builds and CI stay on `release`. Panics still unwind (stability tests catch them).
+# `cargo build --profile dist -p marionette-cli` -> target/dist/marionette
+[profile.dist]
 inherits = "release"
 lto = "fat"
-codegen-units = 1
-
-[profile.x-cgu1]
-inherits = "release"
 codegen-units = 1

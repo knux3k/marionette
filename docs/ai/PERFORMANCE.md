@@ -71,6 +71,8 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
   tick, counted heap, run-to-run noise, state hash, and SHA-256 of a fixed final image.
 - `perf_compare` says `outputs_identical: false` when any state hash differs, or any image hash
   differs on the same GPU. A speed change that changes output must be opt-in and labelled.
+- Builds for players and numbers quoted against other engines: `cargo build --profile dist`
+  (fat LTO, one codegen unit; same outputs, decision 0101).
 - `length: "quick"` is a smoke test (a tenth of the ticks, one repeat). `only: ["sim/"]`
   picks cases; `extra_scenes` adds a game's own scenes. `no_gpu` skips render cases.
 - Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.

@@ -1023,6 +1023,7 @@ Input:
 | `lock` | string \| null |  | Lock file shared by every benchmark on this machine (several agents share one PC). The suite creates it before measuring and removes it after, and refuses to start while another run holds it. Default: env `MARIONETTE_BENCH_LOCK`; none if unset. |
 | `lock_owner` | string \| null |  | Who holds the lock (an area name such as `raytracing`); written into the lock file. Default: the label. |
 | `max_busy_pct` | number \| null |  | Refuse to start when other processes keep more than this share of all cores busy (default 15 percent; 100 turns the check off). |
+| `min_case_s` | number \| null |  | After `repeats`, run a case again until this many seconds of timed ticks are pooled (at most 100 runs), so cases of a few microseconds per tick get a stable p99. Default 2 (`quick`: 0). |
 | `min_idle_s` | integer |  | Refuse to start unless nobody has used keyboard or mouse for this many seconds (Windows only; elsewhere not checked). Default 0. On a shared desktop use 300. |
 | `no_gpu` | boolean |  | Skip render cases (default: run them when a GPU adapter exists). |
 | `only` | array of string |  | Only cases whose name starts with one of these (`sim/`, `render/factory`). |
@@ -1055,22 +1056,23 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `base` | string | yes | The earlier report (relative to the project root). |
-| `new` | string | yes | The later report. |
+| `base` | Reports | yes | The earlier report, or several runs of the earlier build (relative to the project root). Several runs per side, ideally alternated A B A B, give a change only when the two sides' ranges do not overlap. |
+| `new` | Reports | yes | The later report, or several runs of the later build. |
 | `threshold_pct` | number \| null |  | Report changes larger than this, percent (default 5). |
 
 Output:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `changes` | array of Change | yes | Changes beyond the threshold, largest first. |
+| `changes` | array of Change | yes | Changes beyond the threshold (and outside the run-to-run range when several runs are given), largest first. |
 | `output_mismatches` | array of string | yes |  |
 | `outputs_identical` | boolean | yes | Every state hash equal, and every image hash equal when both ran on the same GPU. |
+| `runs` | array of any | yes | Runs read per side. |
 | `same_gpu` | boolean | yes |  |
 | `same_machine` | boolean | yes |  |
-| `unmatched` | array of string | yes | Cases only in one of the two reports. |
+| `unmatched` | array of string | yes | Cases only in one side. |
 | `warnings` | array of string | yes | Notes on things that make the comparison weaker (different suite, length, machine). |
-| `within_threshold` | integer | yes | Metrics compared that stayed within the threshold. |
+| `within_threshold` | integer | yes | Metrics compared that stayed within the threshold or the run-to-run range. |
 
 ## `jobs_check`
 

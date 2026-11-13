@@ -22,6 +22,10 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 ## UNVERIFIED
 
+- Shared performance suite (decision 0100): GPU time is submit-to-idle wall time, not
+  timestamp queries; desktop idle check runs on Windows only. `dist` profile gain (decision
+  0101) shown by alternated runs in a cloud VM; on the desktop only by single runs so far.
+
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
   been worked on by several real agents through it, and claims are not checked against a
   remote.
