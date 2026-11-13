@@ -1629,15 +1629,15 @@ impl Renderer {
             let offset = (2 * MAX_VIEWS as u64 * VIEW_STRIDE) as u32;
             depth_pass(encoder, &self.shadow_map.1, offset, false, &mut stats);
         }
-        for k in 0..layer_mats.len() {
+        for (k, layer) in self
+            .local_shadows
+            .per_layer
+            .iter()
+            .take(layer_mats.len())
+            .enumerate()
+        {
             let offset = ((LOCAL_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
-            depth_pass(
-                encoder,
-                &self.local_shadows.per_layer[k],
-                offset,
-                true,
-                &mut stats,
-            );
+            depth_pass(encoder, layer, offset, true, &mut stats);
         }
 
         for (i, (view, target)) in views.iter().enumerate() {

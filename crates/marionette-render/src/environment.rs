@@ -81,7 +81,9 @@ pub(crate) fn from_rgba8(width: u32, height: u32, rgba: &[u8], srgb: bool) -> En
         }
     };
     let src: Vec<Vec3> = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| Vec3::new(to_linear(p[0]), to_linear(p[1]), to_linear(p[2])))
         .collect();
     let (w, h) = (BASE_W, BASE_W / 2);
