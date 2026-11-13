@@ -43,4 +43,6 @@ without `Foveation`, nothing changes (same image, same passes; tested).
 - Below 1 the image is softer than native; it is a choice a game makes (opt-in), never a
   default. Above 1 costs GPU time roughly in proportion to `scale` squared.
 - Memory: one internal color image (plus its MSAA copy and depth) per output size.
-- One extra pass per view. Measured numbers: `docs/ai/RENDER-COST.md`.
+- One extra pass per view, about 0.2 to 0.35 ms at headset size on a desktop GPU, so scale
+  pays only in scenes whose shading costs more than that (0.5 saved 26% on a bloom scene;
+  0.75 was slower on a light one). Numbers: `docs/ai/proofs/render.md`.
