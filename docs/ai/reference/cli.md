@@ -146,8 +146,36 @@ Options:
       --mute
           Windowed mode: do not open the audio device
 
-      --saves <SAVES>
-          Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request` events, F5 quick save and F9 quick load (slot `quick`)
+      --present <PRESENT>
+          Windowed mode: vsync (default), mailbox or immediate; falls back when unsupported
+          
+          [default: vsync]
+
+      --frame-latency <FRAME_LATENCY>
+          Windowed mode: frames queued ahead of the display, 1 (lowest latency) to 3
+          
+          [default: 2]
+
+      --fps-cap <FPS_CAP>
+          Windowed mode: most frames per second when not using vsync
+
+      --fullscreen
+          Windowed mode: start in borderless fullscreen (F11 or Alt+Enter toggles)
+
+      --keep-escape
+          Windowed mode: Escape goes to the game instead of closing the window
+
+      --grab-cursor
+          Windowed mode: hide and lock the cursor while focused (mouse look)
+
+      --run-in-background
+          Windowed mode: keep simulating while minimized
+
+      --seconds <SECONDS>
+          Windowed mode: close after this many seconds
+
+      --frame-stats <FRAME_STATS>
+          Windowed mode: also write the frame numbers to this JSON file
 
   -h, --help
           Print help

@@ -3,7 +3,7 @@
 
 use marionette_agent::{Engine, engine};
 use marionette_core::{Diagnostic, Errors, Sim};
-use marionette_render::window::{WindowHooks, WindowOptions, run_windowed};
+use marionette_render::window::{Present, WindowHooks, WindowOptions, run_windowed};
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -182,6 +182,8 @@ struct Live {
     problems: Vec<String>,
     /// When the player last followed the world (real time, for Doppler velocities).
     last_audio: Option<std::time::Instant>,
+    #[cfg(feature = "gamepad")]
+    pads: Option<marionette_gamepad::Gamepads>,
     #[cfg(feature = "save")]
     saves: Option<Saves>,
 }
@@ -282,6 +284,25 @@ impl WindowHooks for Live {
         let r = engine::queue_live(sim, tick, action, true, value);
         self.note(r);
     }
+    #[cfg(feature = "gamepad")]
+    fn before_ticks(&mut self, sim: &mut Sim) -> bool {
+        let Some(pads) = self.pads.as_mut() else {
+            return false;
+        };
+        let inputs = pads.poll();
+        for (name, value) in &inputs {
+            self.device(sim, name, *value);
+        }
+        !inputs.is_empty()
+    }
+    #[cfg(feature = "gamepad")]
+    fn focus(&mut self, sim: &mut Sim, focused: bool) {
+        if !focused && let Some(pads) = self.pads.as_mut() {
+            for (name, value) in pads.release_all() {
+                self.device(sim, &name, value);
+            }
+        }
+    }
     fn after_ticks(&mut self, sim: &mut Sim) {
         #[cfg(feature = "save")]
         if let Some(saves) = self.saves.as_mut() {
@@ -306,6 +327,38 @@ impl WindowHooks for Live {
     }
 }
 
+/// Play-feel flags of a windowed run (decisions 0170 to 0173).
+#[derive(clap::Args, Debug, Clone, Default)]
+pub struct WindowFlags {
+    /// Windowed mode: vsync (default), mailbox or immediate; falls back when unsupported.
+    #[arg(long, default_value = "vsync")]
+    pub present: String,
+    /// Windowed mode: frames queued ahead of the display, 1 (lowest latency) to 3.
+    #[arg(long, default_value_t = 2)]
+    pub frame_latency: u32,
+    /// Windowed mode: most frames per second when not using vsync.
+    #[arg(long)]
+    pub fps_cap: Option<f64>,
+    /// Windowed mode: start in borderless fullscreen (F11 or Alt+Enter toggles).
+    #[arg(long)]
+    pub fullscreen: bool,
+    /// Windowed mode: Escape goes to the game instead of closing the window.
+    #[arg(long)]
+    pub keep_escape: bool,
+    /// Windowed mode: hide and lock the cursor while focused (mouse look).
+    #[arg(long)]
+    pub grab_cursor: bool,
+    /// Windowed mode: keep simulating while minimized.
+    #[arg(long)]
+    pub run_in_background: bool,
+    /// Windowed mode: close after this many seconds.
+    #[arg(long)]
+    pub seconds: Option<f64>,
+    /// Windowed mode: also write the frame numbers to this JSON file.
+    #[arg(long)]
+    pub frame_stats: Option<String>,
+}
+
 /// Options of the windowed run beyond the shared ones.
 pub struct WindowedRun<'a> {
     pub engine: &'a Engine,
@@ -319,6 +372,7 @@ pub struct WindowedRun<'a> {
     pub mute: bool,
     /// Save folder (autosave, F5 and F9); `None` saves nothing.
     pub saves: Option<&'a str>,
+    pub window: WindowFlags,
 }
 
 pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
@@ -333,7 +387,17 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         record,
         mute,
         saves,
+        window: flags,
     } = run;
+    let present = Present::parse(&flags.present).ok_or_else(|| {
+        Errors::from(Diagnostic::error(
+            "cli.bad_present",
+            format!(
+                "--present must be vsync, mailbox or immediate, not {}",
+                flags.present
+            ),
+        ))
+    })?;
     let (width, height) = parse_size(size)?;
     let mut sim = load(o_engine, path, seed)?;
     if let Some(f) = input {
@@ -343,12 +407,19 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         player: None,
         problems: Vec::new(),
         last_audio: None,
+        #[cfg(feature = "gamepad")]
+        pads: None,
         #[cfg(feature = "save")]
         saves: match saves {
             Some(dir) => Some(Saves::new(o_engine, &sim, dir)?),
             None => None,
         },
     };
+    #[cfg(feature = "gamepad")]
+    match marionette_gamepad::Gamepads::new() {
+        Ok(p) => live.pads = Some(p),
+        Err(m) => live.problems.push(m),
+    }
     #[cfg(not(feature = "save"))]
     if saves.is_some() {
         return Err(Diagnostic::error("cli.no_saves", "this build has no save games")
@@ -361,16 +432,31 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
             Err(m) => live.problems.push(m),
         }
     }
-    let opts = WindowOptions {
-        title: format!("Marionette - {path}"),
-        width,
-        height,
-        camera,
-        sample_count: 4,
-        max_ticks: ticks,
-        base_dir: scene_dir(path),
-    };
-    let mut sim = run_windowed(sim, opts, &mut live).map_err(|e| e.with_file(path))?;
+    let mut opts = WindowOptions::new(format!("Marionette - {path}"), scene_dir(path));
+    opts.width = width;
+    opts.height = height;
+    opts.camera = camera;
+    opts.max_ticks = ticks;
+    opts.present = present;
+    opts.frame_latency = flags.frame_latency;
+    opts.fps_cap = flags.fps_cap;
+    opts.fullscreen = flags.fullscreen;
+    opts.escape_exits = !flags.keep_escape;
+    opts.grab_cursor = flags.grab_cursor;
+    opts.run_in_background = flags.run_in_background;
+    opts.max_seconds = flags.seconds;
+    let done = run_windowed(sim, opts, &mut live).map_err(|e| e.with_file(path))?;
+    let mut sim = done.sim;
+    let frames = done.stats.summary();
+    if let Some(out) = &flags.frame_stats {
+        let text = serde_json::to_string_pretty(&frames).unwrap_or_default();
+        std::fs::write(out, text + "\n").map_err(|e| {
+            Errors::from(Diagnostic::error(
+                "cli.write_failed",
+                format!("cannot write {out}: {e}"),
+            ))
+        })?;
+    }
     #[cfg(feature = "save")]
     let saved = live.saves.take().map(Saves::finish);
     #[cfg(not(feature = "save"))]
@@ -388,6 +474,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         "seed": seed,
         "state_hash": sim.state_hash(),
         "problems": live.problems,
+        "frames": frames,
     });
     if let Some(n) = recorded {
         out["recorded_events"] = json!(n);

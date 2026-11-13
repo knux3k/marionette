@@ -74,6 +74,8 @@ enum Command {
         /// events, F5 quick save and F9 quick load (slot `quick`).
         #[arg(long)]
         saves: Option<String>,
+        #[command(flatten)]
+        window: render::WindowFlags,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -410,6 +412,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             record,
             mute,
             saves,
+            window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -421,6 +424,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             record: record.as_deref(),
             mute,
             saves: saves.as_deref(),
+            window,
         }),
         Command::Screenshot {
             scene,

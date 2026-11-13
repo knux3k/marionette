@@ -38,7 +38,7 @@ jobs:
           key: release
       - name: System libraries on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev mesa-vulkan-drivers
       - name: Stability suite (long)
         shell: bash
         run: |
