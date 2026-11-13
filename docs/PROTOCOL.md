@@ -52,7 +52,8 @@ Only CC0 or self-made assets go in the project, each with its source recorded ne
 
 ## 6. How to work in this project
 
-1. Read this file, then `AGENTS.md`.
+1. Read this file, then `AGENTS.md` and `docs/ai/START-HERE.md`; run `handoff_status`. Claim
+   work with `handoff_claim` when others may be working too; end with `handoff_note`.
 2. `marionette op project_validate` before and after changes.
 3. Change scenes only through edit operations (`entity_*`, `component_*`, `scene_*`), which
    validate before writing and keep files canonical.
