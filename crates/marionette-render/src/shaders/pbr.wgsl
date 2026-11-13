@@ -8,7 +8,7 @@
 
 struct ViewU {
     view_proj: mat4x4<f32>,
-    eye: vec4<f32>,
+    eye: vec4<f32>, // xyz = camera position, w = game time in seconds (game shaders)
     inv_view_proj: mat4x4<f32>,
 };
 
@@ -124,6 +124,79 @@ fn vs_shadow(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
     let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
     return view.view_proj * model * vec4<f32>(in.position, 1.0);
 }
+
+// Game shaders (decision 0181). A game shader may move vertices in world space; these entry
+// points are used only by pipelines built for game shaders, so the plain path above stays
+// exactly as it was.
+struct Vertex {
+    position: vec3<f32>, // world space
+    normal: vec3<f32>,   // world space, not normalized
+    uv: vec2<f32>,
+    color: vec4<f32>,
+    // Instance color, metallic/roughness/normal scale/bits, as in `InstIn`.
+    base_color: vec4<f32>,
+    params: vec4<f32>,
+    time: f32, // seconds of game time
+};
+
+fn hooked_vertex(in: VsIn, inst: InstIn) -> Vertex {
+    let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
+    let c0 = inst.model0.xyz;
+    let c1 = inst.model1.xyz;
+    let c2 = inst.model2.xyz;
+    let k0 = cross(c1, c2);
+    let flip = select(1.0, -1.0, dot(c0, k0) < 0.0);
+    let cof = mat3x3<f32>(k0, cross(c2, c0), cross(c0, c1)) * flip;
+    var v = Vertex((model * vec4<f32>(in.position, 1.0)).xyz, cof * in.normal, in.uv, in.color,
+        inst.base_color, inst.params, view.eye.w);
+    vertex_hook(&v);
+    return v;
+}
+
+@vertex
+fn vs_hooked(in: VsIn, inst: InstIn) -> VsOut {
+    let v = hooked_vertex(in, inst);
+    var out: VsOut;
+    out.clip = view.view_proj * vec4<f32>(v.position, 1.0);
+    out.world_pos = v.position;
+    out.normal = v.normal;
+    out.uv = v.uv;
+    out.base_color = v.base_color;
+    out.params = v.params;
+    out.emissive = inst.emissive;
+    out.color = v.color;
+    return out;
+}
+
+@vertex
+fn vs_shadow_hooked(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
+    return view.view_proj * vec4<f32>(hooked_vertex(in, inst).position, 1.0);
+}
+
+// What a game shader's `surface` function reads and changes. Filled with the standard
+// material result first, so a shader only sets what it wants to change.
+struct Surface {
+    base_color: vec4<f32>, // linear rgb, alpha (used by blended shaders)
+    metallic: f32,
+    roughness: f32,
+    normal: vec3<f32>,     // world space, normalized, facing the viewer
+    emissive: vec3<f32>,   // light given off, added after lighting
+    unlit: f32,            // > 0.5: skip lighting; the result is base_color.rgb + emissive
+};
+
+struct SurfaceIn {
+    world_pos: vec3<f32>,
+    normal: vec3<f32>,     // interpolated geometric normal (normalized, facing the viewer)
+    uv: vec2<f32>,
+    color: vec4<f32>,      // vertex color (white when the mesh has none)
+    eye: vec3<f32>,        // camera position
+    time: f32,             // seconds of game time (ticks times step), for animation
+};
+
+// @hooks-begin (replaced for game shaders)
+fn vertex_hook(v: ptr<function, Vertex>) {}
+fn surface_hook(s: ptr<function, Surface>, i: SurfaceIn) {}
+// @hooks-end
 
 const PI: f32 = 3.14159265;
 
@@ -263,19 +336,33 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     if ((bits & PARAM_VERTEX_COLORS) != 0u) {
         tint = tint * in.color;
     }
-    let base = tint * textureSample(base_tex, samp, in.uv);
+    let base0 = tint * textureSample(base_tex, samp, in.uv);
     let mr = textureSample(mr_tex, samp, in.uv);
-    let emissive = textureSample(emissive_tex, samp, in.uv);
-    let metallic = clamp(in.params.x * mr.b, 0.0, 1.0);
-    let roughness = clamp(in.params.y * mr.g, 0.045, 1.0);
-
-    var n = normalize(in.normal);
+    let emissive_s = textureSample(emissive_tex, samp, in.uv);
+    var geo = normalize(in.normal);
     if (!front) {
-        n = -n;
+        geo = -geo;
     }
+    var n0 = geo;
     let nm = textureSample(normal_tex, samp, in.uv).xyz;
     if ((bits & PARAM_NORMAL_MAP) != 0u) {
-        n = perturb_normal(n, in.world_pos, in.uv, nm, in.params.z);
+        n0 = perturb_normal(n0, in.world_pos, in.uv, nm, in.params.z);
+    }
+    var s = Surface(
+        base0,
+        clamp(in.params.x * mr.b, 0.0, 1.0),
+        clamp(in.params.y * mr.g, 0.045, 1.0),
+        n0,
+        in.emissive.rgb + material.emissive.rgb * emissive_s.rgb,
+        0.0,
+    );
+    surface_hook(&s, SurfaceIn(in.world_pos, geo, in.uv, in.color, view.eye.xyz, view.eye.w));
+    let base = s.base_color;
+    let metallic = clamp(s.metallic, 0.0, 1.0);
+    let roughness = clamp(s.roughness, 0.045, 1.0);
+    let n = s.normal;
+    if (s.unlit > 0.5) {
+        return finish(base.rgb + s.emissive, length(view.eye.xyz - in.world_pos), base.a);
     }
 
     let v = normalize(view.eye.xyz - in.world_pos);
@@ -345,7 +432,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     } else {
         color += ambient_light * (base.rgb * (1.0 - metallic) + f0 * (1.0 - 0.5 * roughness));
     }
-    color += in.emissive.rgb + material.emissive.rgb * emissive.rgb;
+    color += s.emissive;
     return finish(color, length(view.eye.xyz - in.world_pos), base.a);
 }
 

@@ -15,6 +15,7 @@ pub mod registry;
 pub mod rng;
 pub mod scene;
 pub mod schema;
+pub mod shader;
 pub mod sim;
 pub mod spatial;
 pub mod ui;

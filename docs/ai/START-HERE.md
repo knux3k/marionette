@@ -29,6 +29,7 @@ when the task calls for it, and then only the section that matters.
 | Budgets and measuring | [PERFORMANCE.md](PERFORMANCE.md) |
 | Culling, level of detail, anti-aliasing, frame cost controls | [RENDER-COST.md](RENDER-COST.md) |
 | Hot loops in TypeScript | [JOBS-TS.md](JOBS-TS.md) |
+| A game's own shader code (WGSL) | [SHADERS.md](SHADERS.md) |
 | Unity or Unreal code | [PORTING.md](PORTING.md) |
 | Stability modes | [STABILITY.md](STABILITY.md) |
 | Generating images and models | [GENERATION.md](GENERATION.md) |

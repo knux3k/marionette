@@ -226,6 +226,7 @@ pub fn draw_job_data(world: &World, _alpha: f32, out: &mut Vec<BulkDraw>) {
                 asset: draw.asset.clone(),
                 material: draw.material,
                 transforms,
+                shader: None,
             });
         }
     }

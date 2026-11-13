@@ -609,6 +609,7 @@ fn draw_items(world: &World, alpha: f32, out: &mut Vec<BulkDraw>) {
             asset: model.clone(),
             material: Some(*material),
             transforms,
+            shader: None,
         });
     }
 }

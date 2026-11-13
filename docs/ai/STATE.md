@@ -11,7 +11,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
 | 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080); meshes built in game code drawn as `mesh:<name>` (decision 0180). |
+| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080); meshes built in game code drawn as `mesh:<name>` (decision 0180); game shaders (`ShaderMaterial`, decision 0181). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). |
@@ -24,6 +24,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 - Game meshes (decision 0180): drawn and updated only on Mesa lavapipe; rewrite cost on a
   hardware GPU not measured; vertex colors not seen on a desktop GPU.
+- Game shaders (decision 0181): compiled and drawn only on Mesa lavapipe (Vulkan); not yet on
+  DX12 (Windows CI runs WARP) or a desktop GPU; pipeline build time per shader not measured.
 
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.

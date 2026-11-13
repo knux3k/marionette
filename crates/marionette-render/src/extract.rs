@@ -44,6 +44,12 @@ pub struct FrameData {
     /// Meshes the game built in code, drawn by `mesh:<name>` assets (decision 0180). One
     /// shared copy: taking it costs a reference count.
     pub game_meshes: marionette_core::mesh::MeshMap,
+    /// Shader sources stored by game code (decision 0181).
+    pub game_shaders: std::sync::Arc<std::collections::BTreeMap<String, std::sync::Arc<str>>>,
+    /// Distinct `ShaderMaterial`s of this frame's meshes (`MeshDraw::shader` indexes this).
+    pub shader_materials: Vec<marionette_core::shader::ShaderMaterial>,
+    /// Game time in seconds (ticks plus `alpha`, times the step), for animated shaders.
+    pub time: f32,
 }
 
 /// The `Environment` resource plus the sky colors a generated environment is made from.
@@ -163,6 +169,8 @@ pub struct MeshDraw {
     pub emissive: Vec3,
     /// The entity also has `CastShadows` (a lamp): the model does not block its own light.
     pub lamp: bool,
+    /// Index into `FrameData::shader_materials` when the entity has a `ShaderMaterial`.
+    pub shader: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -307,7 +315,18 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         let emissives = world.components().component_id::<Emissive>().is_some();
         let placements = world.components().component_id::<ModelPlacement>().is_some();
         let lamps = world.components().component_id::<CastShadows>().is_some();
+        let shaders = world
+            .components()
+            .component_id::<marionette_core::shader::ShaderMaterial>()
+            .is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
+            let shader = if shaders {
+                world
+                    .get::<marionette_core::shader::ShaderMaterial>(e)
+                    .map(|s| shader_index(&mut frame.shader_materials, s))
+            } else {
+                None
+            };
             let emissive = if emissives {
                 world
                     .get::<Emissive>(e)
@@ -340,6 +359,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 pose: pose.map(|p| std::sync::Arc::new(p.clone())),
                 emissive,
                 lamp: lamps && world.get::<CastShadows>(e).is_some(),
+                shader,
             });
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
@@ -453,6 +473,18 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     if let Some(meshes) = world.get_resource::<marionette_core::mesh::GameMeshes>() {
         frame.game_meshes = meshes.snapshot();
     }
+    {
+        let tick = world
+            .get_resource::<marionette_core::builtin::SimClock>()
+            .map_or(0, |c| c.tick);
+        let dt = world
+            .get_resource::<marionette_core::builtin::FixedStep>()
+            .map_or(marionette_core::builtin::DEFAULT_DT, |s| s.dt);
+        frame.time = ((tick as f64 + alpha.clamp(0.0, 1.0) as f64) * dt as f64) as f32;
+    }
+    if let Some(shaders) = world.get_resource::<marionette_core::shader::GameShaders>() {
+        frame.game_shaders = shaders.snapshot();
+    }
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
         for hook in &hooks.0 {
             hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);
@@ -464,8 +496,24 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame
 }
 
+/// Index of `s` in `list`, adding it when new. Materials usually repeat, so the search
+/// starts at the last entry; past 64 distinct materials new ones are added without a
+/// search (the renderer still shares GPU data between equal ones).
+fn shader_index(
+    list: &mut Vec<marionette_core::shader::ShaderMaterial>,
+    s: &marionette_core::shader::ShaderMaterial,
+) -> u32 {
+    if list.len() <= 64
+        && let Some(i) = list.iter().rposition(|m| m == s)
+    {
+        return i as u32;
+    }
+    list.push(s.clone());
+    (list.len() - 1) as u32
+}
+
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 21] = [
+pub const READS: [(&str, Kind); 22] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -487,4 +535,5 @@ pub const READS: [(&str, Kind); 21] = [
     ("CastShadows", Kind::Component),
     ("Environment", Kind::Resource),
     ("LevelOfDetail", Kind::Resource),
+    ("ShaderMaterial", Kind::Component),
 ];

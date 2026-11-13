@@ -63,6 +63,12 @@ Decision 0180. In a module (or any code with `&mut World`):
 4. Change it by calling `set` again with the same name (same sizes: written in place);
    `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
 
+## Give a model a game shader
+
+Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` in WGSL (a
+`.wgsl` file next to the scene, or `GameShaders::set_in` from Rust) and add
+`ShaderMaterial { shader, params, textures }` to the entity.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.

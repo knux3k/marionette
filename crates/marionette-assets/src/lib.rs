@@ -134,8 +134,9 @@ impl ModelData {
 /// Loads a model by its scene `asset` string (see `marionette_core::spatial::Model`).
 pub fn load_model(asset: &str, base_dir: &Path) -> Result<ModelData, String> {
     if let Some(shape) = asset.strip_prefix("primitive:") {
-        return primitive(shape)
-            .ok_or_else(|| format!("unknown primitive `{shape}`; built-in shapes are cube, sphere, plane"));
+        return primitive(shape).ok_or_else(|| {
+            format!("unknown primitive `{shape}`; built-in shapes are cube, sphere, plane, grid")
+        });
     }
     load_gltf(&base_dir.join(asset))
 }
@@ -146,6 +147,7 @@ pub fn primitive(name: &str) -> Option<ModelData> {
         "cube" => cube(),
         "sphere" => uv_sphere(32, 16),
         "plane" => plane(),
+        "grid" => grid(64),
         _ => return None,
     };
     Some(ModelData::single(mesh))
@@ -195,6 +197,29 @@ fn plane() -> MeshData {
         indices: vec![0, 1, 2, 0, 2, 3],
         ..Default::default()
     }
+}
+
+/// `plane` split into `cells` x `cells` squares, for shaders that move vertices (water,
+/// flags, wind). Same size, facing and UVs as `plane`.
+fn grid(cells: u32) -> MeshData {
+    let mut m = MeshData::default();
+    for j in 0..=cells {
+        for i in 0..=cells {
+            let (u, v) = (i as f32 / cells as f32, j as f32 / cells as f32);
+            m.positions.push([u - 0.5, 0.0, v - 0.5]);
+            m.normals.push([0.0, 1.0, 0.0]);
+            m.uvs.push([u, v]);
+        }
+    }
+    let row = cells + 1;
+    for j in 0..cells {
+        for i in 0..cells {
+            let a = j * row + i;
+            m.indices
+                .extend_from_slice(&[a, a + row, a + 1, a + 1, a + row, a + row + 1]);
+        }
+    }
+    m
 }
 
 fn uv_sphere(segments: u32, rings: u32) -> MeshData {

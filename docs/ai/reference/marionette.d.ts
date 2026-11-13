@@ -683,7 +683,7 @@ type Material = {
   roughness: number;
 };
 
-/** A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y). */
+/** A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y), `primitive:grid` (the plane split into 64 x 64 squares, for shaders that move vertices). Meshes built in game code are `mesh:<name>` (decision 0180). */
 type Model = {
   asset: string;
 };
@@ -796,6 +796,16 @@ type ScriptState = {
 /** Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore. */
 type ScriptTimers = {
   data: string;
+};
+
+/** Draws the entity's `Model` with a game shader. `Material` (if present) still sets the base color, metallic and roughness the shader starts from. */
+type ShaderMaterial = {
+  /** Up to 16 numbers, read in the shader as `game.params[i / 4][i % 4]`; missing ones are zero. */
+  params: Array<number>;
+  /** A name stored in `GameShaders`, or a `.wgsl` file relative to the scene file. */
+  shader: string;
+  /** Up to 4 images (PNG paths relative to the scene file, or `builtin:` images), bound as `tex0` to `tex3`; missing ones are white. */
+  textures: Array<string>;
 };
 
 /** Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed. */
@@ -1018,6 +1028,7 @@ interface Components {
   ScriptInbox: ScriptInbox;
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
+  ShaderMaterial: ShaderMaterial;
   SoundSpatial: SoundSpatial;
   SpotLight: SpotLight;
   Sprite: Sprite;

@@ -272,7 +272,7 @@ Rust type: `marionette_core::spatial::Material`.
 
 ### `Model`
 
-A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y).
+A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y), `primitive:grid` (the plane split into 64 x 64 squares, for shaders that move vertices). Meshes built in game code are `mesh:<name>` (decision 0180).
 
 Rust type: `marionette_core::spatial::Model`.
 
@@ -393,6 +393,18 @@ Rust type: `marionette_script::ScriptTimers`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `data` | string | yes |  |
+
+### `ShaderMaterial`
+
+Draws the entity's `Model` with a game shader. `Material` (if present) still sets the base color, metallic and roughness the shader starts from.
+
+Rust type: `marionette_core::shader::ShaderMaterial`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `params` | array of number | yes | Up to 16 numbers, read in the shader as `game.params[i / 4][i % 4]`; missing ones are zero. |
+| `shader` | string | yes | A name stored in `GameShaders`, or a `.wgsl` file relative to the scene file. |
+| `textures` | array of string | yes | Up to 4 images (PNG paths relative to the scene file, or `builtin:` images), bound as `tex0` to `tex3`; missing ones are white. |
 
 ### `SoundSpatial`
 

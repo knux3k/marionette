@@ -438,6 +438,6 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
 In [RENDER-COST.md](RENDER-COST.md#proofs).
 
 
-## Game meshes (decision 0180)
+## Game meshes and shaders (decisions 0180, 0181)
 
 In [proofs/game-meshes.md](proofs/game-meshes.md).
