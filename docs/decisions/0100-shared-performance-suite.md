@@ -29,7 +29,8 @@ every speed claim needs the same before and after, with outputs proven identical
   CPU load in the pauses between cases; `perf_compare` warns above 10 percent.
 - `marionette_host::machine`: CPU model, whole-machine CPU load, desktop idle time. Hardware
   model only; no host or user names.
-- Skill `engine-measure-performance` is the procedure.
+- The procedure is in skill `marionette-find-slowdown` and PERFORMANCE.md (a separate skill
+  did not fit the shared description budget).
 
 ## Alternatives
 

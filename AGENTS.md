@@ -43,7 +43,6 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `engine-add-scene-or-mode` | add an example or proof scene with its stability mode and reference image |
 | `engine-add-skill` | add or update a skill |
 | `engine-finish-change` | checks, records and hygiene before every commit |
-| `engine-measure-performance` | shared benchmark suite, before and after, on a shared PC |
 | `marionette-add-rust-code` | a game's own Rust module and operations |
 | `marionette-animate-model` | play and blend animation clips |
 | `marionette-build-scene` | create or change a scene through operations |
@@ -52,6 +51,7 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-generate-assets` | generate images, textures and models from recipes |
 | `marionette-handoff` | start, claim and hand off work in a game project |
 | `marionette-light-scene` | lighting and post-processing |
+| `marionette-multiplayer` | co-op lockstep, lobbies, Steam, achievements, cloud saves |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
 | `marionette-synth-audio` | synth voices, streamed music, generated samples, audio checked as numbers |
 | `marionette-test-game` | scenarios, replays, stability soaks |

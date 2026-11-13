@@ -76,6 +76,9 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
   (fat LTO, one codegen unit; same outputs, decision 0101).
 - `length: "quick"` is a smoke test (a tenth of the ticks, one repeat). `only: ["sim/"]`
   picks cases; `extra_scenes` adds a game's own scenes. `no_gpu` skips render cases.
+- Shared PC: build first (never while the bench lock exists), then pass `"lock"` (the PC's
+  `pc-bench.lock`), `"lock_owner"`, `"min_idle_s": 300`, `"wait_s": 3600`. The suite takes
+  and removes the lock and refuses while the CPU is busy or the desktop is in use.
 - Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.
 - Results and the machine they came from go in [proofs/performance.md](proofs/performance.md), section "Shared performance suite (decision 0100)".
 
