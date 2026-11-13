@@ -377,6 +377,7 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
                 describe,
                 use_asset: None,
                 search: None,
+                scale: None,
             },
         );
     };

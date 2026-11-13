@@ -47,6 +47,7 @@ function yawRotation(yaw: number) {
 // Components that draw one slot's art at a tile. `size` is the slot's footprint in tiles.
 function body(slot: string, x: number, y: number, size: number, layer: number, tint: Rgb = [1, 1, 1]): any {
   const art = CONFIG.art[slot];
+  if (art.kind !== "model") size *= art.scale ?? 1;
   if (!THREE_D) {
     const t = { translation: world(x, y), rotation: IDENTITY, scale: { x: 1, y: 1, z: 1 } };
     if (art.kind === "sprite") {

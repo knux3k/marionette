@@ -239,13 +239,22 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
         if slot.kind == SlotKind::Backdrop && matches!(a, Art::Shape { .. }) {
             continue;
         }
+        let k = brief.assets.get(slot.name).and_then(|b| b.scale).unwrap_or(1.0);
         let a = match a {
             Art::Shape { color } => Art::Shape {
                 color: color.map(|c| round3(c) as f32),
             },
+            Art::Model { asset, scale } => Art::Model {
+                asset,
+                scale: round3(scale * k) as f32,
+            },
             other => other,
         };
-        arts.insert(slot.name.into(), serde_json::to_value(a).expect("art serializes"));
+        let mut v = serde_json::to_value(&a).expect("art serializes");
+        if k != 1.0 && !matches!(a, Art::Model { .. }) {
+            v["scale"] = json!(round3(k));
+        }
+        arts.insert(slot.name.into(), v);
     }
     let words = json!({
         "pickups": brief.words.pickups.to_uppercase(),
@@ -415,7 +424,7 @@ pub fn build_ops(brief: &Brief, map: &[String]) -> Value {
             let tan_half_v = (22.5f64).to_radians().tan();
             let tan_half_h = tan_half_v * 16.0 / 9.0;
             let d = ((w / 2.0 + 1.0) / tan_half_h).max((h / 2.0 + 1.5) / tan_half_v) * 1.08;
-            let pitch = 58f64.to_radians();
+            let pitch = 66f64.to_radians();
             let (cy, cz) = (
                 (d * pitch.sin() * 100.0).round() / 100.0,
                 (d * pitch.cos() * 100.0).round() / 100.0,

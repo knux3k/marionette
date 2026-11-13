@@ -166,6 +166,10 @@ pub struct SlotBrief {
     /// goes straight to generation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search: Option<String>,
+    /// Draw this slot bigger or smaller (1 = the template's size), e.g. 1.6 for a flat model
+    /// that its height makes small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<f32>,
 }
 
 /// A game brief: the whole design of a starter game in about 1 KB.
@@ -252,6 +256,14 @@ impl Brief {
                 problems.push(bad(
                     format!("colors.{name} `{c}` is not #rrggbb"),
                     "write it like #ffd166",
+                ));
+            }
+        }
+        for (name, b) in &self.assets {
+            if b.scale.is_some_and(|k| !(0.2..=5.0).contains(&k)) {
+                problems.push(bad(
+                    format!("assets.{name}.scale must be 0.2 to 5"),
+                    "1 is the template's size",
                 ));
             }
         }

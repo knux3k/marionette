@@ -33,6 +33,7 @@ const solid = (c: number, r: number) => tileAt(c, r) === "#";
 
 function sprite(slot: string, x: number, y: number, size: number, layer: number, tint: Rgb = [1, 1, 1], flip = false): any {
   const art = CONFIG.art[slot];
+  size *= art.scale ?? 1;
   const t = { translation: { x, y, z: 0 }, rotation: IDENTITY, scale: { x: flip ? -1 : 1, y: 1, z: 1 } };
   if (art.kind === "sprite") {
     const a = art.aspect;
@@ -82,7 +83,7 @@ function setup(s: any): void {
       const y = H - 1 - r + 0.5;
       if (ch === "#") {
         // Surface tiles at full brightness, buried ones darker.
-        const tint: Rgb = r > 0 && solid(c, r - 1) ? [0.55, 0.55, 0.6] : [1, 1, 1];
+        const tint: Rgb = r > 0 && solid(c, r - 1) ? [0.7, 0.7, 0.75] : [1, 1, 1];
         spawn(s, sprite("ground", x, y, 1.0, 1, tint), "ground");
       } else if (ch === "=") {
         const e = sprite("ground", x, y + 0.3, 1.0, 1, [0.9, 0.85, 0.75]);
@@ -106,7 +107,13 @@ function setup(s: any): void {
   s.p.id = spawn(s, sprite("player", s.p.x, s.p.y, 1.0, 5), "player");
   s.safe = { x: s.home.x, y: s.home.y };
   const bg = CONFIG.art.background;
-  if (bg) s.bg = spawn(s, sprite("background", 0, H / 2, VIEW_H * 2.2, -1, [0.85, 0.85, 0.9]), "background");
+  if (bg) {
+    // Wide enough for the view plus the parallax drift (follow), tall enough for the view.
+    const viewW = (VIEW_H * 16) / 9;
+    const a = bg.aspect ?? 2;
+    const size = Math.max(viewW + W * 0.1 + 1, VIEW_H * Math.max(a, 1) * 1.02);
+    s.bg = spawn(s, sprite("background", 0, H / 2, size, -1, [0.85, 0.85, 0.9]), "background");
+  }
   banner(CONFIG.title, 2.5);
   follow(s);
   hud(s);
