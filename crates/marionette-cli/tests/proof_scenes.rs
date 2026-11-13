@@ -13,14 +13,17 @@ use marionette_agent::Agent;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
-/// The proof games. A new game is added here and in `docs/ai/PROOF-SCENES.md`.
-const GAMES: [&str; 6] = [
+/// The proof games. A new game is added here and in `docs/ai/PROOF-SCENES.md`. The last two
+/// were made by the game starter (`marionette make`, decision 0150).
+const GAMES: [&str; 8] = [
     "lantern-keeper",
     "ember-run",
     "cloudstep",
     "crystal-ward",
     "dust-circuit",
     "signal-yard",
+    "gearbug-garden",
+    "comet-hopper",
 ];
 
 fn games_dir() -> PathBuf {

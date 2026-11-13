@@ -1,0 +1,71 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "enemy",
+  "output": "model",
+  "file": "enemy.glb",
+  "sha256": "38c6099e465325795e16f9345659858b09d6eae12893163a402b7423459a555c",
+  "recipe": "enemy.recipe.json",
+  "recipe_sha256": "952dac5aad81475b647298e4192325540c5e79cc087fbefa035d8eb7896b86b1",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "enemy_ref",
+      "file": "enemy_ref.png",
+      "sha256": "862d8eea9ff3420d221e775c2668b74bd78a5c775f063027b2e2c11a8614659f",
+      "approved": false,
+      "approval_waived": true
+    },
+    "cache_key": "0580aebc1cbc02e9521a0a8f3cb6e635a19cd76bb033373717baa3e76825a998",
+    "raw_sha256": "ec9c1a32e6366119fc38fd2ccb0908f5ef16ab5922c1591093f7dd62bdcedc1f",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.378936,
+        0.0,
+        -0.407961
+      ],
+      [
+        0.378936,
+        0.9,
+        0.407961
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 503026 to 9472 triangles (budget 8000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "9472 triangles is still over the budget of 8000"
+    ],
+    "scale": 0.92417,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.406095,
+        -0.495853,
+        -0.442753
+      ],
+      [
+        0.413963,
+        0.477994,
+        0.440118
+      ]
+    ],
+    "textures": 3,
+    "triangles": 9472
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

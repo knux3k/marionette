@@ -17,9 +17,9 @@ fn games() -> Vec<std::path::PathBuf> {
 }
 
 #[test]
-fn every_proof_game_has_a_package_plan_without_tests_or_recipes() {
+fn every_game_has_a_package_plan_without_tests_or_recipes() {
     let games = games();
-    assert_eq!(games.len(), 6, "the six proof games");
+    assert!(games.len() >= 6, "the six proof games and the made ones");
     for dir in games {
         let g = read_game(&dir).unwrap();
         assert!(g.files.contains(&g.entry), "{}: entry in files", g.name);
@@ -41,7 +41,7 @@ fn every_proof_game_has_a_package_plan_without_tests_or_recipes() {
                 assert!(g.files.contains(f), "{}: named asset {f} left out", g.name);
             }
         }
-        // The proof games script in TypeScript and use no job TypeScript.
+        // The games script in TypeScript and use no job TypeScript.
         assert_eq!(
             g.features,
             vec!["gamepad".to_string(), "script".to_string()],

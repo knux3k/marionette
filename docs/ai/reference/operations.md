@@ -90,6 +90,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
 | `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
+| `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
+| `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
 | `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
 | `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
@@ -2143,6 +2145,64 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `packages` | array of Built | yes |  |
+
+## `game_brief`
+
+Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief \| null |  | Check this brief instead of reading a prompt. |
+| `prompt` | string \| null |  | The game idea in plain words ("a cozy 3d maze where a moth collects lanterns"). |
+| `template` | Template \| null |  | Force a template (`maze` or `platformer`). |
+| `view` | View \| null |  | Force a view (`2d` or `3d`; 3D is maze only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief | yes |  |
+| `slots` | array of SlotInfo | yes |  |
+
+## `game_make`
+
+Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief \| null |  |  |
+| `generate` | boolean |  | Run generate_run for slots still waiting for art (paid providers follow the project's providers.json, keys and spend caps), then use what was built. |
+| `path` | string | yes | Project folder to create (must not exist or be empty), or to refresh. |
+| `prompt` | string \| null |  |  |
+| `refresh` | boolean |  | Re-make an existing starter project from its brief.json (or from `brief`). |
+| `template` | Template \| null |  |  |
+| `tries` | integer \| null |  | Seeds to try when the autopilot cannot win a level (default 8). |
+| `view` | View \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | array of SlotResult | yes |  |
+| `autoplay` | Autoplay | yes |  |
+| `files` | array of string | yes |  |
+| `generation` | array of string | yes | What generate_run reported, when `generate` was set. |
+| `handoff` | array of string | yes | AI handoff files and skills for agents working on the game: per operation, `written` or why not. |
+| `path` | string | yes |  |
+| `pending` | array of string | yes | Recipes in assets/generated still to build (generate_run in the project, then game_make with `refresh`). |
+| `template` | Template | yes |  |
+| `tests_failed` | integer | yes |  |
+| `tests_passed` | integer | yes |  |
+| `title` | string | yes |  |
+| `view` | View | yes |  |
 
 ## `net_simulate`
 
