@@ -31,7 +31,7 @@ jobs:
           key: package
       - name: System libraries, zig and cargo-zigbuild
         run: |
-          sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+          sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev pkg-config
           pip install ziglang
           cargo install cargo-zigbuild --locked
       - name: Link-time sysroots (glibc 2.31 ALSA)
@@ -87,7 +87,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, software Vulkan)
-        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev libudev-dev pkg-config
       - name: State hash of the example scene (must equal x86-64)
         run: |
           hash=$(cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1)
