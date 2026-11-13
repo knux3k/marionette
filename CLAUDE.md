@@ -25,6 +25,8 @@ engine is.
   (`docs/ai/RULES.md`, decision 0016).
 - Ask the owner before pushing, publishing, spending, deleting outside the repository, or
   opening windows or sound on a user's machine.
+- A task with a procedure has a skill in `.claude/skills/`; a feature an agent would use gets
+  one (`engine-add-skill`).
 - Weigh every change against the four focuses in `docs/ai/FOCUSES.md`: modularity (including
   custom code), limited context and token use, performance, graphics.
 - End every session by updating `docs/ai/STATE.md` and adding a row to `docs/ai/SESSION-LOG.md`.
