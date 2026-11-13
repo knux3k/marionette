@@ -66,3 +66,5 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0171 | Focus loss releases held input; hidden windows sleep; vsync frame times snap to the refresh | accepted |
 | 0172 | Gamepads through gilrs in `marionette-gamepad`, polled by window hooks | accepted |
 | 0173 | Every windowed run measures frame pacing and input latency (`FrameStats`, `--frame-stats`) | accepted |
+| 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
+| 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |

@@ -24,6 +24,8 @@ port = ["marionette-agent/port"]
 jobs-ts = ["marionette-agent/jobs-ts"]
 # Controllers in windowed play (decision 0172; Linux builds need libudev).
 gamepad = ["dep:marionette-gamepad"]
+# World-space UI (off by default; decision 0200).
+ui3d = ["marionette-agent/ui3d"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-agent/net"]
 
