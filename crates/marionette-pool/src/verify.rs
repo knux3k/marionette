@@ -4,7 +4,7 @@
 //! The assets repository's CI runs this through the `pool_verify` operation.
 
 use crate::admit::{is_dedication_file_name, is_license_file_name};
-use crate::{ASSET_FORMAT, Origin, POOL_FORMAT, Pool, PoolAsset, net, sha256_hex, sources, valid_id};
+use crate::{ASSET_FORMAT, Origin, POOL_FORMAT, Pool, PoolAsset, sha256_hex, sources, valid_id};
 use schemars::JsonSchema;
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -114,7 +114,7 @@ fn check_asset(dir: &Path, folder: &str, out: &mut Vec<Problem>) -> usize {
             ),
             Some(lib) => {
                 for url in rec.source.downloads.iter().chain(rec.source.page.iter()) {
-                    if !lib.domains.iter().any(|d| net::on_domain(url, d)) {
+                    if !lib.owns(url) {
                         problem(
                             out,
                             folder,

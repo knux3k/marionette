@@ -52,3 +52,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0066 | Environment lighting, reflections and sky background (`Environment`) | accepted |
 | 0067 | glTF emissive materials (factor, texture, emissive strength) | accepted |
 | 0070 | Scenes and scripts run job TypeScript over job arrays saved with the scene (`JobData`, `JobSchedule`, `engine.jobs`, `JobDraw`) | accepted |
+| 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
