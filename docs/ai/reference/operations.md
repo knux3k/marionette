@@ -62,6 +62,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
 | `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
+| `nav_path` | no | Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`. |
+| `nav_agents` | no | NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left. |
 | `synth_render` | no | Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers. |
 | `synth_patches` | no | Synth presets and every Patch field with its default. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
@@ -1432,6 +1434,59 @@ Output:
 | `more` | integer | yes | Sources left out by `limit`. |
 | `music` | array of HeardLayer | yes |  |
 | `sources` | array of HeardSource | yes |  |
+| `tick` | integer | yes |  |
+
+## `nav_path`
+
+Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `surface` | integer | yes | The entity with the NavSurface. |
+| `ticks` | integer |  |  |
+| `to` | array of number | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `complete` | boolean | yes |  |
+| `corners` | array of array of number | yes |  |
+| `length` | number | yes |  |
+
+## `nav_agents`
+
+NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most agents to list. Default 10. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `agents` | array of AgentRow | yes |  |
+| `counts` | object | yes | Status name -> agent count. |
+| `more` | integer | yes |  |
 | `tick` | integer | yes |  |
 
 ## `synth_render`
