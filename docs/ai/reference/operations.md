@@ -64,6 +64,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
 | `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
+| `synth_render` | no | Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers. |
+| `synth_patches` | no | Synth presets and every Patch field with its default. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
 | `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
 | `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
@@ -83,6 +85,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
+| `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
@@ -1498,6 +1501,50 @@ Output:
 | `sources` | array of HeardSource | yes |  |
 | `tick` | integer | yes |  |
 
+## `synth_render`
+
+Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `base` | string \| null |  | Where stream files are found, relative to the project (default: the project root). |
+| `envelope_ms` | integer \| null |  | Also return rms per window of this many milliseconds (at most 400 windows). |
+| `file` | string \| null |  | Score JSON file, relative to the project. |
+| `score` | any |  | Inline score: `{rate, voices, seconds, block, notes:[{at, dur, note\|hz, velocity, patch\|custom}], streams:[{file, at, gain, looping}], master:[{at, gain}]}`. Times in seconds. |
+| `wav` | string \| null |  | Write the render here as a 16-bit stereo WAV (relative to the project). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `envelope` | array of number | yes |  |
+| `hash` | string | yes | Hash of the rendered samples: the same score gives the same hash everywhere. |
+| `report` | any | yes |  |
+| `stats` | any | yes |  |
+| `wav` | string \| null |  |  |
+
+## `synth_patches`
+
+Synth presets and every Patch field with its default.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `default` | any | yes | Every Patch field at its default. |
+| `patches` | object | yes | The presets in full. |
+| `presets` | array of string | yes |  |
+
 ## `generate_recipe`
 
 Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first.
@@ -1983,6 +2030,34 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `files` | array of ScaffoldFile | yes |  |
+| `written` | boolean | yes |  |
+
+## `port_serde`
+
+Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `derives` | array of string |  | Extra derives for every type (for example `Reflect`). |
+| `dry_run` | boolean |  | Return the code without writing. |
+| `out` | string \| null |  | The .rs file to write, relative to the project root. Omit to get the code back. |
+| `overwrite` | boolean |  | Replace an existing `out` file. |
+| `roots` | array of string |  | Only these types and the types their saved fields reach. Default: every [Serializable] type. |
+| `source` | string | yes | Same as `port_scan`'s source. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `notes` | array of Note | yes |  |
+| `path` | string \| null |  | The file written, relative to the project root. |
+| `rust` | string \| null |  | The generated module; only when nothing was written. |
+| `types` | array of TypeInfo | yes |  |
 | `written` | boolean | yes |  |
 
 ## `port_convert`

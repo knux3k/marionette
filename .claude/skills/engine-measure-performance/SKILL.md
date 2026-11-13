@@ -1,6 +1,6 @@
 ---
 name: engine-measure-performance
-description: Measure engine speed before and after a change with the shared benchmark suite and its output-checking comparison, also on the shared PC. Use when optimizing, changing build settings, touching a hot path, or claiming a speedup.
+description: Benchmark engine speed before and after a change, with outputs checked. Use when optimizing, changing build settings or claiming a speedup.
 ---
 
 # Measure engine performance
