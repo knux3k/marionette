@@ -72,7 +72,7 @@ jobs:
           name: packages-linux
       - name: Run the packaged game headless
         run: |
-          sudo apt-get update && sudo apt-get install -y libasound2 unzip
+          sudo apt-get update && sudo apt-get install -y libasound2t64 unzip
           name=$(basename "$GAME")
           unzip -q "$name-steam-frame.zip"
           cd "$name-steam-frame"
