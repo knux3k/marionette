@@ -1,6 +1,6 @@
 ---
 name: marionette-test-game
-description: Test a Marionette game with scenario files (scene, seed, ticks, scripted input, assertions, reference image), replay recorded input, and run seeded stability soaks. Use when a behaviour was built or changed, when a test fails, when a state hash differs between runs, or when checking a game does not crash, hang or leak over a long run.
+description: Test a game with scenario files (scene, seed, ticks, input, assertions, reference image), replay recorded input, and run seeded stability soaks. Use when behaviour was built or changed, a test fails, a state hash differs between runs, or checking a game does not crash, hang or leak.
 ---
 
 # Test a game
