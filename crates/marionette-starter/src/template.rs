@@ -233,7 +233,7 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
     let mut arts = serde_json::Map::new();
     for slot in slots(brief.template, brief.view) {
         let a = art.get(slot.name).cloned().unwrap_or(Art::Shape {
-            color: slot.placeholder,
+            color: slot.placeholder.map(f64::from),
         });
         // A backdrop placeholder is no backdrop at all: the clear color shows.
         if slot.kind == SlotKind::Backdrop && matches!(a, Art::Shape { .. }) {
@@ -242,11 +242,11 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
         let k = brief.assets.get(slot.name).and_then(|b| b.scale).unwrap_or(1.0);
         let a = match a {
             Art::Shape { color } => Art::Shape {
-                color: color.map(|c| round3(c) as f32),
+                color: color.map(|c| (c * 1000.0).round() / 1000.0),
             },
             Art::Model { asset, scale } => Art::Model {
                 asset,
-                scale: round3(scale * k) as f32,
+                scale: ((scale * k as f64) * 1000.0).round() / 1000.0,
             },
             other => other,
         };
@@ -453,7 +453,7 @@ pub fn build_ops(brief: &Brief, map: &[String]) -> Value {
                 "sun",
                 json!({"DirectionalLight": {"color": rgba([1.0, 0.95, 0.85]), "direction": {"x": 0.35, "y": -1.0, "z": -0.45}, "illuminance": 1.6}}),
             ));
-            let floor = [bg[0] * 0.6 + 0.12, bg[1] * 0.6 + 0.12, bg[2] * 0.6 + 0.12];
+            let floor = [0, 1, 2].map(|i| bg[i] * 0.5 + accent[i] * 0.12 + 0.07);
             let mut plane = transform(0.0, 0.0, 0.0);
             plane["scale"] = json!({"x": w + 2.0, "y": 1.0, "z": h + 2.0});
             ops.push(entity(

@@ -25,7 +25,8 @@
       "describe": "a tall ornate brass garden gate"
     },
     "pickup": {
-      "describe": "a shiny golden cog gear"
+      "describe": "a shiny golden cog gear",
+      "scale": 1.8
     },
     "player": {
       "describe": "a small brass clockwork beetle with a wind-up key on its back"

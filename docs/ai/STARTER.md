@@ -33,6 +33,10 @@ player, enemy, pickup, goal, spikes, ground, background.
 `assets/generated/*.recipe.json`, `tests/autoplay.test.json` and `tests/idle.test.json`,
 README.md, providers.json (Qwen images, Tripo models), handoff files.
 
+Refresh never changes code outside the CONFIG block, so a game keeps the template version it was
+made with. To take a newer template, delete `scenes/scripts/game.ts` (your edits in it go too)
+and refresh.
+
 ## Proofs
 
 - `cargo test -p marionette-cli --test starter`: every template from a prompt is won by its

@@ -13,27 +13,27 @@
 const CONFIG: any = {
   "art": {
     "enemy": {
-      "color": [1.0, 0.30000001192092896, 0.3499999940395355],
+      "color": [1.0, 0.3, 0.35],
       "kind": "shape"
     },
     "floor": {
-      "color": [0.11999999731779099, 0.12999999523162842, 0.1599999964237213],
+      "color": [0.12, 0.13, 0.16],
       "kind": "shape"
     },
     "goal": {
-      "color": [0.8999999761581421, 0.75, 0.30000001192092896],
+      "color": [0.9, 0.75, 0.3],
       "kind": "shape"
     },
     "pickup": {
-      "color": [1.0, 0.800000011920929, 0.30000001192092896],
+      "color": [1.0, 0.8, 0.3],
       "kind": "shape"
     },
     "player": {
-      "color": [0.30000001192092896, 0.800000011920929, 1.0],
+      "color": [0.3, 0.8, 1.0],
       "kind": "shape"
     },
     "wall": {
-      "color": [0.3499999940395355, 0.4000000059604645, 0.44999998807907104],
+      "color": [0.35, 0.4, 0.45],
       "kind": "shape"
     }
   },
@@ -104,6 +104,7 @@ function yawRotation(yaw: number) {
 // Components that draw one slot's art at a tile. `size` is the slot's footprint in tiles.
 function body(slot: string, x: number, y: number, size: number, layer: number, tint: Rgb = [1, 1, 1]): any {
   const art = CONFIG.art[slot];
+  if (art.kind !== "model") size *= art.scale ?? 1;
   if (!THREE_D) {
     const t = { translation: world(x, y), rotation: IDENTITY, scale: { x: 1, y: 1, z: 1 } };
     if (art.kind === "sprite") {

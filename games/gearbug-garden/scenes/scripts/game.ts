@@ -13,24 +13,29 @@
 const CONFIG: any = {
   "art": {
     "enemy": {
-      "color": [1.0, 0.30000001192092896, 0.3499999940395355],
-      "kind": "shape"
+      "asset": "../assets/generated/enemy.glb",
+      "kind": "model",
+      "scale": 1.0
     },
     "goal": {
-      "color": [0.8999999761581421, 0.75, 0.30000001192092896],
-      "kind": "shape"
+      "asset": "../assets/generated/goal.glb",
+      "kind": "model",
+      "scale": 1.0
     },
     "pickup": {
-      "color": [1.0, 0.800000011920929, 0.30000001192092896],
-      "kind": "shape"
+      "asset": "../assets/generated/pickup.glb",
+      "kind": "model",
+      "scale": 1.8
     },
     "player": {
-      "color": [0.30000001192092896, 0.800000011920929, 1.0],
-      "kind": "shape"
+      "asset": "../assets/generated/player.glb",
+      "kind": "model",
+      "scale": 1.0
     },
     "wall": {
-      "color": [0.3499999940395355, 0.4000000059604645, 0.44999998807907104],
-      "kind": "shape"
+      "asset": "../assets/generated/wall.glb",
+      "kind": "model",
+      "scale": 1.0
     }
   },
   "colors": {
@@ -100,6 +105,7 @@ function yawRotation(yaw: number) {
 // Components that draw one slot's art at a tile. `size` is the slot's footprint in tiles.
 function body(slot: string, x: number, y: number, size: number, layer: number, tint: Rgb = [1, 1, 1]): any {
   const art = CONFIG.art[slot];
+  if (art.kind !== "model") size *= art.scale ?? 1;
   if (!THREE_D) {
     const t = { translation: world(x, y), rotation: IDENTITY, scale: { x: 1, y: 1, z: 1 } };
     if (art.kind === "sprite") {

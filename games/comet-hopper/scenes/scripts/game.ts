@@ -13,29 +13,45 @@
 // BEGIN GAME CONFIG
 const CONFIG: any = {
   "art": {
+    "background": {
+      "aspect": 2.0,
+      "image": "../assets/generated/background.png",
+      "kind": "sprite"
+    },
     "enemy": {
-      "color": [1.0, 0.30000001192092896, 0.3499999940395355],
-      "kind": "shape"
+      "aspect": 1.007,
+      "image": "../assets/generated/enemy.png",
+      "kind": "sprite",
+      "region": [51, 55, 148, 147]
     },
     "goal": {
-      "color": [0.8999999761581421, 0.75, 0.30000001192092896],
-      "kind": "shape"
+      "aspect": 0.671,
+      "image": "../assets/generated/goal.png",
+      "kind": "sprite",
+      "region": [80, 54, 100, 149]
     },
     "ground": {
-      "color": [0.44999998807907104, 0.33000001311302185, 0.2199999988079071],
-      "kind": "shape"
+      "aspect": 1.0,
+      "image": "../assets/generated/ground.png",
+      "kind": "sprite"
     },
     "pickup": {
-      "color": [1.0, 0.800000011920929, 0.30000001192092896],
-      "kind": "shape"
+      "aspect": 1.034,
+      "image": "../assets/generated/pickup.png",
+      "kind": "sprite",
+      "region": [22, 21, 211, 204]
     },
     "player": {
-      "color": [0.30000001192092896, 0.800000011920929, 1.0],
-      "kind": "shape"
+      "aspect": 0.695,
+      "image": "../assets/generated/player.png",
+      "kind": "sprite",
+      "region": [56, 27, 141, 203]
     },
     "spikes": {
-      "color": [0.8500000238418579, 0.8500000238418579, 0.8999999761581421],
-      "kind": "shape"
+      "aspect": 2.084,
+      "image": "../assets/generated/spikes.png",
+      "kind": "sprite",
+      "region": [16, 70, 223, 107]
     }
   },
   "colors": {
@@ -90,6 +106,7 @@ const solid = (c: number, r: number) => tileAt(c, r) === "#";
 
 function sprite(slot: string, x: number, y: number, size: number, layer: number, tint: Rgb = [1, 1, 1], flip = false): any {
   const art = CONFIG.art[slot];
+  size *= art.scale ?? 1;
   const t = { translation: { x, y, z: 0 }, rotation: IDENTITY, scale: { x: flip ? -1 : 1, y: 1, z: 1 } };
   if (art.kind === "sprite") {
     const a = art.aspect;
@@ -139,7 +156,7 @@ function setup(s: any): void {
       const y = H - 1 - r + 0.5;
       if (ch === "#") {
         // Surface tiles at full brightness, buried ones darker.
-        const tint: Rgb = r > 0 && solid(c, r - 1) ? [0.55, 0.55, 0.6] : [1, 1, 1];
+        const tint: Rgb = r > 0 && solid(c, r - 1) ? [0.7, 0.7, 0.75] : [1, 1, 1];
         spawn(s, sprite("ground", x, y, 1.0, 1, tint), "ground");
       } else if (ch === "=") {
         const e = sprite("ground", x, y + 0.3, 1.0, 1, [0.9, 0.85, 0.75]);
@@ -163,7 +180,13 @@ function setup(s: any): void {
   s.p.id = spawn(s, sprite("player", s.p.x, s.p.y, 1.0, 5), "player");
   s.safe = { x: s.home.x, y: s.home.y };
   const bg = CONFIG.art.background;
-  if (bg) s.bg = spawn(s, sprite("background", 0, H / 2, VIEW_H * 2.2, -1, [0.85, 0.85, 0.9]), "background");
+  if (bg) {
+    // Wide enough for the view plus the parallax drift (follow), tall enough for the view.
+    const viewW = (VIEW_H * 16) / 9;
+    const a = bg.aspect ?? 2;
+    const size = Math.max(viewW + W * 0.1 + 1, VIEW_H * Math.max(a, 1) * 1.02);
+    s.bg = spawn(s, sprite("background", 0, H / 2, size, -1, [0.85, 0.85, 0.9]), "background");
+  }
   banner(CONFIG.title, 2.5);
   follow(s);
   hud(s);

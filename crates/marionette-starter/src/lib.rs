@@ -314,13 +314,13 @@ pub enum Art {
         image: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         region: Option<[u32; 4]>,
-        aspect: f32,
+        aspect: f64,
     },
     /// A 3D model (glTF), relative to the scene file. Grounded at y = 0 and sized by its
     /// recipe; `scale` multiplies that.
-    Model { asset: String, scale: f32 },
+    Model { asset: String, scale: f64 },
     /// A placeholder: a built-in shape in a flat color, until an asset exists.
-    Shape { color: [f32; 3] },
+    Shape { color: [f64; 3] },
 }
 
 /// What [`template::render`] needs besides the brief: how each slot is drawn.
@@ -351,12 +351,12 @@ pub fn sprite_art(png: &[u8], image: String) -> Option<Art> {
         return Some(Art::Sprite {
             image,
             region: None,
-            aspect: w as f32 / h as f32,
+            aspect: w as f64 / h as f64,
         });
     }
     let (rw, rh) = (x1 - x0 + 1, y1 - y0 + 1);
     let whole = rw == w && rh == h;
-    let aspect = (rw as f32 / rh as f32 * 1000.0).round() / 1000.0;
+    let aspect = (rw as f64 / rh as f64 * 1000.0).round() / 1000.0;
     Some(Art::Sprite {
         image,
         region: (!whole).then_some([x0, y0, rw, rh]),

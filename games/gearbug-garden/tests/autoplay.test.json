@@ -14,7 +14,7 @@
       }
     },
     {
-      "state_hash": "b68cab84a9ded54e0bc9bce31335b91535d41055af1c858d207266d69fe611aa"
+      "state_hash": "ea4aa6c0ac6fd59a18106f2416cddb7751807c17545c89f9e23580ffaec4f199"
     }
   ],
   "input": "tests/autoplay.inputs.json",
