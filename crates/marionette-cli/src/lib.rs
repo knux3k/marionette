@@ -283,6 +283,13 @@ enum SceneCommand {
     },
 }
 
+/// The command line definition (commands and flags), for tools and tests that check text
+/// against it, such as the skills test.
+pub fn command() -> clap::Command {
+    use clap::CommandFactory;
+    Cli::command()
+}
+
 /// The `marionette` tool with the built-in engine.
 pub fn main() -> ExitCode {
     main_with(Engine::standard())
