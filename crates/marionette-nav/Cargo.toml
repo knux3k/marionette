@@ -1,0 +1,20 @@
+[package]
+name = "marionette-nav"
+description = "Marionette navigation on round, changing worlds: cube-sphere cell grids, path searches for many agents, crowd steering."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-jobs.workspace = true
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+postcard = { version = "1.1", features = ["use-std"] }
+
+[dev-dependencies]
+marionette-physics = { path = "../marionette-physics" }
+marionette-input = { path = "../marionette-input" }

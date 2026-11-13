@@ -20,6 +20,8 @@ pub mod jobs_ts;
 #[cfg(feature = "import")]
 pub mod library;
 pub mod mcp;
+#[cfg(feature = "nav")]
+pub mod nav;
 #[cfg(feature = "netplay")]
 pub mod netplay;
 pub mod observe;
@@ -158,6 +160,8 @@ pub const FEATURES: &[&str] = &[
     "package",
     #[cfg(feature = "ui3d")]
     "ui3d",
+    #[cfg(feature = "nav")]
+    "nav",
     #[cfg(feature = "net")]
     "net",
     #[cfg(feature = "netplay")]
@@ -183,6 +187,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "ui3d")]
         ui3d::ops(),
         audio::ops(),
+        #[cfg(feature = "nav")]
+        nav::ops(),
         synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
