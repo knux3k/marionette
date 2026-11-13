@@ -59,6 +59,12 @@ fn quick_suite_repeats_outputs_and_compares_identical() {
     );
     assert_eq!(cmp["outputs_identical"], json!(true), "{cmp}");
     assert_eq!(cmp["same_machine"], json!(true), "{cmp}");
+    // Several runs per side: a change counts only when the ranges do not overlap, and the
+    // same two runs on both sides overlap by definition.
+    let both = json!([a.to_string_lossy(), b.to_string_lossy()]);
+    let cmp = call(&mut agent, "perf_compare", json!({ "base": both, "new": both }));
+    assert_eq!(cmp["runs"], json!([2, 2]), "{cmp}");
+    assert_eq!(cmp["changes"], json!([]), "{cmp}");
 
     // A changed simulation result must be reported before any timing.
     let mut changed = report.clone();

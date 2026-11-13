@@ -290,6 +290,9 @@ pub struct CaseResult {
     /// Ticks per repeat (frames for a render case).
     #[serde(default)]
     pub ticks: u64,
+    /// Repeats run (at least `repeats`, more until `min_case_s` of timed ticks).
+    #[serde(default)]
+    pub runs: u32,
     /// Tick time over all repeats (sim cases), or the startup time (startup cases).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tick: Option<Stats>,
@@ -511,6 +514,10 @@ pub struct SuiteInput {
     pub length: Option<String>,
     /// Runs of each case; timings pool all runs. Default 3 (`quick`: 1).
     pub repeats: Option<u32>,
+    /// After `repeats`, run a case again until this many seconds of timed ticks are pooled
+    /// (at most 100 runs), so cases of a few microseconds per tick get a stable p99.
+    /// Default 2 (`quick`: 0).
+    pub min_case_s: Option<f64>,
     /// Only cases whose name starts with one of these (`sim/`, `render/factory`).
     #[serde(default)]
     pub only: Vec<String>,
@@ -679,6 +686,9 @@ fn summary_line(c: &CaseResult) -> String {
     }
     if let Some(h) = c.heap_after_load_mib {
         s += &format!(" heap {h} MiB");
+    }
+    if c.runs > 0 {
+        s += &format!(" runs {}", c.runs);
     }
     if let Some(n) = c.noise_pct {
         s += &format!(" noise {n}%");
@@ -856,18 +866,13 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
             case.warmup
         };
         result.ticks = ticks;
+        let runs = Runs {
+            min: repeats,
+            min_s: input.min_case_s.unwrap_or(if quick { 0.0 } else { 2.0 }).max(0.0),
+        };
         let run = match case.render {
-            None => run_sim(agent, &path, input.seed, ticks, warmup, repeats, &mut result),
-            Some(spec) => run_render(
-                agent,
-                &path,
-                input.seed,
-                ticks,
-                warmup,
-                repeats,
-                spec,
-                &mut result,
-            ),
+            None => run_sim(agent, &path, input.seed, ticks, warmup, runs, &mut result),
+            Some(spec) => run_render(agent, &path, input.seed, ticks, warmup, runs, spec, &mut result),
         };
         if let Err(e) = run {
             let msg =
@@ -1026,14 +1031,16 @@ fn run_sim(
     seed: u64,
     ticks: u64,
     warmup: u64,
-    repeats: u32,
+    repeats: Runs,
     result: &mut CaseResult,
 ) -> Result<(), Errors> {
-    let mut times = Vec::with_capacity((ticks * repeats as u64) as usize);
+    let mut times = Vec::with_capacity((ticks * repeats.min as u64) as usize);
     let (mut loads, mut avgs, mut heaps, mut allocs, mut growth) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
     marionette_host::alloc::reset_peak();
-    for _ in 0..repeats {
+    let mut done = 0;
+    while repeats.more(done, &times) {
+        done += 1;
         let (mut sim, load_ms) = load(agent, path, seed)?;
         loads.push(load_ms);
         heaps.push(heap().live_bytes);
@@ -1051,6 +1058,7 @@ fn run_sim(
         avgs.push(times[start..].iter().sum::<f64>() / ticks as f64);
         check_hash(result, sim.state_hash());
     }
+    result.runs = done;
     result.load_ms = Some(r3(median(&mut loads)));
     result.tick = Some(Stats::of(&times));
     result.noise_pct = noise(&mut avgs);
@@ -1061,6 +1069,23 @@ fn run_sim(
         result.heap_growth_mib = Some(r2(median(&mut growth) / (1024.0 * 1024.0)));
     }
     Ok(())
+}
+
+/// How often a case runs: at least `min` times, then again until `min_s` seconds of timed
+/// ticks are pooled (at most [`MAX_RUNS`]), so short cases get enough samples for a stable p99.
+#[derive(Clone, Copy)]
+struct Runs {
+    min: u32,
+    min_s: f64,
+}
+
+/// Upper bound of runs per case.
+const MAX_RUNS: u32 = 100;
+
+impl Runs {
+    fn more(&self, done: u32, timed_ms: &[f64]) -> bool {
+        done < self.min || (done < MAX_RUNS && timed_ms.iter().sum::<f64>() / 1000.0 < self.min_s)
+    }
 }
 
 /// Typical interpupillary distance, meters (as `bench`).
@@ -1079,13 +1104,13 @@ fn run_render(
     seed: u64,
     frames: u64,
     warmup: u64,
-    repeats: u32,
+    repeats: Runs,
     spec: RenderSpec,
     result: &mut CaseResult,
 ) -> Result<(), Errors> {
     let base = path.parent().map(Path::to_path_buf).unwrap_or_default();
     let shown = path.to_string_lossy().to_string();
-    let n = (frames * repeats as u64) as usize;
+    let n = (frames * repeats.min as u64) as usize;
     let (mut total, mut sims, mut extracts, mut records, mut waits) = (
         Vec::with_capacity(n),
         Vec::with_capacity(n),
@@ -1096,7 +1121,9 @@ fn run_render(
     let (mut loads, mut avgs, mut allocs) = (Vec::new(), Vec::new(), Vec::new());
     let mut draws = DrawStats::default();
     marionette_host::alloc::reset_peak();
-    for _ in 0..repeats {
+    let mut done = 0;
+    while repeats.more(done, &total) {
+        done += 1;
         let (mut sim, load_ms) = load(agent, path, seed)?;
         loads.push(load_ms);
         let gpu = agent.gpu()?;
@@ -1149,6 +1176,7 @@ fn run_render(
         }
         check_hash(result, sim.state_hash());
     }
+    result.runs = done;
     result.load_ms = Some(r3(median(&mut loads)));
     result.frame = Some(FrameStats {
         total: Stats::of(&total),
@@ -1169,13 +1197,32 @@ fn run_render(
 // ---------------------------------------------------------------------------------------------
 // perf_compare
 
+/// One report or several runs of the same build.
+#[derive(Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum Reports {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl Reports {
+    fn paths(&self) -> Vec<&str> {
+        match self {
+            Reports::One(p) => vec![p.as_str()],
+            Reports::Many(v) => v.iter().map(String::as_str).collect(),
+        }
+    }
+}
+
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CompareInput {
-    /// The earlier report (relative to the project root).
-    pub base: String,
-    /// The later report.
-    pub new: String,
+    /// The earlier report, or several runs of the earlier build (relative to the project
+    /// root). Several runs per side, ideally alternated A B A B, give a change only when the
+    /// two sides' ranges do not overlap.
+    pub base: Reports,
+    /// The later report, or several runs of the later build.
+    pub new: Reports,
     /// Report changes larger than this, percent (default 5).
     pub threshold_pct: Option<f64>,
 }
@@ -1184,7 +1231,9 @@ pub struct CompareInput {
 pub struct Change {
     pub case: String,
     pub metric: String,
+    /// Median over the base runs.
     pub base: f64,
+    /// Median over the new runs.
     pub new: f64,
     /// Negative is faster or smaller.
     pub change_pct: f64,
@@ -1197,13 +1246,16 @@ pub struct CompareOutput {
     pub output_mismatches: Vec<String>,
     pub same_machine: bool,
     pub same_gpu: bool,
+    /// Runs read per side.
+    pub runs: (usize, usize),
     /// Notes on things that make the comparison weaker (different suite, length, machine).
     pub warnings: Vec<String>,
-    /// Changes beyond the threshold, largest first.
+    /// Changes beyond the threshold (and outside the run-to-run range when several runs are
+    /// given), largest first.
     pub changes: Vec<Change>,
-    /// Metrics compared that stayed within the threshold.
+    /// Metrics compared that stayed within the threshold or the run-to-run range.
     pub within_threshold: usize,
-    /// Cases only in one of the two reports.
+    /// Cases only in one side.
     pub unmatched: Vec<String>,
 }
 
@@ -1233,8 +1285,8 @@ fn read_report(agent: &Agent, path: &str) -> Result<Report, Errors> {
     Ok(report)
 }
 
-/// The numbers compared per case. Times under 0.02 ms change by noise alone, so a change
-/// must also be at least 0.01 ms (or 1 allocation, or 0.1 MiB) to count.
+/// The numbers compared per case, with the smallest change that counts: short times and
+/// tails (p99) move by noise alone.
 fn metrics(c: &CaseResult) -> Vec<(&'static str, f64, f64)> {
     let mut m = Vec::new();
     if let Some(l) = c.load_ms {
@@ -1243,14 +1295,14 @@ fn metrics(c: &CaseResult) -> Vec<(&'static str, f64, f64)> {
     if let Some(t) = &c.tick {
         m.push(("tick.avg_ms", t.avg_ms, 0.01));
         m.push(("tick.p50_ms", t.p50_ms, 0.01));
-        m.push(("tick.p99_ms", t.p99_ms, 0.01));
+        m.push(("tick.p99_ms", t.p99_ms, 0.05));
     }
     if let Some(f) = &c.frame {
-        m.push(("frame.p50_ms", f.total.p50_ms, 0.01));
-        m.push(("frame.p99_ms", f.total.p99_ms, 0.01));
+        m.push(("frame.p50_ms", f.total.p50_ms, 0.02));
+        m.push(("frame.p99_ms", f.total.p99_ms, 0.1));
         m.push(("frame.extract.p50_ms", f.extract.p50_ms, 0.01));
         m.push(("frame.record.p50_ms", f.record.p50_ms, 0.01));
-        m.push(("frame.gpu_wait.p50_ms", f.gpu_wait.p50_ms, 0.01));
+        m.push(("frame.gpu_wait.p50_ms", f.gpu_wait.p50_ms, 0.02));
     }
     if let Some(a) = c.allocs_per_tick {
         m.push(("allocs_per_tick", a, 1.0));
@@ -1262,72 +1314,115 @@ fn metrics(c: &CaseResult) -> Vec<(&'static str, f64, f64)> {
 }
 
 fn compare(agent: &mut Agent, input: CompareInput) -> Result<CompareOutput, Errors> {
-    let base = read_report(agent, &input.base)?;
-    let new = read_report(agent, &input.new)?;
+    let read = |r: &Reports| -> Result<Vec<Report>, Errors> {
+        r.paths().into_iter().map(|p| read_report(agent, p)).collect()
+    };
+    let base = read(&input.base)?;
+    let new = read(&input.new)?;
+    if base.is_empty() || new.is_empty() {
+        return Err(Diagnostic::error(crate::codes::BAD_INPUT, "give at least one report per side").into());
+    }
     Ok(compare_reports(&base, &new, input.threshold_pct.unwrap_or(5.0)))
 }
 
-/// Compares two reports (also used by tests).
-pub fn compare_reports(base: &Report, new: &Report, threshold_pct: f64) -> CompareOutput {
+fn median_of(v: &[f64]) -> f64 {
+    let mut s = v.to_vec();
+    median(&mut s)
+}
+
+/// Compares runs of two builds (also used by tests). Outputs are compared between every
+/// report; timings by the median over each side's runs.
+pub fn compare_reports(base: &[Report], new: &[Report], threshold_pct: f64) -> CompareOutput {
     let mut warnings = Vec::new();
-    if base.suite != new.suite {
-        warnings.push(format!("different suites: {} vs {}", base.suite, new.suite));
+    let all: Vec<&Report> = base.iter().chain(new).collect();
+    let first = all[0];
+    if all.iter().any(|r| r.suite != first.suite) {
+        warnings.push("reports come from different suite versions".into());
     }
-    if base.length != new.length {
-        warnings.push(format!("different lengths: {} vs {}", base.length, new.length));
+    if all.iter().any(|r| r.length != first.length) {
+        warnings.push("reports have different lengths (full and quick)".into());
     }
-    let same_machine = base.machine.cpu == new.machine.cpu
-        && base.machine.logical_cores == new.machine.logical_cores
-        && base.build.os == new.build.os;
+    let same_machine = all.iter().all(|r| {
+        r.machine.cpu == first.machine.cpu
+            && r.machine.logical_cores == first.machine.logical_cores
+            && r.build.os == first.build.os
+    });
     if !same_machine {
         warnings.push("different machines: timings are not comparable".into());
     }
-    for (which, r) in [("base", base), ("new", new)] {
+    for r in &all {
         if let Some(b) = r.conditions.cpu_busy_between_max_pct.filter(|b| *b > 10.0) {
             warnings.push(format!(
-                "{which}: other processes used up to {b}% of the CPU during the run"
+                "{}: other processes used up to {b}% of the CPU during the run",
+                r.label
             ));
         }
     }
-    let same_gpu = base.machine.gpu.is_some() && base.machine.gpu == new.machine.gpu;
-    if base.build.profile != new.build.profile {
-        warnings.push(format!(
-            "different profiles: {} vs {}",
-            base.build.profile, new.build.profile
-        ));
+    let same_gpu = first.machine.gpu.is_some() && all.iter().all(|r| r.machine.gpu == first.machine.gpu);
+    if all.iter().any(|r| r.build.profile != first.build.profile) {
+        warnings.push("reports mix release and debug builds".into());
     }
     let (mut mismatches, mut changes, mut within, mut unmatched) = (Vec::new(), Vec::new(), 0, Vec::new());
-    for b in &base.cases {
-        let Some(n) = new.cases.iter().find(|n| n.name == b.name) else {
-            unmatched.push(format!("{} (only in base)", b.name));
-            continue;
+    let names: Vec<&str> = first.cases.iter().map(|c| c.name.as_str()).collect();
+    for name in &names {
+        let find = |side: &[Report]| -> Vec<CaseResult> {
+            side.iter()
+                .filter_map(|r| r.cases.iter().find(|c| c.name == *name).cloned())
+                .collect()
         };
-        if let (Some(x), Some(y)) = (&b.state_hash, &n.state_hash)
-            && x != y
-        {
-            mismatches.push(format!("{}: state hash {} vs {}", b.name, &x[..12], &y[..12]));
+        let (b, n) = (find(base), find(new));
+        if b.len() != base.len() || n.len() != new.len() {
+            unmatched.push(format!("{name} (not in every report)"));
+            continue;
         }
-        if same_gpu
-            && let (Some(x), Some(y)) = (&b.image_sha256, &n.image_sha256)
-            && x != y
-        {
-            mismatches.push(format!("{}: image {} vs {}", b.name, &x[..12], &y[..12]));
+        let reference = &b[0];
+        for c in b.iter().chain(&n) {
+            if let (Some(x), Some(y)) = (&reference.state_hash, &c.state_hash)
+                && x != y
+            {
+                mismatches.push(format!("{name}: state hash {} vs {}", &x[..12], &y[..12]));
+            }
+            if same_gpu
+                && let (Some(x), Some(y)) = (&reference.image_sha256, &c.image_sha256)
+                && x != y
+            {
+                mismatches.push(format!("{name}: image {} vs {}", &x[..12], &y[..12]));
+            }
+            if let Some(e) = &c.error {
+                mismatches.push(format!("{name}: error {e}"));
+            }
         }
-        for e in [&b.error, &n.error].into_iter().flatten() {
-            mismatches.push(format!("{}: error {e}", b.name));
-        }
-        let nm = metrics(n);
-        for (metric, bv, min_abs) in metrics(b) {
-            let Some(&(_, nv, _)) = nm.iter().find(|(m, _, _)| *m == metric) else {
-                continue;
+        for (metric, _, min_abs) in metrics(reference) {
+            let values = |side: &[CaseResult]| -> Vec<f64> {
+                side.iter()
+                    .filter_map(|c| {
+                        metrics(c)
+                            .into_iter()
+                            .find(|(m, _, _)| *m == metric)
+                            .map(|(_, v, _)| v)
+                    })
+                    .collect()
             };
-            let pct = if bv > 0.0 { (nv - bv) / bv * 100.0 } else { 0.0 };
-            if pct.abs() > threshold_pct && (nv - bv).abs() >= min_abs {
+            let (bv, nv) = (values(&b), values(&n));
+            if bv.len() != b.len() || nv.len() != n.len() {
+                continue;
+            }
+            let (bm, nm) = (median_of(&bv), median_of(&nv));
+            let pct = if bm > 0.0 { (nm - bm) / bm * 100.0 } else { 0.0 };
+            let range = |v: &[f64]| {
+                (
+                    v.iter().copied().fold(f64::MAX, f64::min),
+                    v.iter().copied().fold(f64::MIN, f64::max),
+                )
+            };
+            let ((blo, bhi), (nlo, nhi)) = (range(&bv), range(&nv));
+            let apart = bv.len() < 2 || nv.len() < 2 || nlo > bhi || nhi < blo;
+            if pct.abs() > threshold_pct && (nm - bm).abs() >= min_abs && apart {
                 changes.push(Change {
-                    case: b.name.clone(),
+                    case: name.to_string(),
                     metric: metric.into(),
-                    base: bv,
-                    new: nv,
+                    base: bm,
+                    new: nm,
                     change_pct: r2(pct),
                 });
             } else {
@@ -1335,17 +1430,23 @@ pub fn compare_reports(base: &Report, new: &Report, threshold_pct: f64) -> Compa
             }
         }
     }
-    for n in &new.cases {
-        if !base.cases.iter().any(|b| b.name == n.name) {
-            unmatched.push(format!("{} (only in new)", n.name));
+    for r in all.iter().skip(1) {
+        for c in &r.cases {
+            let label = format!("{} (not in every report)", c.name);
+            if !names.contains(&c.name.as_str()) && !unmatched.contains(&label) {
+                unmatched.push(label);
+            }
         }
     }
+    mismatches.sort();
+    mismatches.dedup();
     changes.sort_by(|a, b| b.change_pct.abs().total_cmp(&a.change_pct.abs()));
     CompareOutput {
         outputs_identical: mismatches.is_empty(),
         output_mismatches: mismatches,
         same_machine,
         same_gpu,
+        runs: (base.len(), new.len()),
         warnings,
         changes,
         within_threshold: within,

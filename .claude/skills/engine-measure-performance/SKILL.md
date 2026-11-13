@@ -18,6 +18,10 @@ different machines, builds or suite versions are never compared.
 5. `outputs_identical` must be `true`. If a state hash or (same GPU) image hash moved, the
    change altered results: make it opt-in and labelled, or fix it. Only then read `changes`.
 6. Read `warnings`: other load during a run, different machine or suite make timings void.
+   For changes under about 10 percent (build settings, small fixes), run the two binaries
+   alternately three times each (`before-1`, `after-1`, `before-2`, ...) and pass lists:
+   `"base": ["...before-1.json", "...before-2.json", "...before-3.json"]`. A change then
+   counts only when the two sides' ranges do not overlap.
 7. Put the numbers, machine class and GPU in `docs/ai/proofs/performance.md`.
 
 Inputs worth knowing: `only` (case name prefixes such as `sim/` or `render/factory`),
