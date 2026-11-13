@@ -194,6 +194,27 @@ impl Jobs {
     }
 }
 
+impl Jobs {
+    /// Like [`Jobs::map_chunks`], but runs on the pool whenever there is more than one chunk:
+    /// for work where each item costs microseconds (path searches, ray casts, crowd steering),
+    /// so [`PARALLEL_MIN_LEN`] items would be far too many to wait for. Results are in range
+    /// order as always, so the thread count still never changes them.
+    pub fn map_chunks_heavy<R, F>(&self, len: usize, chunk: usize, f: F) -> Vec<R>
+    where
+        R: Send,
+        F: Fn(Range<usize>) -> R + Sync + Send,
+    {
+        let chunk = chunk.max(1);
+        let ranges: Vec<Range<usize>> = (0..len.div_ceil(chunk))
+            .map(|i| i * chunk..((i + 1) * chunk).min(len))
+            .collect();
+        match &self.pool {
+            Some(pool) if ranges.len() > 1 => pool.install(|| ranges.into_par_iter().map(&f).collect()),
+            _ => ranges.into_iter().map(f).collect(),
+        }
+    }
+}
+
 /// Splits `data` into consecutive segments ending at `ends`.
 fn split_segments<'a, T>(mut data: &'a mut [T], ends: &[usize]) -> Vec<&'a mut [T]> {
     let total = data.len();

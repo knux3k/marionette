@@ -1,0 +1,98 @@
+{
+  "format": "marionette.input-map",
+  "version": 1,
+  "actions": {
+    "grab_left": {
+      "bindings": [
+        {
+          "input": "xr:left/squeeze",
+          "scale": 1
+        },
+        {
+          "input": "xr:left/pinch",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyQ",
+          "scale": 1
+        }
+      ]
+    },
+    "grab_right": {
+      "bindings": [
+        {
+          "input": "xr:right/squeeze",
+          "scale": 1
+        },
+        {
+          "input": "xr:right/pinch",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyE",
+          "scale": 1
+        }
+      ]
+    },
+    "move_x": {
+      "bindings": [
+        {
+          "input": "xr:left/thumbstick_x",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyD",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyA",
+          "scale": -1
+        }
+      ]
+    },
+    "move_y": {
+      "bindings": [
+        {
+          "input": "xr:left/thumbstick_y",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyW",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyS",
+          "scale": -1
+        }
+      ]
+    },
+    "turn": {
+      "bindings": [
+        {
+          "input": "xr:right/thumbstick_x",
+          "scale": 1
+        },
+        {
+          "input": "key:ArrowRight",
+          "scale": 1
+        },
+        {
+          "input": "key:ArrowLeft",
+          "scale": -1
+        }
+      ]
+    },
+    "teleport": {
+      "bindings": [
+        {
+          "input": "xr:right/primary",
+          "scale": 1
+        },
+        {
+          "input": "key:KeyT",
+          "scale": 1
+        }
+      ]
+    }
+  }
+}

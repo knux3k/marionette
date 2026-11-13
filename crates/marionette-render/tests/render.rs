@@ -51,6 +51,7 @@ fn same_inputs_give_identical_images() {
         "ui.scene.json",
         "lighting.scene.json",
         "looks.scene.json",
+        "raytracing.scene.json",
     ] {
         let a = render(&gpu, scene, (480, 270));
         let b = render(&gpu, scene, (480, 270));
@@ -73,9 +74,23 @@ fn rendering_does_not_change_simulation_state() {
 fn matches_reference_images() {
     let Some(gpu) = gpu() else { return };
     let update = std::env::var("MARIONETTE_UPDATE_REFERENCES").as_deref() == Ok("1");
-    for name in ["showcase", "sprites", "ui", "lighting", "looks"] {
+    // The ray tracing example looks different without ray queries (its fallback looks), so it
+    // has a reference image for each (decision 0093).
+    let rt = if gpu.ray_tracing() {
+        "raytracing"
+    } else {
+        "raytracing-fallback"
+    };
+    for (name, image) in [
+        ("showcase", "showcase"),
+        ("sprites", "sprites"),
+        ("ui", "ui"),
+        ("lighting", "lighting"),
+        ("looks", "looks"),
+        ("raytracing", rt),
+    ] {
         let pixels = render(&gpu, &format!("{name}.scene.json"), REF_SIZE);
-        let path = repo().join(format!("examples/reference/{name}.png"));
+        let path = repo().join(format!("examples/reference/{image}.png"));
         if update {
             std::fs::write(&path, encode_png(REF_SIZE.0, REF_SIZE.1, &pixels)).unwrap();
             continue;

@@ -13,6 +13,7 @@ Commands:
   run          Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
   screenshot   Simulate N ticks, then render one image with no window and save it as PNG
   bench        Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
+  xr           Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered, head, controllers and hands fed in as input (marionette-xr). With --probe, only report the runtime and headset. Ends when the runtime ends the session, or after --frames or --ticks
   stability    Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
   scene        Scene file tools
   ops          List operations with their descriptions and JSON Schemas. `--brief` gives one line each
@@ -284,6 +285,68 @@ Options:
 
       --no-cull
           Draw every instance in every view (frustum culling off), to measure what culling saves (decision 0080)
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette xr`
+
+```text
+Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered, head, controllers and hands fed in as input (marionette-xr). With --probe, only report the runtime and headset. Ends when the runtime ends the session, or after --frames or --ticks
+
+Usage: xr [OPTIONS] [SCENE]
+
+Arguments:
+  [SCENE]
+          Scene file (not needed with --probe)
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --probe
+          Only check for a runtime and headset
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --seed <SEED>
+          [default: 0]
+
+      --camera <CAMERA>
+          Camera entity id (default: the lowest-id camera; put it on the tracked head)
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --msaa <MSAA>
+          MSAA sample count per eye (1 or 4)
+          
+          [default: 4]
+
+      --frames <FRAMES>
+          Stop after this many headset frames
+
+      --ticks <TICKS>
+          Stop after this many ticks
+
+      --scale <SCALE>
+          Eye size relative to the runtime's recommendation (0.25 to 2)
+          
+          [default: 1]
+
+      --input <INPUT>
+          Scripted input or a recording to replay alongside the headset
+
+      --record <RECORD>
+          Write every input action change (poses included) to this file when the run ends
+
+      --mute
+          Do not open the audio device
 
   -h, --help
           Print help

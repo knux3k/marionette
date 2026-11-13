@@ -14,7 +14,9 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Providers, import, pool and generation (plan lines 7 and 8) | [proofs/assets.md](proofs/assets.md) |
 | Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
 | Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
+| Headsets through OpenXR (decision 0190) | [proofs/xr.md](proofs/xr.md) |
 | Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
+| Round worlds and navigation | [proofs/navigation.md](proofs/navigation.md) |
 | Windowed play on real screens, present modes, gamepads (decisions 0170 to 0173) | [proofs/window.md](proofs/window.md) |
 
 ## Adding a proof

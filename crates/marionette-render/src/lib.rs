@@ -12,12 +12,14 @@ pub mod extract;
 pub mod frame_stats;
 pub mod gpu;
 mod post;
+mod probes;
+mod raytrace;
 pub mod renderer;
 pub mod scale;
 mod skinning;
 pub mod window;
 mod worldquads;
 
-pub use extract::{EnvironmentData, FrameData, View, extract, extract_at};
+pub use extract::{EnvironmentData, FrameData, ProbeData, View, extract, extract_at};
 pub use gpu::{FrameTiming, Gpu, GpuObjects, Offscreen};
 pub use renderer::{MAX_VIEWS, RenderStats, Renderer};

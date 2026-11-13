@@ -116,3 +116,39 @@ jobs:
         run: cargo test --locked -p marionette-core -p marionette-host -p marionette-script -- --test-threads=1
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: valgrind --leak-check=full --errors-for-leak-kinds=definite --show-leak-kinds=definite --error-exitcode=9 -q
+
+  # Decision 0190: the OpenXR path end to end on Monado's simulated headset (Xvfb for its
+  # compositor window, lavapipe for Vulkan). No real headset: comfort and devices are checked
+  # by a person wearing one.
+  xr:
+    name: headset (simulated, OpenXR)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries (ALSA, Vulkan, OpenXR loader, Monado, Xvfb)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
+      - name: Build
+        run: cargo build --locked -p marionette-cli --tests
+      - name: Start the simulated headset
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          # monado-service watches stdin; keep it open.
+          (sleep 3600 | DISPLAY=:99 XRT_COMPOSITOR_FORCE_XCB=1 SIMULATED_ENABLE=1 monado-service > monado.log 2>&1 &)
+          # Ready when an OpenXR client can see the headset.
+          for i in $(seq 1 90); do
+            ./target/debug/marionette xr --probe 2>/dev/null && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: XR tests on the runtime
+        run: cargo test --locked -p marionette-cli --test xr -- --test-threads=1 --nocapture
+        env:
+          MARIONETTE_XR_RUNTIME: "1"
+          MARIONETTE_REQUIRE_GPU: "1"
+          WGPU_BACKEND: vulkan
+      - name: Monado log
+        if: always()
+        run: tail -50 monado.log || true

@@ -212,6 +212,40 @@ Rust type: `marionette_core::builtin::Follow`.
 | `gain` | number | yes |  |
 | `target` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
 
+### `Grabbable`
+
+Can be picked up by an [`XrHand`]. With a dynamic `RigidBody` the object is moved by velocity while held, so it still collides (it cannot pass through walls); without one its `Transform` follows the hand exactly.
+
+Rust type: `marionette_xr::Grabbable`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap` | boolean | yes | Snap the object's origin and rotation to the grip (tools, guns); otherwise keep the offset it had when grabbed (boxes, loose items). |
+
+### `GravityWell`
+
+A point gravity source at the entity's `Transform` translation (a planet, a moon). Gravity is `surface_gravity * (radius / r)²` at distance `r >= radius` and falls off linearly to zero at the centre inside (a body of even density), so it is finite everywhere. Set the scene's `PhysicsSettings.gravity` to zero when wells are used.
+
+Rust type: `marionette_physics::planet::GravityWell`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `radius` | number | yes | Reference radius in metres (the ground level). |
+| `range` | number | yes | No pull beyond this distance from the centre (sphere of influence); 0 = everywhere. |
+| `surface_gravity` | number | yes | Acceleration in m/s² at `radius`. |
+
+### `Held`
+
+On an object while a hand holds it. Written by the XR module.
+
+Rust type: `marionette_xr::Held`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hand` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+| `offset_rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
+| `offset_translation` | object {x, y, z} | yes | The object's pose relative to the grip. |
+
 ### `JobData`
 
 Named typed arrays that job functions read and write in place (decision 0070). Names are unique per entity. Saved with the scene and part of the state hash; keep arrays to what the game needs (every element is written in snapshots).
@@ -292,6 +326,17 @@ Rust type: `marionette_core::spatial::ModelPlacement`.
 | `rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
 | `scale` | object {x, y, z} | yes |  |
 
+### `MoveIntent`
+
+A movement request in world space, written by one system and read by another without either depending on the other (decision 0232): navigation writes it, a character controller (`PlanetCharacter` in physics) or a game's own system reads it. `velocity` is in m/s; a reader uses the part along the ground and caps it at its own speed. `jump` asks for one jump; the reader sets it back to false.
+
+Rust type: `marionette_core::builtin::MoveIntent`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `jump` | boolean | yes |  |
+| `velocity` | object {x, y, z} | yes |  |
+
 ### `Music`
 
 Layered music, not positional. Raise `intensity` to bring layers in.
@@ -305,6 +350,87 @@ Rust type: `marionette_audio::music::Music`.
 | `layers` | array of object {at, level, mix, sound} | yes |  |
 | `playing` | boolean | yes | False fades every layer out (the player stops the stems once all are silent). |
 | `volume` | number | yes | Master gain. |
+
+### `NavAgent`
+
+An agent that walks to `goal` over a `NavSurface`.
+
+Rust type: `marionette_nav::NavAgent`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `acceleration` | number | yes | m/s². |
+| `active` | boolean | yes | False stands still (and drops the route). |
+| `arrive_distance` | number | yes | Counts as arrived within this many metres of the goal. |
+| `drive` | "Direct" \| "Intent" | yes |  |
+| `goal` | object {x, y, z} | yes | Destination in world space. Changing it plans a new route. |
+| `height` | number | yes | `Direct` only: height of the entity's origin above the ground. |
+| `radius` | number | yes | Body radius for avoidance, in metres. |
+| `speed` | number | yes | Top speed in m/s. |
+| `surface` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+
+### `NavAgentState`
+
+Navigation's view of an agent. Written by navigation.
+
+Rust type: `marionette_nav::NavAgentState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `corners` | integer | yes | Route corners left before the goal. |
+| `status` | "Idle" \| "Waiting" \| "Moving" \| "Partial" \| "Arrived" \| "Unreachable" | yes |  |
+| `velocity` | object {x, y, z} | yes | World-space velocity in m/s. |
+
+### `NavObstacle`
+
+Blocks the surface cells within `radius` (plus the surface's clearance) of this entity's `Transform` translation, while the entity exists.
+
+Rust type: `marionette_nav::NavObstacle`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `radius` | number | yes |  |
+| `surface` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+
+### `NavSurface`
+
+A walkable round world. Put it on the world's entity; its `Transform` translation is the centre and its rotation turns the grid with the world.
+
+Rust type: `marionette_nav::NavSurface`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `clearance` | number | yes | Extra metres added around every obstacle (agent body clearance). |
+| `max_grade` | number | yes | Steepest walkable ground as rise over run (1 = 45°). |
+| `probe` | number | yes | Ground is probed from `radius + probe` down to `radius - probe` (0 = no probing: a smooth sphere at `radius`). |
+| `radius` | number | yes | Ground radius in metres where there is no terrain to probe. |
+| `resolution` | integer | yes | Cells per cube-face edge (6 × resolution² cells; 128 gives cells of about radius / 80 metres). 4 to 1024. |
+| `sea_level` | number | yes | Ground below this distance from the centre is water and not walkable (0 = none). |
+
+### `PlanetCharacter`
+
+Walk on round worlds. Needs a `CharacterController` (its speed, jump speed, mass and actions are used; its `gravity` is used only where no `GravityWell` pulls).
+
+Rust type: `marionette_physics::planet::PlanetCharacter`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `align_speed` | number | yes | How fast up turns toward minus gravity, in radians per second (0 = at once). |
+| `face_movement` | boolean | yes | Turn to face the walking direction (AI characters); off for player-turned characters. |
+| `thrust` | number | yes | Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none. Inside a `SphereFluid` it is the swim-up acceleration. |
+| `thrust_action` | string | yes | Action that fires `thrust` (empty = none). |
+
+### `PlanetState`
+
+What a `PlanetCharacter` currently feels. Written by physics.
+
+Rust type: `marionette_physics::planet::PlanetState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `gravity` | object {x, y, z} | yes | The gravity acting on the character in m/s² (zero in empty space). |
+| `swimming` | boolean | yes |  |
+| `up` | object {x, y, z} | yes | The character's up (unit length). |
 
 ### `PointLight`
 
@@ -339,6 +465,17 @@ Rust type: `marionette_core::builtin::RandomImpulse`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `strength` | number | yes |  |
+
+### `ReflectionProbe`
+
+A box where shiny surfaces reflect a picture of the scene taken from the entity's position instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is taken when the probe first appears and again when it moves or changes; objects that move later are not in it (`RayTracing` reflections show those). Up to four probes; a point inside several uses the one with the lowest entity id.
+
+Rust type: `marionette_core::spatial::ReflectionProbe`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extent` | object {x, y, z} | yes | Half size of the box in meters along x, y and z, centered on the entity. Reflections are corrected for the box's walls, so match it to the room. |
+| `resolution` | integer | yes | Size of each of the six captured faces in texels (32 to 512; 128 is a good default). |
 
 ### `RigidBody`
 
@@ -407,6 +544,18 @@ Rust type: `marionette_audio::SoundSpatial`.
 | `min_distance` | number | yes | Full gain inside this distance (meters); also where panning reaches full width. |
 | `rear_muffle` | number | yes | 0..1: low-pass when the sound is behind the listener (1 = down to 4 kHz straight behind). Stereo panning alone cannot tell front from back; this can. |
 | `rolloff` | "Inverse" \| "Linear" \| "Constant" | yes | How gain falls with distance (between `min_distance` and `max_distance`). |
+
+### `SphereFluid`
+
+A spherical fluid (ocean, thick atmosphere) around the centre of the entity's `Transform`. Bodies and characters closer to the centre than `radius` are inside it.
+
+Rust type: `marionette_physics::planet::SphereFluid`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `buoyancy` | number | yes | Fraction of gravity cancelled inside (1 = floats in place, above 1 rises). |
+| `drag` | number | yes | Velocity damping per second inside (0 = none). |
+| `radius` | number | yes | Fluid surface distance from the centre in metres. |
 
 ### `SpotLight`
 
@@ -529,6 +678,85 @@ Rust type: `marionette_core::builtin::Velocity`.
 | `y` | number | yes |  |
 | `z` | number | yes |  |
 
+### `XrHand`
+
+A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`.
+
+Rust type: `marionette_xr::XrHand`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `grab_action` | string | yes |  |
+| `grab_radius` | number | yes | Metres from the grip to an object's centre. |
+| `throw_scale` | number | yes | Multiplies the release velocity (1 = as moved). |
+
+### `XrHandMotion`
+
+Hand motion over the last few ticks. Written by the XR module.
+
+Rust type: `marionette_xr::XrHandMotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `angular_velocity` | object {x, y, z} | yes | Rotation speed over the last tick (radians per second, world axes). |
+| `last_rotation` | object {w, x, y, z} | yes | Grip rotation last tick. |
+| `positions` | array of object {x, y, z} | yes | Recent grip positions (world), oldest first, at most [`MOTION_TICKS`]. |
+| `velocity` | object {x, y, z} | yes | Average velocity over `positions` (m/s): a held object leaves the hand with this. |
+
+### `XrLocomotion`
+
+Stick movement, turning and teleport for the rig it is on. An empty action name turns that part off.
+
+Rust type: `marionette_xr::XrLocomotion`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `direction` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | Forward is where this source points, flattened (`Head`, or `LeftAim` for hand-relative). |
+| `move_x` | string | yes | Strafe action (-1 left .. 1 right). |
+| `move_y` | string | yes | Forward action (-1 back .. 1 forward). |
+| `smooth_degrees_per_second` | number | yes |  |
+| `snap_degrees` | number | yes |  |
+| `speed` | number | yes | Metres per second at full stick. |
+| `teleport` | string | yes | Hold to aim, release to teleport (needs physics: the aim ray must hit ground). |
+| `teleport_aim` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | The ray used to aim a teleport. |
+| `teleport_range` | number | yes | Longest teleport in metres. |
+| `turn` | string | yes | Turn action (-1 left .. 1 right). |
+| `turn_mode` | "Snap" \| "Smooth" \| "Off" | yes | How turning works. |
+| `vignette` | number | yes | Comfort vignette strength while moving or turning smoothly (0 off .. 1 strong). |
+
+### `XrLocomotionState`
+
+Locomotion state. Written by the XR module.
+
+Rust type: `marionette_xr::XrLocomotionState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `snap_armed` | boolean | yes | The turn stick returned to centre since the last snap. |
+| `teleport_point` | object {x, y, z} | yes | Where a teleport would land now (only meaningful while `teleport_valid`). |
+| `teleport_valid` | boolean | yes |  |
+
+### `XrRig`
+
+The play space: where the tracked area sits in the world. Tracked poses are relative to this entity's `Transform` (translation and rotation; scale is ignored). Locomotion moves and turns it.
+
+Rust type: `marionette_xr::XrRig`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `height_offset` | number | yes | Added to every tracked height: 0 for a standing play space (floor at 0); a seated player on a space whose origin is at eye level uses about 1.2. |
+
+### `XrTracked`
+
+Follows a tracked pose inside a rig every tick (its `Transform` is overwritten). While the source is not tracked the entity keeps its last pose.
+
+Rust type: `marionette_xr::XrTracked`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rig` | integer | yes | The entity with [`XrRig`]. |
+| `source` | "Head" \| "LeftGrip" \| "RightGrip" \| "LeftAim" \| "RightAim" | yes | A tracked thing. |
+
 ## Resources
 
 ### `ActionState`
@@ -566,7 +794,7 @@ Rust type: `marionette_core::spatial::Bloom`.
 
 ### `Environment`
 
-Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models.
+Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1, relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. An image with a bright sun also lights surfaces through it: with a `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`.
 
 Rust type: `marionette_core::spatial::Environment`.
 
@@ -656,6 +884,19 @@ Rust type: `marionette_core::spatial::LevelOfDetail`.
 | `low_below` | number | yes | Below this size, the second reduced level (a quarter). |
 | `medium_below` | number | yes | Below this size, the first reduced level (half the triangles). |
 
+### `NavSettings`
+
+Navigation tunables (optional resource; these defaults apply without it).
+
+Rust type: `marionette_nav::NavSettings`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `horizon` | number | yes | Seconds ahead that avoidance looks. |
+| `neighbour_distance` | number | yes | Agents closer than this (metres) are considered for avoidance. |
+| `search_budget` | integer | yes | Cells one search may expand before it settles for the closest place. |
+| `searches_per_tick` | integer | yes | Route searches started per tick at most (agents beyond wait in order). |
+
 ### `NetPlayers`
 
 The players in a networked session, by slot (0 is the host). Part of the state hash, so a peer that disagrees about who is playing is caught as a desync.
@@ -677,6 +918,19 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
 
+### `RayTracing`
+
+Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`, `Environment`), so add those as the fallback. Skinned models are not in the ray-traced scene yet.
+
+Rust type: `marionette_core::spatial::RayTracing`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `max_roughness` | number | yes | Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a good default. |
+| `reflections` | boolean | yes | Ray-traced reflections of other objects on surfaces smoother than `max_roughness`. |
+| `shadows` | boolean | yes | Ray-traced shadows for every directional, point and spot light, replacing shadow maps. |
+| `sun_size_degrees` | number | yes | Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5). |
+
 ### `RenderScale`
 
 Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0.
@@ -687,6 +941,17 @@ Rust type: `marionette_core::spatial::RenderScale`.
 | --- | --- | --- | --- |
 | `scale` | number | yes |  |
 | `sharpness` | number | yes |  |
+
+### `ShadowCascades`
+
+Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map).
+
+Rust type: `marionette_core::spatial::ShadowCascades`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `count` | integer | yes |  |
+| `far` | number | yes | Distance from the camera where shadows end, in meters (capped at the camera's far plane). |
 
 ### `Shadows`
 
