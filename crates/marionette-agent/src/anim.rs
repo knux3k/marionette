@@ -5,10 +5,11 @@
 use crate::edit::{EditOutput, EditTarget, apply};
 use crate::observe::{WorldTarget, with_world};
 use crate::{Agent, Op, codes, op};
-use marionette_anim::Animator;
+use marionette_anim::{AnimOverlays, Animator, BlendPoint, BlendSpaces};
 use marionette_assets::glam::{Mat4, Quat, Vec3};
 use marionette_assets::rig::{Property, Rig, load_rig};
-use marionette_core::scene::Scene;
+use marionette_core::Registry;
+use marionette_core::scene::{Scene, SceneEntity};
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -43,6 +44,22 @@ pub(crate) fn ops() -> Vec<Op> {
             "Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds.",
             true,
             stop,
+        ),
+        op(
+            "anim_space",
+            "Define or steer a blend space: clips mixed by parameter `x` (and `y`), e.g. idle at \
+             0, walk at 1.5, run at 4 by speed. `points` (re)defines it; `x`/`y` set where it \
+             goes (gliding at `rate` units/s). Play it with anim_play using its `name` as clip.",
+            true,
+            space,
+        ),
+        op(
+            "anim_overlay",
+            "Play a clip on a named overlay over the base pose: limited to `mask` bones (with \
+             their children), replacing them or `additive`, at strength `weight` (fading over \
+             `fade`). E.g. a wave on the upper body while walking. `stop: true` fades it out.",
+            true,
+            overlay,
         ),
         op(
             "anim_pose",
@@ -249,6 +266,48 @@ pub struct StopInput {
     pub fade: Option<f32>,
 }
 
+/// Entity `id`'s component `name` as `T` (default when absent).
+fn read_component<T: bevy_reflect::Reflect + Default>(
+    registry: &Registry,
+    e: &SceneEntity,
+    name: &str,
+) -> Result<T, Errors> {
+    let id = e.id;
+    let Some(v) = e.components.get(name) else {
+        return Ok(T::default());
+    };
+    let entry = registry
+        .get(name)
+        .expect("the anim module registers its components");
+    let value = registry.from_json(entry, v).map_err(|m| {
+        Errors::from(
+            Diagnostic::error(
+                codes::BAD_INPUT,
+                format!("entity {id} has an invalid {name}: {m}"),
+            )
+            .entity(id),
+        )
+    })?;
+    Ok(*value
+        .into_any()
+        .downcast::<T>()
+        .expect("registered under this name"))
+}
+
+/// Fails with `anim.unknown_clip` unless the model (or a blend space) provides `clip`.
+fn check_clip(rig: &Rig, spaces: &BlendSpaces, asset: &str, id: u64, clip: &str) -> Result<(), Errors> {
+    match marionette_anim::blend::missing_clip(rig, Some(spaces), clip) {
+        None => Ok(()),
+        Some(missing) => Err(Diagnostic::error(
+            anim_codes::UNKNOWN_CLIP,
+            format!("`{asset}` has no clip `{missing}`"),
+        )
+        .entity(id)
+        .fix(marionette_anim::clip_names_fix(rig))
+        .into()),
+    }
+}
+
 /// Edits entity `id`'s Animator with `change`, after checking `clip` exists in its model.
 fn edit_animator(
     agent: &mut Agent,
@@ -267,20 +326,13 @@ fn edit_animator(
         let asset = model_of(scene, id, shown)?;
         if let Some(clip) = clip {
             let rig: Rig = load_rig(&asset, &dir).map_err(|m| rig_error(&asset, m))?;
-            if rig.clip(clip).is_none() {
-                let names: Vec<&str> = rig.clips.iter().map(|c| c.name.as_str()).collect();
-                return Err(Diagnostic::error(
-                    anim_codes::UNKNOWN_CLIP,
-                    format!("`{asset}` has no clip `{clip}`"),
-                )
-                .entity(id)
-                .fix(if names.is_empty() {
-                    "this model has no animation clips".to_string()
-                } else {
-                    format!("clips in this model: {}", names.join(", "))
-                })
-                .into());
-            }
+            let e = scene
+                .entities
+                .iter()
+                .find(|e| e.id == id)
+                .expect("model_of found it");
+            let spaces: BlendSpaces = read_component(registry, e, "BlendSpaces")?;
+            check_clip(&rig, &spaces, &asset, id, clip)?;
         }
         let e = scene
             .entities
@@ -343,6 +395,182 @@ fn blend(agent: &mut Agent, input: BlendInput) -> Result<EditOutput, Errors> {
 fn stop(agent: &mut Agent, input: StopInput) -> Result<EditOutput, Errors> {
     edit_animator(agent, &input.target, input.id, None, |a| {
         a.stop(input.clip.as_deref(), input.fade.unwrap_or(0.2))
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct SpacePoint {
+    pub clip: String,
+    pub x: f32,
+    /// Default 0 (1D spaces).
+    pub y: Option<f32>,
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct SpaceInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    pub id: u64,
+    /// Space name; play it with anim_play `clip: <name>`.
+    pub name: String,
+    /// Clips and where they sit; replaces the space's points. Required to create a space.
+    pub points: Option<Vec<SpacePoint>>,
+    /// Keep every clip at the same phase (walk/run cycles). Default true when creating.
+    pub sync: Option<bool>,
+    /// Parameter target. Omitted keeps the current one.
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    /// Units per second toward the target (0 = jump). Omitted keeps the current rate.
+    pub rate: Option<f32>,
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct OverlayInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    pub id: u64,
+    /// Overlay name (created if missing).
+    pub name: String,
+    /// Clip or blend space to play on the overlay (cross-fades its other clips out).
+    pub clip: Option<String>,
+    /// Bone names (each with its children); replaces the mask. Empty = whole model.
+    pub mask: Option<Vec<String>>,
+    /// Add the clip's motion instead of replacing bones.
+    pub additive: Option<bool>,
+    /// Strength target 0..1. Default 1 (0 with `stop`).
+    pub weight: Option<f32>,
+    /// Seconds for a full strength change and the clip cross-fade. Default 0.2.
+    pub fade: Option<f32>,
+    pub speed: Option<f32>,
+    /// Default true.
+    pub looping: Option<bool>,
+    /// Fade the overlay out (its clips stop once silent).
+    pub stop: Option<bool>,
+}
+
+/// Edits entity `id`'s components `name` (as `T`) and Animator (added if missing).
+fn edit_with<T: bevy_reflect::Reflect + bevy_reflect::PartialReflect + Default>(
+    agent: &mut Agent,
+    target: &EditTarget,
+    id: u64,
+    name: &'static str,
+    clips: Vec<String>,
+    change: impl FnOnce(&mut T, &BlendSpaces) -> Result<(), Errors>,
+) -> Result<EditOutput, Errors> {
+    let dir = target_dir(agent, target)?;
+    let engine = agent.engine().clone();
+    let registry = engine.registry();
+    let (target_name, diff) = apply(agent, target, |scene, shown| {
+        let asset = model_of(scene, id, shown)?;
+        let e = scene
+            .entities
+            .iter_mut()
+            .find(|e| e.id == id)
+            .expect("model_of found it");
+        let mut value: T = read_component(registry, e, name)?;
+        let spaces: BlendSpaces = read_component(registry, e, "BlendSpaces")?;
+        change(&mut value, &spaces)?;
+        // Check clips against the spaces as they are after the change.
+        let spaces_after: BlendSpaces = match (&value as &dyn bevy_reflect::Reflect)
+            .as_any()
+            .downcast_ref::<BlendSpaces>()
+        {
+            Some(s) => s.clone(),
+            None => spaces,
+        };
+        if !clips.is_empty() {
+            let rig: Rig = load_rig(&asset, &dir).map_err(|m| rig_error(&asset, m))?;
+            for c in &clips {
+                check_clip(&rig, &spaces_after, &asset, id, c)?;
+            }
+        }
+        e.components.insert(name.into(), registry.to_json(&value));
+        if !e.components.contains_key("Animator") {
+            e.components
+                .insert("Animator".into(), registry.to_json(&Animator::default()));
+        }
+        Ok(())
+    })?;
+    Ok(EditOutput {
+        target: target_name,
+        id,
+        diff,
+    })
+}
+
+fn space(agent: &mut Agent, input: SpaceInput) -> Result<EditOutput, Errors> {
+    let clips: Vec<String> = input.points.iter().flatten().map(|p| p.clip.clone()).collect();
+    let name = input.name.clone();
+    edit_with::<BlendSpaces>(agent, &input.target, input.id, "BlendSpaces", clips, |s, _| {
+        let exists = s.get(&name).is_some();
+        match (&input.points, exists) {
+            (Some(points), _) => {
+                let points = points
+                    .iter()
+                    .map(|p| BlendPoint {
+                        clip: p.clip.clone(),
+                        x: p.x,
+                        y: p.y.unwrap_or(0.0),
+                    })
+                    .collect();
+                let sync = input
+                    .sync
+                    .unwrap_or_else(|| s.get(&name).is_none_or(|sp| sp.sync));
+                s.define(&name, points, sync);
+            }
+            (None, false) => {
+                return Err(Diagnostic::error(
+                    codes::BAD_INPUT,
+                    format!("entity {} has no blend space `{name}`", input.id),
+                )
+                .entity(input.id)
+                .fix("pass `points` to create it")
+                .into());
+            }
+            (None, true) => {
+                if let Some(sync) = input.sync {
+                    s.spaces
+                        .iter_mut()
+                        .filter(|sp| sp.name == name)
+                        .for_each(|sp| sp.sync = sync);
+                }
+            }
+        }
+        let sp = s.get(&name).expect("defined above");
+        let (x, y) = (input.x.unwrap_or(sp.target_x), input.y.unwrap_or(sp.target_y));
+        s.set_param(&name, x, y, input.rate);
+        Ok(())
+    })
+}
+
+fn overlay(agent: &mut Agent, input: OverlayInput) -> Result<EditOutput, Errors> {
+    let clips: Vec<String> = input.clip.iter().cloned().collect();
+    edit_with::<AnimOverlays>(agent, &input.target, input.id, "AnimOverlays", clips, |o, _| {
+        let fade = input.fade.unwrap_or(0.2);
+        let ov = o.entry(&input.name);
+        if let Some(mask) = &input.mask {
+            ov.mask = mask.clone();
+        }
+        if let Some(a) = input.additive {
+            ov.additive = a;
+        }
+        if input.stop == Some(true) {
+            ov.set_weight(input.weight.unwrap_or(0.0), fade);
+            if ov.target_weight == 0.0 {
+                ov.stop(None, fade);
+            }
+        } else {
+            ov.set_weight(input.weight.unwrap_or(1.0), fade);
+        }
+        if let Some(clip) = &input.clip {
+            ov.play(
+                clip,
+                fade,
+                input.speed.unwrap_or(1.0),
+                input.looping.unwrap_or(true),
+            );
+        }
+        Ok(())
     })
 }
 

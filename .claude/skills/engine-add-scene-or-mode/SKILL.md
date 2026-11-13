@@ -27,7 +27,7 @@ A scene in the engine repository is not done until the suite knows it. The test
    look at the PNG, and check `git status` shows no other reference changed.
 6. Add the name to `every_example_is_valid_and_canonical` in
    `crates/marionette-cli/tests/cli.rs`.
-7. Record the state hash and the image hash in `docs/ai/PROOFS.md`.
+7. Record the state hash and the image hash in the area file under `docs/ai/proofs/`.
 
 ## Traps
 

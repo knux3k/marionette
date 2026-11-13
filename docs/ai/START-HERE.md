@@ -27,7 +27,7 @@ table below is for everything else.
 | Change engine code | the crate map and the relevant section of [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Add a component, system, operation, crate, scene, test | the recipe in [HOWTO.md](HOWTO.md) |
 | Build, test, toolchain, durations, no GPU | [ENVIRONMENT.md](ENVIRONMENT.md) |
-| Rerun or add a proof (hashes, reference images, test names) | the section in [PROOFS.md](PROOFS.md) |
+| Rerun or add a proof (hashes, reference images, test names) | one file of `docs/ai/proofs/` (index: [PROOFS.md](PROOFS.md)) |
 | Find why something was chosen | [DECISIONS.md](DECISIONS.md), then one record in `docs/decisions/` |
 | When something changed | [SESSION-LOG.md](SESSION-LOG.md), or `git log` |
 | Assets and licenses (normative) | [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) |

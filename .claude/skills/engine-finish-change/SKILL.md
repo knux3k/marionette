@@ -24,7 +24,8 @@ flags changed: `cargo run -q -p marionette-cli -- docs`, and commit `docs/ai/ref
    numbers too), sections as in `docs/ai/HOWTO.md` "Add a decision record", one line in
    `docs/ai/DECISIONS.md`.
 2. `docs/ai/STATE.md`: status per plan line and the UNVERIFIED list only. Proofs (hashes,
-   test names, measurements) go in `docs/ai/PROOFS.md`.
+   test names, measurements) go in the area file under `docs/ai/proofs/` (index and rules:
+   `docs/ai/PROOFS.md`).
 3. One row in `docs/ai/SESSION-LOG.md`.
 4. Mark gaps you closed in `docs/ai/FOCUSES.md`.
 5. A skill that names what you changed is updated in the same change

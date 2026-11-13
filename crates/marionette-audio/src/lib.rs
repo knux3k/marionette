@@ -6,6 +6,14 @@
 //! there, so tests can assert on what played and when. In windowed mode a [`Player`] reads
 //! new `sound` events after each frame and plays them with kira (WAV/OGG files or built-in
 //! sounds).
+//!
+//! Decision 0075 adds, all opt-in so existing scenes hear and hash the same:
+//! - [`SoundSpatial`] on a source: distance curve, muffling behind the listener's head and
+//!   Doppler pitch. [`hear`] is the one formula, used by the tick (for the log) and by the
+//!   player every frame, so voices follow moving sources and a tracked head between ticks.
+//! - [`music::Music`]: stems that start together and fade in and out by an intensity value.
+//! - The player keeps a voice per playing sound and stops looping sounds whose entity or
+//!   `AudioSource` is gone.
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -16,8 +24,13 @@ use marionette_core::module::{EventLog, Module, Stage};
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::Transform;
 use serde_json::json;
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+pub mod music;
+mod player;
+
+pub use music::{Music, MusicLayer};
+pub use player::{MAX_VOICES, Player};
 
 /// When an `AudioSource` plays.
 #[derive(Reflect, Debug, Clone, PartialEq)]
@@ -33,7 +46,8 @@ pub enum SoundTrigger {
 }
 
 /// A sound attached to an entity. `sound` is a WAV/OGG file relative to the scene or a
-/// built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`).
+/// built-in sound (`builtin:beep`, `builtin:jump`, `builtin:thud`; music stems in `Music`).
+/// Add `SoundSpatial` for 3D distance, rear muffling and Doppler.
 #[derive(Component, Reflect, Debug, Clone, PartialEq)]
 pub struct AudioSource {
     pub sound: String,
@@ -43,12 +57,174 @@ pub struct AudioSource {
     pub trigger: SoundTrigger,
 }
 
-/// Where sounds are heard from (usually on the camera). Pan follows the listener's right
-/// (+X) axis; gain falls off as `1 / (1 + distance)`.
+/// Where sounds are heard from (usually on the camera, or the head in VR). Pan follows the
+/// listener's right (+X) axis; front is its -Z axis. Without a `SoundSpatial` on the source,
+/// gain falls off as `1 / (1 + distance)`.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
 pub struct AudioListener {
     /// Master gain.
     pub volume: f32,
+}
+
+/// How gain falls with distance (between `min_distance` and `max_distance`).
+#[derive(Reflect, Debug, Clone, Copy, PartialEq)]
+pub enum Rolloff {
+    /// `min_distance / distance`: natural falloff; held at its `max_distance` value beyond.
+    Inverse,
+    /// Straight line from full gain at `min_distance` to silence at `max_distance`.
+    Linear,
+    /// No distance falloff (only direction).
+    Constant,
+}
+
+/// 3D settings for the `AudioSource` on the same entity.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct SoundSpatial {
+    /// Full gain inside this distance (meters); also where panning reaches full width.
+    pub min_distance: f32,
+    /// See [`Rolloff`].
+    pub max_distance: f32,
+    pub rolloff: Rolloff,
+    /// 0..1: low-pass when the sound is behind the listener (1 = down to 4 kHz straight
+    /// behind). Stereo panning alone cannot tell front from back; this can.
+    pub rear_muffle: f32,
+    /// Doppler pitch shift: 0 off, 1 real speed of sound. Player only (needs velocities).
+    pub doppler: f32,
+}
+
+impl Default for SoundSpatial {
+    fn default() -> Self {
+        Self {
+            min_distance: 1.0,
+            max_distance: 50.0,
+            rolloff: Rolloff::Inverse,
+            rear_muffle: 0.5,
+            doppler: 0.0,
+        }
+    }
+}
+
+/// The listener as the formula needs it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ear {
+    pub position: [f32; 3],
+    /// Rotation quaternion (x, y, z, w).
+    pub rotation: [f32; 4],
+    /// Meters per second (Doppler only).
+    pub velocity: [f32; 3],
+    /// Master gain.
+    pub volume: f32,
+}
+
+/// How one source sounds to the listener.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Heard {
+    pub gain: f32,
+    /// -1 left .. 1 right.
+    pub pan: f32,
+    /// Low-pass cutoff in hertz (20000 = open).
+    pub lowpass_hz: f32,
+    /// Playback rate (1 = as recorded).
+    pub pitch: f32,
+}
+
+/// Cutoff meaning "no filtering".
+pub const OPEN_HZ: f32 = 20_000.0;
+/// Speed of sound, meters per second.
+pub const SPEED_OF_SOUND: f32 = 343.0;
+
+fn rotate(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
+    let [x, y, z, w] = q;
+    let [vx, vy, vz] = v;
+    // v + 2w(q×v) + 2 q×(q×v), with + - * only.
+    let t = [
+        2.0 * (y * vz - z * vy),
+        2.0 * (z * vx - x * vz),
+        2.0 * (x * vy - y * vx),
+    ];
+    [
+        vx + w * t[0] + (y * t[2] - z * t[1]),
+        vy + w * t[1] + (z * t[0] - x * t[2]),
+        vz + w * t[2] + (x * t[1] - y * t[0]),
+    ]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+/// How a source at `source` (moving at `source_velocity`) with gain `volume` sounds to `ear`.
+/// Without `spatial` this is the original rule: `1 / (1 + distance)` and pan only.
+pub fn hear(
+    ear: Option<&Ear>,
+    source: [f32; 3],
+    source_velocity: [f32; 3],
+    volume: f32,
+    spatial: Option<&SoundSpatial>,
+) -> Heard {
+    let open = Heard {
+        gain: volume,
+        pan: 0.0,
+        lowpass_hz: OPEN_HZ,
+        pitch: 1.0,
+    };
+    let Some(ear) = ear else {
+        return open;
+    };
+    let d = [
+        source[0] - ear.position[0],
+        source[1] - ear.position[1],
+        source[2] - ear.position[2],
+    ];
+    let dist = dot(d, d).sqrt();
+    let Some(sp) = spatial else {
+        let gain = volume * ear.volume / (1.0 + dist);
+        if dist < 1e-6 {
+            return Heard { gain, ..open };
+        }
+        let pan = (dot(d, right_axis(ear.rotation)) / dist).clamp(-1.0, 1.0);
+        return Heard { gain, pan, ..open };
+    };
+    let min = sp.min_distance.max(1e-3);
+    let max = sp.max_distance.max(min);
+    let clamped = dist.clamp(min, max);
+    let falloff = match sp.rolloff {
+        Rolloff::Inverse => min / clamped,
+        Rolloff::Linear => {
+            if max > min {
+                1.0 - (clamped - min) / (max - min)
+            } else {
+                1.0
+            }
+        }
+        Rolloff::Constant => 1.0,
+    };
+    let gain = volume * ear.volume * falloff;
+    if dist < 1e-6 {
+        return Heard { gain, ..open };
+    }
+    let u = [d[0] / dist, d[1] / dist, d[2] / dist];
+    // Narrow the stereo image inside min_distance so a sound at the head does not jump sides.
+    let width = (dist / min).min(1.0);
+    let pan = (dot(u, rotate(ear.rotation, [1.0, 0.0, 0.0])) * width).clamp(-1.0, 1.0);
+    let behind = (-dot(u, rotate(ear.rotation, [0.0, 0.0, -1.0]))).max(0.0);
+    let lowpass_hz = OPEN_HZ / (1.0 + 4.0 * sp.rear_muffle.clamp(0.0, 1.0) * behind);
+    let pitch = if sp.doppler > 0.0 {
+        let c = SPEED_OF_SOUND;
+        let k = sp.doppler;
+        // Positive when moving toward the other.
+        let listener_in = dot(ear.velocity, u) * k;
+        let source_in = -dot(source_velocity, u) * k;
+        ((c + listener_in) / (c - source_in).max(1.0)).clamp(0.5, 2.0)
+    } else {
+        1.0
+    };
+    Heard {
+        gain,
+        pan,
+        lowpass_hz,
+        pitch,
+    }
 }
 
 pub struct AudioModule;
@@ -60,13 +236,15 @@ impl Module for AudioModule {
     fn register(&self, r: &mut Registry) {
         r.register_component::<AudioSource>();
         r.register_component::<AudioListener>();
+        r.register_component::<SoundSpatial>();
+        r.register_component::<Music>();
     }
     fn add_systems(&self, schedule: &mut Schedule) {
-        schedule.add_systems(play_sounds.in_set(Stage::Effects));
+        schedule.add_systems((play_sounds, music::advance_music).chain().in_set(Stage::Effects));
     }
 }
 
-fn place(world: &World, e: Entity) -> ([f32; 3], [f32; 4]) {
+pub(crate) fn place(world: &World, e: Entity) -> ([f32; 3], [f32; 4]) {
     let t = world.get::<Transform>(e).copied().unwrap_or_default();
     let p = world
         .get::<Position>(e)
@@ -89,36 +267,46 @@ fn right_axis(q: [f32; 4]) -> [f32; 3] {
 /// A listener: (position, rotation quaternion) and master gain.
 pub type Listener = (([f32; 3], [f32; 4]), f32);
 
-/// Gain and pan of a source heard by a listener.
+/// Gain and pan of a source heard by a listener (the original rule; see [`hear`]).
 pub fn spatialize(listener: Option<Listener>, source: [f32; 3], volume: f32) -> (f32, f32) {
-    let Some(((lp, lq), lv)) = listener else {
-        return (volume, 0.0);
-    };
-    let d = [source[0] - lp[0], source[1] - lp[1], source[2] - lp[2]];
-    let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-    let gain = volume * lv / (1.0 + dist);
-    if dist < 1e-6 {
-        return (gain, 0.0);
-    }
-    let r = right_axis(lq);
-    let pan = ((d[0] * r[0] + d[1] * r[1] + d[2] * r[2]) / dist).clamp(-1.0, 1.0);
-    (gain, pan)
+    let ear = listener.map(|((position, rotation), volume)| Ear {
+        position,
+        rotation,
+        velocity: [0.0; 3],
+        volume,
+    });
+    let h = hear(ear.as_ref(), source, [0.0; 3], volume, None);
+    (h.gain, h.pan)
+}
+
+/// The listener of `world` (lowest scene id with an `AudioListener`), from its entity pose.
+pub fn listener_ear(world: &mut World) -> Option<Ear> {
+    let mut lq = world.query::<(Entity, &SceneId, &AudioListener)>();
+    let (e, l) = lq
+        .iter(world)
+        .min_by_key(|(_, id, _)| id.0)
+        .map(|(e, _, l)| (e, l.volume))?;
+    let (position, rotation) = place(world, e);
+    Some(Ear {
+        position,
+        rotation,
+        velocity: [0.0; 3],
+        volume: l,
+    })
 }
 
 fn play_sounds(world: &mut World) {
     let tick = world.resource::<SimClock>().tick;
-    let mut q = world.query::<(Entity, &SceneId, &AudioSource)>();
-    let mut sources: Vec<(u64, Entity, AudioSource)> =
-        q.iter(world).map(|(e, id, s)| (id.0, e, s.clone())).collect();
+    let mut q = world.query::<(Entity, &SceneId, &AudioSource, Option<&SoundSpatial>)>();
+    let mut sources: Vec<(u64, Entity, AudioSource, Option<SoundSpatial>)> = q
+        .iter(world)
+        .map(|(e, id, s, sp)| (id.0, e, s.clone(), sp.copied()))
+        .collect();
     if sources.is_empty() {
         return;
     }
-    sources.sort_by_key(|(id, _, _)| *id);
-    let mut lq = world.query::<(Entity, &SceneId, &AudioListener)>();
-    let listener = lq
-        .iter(world)
-        .min_by_key(|(_, id, _)| id.0)
-        .map(|(e, _, l)| (place(world, e), l.volume));
+    sources.sort_by_key(|(id, _, _, _)| *id);
+    let ear = listener_ear(world);
     let this_tick: Vec<(String, u64, Option<u64>)> = world
         .resource::<EventLog>()
         .of_tick(tick)
@@ -131,7 +319,7 @@ fn play_sounds(world: &mut World) {
     };
     let actions = world.get_resource::<ActionState>().cloned().unwrap_or_default();
     let mut played = Vec::new();
-    for (id, e, s) in &sources {
+    for (id, e, s, spatial) in &sources {
         let fire = match &s.trigger {
             SoundTrigger::OnStart => tick == 0,
             SoundTrigger::OnCollision => involved("collision_started", *id),
@@ -140,19 +328,17 @@ fn play_sounds(world: &mut World) {
         };
         if fire {
             let (pos, _) = place(world, *e);
-            let (gain, pan) = spatialize(listener, pos, s.volume);
-            played.push((*id, s.sound.clone(), gain, pan, s.looping));
+            let h = hear(ear.as_ref(), pos, [0.0; 3], s.volume, spatial.as_ref());
+            let mut detail = json!({ "sound": s.sound, "gain": h.gain, "pan": h.pan, "looping": s.looping });
+            if spatial.is_some() {
+                detail["lowpass_hz"] = json!(h.lowpass_hz);
+            }
+            played.push((*id, detail));
         }
     }
     let mut log = world.resource_mut::<EventLog>();
-    for (id, sound, gain, pan, looping) in played {
-        log.push(
-            tick,
-            "sound",
-            Some(id),
-            None,
-            json!({ "sound": sound, "gain": gain, "pan": pan, "looping": looping }),
-        );
+    for (id, detail) in played {
+        log.push(tick, "sound", Some(id), None, detail);
     }
 }
 
@@ -216,66 +402,17 @@ pub fn load_sound(
     use kira::sound::static_sound::StaticSoundData;
     if let Some(name) = sound.strip_prefix("builtin:") {
         let samples = builtin_samples(name)
-            .ok_or_else(|| format!("unknown built-in sound `{name}`; built-ins are beep, jump, thud"))?;
+            .or_else(|| music::builtin_stem(name))
+            .ok_or_else(|| {
+                format!(
+                    "unknown built-in sound `{name}`; built-ins are beep, jump, thud, music_pad, \
+                 music_bass, music_drums, music_lead"
+                )
+            })?;
         return StaticSoundData::from_cursor(std::io::Cursor::new(wav_bytes(&samples, 44_100)))
             .map_err(|e| format!("cannot decode built-in sound: {e}"));
     }
     StaticSoundData::from_file(base_dir.join(sound)).map_err(|e| format!("cannot load sound {sound}: {e}"))
-}
-
-/// Plays `sound` events from the log through the default audio device (windowed mode).
-pub struct Player {
-    manager: kira::AudioManager<kira::DefaultBackend>,
-    cache: BTreeMap<String, kira::sound::static_sound::StaticSoundData>,
-    base_dir: PathBuf,
-    seen: u64,
-}
-
-impl Player {
-    pub fn new(base_dir: PathBuf) -> Result<Self, String> {
-        let manager = kira::AudioManager::<kira::DefaultBackend>::new(kira::AudioManagerSettings::default())
-            .map_err(|e| format!("cannot open the audio device: {e}"))?;
-        Ok(Self {
-            manager,
-            cache: BTreeMap::new(),
-            base_dir,
-            seen: 0,
-        })
-    }
-
-    /// Plays every `sound` event added since the last call. Problems are returned, not fatal.
-    pub fn play_new(&mut self, log: &EventLog) -> Vec<String> {
-        let mut problems = Vec::new();
-        for e in log.since(self.seen).filter(|e| e.kind == "sound") {
-            let Some(sound) = e.detail["sound"].as_str() else {
-                continue;
-            };
-            if !self.cache.contains_key(sound) {
-                match load_sound(sound, &self.base_dir) {
-                    Ok(d) => {
-                        self.cache.insert(sound.to_string(), d);
-                    }
-                    Err(m) => {
-                        problems.push(m);
-                        continue;
-                    }
-                }
-            }
-            let gain = e.detail["gain"].as_f64().unwrap_or(1.0) as f32;
-            let db = if gain > 1e-4 { 20.0 * gain.log10() } else { -60.0 };
-            let mut data = self.cache[sound]
-                .volume(kira::Decibels(db))
-                .panning(kira::Panning(e.detail["pan"].as_f64().unwrap_or(0.0) as f32));
-            if e.detail["looping"] == true {
-                data = data.loop_region(..);
-            }
-            if let Err(err) = self.manager.play(data) {
-                problems.push(format!("cannot play {sound}: {err}"));
-            }
-        }
-        self.seen = log.end();
-        problems
-    }
 }
 
 #[cfg(test)]
@@ -314,5 +451,90 @@ mod tests {
         assert_eq!(p, -1.0);
         let (_, p) = spatialize(listener, [0.0, 0.0, -5.0], 1.0);
         assert_eq!(p, 0.0);
+    }
+
+    fn ear(rotation: [f32; 4]) -> Ear {
+        Ear {
+            position: [0.0; 3],
+            rotation,
+            velocity: [0.0; 3],
+            volume: 1.0,
+        }
+    }
+
+    #[test]
+    fn distance_curves() {
+        let e = ear([0.0, 0.0, 0.0, 1.0]);
+        let sp = SoundSpatial {
+            min_distance: 2.0,
+            max_distance: 10.0,
+            rolloff: Rolloff::Inverse,
+            rear_muffle: 0.0,
+            doppler: 0.0,
+        };
+        let g = |d: f32, sp: &SoundSpatial| hear(Some(&e), [0.0, 0.0, -d], [0.0; 3], 1.0, Some(sp)).gain;
+        assert_eq!(g(1.0, &sp), 1.0);
+        assert_eq!(g(4.0, &sp), 0.5);
+        assert_eq!(g(40.0, &sp), 0.2);
+        let lin = SoundSpatial {
+            rolloff: Rolloff::Linear,
+            ..sp
+        };
+        assert_eq!(g(6.0, &lin), 0.5);
+        assert_eq!(g(12.0, &lin), 0.0);
+        let flat = SoundSpatial {
+            rolloff: Rolloff::Constant,
+            ..sp
+        };
+        assert_eq!(g(9.0, &flat), 1.0);
+    }
+
+    #[test]
+    fn behind_is_muffled_and_turning_the_head_moves_the_sound() {
+        let sp = SoundSpatial {
+            rear_muffle: 1.0,
+            ..SoundSpatial::default()
+        };
+        let front = ear([0.0, 0.0, 0.0, 1.0]);
+        let h = hear(Some(&front), [0.0, 0.0, -5.0], [0.0; 3], 1.0, Some(&sp));
+        assert_eq!((h.pan, h.lowpass_hz), (0.0, OPEN_HZ));
+        let h = hear(Some(&front), [0.0, 0.0, 5.0], [0.0; 3], 1.0, Some(&sp));
+        assert_eq!(h.lowpass_hz, 4_000.0);
+        // Head turned 90 degrees left (about +Y): the sound ahead is now on the right.
+        let s = std::f32::consts::FRAC_1_SQRT_2;
+        let left = ear([0.0, s, 0.0, s]);
+        let h = hear(Some(&left), [0.0, 0.0, -5.0], [0.0; 3], 1.0, Some(&sp));
+        assert!((h.pan - 1.0).abs() < 1e-5, "{h:?}");
+        assert!((h.lowpass_hz - OPEN_HZ).abs() < 1.0);
+        // Inside min_distance the image narrows instead of jumping sides.
+        let h = hear(Some(&front), [0.25, 0.0, 0.0], [0.0; 3], 1.0, Some(&sp));
+        assert!((h.pan - 0.25).abs() < 1e-5);
+    }
+
+    #[test]
+    fn doppler_raises_pitch_when_approaching() {
+        let sp = SoundSpatial {
+            doppler: 1.0,
+            ..SoundSpatial::default()
+        };
+        let e = ear([0.0, 0.0, 0.0, 1.0]);
+        let toward = hear(Some(&e), [0.0, 0.0, -10.0], [0.0, 0.0, 34.3], 1.0, Some(&sp));
+        assert!((toward.pitch - 1.0 / 0.9).abs() < 1e-4, "{toward:?}");
+        let away = hear(Some(&e), [0.0, 0.0, -10.0], [0.0, 0.0, -34.3], 1.0, Some(&sp));
+        assert!(away.pitch < 1.0);
+        let off = hear(
+            Some(&e),
+            [0.0, 0.0, -10.0],
+            [0.0, 0.0, 34.3],
+            1.0,
+            Some(&SoundSpatial::default()),
+        );
+        assert_eq!(off.pitch, 1.0);
+    }
+
+    #[test]
+    fn music_stems_decode() {
+        let d = load_sound("builtin:music_drums", Path::new(".")).unwrap();
+        assert_eq!(d.frames.len(), 176_400);
     }
 }
