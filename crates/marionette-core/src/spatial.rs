@@ -374,6 +374,54 @@ impl BulkDrawHooks {
     }
 }
 
+/// One corner of a world-space quad drawn by a [`QuadDrawHook`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct QuadVertex {
+    /// World position.
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
+    /// Linear RGBA.
+    pub color: [f32; 4],
+}
+
+/// Quads in world space that share one texture, four vertices per quad in counter-clockwise
+/// order seen from the front (the back is not drawn). The red channel of the texture is a
+/// signed distance field (0.5 on the edge): the result stays crisp at any size and distance,
+/// so a solid area is a texel that holds 1.0. Alpha blended, depth tested, no depth write,
+/// drawn in list order after the sprites and before the screen UI. Used for text and panels
+/// placed in the 3D world.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WorldQuads {
+    /// Image name as for [`Sprite::image`], or `generated:<key>` for an image a module made.
+    pub image: String,
+    pub vertices: Vec<QuadVertex>,
+}
+
+/// Camera information given to a [`QuadDrawHook`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct QuadContext {
+    pub alpha: f32,
+    /// World position of the first camera (the viewer), for sorting and range checks.
+    pub eye: [f32; 3],
+}
+
+/// A function that adds world-space quads for the current world.
+pub type QuadDrawHook = fn(&bevy_ecs::world::World, &QuadContext, &mut Vec<WorldQuads>);
+
+/// Quad draw hooks registered by modules in `Module::init`. Not simulation state.
+#[derive(bevy_ecs::prelude::Resource, Default, Clone)]
+pub struct QuadDrawHooks(pub Vec<QuadDrawHook>);
+
+impl QuadDrawHooks {
+    /// Adds `hook` to the world's hooks (once).
+    pub fn add(world: &mut bevy_ecs::world::World, hook: QuadDrawHook) {
+        let mut hooks = world.get_resource_or_insert_with(QuadDrawHooks::default);
+        if !hooks.0.iter().any(|h| std::ptr::fn_addr_eq(*h, hook)) {
+            hooks.0.push(hook);
+        }
+    }
+}
+
 /// Animated node matrices of a `Model`: one model-space, column-major matrix per glTF node,
 /// plus morph target weights per node. Written by the animation module every tick and read
 /// by the renderer. Derived data: not saved in scenes and not part of the state hash (it
