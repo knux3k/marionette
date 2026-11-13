@@ -1,6 +1,6 @@
 ---
 name: marionette-package-game
-description: Package a Marionette game as a folder and zip players can run (Windows x64, Linux x64, Steam Deck, Steam Frame ARM64). Use when asked to build, ship or zip a game, make a Deck or Frame build, or fix a package that fails.
+description: Package a game as a folder and zip for Windows, Linux, Steam Deck or Steam Frame. Use when asked to build, ship or zip a game, or when a package fails.
 ---
 
 # Package a game
