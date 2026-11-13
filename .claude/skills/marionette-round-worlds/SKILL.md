@@ -1,6 +1,6 @@
 ---
 name: marionette-round-worlds
-description: Make characters, bodies and AI agents move on round planets and moons, with gravity toward the centre, walking, jumping, jetpacks and swimming whose up follows position, and navigation for crowds on curved, changing terrain (NavMesh replacement). Use when a game has spherical worlds, point gravity, small planets, wildlife or drones that must find paths, or agents that avoid each other.
+description: Movement and navigation on round planets, with point gravity, characters whose up follows position (walk, jump, jetpack, swim) and crowd pathfinding on changing terrain. Use when a game has spherical worlds or agents that need paths.
 ---
 
 # Round worlds: movement and navigation
