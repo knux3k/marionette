@@ -757,6 +757,16 @@ Rust type: `marionette_core::spatial::LevelOfDetail`.
 | `low_below` | number | yes | Below this size, the second reduced level (a quarter). |
 | `medium_below` | number | yes | Below this size, the first reduced level (half the triangles). |
 
+### `NetPlayers`
+
+The players in a networked session, by slot (0 is the host). Part of the state hash, so a peer that disagrees about who is playing is caught as a desync.
+
+Rust type: `marionette_net::sim::NetPlayers`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `slots` | array of integer | yes | Occupied slots, ascending. |
+
 ### `PhysicsSettings`
 
 Turns physics on for the scene and picks 3D or 2D.

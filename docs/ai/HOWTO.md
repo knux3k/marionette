@@ -51,6 +51,26 @@ Template: `examples/rust-module` (decision 0062).
 4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
    workspace's.
 
+## Network a game (co-op lockstep, Steam, achievements)
+
+Decisions 0210 to 0213; skill `marionette-multiplayer`.
+
+1. Scripts read per-player actions `p<slot>.<action>` and the `NetPlayers` resource
+   (`examples/scripts/coop-player.ts`). Prove the scene with
+   `marionette op net_simulate '{"scene":"...","players":4,"late_join_at":200}'`:
+   `all_equal` must be true.
+2. In the game's binary add `marionette_net::NetModule` to the engine, pick a transport
+   (`Endpoint::new(UdpDatagram::bind(..))`, or `marionette_steam::Steam::load(None)` then
+   `.transport(2)`), gather players with a `Lobbies` backend, then each fixed step:
+   host `poll`, `set_local`, `next_frame`, `apply_frame` + `Sim::step`, hash when
+   `should_hash`, `provide_snapshot` when `needs_snapshot`, `flush`; client `poll`,
+   `set_local`, run `frames_due` frames, `flush`.
+3. Achievements: a `*.achievements.json` (check with `achievements_check`), a `Tracker` over
+   `OfflinePlatform` or `Steam::platform()`. Cloud saves: `sync_dir(save_folder, &[".save"], ..)`
+   at start and after saving, or Steam Auto-Cloud.
+4. Steam needs the game's own `steam_api` library next to the executable (never in the engine
+   repository) and `steam_appid.txt` during development.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.

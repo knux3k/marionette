@@ -1,6 +1,6 @@
 ---
 name: marionette-synth-audio
-description: Make sound in code and check it without speakers, with synth voices, filters, envelopes, generators, music streamed from disk and offline render. Use when a game needs synthesised or streamed audio, or audio must be verified.
+description: Make sound in code, not files, and check it without speakers, with synth voices, filters, envelopes, custom sample generators, music streamed from disk, sample-accurate notes, offline render to numbers or WAV. Use when a game needs synthesised or long streamed audio, or when audio must be verified.
 ---
 
 # Procedural and streamed audio

@@ -1,6 +1,6 @@
 ---
 name: marionette-write-job
-description: Write a Marionette job, a numbers-only TypeScript hot loop compiled to WebAssembly that runs in parallel and deterministically. Use when code loops over thousands of items every tick, a script is too slow, or a job fails to compile.
+description: Write a Marionette job, a numbers-only TypeScript hot loop compiled to WebAssembly, run in parallel and deterministically over typed arrays. Use when code loops over thousands of items per tick, a script is too slow, or a job fails to compile.
 ---
 
 # Write a job (hot loop)

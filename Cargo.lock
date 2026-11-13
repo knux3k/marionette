@@ -2266,7 +2266,9 @@ dependencies = [
  "marionette-input",
  "marionette-jobs",
  "marionette-jobs-ts",
+ "marionette-net",
  "marionette-physics",
+ "marionette-platform",
  "marionette-pool",
  "marionette-port",
  "marionette-providers",
@@ -2328,6 +2330,7 @@ dependencies = [
  "marionette-host",
  "marionette-input",
  "marionette-jobs",
+ "marionette-net",
  "marionette-openxr",
  "marionette-render",
  "marionette-xr",
@@ -2454,6 +2457,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-net"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-core",
+ "marionette-input",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "marionette-openxr"
 version = "0.1.0"
 dependencies = [
@@ -2482,6 +2498,16 @@ dependencies = [
  "rapier3d",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "marionette-platform"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]
@@ -2554,6 +2580,15 @@ dependencies = [
  "oxc",
  "rquickjs",
  "serde_json",
+]
+
+[[package]]
+name = "marionette-steam"
+version = "0.1.0"
+dependencies = [
+ "libloading 0.8.9",
+ "marionette-net",
+ "marionette-platform",
 ]
 
 [[package]]

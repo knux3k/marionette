@@ -1,6 +1,6 @@
 ---
 name: marionette-make-vr
-description: Make a Marionette game playable in a VR headset through OpenXR, with tracked hands, grab and throw, turning, teleport and comfort, testable without a headset. Use when a game needs VR, controllers or hand tracking.
+description: VR headsets through OpenXR, hands, grab and throw, VR movement. Use when a game needs VR.
 ---
 
 # Make a game playable in VR

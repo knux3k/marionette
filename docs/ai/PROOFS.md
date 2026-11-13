@@ -15,6 +15,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
 | Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
 | Headsets through OpenXR (decision 0190) | [proofs/xr.md](proofs/xr.md) |
+| Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
 
 ## Adding a proof
 
