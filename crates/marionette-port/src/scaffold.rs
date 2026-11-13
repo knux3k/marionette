@@ -461,6 +461,22 @@ pub fn notes(a: &Analysis, scripts: &[(usize, String)]) -> String {
             comps.join("; ").replace('|', "\\|")
         );
     }
+    let jobs: Vec<&Class> = a.classes.iter().filter(|c| c.role == Role::Job).collect();
+    if !jobs.is_empty() {
+        out.push_str(
+            "\n## Jobs (Rust, not scripts)\n\nSkeletons in `jobs.rs`; follow PORTING.md \"Burst jobs\".\n\n",
+        );
+        for c in jobs {
+            let _ = writeln!(
+                out,
+                "- `{}` : {} (`{}:{}`)",
+                c.raw.name,
+                c.raw.base.as_deref().unwrap_or("-"),
+                a.files[c.raw.file].path,
+                c.raw.line
+            );
+        }
+    }
     if !r.summary.actions.is_empty() {
         out.push_str("\n## Input actions to define\n\n");
         for act in &r.summary.actions {
@@ -493,4 +509,149 @@ pub fn notes(a: &Analysis, scripts: &[(usize, String)]) -> String {
     }
     out.push_str("\n## Coordinates\n\nPositions, rotations and sizes copied from the source scene must be converted: `marionette op port_convert '{\"engine\": \"...\", \"kind\": \"position\", \"value\": [x, y, z]}'`.\n");
     out
+}
+
+/// The Rust type for a C# field type in a job or a struct a job uses.
+pub fn rust_type(ty: &str, enums: &BTreeSet<String>) -> String {
+    let s = ty.trim();
+    for (open, wrap) in [
+        ("NativeArray<", "Vec"),
+        ("NativeList<", "Vec"),
+        ("NativeSlice<", "Vec"),
+        ("NativeQueue<", "std::collections::VecDeque"),
+    ] {
+        if let Some(inner) = s.strip_prefix(open) {
+            let inner = inner.strip_suffix('>').unwrap_or(inner);
+            return format!("{wrap}<{}>", rust_type(inner, enums));
+        }
+    }
+    if let Some(inner) = s.strip_prefix("NativeReference<") {
+        return rust_type(inner.strip_suffix('>').unwrap_or(inner), enums);
+    }
+    if let Some(inner) = s.strip_suffix("[]") {
+        return format!("Vec<{}>", rust_type(inner, enums));
+    }
+    match s {
+        "int" => "i32".into(),
+        "uint" => "u32".into(),
+        "long" => "i64".into(),
+        "ulong" => "u64".into(),
+        "short" => "i16".into(),
+        "ushort" => "u16".into(),
+        "byte" => "u8".into(),
+        "sbyte" => "i8".into(),
+        "float" => "f32".into(),
+        "double" => "f64".into(),
+        "bool" => "bool".into(),
+        "float2" | "Vector2" => "[f32; 2]".into(),
+        "float3" | "Vector3" => "[f32; 3]".into(),
+        "float4" | "Vector4" | "quaternion" | "Quaternion" => "[f32; 4]".into(),
+        "int2" => "[i32; 2]".into(),
+        "int3" => "[i32; 3]".into(),
+        "int4" => "[i32; 4]".into(),
+        "float4x4" | "Matrix4x4" => "[[f32; 4]; 4]".into(),
+        e if enums.contains(e) => format!("i32 /* enum {e} */"),
+        other => other.to_string(),
+    }
+}
+
+/// Rust skeletons for every Unity job struct (`IJob`, `IJobFor`, ...) and the scanned
+/// structs their fields use, or `None` when the source has no jobs. Fields keep their
+/// names; each method's original code is kept as comments, with `->` lines as in the
+/// TypeScript skeletons. `execute` is a real (empty) method so the file is a starting point
+/// for a system of the game's own Rust module (decision 0062).
+pub fn rust_jobs(a: &Analysis) -> Option<String> {
+    let jobs: Vec<usize> = (0..a.classes.len())
+        .filter(|&ci| a.classes[ci].role == Role::Job)
+        .collect();
+    if jobs.is_empty() {
+        return None;
+    }
+    let mut by_line: BTreeMap<(usize, u32), Vec<&Occurrence>> = BTreeMap::new();
+    for o in &a.occurrences {
+        by_line.entry((o.file, o.line)).or_default().push(o);
+    }
+    // Structs the jobs' fields name (one level is enough for flat job data).
+    let mut wanted: Vec<usize> = Vec::new();
+    for &ji in &jobs {
+        for f in &a.classes[ji].raw.fields {
+            for (si, c) in a.classes.iter().enumerate() {
+                if c.raw.is_struct
+                    && c.role != Role::Job
+                    && f.ty.split(['<', '>', '[', ']', ' ']).any(|w| w == c.raw.name)
+                    && !wanted.contains(&si)
+                {
+                    wanted.push(si);
+                }
+            }
+        }
+    }
+    let mut out = String::new();
+    out.push_str("//! Rust skeletons for the job structs of the scanned source, written by\n");
+    out.push_str("//! `marionette op port_scaffold` (docs/ai/PORTING.md, \"Burst jobs\").\n//!\n");
+    out.push_str(
+        "//! Put the arrays in one resource of the game's own Rust module (HOWTO.md \"Add a game's\n",
+    );
+    out.push_str(
+        "//! own Rust module\") and call each job's `execute` from a `Stage::Logic` system, in the\n",
+    );
+    out.push_str("//! order the source scheduled them. The original code is kept as comments; `->` lines\n");
+    out.push_str("//! name the equivalent. The file compiles once every type it names exists.\n\n");
+    out.push_str("#![allow(dead_code, non_snake_case)]\n");
+    for ci in wanted.iter().chain(jobs.iter()) {
+        let c = &a.classes[*ci];
+        let src = &a.files[c.raw.file].path;
+        let _ = writeln!(
+            out,
+            "\n/// {} `{}` ({src}:{}).",
+            if c.role == Role::Job { "Job" } else { "Struct" },
+            c.raw.name,
+            c.raw.line
+        );
+        let _ = writeln!(
+            out,
+            "#[derive(Debug, Clone, Default)]\npub struct {} {{",
+            c.raw.name
+        );
+        for f in &c.raw.fields {
+            if f.modifiers.iter().any(|m| m == "const" || m == "static") {
+                let _ = writeln!(
+                    out,
+                    "    // {} {}: {} (constant: make it a `const`)",
+                    f.ty,
+                    f.name,
+                    f.init.as_deref().unwrap_or("-")
+                );
+                continue;
+            }
+            let note = if f.attributes.iter().any(|x| x == "ReadOnly") {
+                " // read-only in the job: borrow as &[T]"
+            } else {
+                ""
+            };
+            let _ = writeln!(out, "    pub {}: {},{note}", f.name, rust_type(&f.ty, &a.enums));
+        }
+        out.push_str("}\n");
+        if c.raw.methods.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "\nimpl {} {{", c.raw.name);
+        for (mi, m) in c.raw.methods.iter().enumerate() {
+            let mut b = String::new();
+            body(&mut b, a, *ci, mi, &by_line);
+            if c.role == Role::Job && m.name == "Execute" {
+                out.push_str("    /// The job body (`Execute`).\n    pub fn execute(&mut self) {\n");
+                for l in b.lines() {
+                    let _ = writeln!(out, "      {l}");
+                }
+                out.push_str("    }\n");
+            } else {
+                for l in b.lines() {
+                    let _ = writeln!(out, "  {l}");
+                }
+            }
+        }
+        out.push_str("}\n");
+    }
+    Some(out)
 }

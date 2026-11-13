@@ -38,6 +38,55 @@
       "role": "editor",
       "marionette": "Editor code is not ported: Marionette is edited through operations (`marionette ops`).",
       "status": "gap"
+    },
+    {
+      "name": "IJob",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobFor",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobParallelFor",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobParallelForTransform",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobParallelForBatch",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobChunk",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
+    },
+    {
+      "name": "IJobEntity",
+      "role": "job",
+      "marionette": "A system of the game's own Rust module (decision 0062; HOWTO.md \"Add a game's own Rust module\"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070).",
+      "status": "rewrite",
+      "note": "See PORTING.md \"Burst jobs\". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use."
     }
   ],
   "hooks": [
@@ -550,6 +599,36 @@
       "marionette": "an input action name",
       "status": "rewrite",
       "note": "Bind keys in the action map file; scripts read actions, not keys."
+    },
+    {
+      "name": "float3",
+      "marionette": "{ x: number, y: number, z: number }",
+      "status": "ready"
+    },
+    {
+      "name": "float2",
+      "marionette": "{ x: number, y: number }",
+      "status": "ready"
+    },
+    {
+      "name": "float4",
+      "marionette": "{ x: number, y: number, z: number, w: number }",
+      "status": "ready"
+    },
+    {
+      "name": "quaternion",
+      "marionette": "{ x: number, y: number, z: number, w: number }",
+      "status": "ready"
+    },
+    {
+      "name": "int2",
+      "marionette": "{ x: number, y: number }",
+      "status": "ready"
+    },
+    {
+      "name": "int3",
+      "marionette": "{ x: number, y: number, z: number }",
+      "status": "ready"
     }
   ],
   "api": [
@@ -1512,6 +1591,417 @@
       "pattern": "Camera.main",
       "marionette": "engine.query(\"Camera\")[0]",
       "status": "script"
+    },
+    {
+      "pattern": "NativeArray",
+      "marionette": "Vec<T> in a resource of the game's Rust module, or a JobData array (job TypeScript)",
+      "status": "rewrite",
+      "note": "Rust owns the memory: no Allocator, no Dispose."
+    },
+    {
+      "pattern": "NativeList",
+      "marionette": "Vec<T>",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "NativeSlice",
+      "marionette": "&[T] / &mut [T]",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "NativeReference",
+      "marionette": "a plain field of the resource",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "NativeHashMap",
+      "marionette": "BTreeMap<K, V>",
+      "status": "rewrite",
+      "note": "Use an ordered map: iteration order must never change game state."
+    },
+    {
+      "pattern": "NativeParallelHashMap",
+      "marionette": "BTreeMap<K, V>",
+      "status": "rewrite",
+      "note": "Use an ordered map: iteration order must never change game state."
+    },
+    {
+      "pattern": "NativeQueue",
+      "marionette": "VecDeque<T>",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "Allocator.Persistent",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust frees memory when the owner is dropped."
+    },
+    {
+      "pattern": "Allocator.TempJob",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust frees memory when the owner is dropped."
+    },
+    {
+      "pattern": "Allocator.Temp",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust frees memory when the owner is dropped."
+    },
+    {
+      "pattern": "JobHandle",
+      "marionette": "marionette_jobs::Jobs (for_each_chunk_mut, for_each_segment_mut, map_chunks)",
+      "status": "rewrite",
+      "note": "Systems run in a fixed order every tick, so dependencies are the schedule order; split work across threads only where each chunk writes its own slice (decision 0024)."
+    },
+    {
+      "pattern": "JobHandle.CombineDependencies",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: the schedule order is the dependency."
+    },
+    {
+      "pattern": "JobHandle.ScheduleBatchedJobs",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed."
+    },
+    {
+      "pattern": "BurstCompile",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "ReadOnly",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "WriteOnly",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "NativeDisableParallelForRestriction",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "NativeDisableContainerSafetyRestriction",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "NoAlias",
+      "marionette": "",
+      "status": "ready",
+      "note": "Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`."
+    },
+    {
+      "pattern": "math.min",
+      "marionette": "i32::min / f32::min (Rust), Math.min (job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.max",
+      "marionette": "i32::max / f32::max (Rust), Math.max (job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.clamp",
+      "marionette": "i32::clamp / f32::clamp (Rust), Math.clamp (job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.abs",
+      "marionette": "i32::abs / f32::abs (Rust), Math.abs (job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.select",
+      "marionette": "plain arithmetic (Rust or job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.sign",
+      "marionette": "plain arithmetic (Rust or job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.csum",
+      "marionette": "plain arithmetic (Rust or job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.cmax",
+      "marionette": "plain arithmetic (Rust or job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.cmin",
+      "marionette": "plain arithmetic (Rust or job TypeScript)",
+      "status": "script",
+      "note": "Exact on every machine."
+    },
+    {
+      "pattern": "math.sqrt",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.round",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.floor",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.ceil",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.lerp",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.saturate",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.dot",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.cross",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.distance",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.distancesq",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.length",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.lengthsq",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.normalize",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.normalizesafe",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.rsqrt",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.mul",
+      "marionette": "glam or plain arithmetic (Rust); Math.* (job TypeScript)",
+      "status": "script",
+      "note": "+ - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results."
+    },
+    {
+      "pattern": "math.sin",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.cos",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.tan",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.atan2",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.asin",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.acos",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.atan",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.pow",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.exp",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.log",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.log2",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.exp2",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "math.sincos",
+      "marionette": "precomputed tables or constants",
+      "status": "hazard",
+      "note": "Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math."
+    },
+    {
+      "pattern": "float3",
+      "marionette": "glam::Vec3 or [f32; 3]",
+      "status": "script"
+    },
+    {
+      "pattern": "float2",
+      "marionette": "glam::Vec2 or [f32; 2]",
+      "status": "script"
+    },
+    {
+      "pattern": "float4",
+      "marionette": "glam::Vec4 or [f32; 4]",
+      "status": "script"
+    },
+    {
+      "pattern": "int2",
+      "marionette": "[i32; 2]",
+      "status": "script"
+    },
+    {
+      "pattern": "int3",
+      "marionette": "[i32; 3]",
+      "status": "script"
+    },
+    {
+      "pattern": "quaternion",
+      "marionette": "glam::Quat",
+      "status": "script"
+    },
+    {
+      "pattern": "quaternion.LookRotationSafe",
+      "marionette": "glam::Quat::look_to_rh (mind the handedness, PORTING.md coordinates)",
+      "status": "rewrite"
+    },
+    {
+      "pattern": "float4x4.TRS",
+      "marionette": "glam::Mat4::from_scale_rotation_translation",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.CeilToInt",
+      "marionette": "Math.ceil",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.FloorToInt",
+      "marionette": "Math.floor",
+      "status": "script"
+    },
+    {
+      "pattern": "Mathf.RoundToInt",
+      "marionette": "Math.round",
+      "status": "script",
+      "note": "Unity rounds .5 to the nearest even number; Math.round rounds .5 up. Use a helper where halves occur."
+    },
+    {
+      "pattern": "Graphics.RenderMeshInstanced",
+      "marionette": "JobDraw (instanced draw from job arrays, decision 0070), or a BulkDrawHooks render hook from a Rust module",
+      "status": "rewrite",
+      "note": "Never one entity per drawn item."
+    },
+    {
+      "pattern": "Graphics.DrawMeshInstanced",
+      "marionette": "JobDraw (decision 0070), or a BulkDrawHooks render hook from a Rust module",
+      "status": "rewrite",
+      "note": "Never one entity per drawn item."
+    },
+    {
+      "pattern": "quaternion.identity",
+      "marionette": "glam::Quat::IDENTITY",
+      "status": "script"
     }
   ],
   "roots": [
@@ -1558,6 +2048,23 @@
     "rigidbody",
     "Keyboard",
     "Mouse",
-    "Gamepad"
+    "Gamepad",
+    "math",
+    "NativeArray",
+    "NativeList",
+    "NativeSlice",
+    "NativeReference",
+    "NativeHashMap",
+    "NativeParallelHashMap",
+    "NativeQueue",
+    "Allocator",
+    "JobHandle",
+    "float2",
+    "float3",
+    "float4",
+    "float4x4",
+    "quaternion",
+    "int2",
+    "int3"
   ]
 }

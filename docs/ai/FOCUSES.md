@@ -64,4 +64,6 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | done: features `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, CI lean build (decision 0062) |
 | Modularity | Job TypeScript cannot be called from scenes or scripts yet (WJ next) | done: `JobData`, `JobSchedule`, `engine.jobs`, `JobDraw` (decision 0070) |
 | Performance | No hardware-GPU run of frame budgets yet (needs the owner's PC) | open |
+| Performance | Saving a large scene held the tick for 50 to 70 ms at 4x (a real port's budget is 2 ms) | done: `Sim::capture`, text written off the tick (decision 0073) |
+| Modularity | Porting tools could not see Unity Burst jobs and crashed on real code | done: job role, `jobs.rs` skeletons, partial classes (decision 0072) |
 | Performance | Every instance drawn in every view; far parts drawn at full detail | done: frustum culling always on, `LevelOfDetail` (decision 0080); render scale, upscaling and foveation open |
