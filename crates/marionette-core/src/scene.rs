@@ -518,6 +518,65 @@ pub fn extract(world: &mut World, registry: &Registry) -> Scene {
     scene
 }
 
+/// A copy of a world's saved state, taken on the main thread so the slow part of saving
+/// (turning it into scene text) can run on another thread while the simulation goes on.
+/// [`Capture::into_scene`] gives exactly what [`extract`] gives for the same world.
+pub struct Capture {
+    resources: Vec<Copied>,
+    entities: Vec<(u64, Option<String>, Vec<Copied>)>,
+}
+
+/// A copied value and its registered type name.
+type Copied = (&'static str, Box<dyn Reflect>);
+
+/// Copies every saved resource and component of `world` (see [`Capture`]).
+pub fn capture(world: &mut World, registry: &Registry) -> Capture {
+    let mut resources = Vec::new();
+    for entry in registry.of_kind(Kind::Resource) {
+        if let Some(value) = entry.copy(world, None) {
+            resources.push((entry.name, value));
+        }
+    }
+    let mut query = world.query::<(Entity, &SceneId, Option<&SceneName>)>();
+    let mut found: Vec<(u64, Entity, Option<String>)> = query
+        .iter(world)
+        .map(|(e, id, name)| (id.0, e, name.map(|n| n.0.clone())))
+        .collect();
+    found.sort_by_key(|(id, _, _)| *id);
+    let components: Vec<&TypeEntry> = registry.of_kind(Kind::Component).collect();
+    let mut entities = Vec::with_capacity(found.len());
+    for (id, entity, name) in found {
+        let mut list = Vec::new();
+        for entry in &components {
+            if let Some(value) = entry.copy(world, Some(entity)) {
+                list.push((entry.name, value));
+            }
+        }
+        entities.push((id, name, list));
+    }
+    Capture { resources, entities }
+}
+
+impl Capture {
+    /// The captured state as a scene. Needs only the registry, so it can run on any thread.
+    pub fn into_scene(self, registry: &Registry) -> Scene {
+        let mut scene = Scene::default();
+        for (name, value) in self.resources {
+            scene
+                .resources
+                .insert(name.to_string(), registry.to_json(value.as_partial_reflect()));
+        }
+        for (id, name, list) in self.entities {
+            let components = list
+                .into_iter()
+                .map(|(n, v)| (n.to_string(), registry.to_json(v.as_partial_reflect())))
+                .collect();
+            scene.entities.push(SceneEntity { id, name, components });
+        }
+        scene
+    }
+}
+
 /// Rewrites scene text in canonical form. Values go through the typed path, so this also
 /// normalizes numbers (e.g. `1` for an `f32` field becomes `1.0`).
 pub fn format_text(text: &str, registry: &Registry) -> Result<String> {

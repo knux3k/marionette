@@ -11,6 +11,7 @@ GPU. Decisions: 0023 (budgets), 0024 (jobs), 0025 (renderer), 0026 (factory modu
 | Factory sim tick, 4x stress (952 machines, 15k slots), p99 | 2 ms | `perf_budgets::sim_tick_budgets` |
 | Factory sim tick, 32x (7,616 machines, 122k slots), average | 2 ms | `perf_budgets::sim_tick_budgets` |
 | Load the 32x factory scene | 5 s | `perf_budgets::sim_tick_budgets` |
+| Main-thread part of a save, 4x factory (`Sim::capture`) | 2 ms | `perf_budgets::save_capture_budget` |
 | Render CPU, 32x factory, 2 eyes, p50 | 4 ms | `perf_budgets::render_cpu_budget` |
 | Draw calls for a factory frame | fixed per asset and part, independent of scale | `perf_proofs` (every `cargo test`) |
 | Sim result independent of job threads | same state hash with 1 and 3 threads | `perf_proofs` (every `cargo test`) |
@@ -44,10 +45,18 @@ draw calls, instances, triangles). Set `MARIONETTE_JOB_THREADS` to compare threa
 | Sim tick 32x, average | 0.20 ms |
 | Sim tick 128x, average | 0.8 ms |
 | Load 32x | 0.53 s |
+| Save 4x: `Sim::capture` / whole snapshot as text | 0.75 ms / 72 ms (2.3 MB) |
 | Render CPU 32x stereo, p50 | 3.1 ms (extract about 1.2 ms) |
 | 10,000 cubes, mono, CPU frame, before / after instancing | 153 ms / 12 ms, 1 draw call |
 
 GPU time on a real desktop GPU and headset is UNVERIFIED (`docs/ai/STATE.md`).
+
+## Saving
+
+`Sim::snapshot` builds the canonical scene text: tens of milliseconds for a large factory
+(decision 0073). In a game loop call `Sim::capture()` on the tick thread (a typed copy) and
+`Capture::into_scene(&registry).to_text()` on another thread. `state_hash` also builds the
+whole text; do not call it every tick.
 
 ## Known next steps
 

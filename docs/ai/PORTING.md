@@ -147,7 +147,37 @@ into a text file ending in `.t3d`; `port_scan` reads its events (`ReceiveBeginPl
 `ReceiveTick`, overlaps) and function calls (`Delay`, `K2_SetActorLocation`, ...). The skeleton
 lists them; rebuild the node chain as code.
 
+## Burst jobs
+
+A Unity job struct (`IJob`, `IJobFor`, `IJobParallelFor`, `IJobChunk`, `IJobEntity`; role
+`job` in `port_scan`) becomes a system of the game's own Rust module (decision 0072; recipe
+HOWTO.md "Add a game's own Rust module"), not a script. `port_scaffold` writes `jobs.rs` with a
+Rust struct per job and per struct its fields use, the original code as comments and an empty
+`execute`.
+
+| Unity | Rust module |
+| --- | --- |
+| `NativeArray<T>`, `NativeList<T>` fields | `Vec<T>` fields of one resource (saved and hashed) |
+| `NativeReference<T>` | a plain field of that resource |
+| `NativeHashMap` | `BTreeMap` (iteration order must not change state) |
+| `Allocator.*`, `Dispose`, `[BurstCompile]`, `[ReadOnly]` | not needed (`&[T]` for read-only) |
+| `item0..item6` fields with switch accessors | `[i32; 7]` |
+| `Execute` run on the main thread | a `Stage::Logic` system calling it each tick |
+| `Schedule` over chunks | `marionette_jobs::Jobs::for_each_chunk_mut` where each chunk writes only its own slice |
+| a 20 Hz job inside a 90 Hz frame | the scene's fixed step (`FixedStep`) set to the job's rate |
+| `math.min/max/clamp`, integer math | the same; exact everywhere |
+| `math.sin/cos/pow` | hazard: precompute |
+| instanced draws of job output | a `BulkDrawHooks` render hook (as `marionette-factory`) or `JobDraw` |
+
+Derive `Clone` and `Reflect` on the resource (registration requires `Clone`, decision 0073).
+Prove it with `perf_sim` on 1 and several threads (same state hash). Save with `Sim::capture`
+on the tick thread and `Capture::into_scene` elsewhere: a large factory's state is megabytes
+of scene text. Per-entity number loops that fit `JobData` arrays can be job TypeScript
+instead (decision 0070); it has no structs and no 64-bit integers.
+
 ## Not ported
+
+C# `partial` classes are reported once, with the members of every part.
 
 Editor code (Unity `Editor/` folders, `Editor`/`EditorWindow` classes, `OnDrawGizmos`,
 `OnValidate`), networking, animation state machines, particle systems and navigation meshes have

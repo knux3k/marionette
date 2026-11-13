@@ -29,6 +29,15 @@
     stopClip(clip, o = {}) {
       h.anim(this.id, JSON.stringify({ op: "stop", clip: clip === undefined || clip === null ? undefined : String(clip), fade: o.fade }));
     }
+    setBlend(space, x, y, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "param", space: String(space), x, y: y ?? 0, rate: o.rate }));
+    }
+    playOverlay(name, clip, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "overlay", name: String(name), clip: String(clip), weight: o.weight, mask: o.mask, additive: o.additive, fade: o.fade, speed: o.speed, looping: o.looping }));
+    }
+    stopOverlay(name, o = {}) {
+      h.anim(this.id, JSON.stringify({ op: "overlay_stop", name: String(name), fade: o.fade }));
+    }
     get name() {
       return h.name(this.id) ?? null;
     }

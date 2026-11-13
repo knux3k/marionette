@@ -19,6 +19,9 @@ const SIM_4X_P99_MS: f64 = 2.0;
 const SIM_32X_AVG_MS: f64 = 2.0;
 /// Loading the 32x factory scene (parse, validate, build module state).
 const LOAD_32X_MS: f64 = 5000.0;
+/// Main-thread part of saving a 4x factory (`Sim::capture`); writing the text runs on
+/// another thread (decision 0073).
+const SAVE_CAPTURE_4X_MS: f64 = 2.0;
 /// CPU side of a stereo frame of the 32x factory: extract plus record and submit, median.
 const RENDER_CPU_32X_STEREO_MS: f64 = 4.0;
 
@@ -82,6 +85,31 @@ fn sim_tick_budgets() {
     );
     check("sim 32x avg", r["avg_ms"].as_f64().unwrap(), SIM_32X_AVG_MS);
     check("load 32x", r["load_ms"].as_f64().unwrap(), LOAD_32X_MS);
+}
+
+#[test]
+#[ignore = "timing: release builds only, see the file header"]
+fn save_capture_budget() {
+    let d = dir();
+    let mut agent = Agent::new(&d, false);
+    let s4 = factory(&mut agent, &d, 4);
+    let mut sim = engine::load_file(Path::new(&s4), "factory4", 0).unwrap();
+    sim.run(600);
+    let mut best = f64::MAX;
+    for _ in 0..5 {
+        let t = Instant::now();
+        let cap = sim.capture();
+        best = best.min(t.elapsed().as_secs_f64() * 1000.0);
+        drop(cap);
+    }
+    check("save capture 4x", best, SAVE_CAPTURE_4X_MS);
+    let t = Instant::now();
+    let text = sim.snapshot().to_text();
+    eprintln!(
+        "  (whole snapshot as text, for comparison: {:.1} ms, {} KB)",
+        t.elapsed().as_secs_f64() * 1000.0,
+        text.len() / 1024
+    );
 }
 
 #[test]
