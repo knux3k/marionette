@@ -30,14 +30,4 @@ parts in views. Both eyes use the level picked from the first view.
 
 ## Proofs
 
-- `culling_drops_unseen_instances_without_changing_the_image` (`marionette-render` GPU tests):
-  pixels identical with culling on and off; 121 of 123 instances not drawn in view; a box out of
-  view still shadows the view.
-- `level_of_detail_reduces_far_triangles_only_when_asked`: far spheres draw a reduced mesh
-  (over 20% fewer triangles, mean pixel difference under 2 of 255), a tiny one is hidden.
-- Unit tests in `crates/marionette-render/src/cull.rs` (frustum planes, sphere transform,
-  shadow-only class, level choice, simplifier levels).
-- 32x factory (`perf_factory_scene` scale 32), `bench --headset --size 1024x1024`, release,
-  Mesa lavapipe in a 4-core cloud container: instances drawn per eye 9,792 -> 4,895,
-  triangles 117,504 -> 58,740, record phase p50 1.12 -> 0.99 ms. GPU wait on lavapipe is fill
-  bound (53.5 -> 50.5 ms) and says nothing about a hardware GPU; hardware numbers UNVERIFIED.
+In [proofs/render.md](proofs/render.md#culling-and-level-of-detail-decision-0080).
