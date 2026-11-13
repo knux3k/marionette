@@ -19,8 +19,8 @@ the scene file, and how an agent (with no screen) can see what the person sees.
 - **No editor code in the renderer.** The overlay (panels, markers, selection box, grid) is
   added to a copy of the frame as ordinary UI draws (bitmap font) and a few extra meshes; the
   selected model gets extra emissive, a selected sprite a tint. The renderer only gained three
-  small shared pieces: `Presenter` (window surface, resize, draw; the game window uses it
-  too), `Renderer::model_bounds`, and `Offscreen::render_view` (render from any `View`).
+  small shared pieces: `Presenter` (window surface, resize, draw; the game window keeps
+  its own setup for present mode and frame stats, decision 0170), `Renderer::model_bounds`, and `Offscreen::render_view` (render from any `View`).
 - **Picking on the CPU** against model-space bounding boxes from the loaded models (oriented
   boxes in the world), sprite quads, and screen markers for entities with a place but nothing
   drawn (cameras, lights, spawn points). Hits sort nearest first, then top sprite layer; a

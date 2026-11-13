@@ -72,6 +72,8 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        #[command(flatten)]
+        window: render::WindowFlags,
     },
     /// Open the scene editor window: fly around (right mouse + WASD), click things to inspect
     /// them, play, pause and step, and move, copy or delete entities (written through the
@@ -425,6 +427,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -435,6 +438,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            window,
         }),
         #[cfg(feature = "editor")]
         Command::Edit {

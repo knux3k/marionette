@@ -8,7 +8,9 @@
 - No other system libraries are needed on Windows. On Linux, windowed mode needs the usual X11
   or Wayland development packages for winit, and building needs the ALSA development files for
   cpal (`libasound2-dev` and `pkg-config` on Debian/Ubuntu: its build script runs even for
-  headless builds); headless tests need no X11 or Wayland at run time.
+  headless builds); headless tests need no X11 or Wayland at run time. The default `gamepad`
+  feature needs `libudev-dev` on Linux (decision 0172); build with `--no-default-features`
+  plus the wanted features to leave it out.
 
 ## Commands
 
