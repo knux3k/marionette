@@ -1,0 +1,22 @@
+[package]
+name = "marionette-ui3d"
+description = "Marionette world-space UI: panels and distance-field text placed in the 3D world, with a pointer and touch input hook."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-assets = { path = "../marionette-assets" }
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+fontdue = "0.9"
+glam = "0.34"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+marionette-agent = { path = "../marionette-agent", default-features = false }
+marionette-render = { path = "../marionette-render" }

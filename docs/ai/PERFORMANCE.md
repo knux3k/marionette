@@ -35,7 +35,8 @@ cargo run --release -q -p marionette-cli -- bench target/f4.scene.json --headset
 
 `perf_sim` reports average, p50, p99 and max per tick, load time, thread count and the state
 hash. `bench` reports phase medians (sim, extract, record, GPU wait) and `RenderStats` (views,
-draw calls, instances, triangles). Set `MARIONETTE_JOB_THREADS` to compare thread counts.
+draw calls, instances, triangles, culled). `--no-cull` turns frustum culling off for a
+before/after comparison. Set `MARIONETTE_JOB_THREADS` to compare thread counts.
 
 ## Results (Linux container, Mesa lavapipe software GPU, release)
 
@@ -87,7 +88,8 @@ whole text; do not call it every tick.
 
 ## Known next steps
 
-- Frustum culling per view (every instance is drawn in both eyes today).
+- Frustum culling: done (decision 0080, always on); level of detail opt-in (`LevelOfDetail`).
+  Next: GPU or occlusion culling if instance counts grow past a few hundred thousand.
 - Persistent instance buffers for objects that do not move.
 - Fewer allocations in extract (the largest share of render CPU).
 - A simulation rate separate from the frame rate, with interpolation everywhere (factory items

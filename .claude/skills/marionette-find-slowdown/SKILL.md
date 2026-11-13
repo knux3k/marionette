@@ -31,7 +31,7 @@ Read p99 and max, not only the average: one stalled frame is a visible hitch.
 | High tick time in one script | repeated `engine.query` or `engine.find` every tick | keep ids in `self.state` |
 | Tick time rises over a run | entities or events never removed | compare entity counts at start and end; destroy what is done |
 | Draw calls grow with object count | many different models or materials | reuse one model and material so copies batch into one instanced draw; many copies of one thing: `JobDraw` |
-| GPU wait dominates | resolution, shadows, bloom, shadow-casting local lights | skill `marionette-light-scene`, section Cost |
+| GPU wait dominates | resolution, shadows, bloom, shadow-casting local lights, far detail | skill `marionette-light-scene`, section Cost; skill `marionette-tune-render-cost` |
 | One long frame when something first appears | a large model uploaded on first use (the window loop already decodes late models in the background) | slim the model: fewer triangles, smaller textures |
 | Slow save | building the whole scene text on the tick | save from a copy off the tick (a Rust module can; skill `marionette-add-rust-code`) |
 | Result changes with thread count | a job writing outside its chunk | fix the job; run `perf_sim` with `threads` 1 and 4 and compare hashes |
