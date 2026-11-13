@@ -15,13 +15,14 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "starter"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
 generate = ["marionette-agent/generate", "dep:marionette-generate"]
 port = ["marionette-agent/port"]
 jobs-ts = ["marionette-agent/jobs-ts"]
+starter = ["marionette-agent/starter"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-agent/net"]
 

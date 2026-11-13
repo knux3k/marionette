@@ -34,6 +34,8 @@ pub mod scenario;
 pub mod script;
 pub mod session;
 pub mod stability;
+#[cfg(feature = "starter")]
+pub mod starter;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -144,6 +146,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "starter")]
+    "starter",
     #[cfg(feature = "net")]
     "net",
 ];
@@ -175,6 +179,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         port::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "starter")]
+        starter::ops(),
         batch::ops(),
     ];
     groups.into_iter().flatten().collect()
