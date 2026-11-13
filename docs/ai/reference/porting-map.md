@@ -12,6 +12,13 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | --- | --- | --- | --- |
 | `Editor` | Editor code is not ported: Marionette is edited through operations (`marionette ops`). | gap |  |
 | `EditorWindow` | Editor code is not ported: Marionette is edited through operations (`marionette ops`). | gap |  |
+| `IJob` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobChunk` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobEntity` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobFor` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobParallelFor` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobParallelForBatch` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
+| `IJobParallelForTransform` | A system of the game's own Rust module (decision 0062; HOWTO.md "Add a game's own Rust module"): native-array fields become `Vec` fields of a resource, `Execute` becomes the system body. Per-entity number loops can instead be job TypeScript steps (decision 0070). | rewrite | See PORTING.md "Burst jobs". `port_scaffold` writes a Rust skeleton (`jobs.rs`) for every job and the structs its fields use. |
 | `MonoBehaviour` | A TypeScript script on the entity (`Script { path }` component). | script |  |
 | `NetworkBehaviour` | A TypeScript script; networking has no equivalent. | gap |  |
 | `ScriptableObject` | A JSON data file loaded by the scene, or constants in the script. | rewrite | Marionette has no asset-object type yet; keep the values as script constants or entity components. |
@@ -117,8 +124,14 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `char` | `string` | ready |  |
 | `double` | `number` | ready |  |
 | `float` | `number` | ready |  |
+| `float2` | `{ x: number, y: number }` | ready |  |
+| `float3` | `{ x: number, y: number, z: number }` | ready |  |
+| `float4` | `{ x: number, y: number, z: number, w: number }` | ready |  |
 | `int` | `number` | ready | Use Math.trunc where integer division matters. |
+| `int2` | `{ x: number, y: number }` | ready |  |
+| `int3` | `{ x: number, y: number, z: number }` | ready |  |
 | `long` | `number` | ready | Exact only up to 2^53. |
+| `quaternion` | `{ x: number, y: number, z: number, w: number }` | ready |  |
 | `short` | `number` | ready |  |
 | `string` | `string` | ready |  |
 | `uint` | `number` | ready |  |
@@ -132,6 +145,9 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `AddForce` |  | gap | Scripts cannot push dynamic bodies yet. Use a kinematic body or CharacterController. |
 | `AddTorque` |  | gap |  |
 | `Addressables` |  | gap |  |
+| `Allocator.Persistent` |  | ready | Not needed: Rust frees memory when the owner is dropped. |
+| `Allocator.Temp` |  | ready | Not needed: Rust frees memory when the owner is dropped. |
+| `Allocator.TempJob` |  | ready | Not needed: Rust frees memory when the owner is dropped. |
 | `Animator.Play` |  | gap |  |
 | `Animator.SetBool` |  | gap |  |
 | `Animator.SetFloat` |  | gap |  |
@@ -140,6 +156,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `AudioSource.Play` | `AudioSource with trigger OnAction / OnCollision / OnJump` | rewrite | Sounds are triggered by data; playing any sound from script is a gap. |
 | `AudioSource.PlayClipAtPoint` |  | gap |  |
 | `BroadcastMessage` | `engine.emit(kind, detail)` | rewrite |  |
+| `BurstCompile` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
 | `Camera.main` | `engine.query("Camera")[0]` | script |  |
 | `CancelInvoke` | `engine.cancel(fn) or engine.cancel()` | script |  |
 | `CharacterController.Move` | `CharacterController driven by actions, or by a CharacterInput component a script sets` | rewrite | Set CharacterInput.move_x/move_forward/jump each tick; turn by setting Transform.rotation. |
@@ -167,6 +184,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `GetComponentInChildren` |  | gap | No hierarchy; reference the other entity by id or name. |
 | `GetComponentInParent` |  | gap | No hierarchy. |
 | `GetComponents` |  | rewrite | One component of each type per entity. |
+| `Graphics.DrawMeshInstanced` | `JobDraw (decision 0070), or a BulkDrawHooks render hook from a Rust module` | rewrite | Never one entity per drawn item. |
+| `Graphics.RenderMeshInstanced` | `JobDraw (instanced draw from job arrays, decision 0070), or a BulkDrawHooks render hook from a Rust module` | rewrite | Never one entity per drawn item. |
 | `Guid.NewGuid` |  | hazard | Non-deterministic ids; derive ids from entity ids and a counter. |
 | `Header` |  | ready | No inspector; keep as a comment. |
 | `HideInInspector` |  | ready | No inspector; drop the attribute. |
@@ -187,13 +206,18 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `InvokeRepeating` | `engine.every(repeatRate, fn, undefined, time)` | script |  |
 | `IsInvoking` | `engine.pending(fn) > 0` | script |  |
 | `IsPressed` | `engine.pressed("<action>")` | script |  |
+| `JobHandle` | `marionette_jobs::Jobs (for_each_chunk_mut, for_each_segment_mut, map_chunks)` | rewrite | Systems run in a fixed order every tick, so dependencies are the schedule order; split work across threads only where each chunk writes its own slice (decision 0024). |
+| `JobHandle.CombineDependencies` |  | ready | Not needed: the schedule order is the dependency. |
+| `JobHandle.ScheduleBatchedJobs` |  | ready | Not needed. |
 | `Mathf.Abs` | `Math.abs` | script |  |
 | `Mathf.Atan2` |  | hazard | See Mathf.Sin. |
+| `Mathf.CeilToInt` | `Math.ceil` | script |  |
 | `Mathf.Clamp` | `Math.min(Math.max(v, lo), hi)` | script |  |
 | `Mathf.Clamp01` | `Math.min(Math.max(v, 0), 1)` | script |  |
 | `Mathf.Cos` |  | hazard | See Mathf.Sin. |
 | `Mathf.Exp` |  | hazard | See Mathf.Sin. |
 | `Mathf.Floor` | `Math.floor` | script |  |
+| `Mathf.FloorToInt` | `Math.floor` | script |  |
 | `Mathf.Lerp` | `a + (b - a) * Math.min(Math.max(t, 0), 1)` | script |  |
 | `Mathf.Max` | `Math.max` | script |  |
 | `Mathf.Min` | `Math.min` | script |  |
@@ -201,13 +225,24 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Mathf.PerlinNoise` |  | gap |  |
 | `Mathf.Pow` | `x * x ... for small integer powers` | hazard | See Mathf.Sin. |
 | `Mathf.Round` | `Math.round` | script | Unity rounds .5 to even; Math.round rounds up. |
+| `Mathf.RoundToInt` | `Math.round` | script | Unity rounds .5 to the nearest even number; Math.round rounds .5 up. Use a helper where halves occur. |
 | `Mathf.Sign` | `(v >= 0 ? 1 : -1)` | script | Unity Sign(0) is 1. |
 | `Mathf.Sin` |  | hazard | Platform sin/cos/atan2/pow/exp differ between machines and break the state hash. Use precomputed tables, quaternion math with sqrt only, or a deterministic helper when the script runtime adds one. |
 | `Mathf.Sqrt` | `Math.sqrt` | script |  |
 | `Mathf.Tan` |  | hazard | See Mathf.Sin. |
 | `MovePosition` | `set Transform.translation of a Kinematic RigidBody` | script |  |
 | `MoveRotation` | `set Transform.rotation of a Kinematic RigidBody` | script |  |
+| `NativeArray` | `Vec<T> in a resource of the game's Rust module, or a JobData array (job TypeScript)` | rewrite | Rust owns the memory: no Allocator, no Dispose. |
+| `NativeDisableContainerSafetyRestriction` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
+| `NativeDisableParallelForRestriction` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
+| `NativeHashMap` | `BTreeMap<K, V>` | rewrite | Use an ordered map: iteration order must never change game state. |
+| `NativeList` | `Vec<T>` | rewrite |  |
+| `NativeParallelHashMap` | `BTreeMap<K, V>` | rewrite | Use an ordered map: iteration order must never change game state. |
+| `NativeQueue` | `VecDeque<T>` | rewrite |  |
+| `NativeReference` | `a plain field of the resource` | rewrite |  |
+| `NativeSlice` | `&[T] / &mut [T]` | rewrite |  |
 | `NavMeshAgent.SetDestination` |  | gap |  |
+| `NoAlias` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
 | `Physics.OverlapSphere` |  | gap | Use a sensor Collider and onTriggerEnter/Exit. |
 | `Physics.Raycast` | `engine.raycast(origin, direction, maxDistance, exclude)` | script | Returns the first hit or null; sensors are skipped. |
 | `Physics.SphereCast` |  | gap |  |
@@ -225,6 +260,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `Random.insideUnitSphere` | `rejection-sample with engine.rand()` | rewrite |  |
 | `Random.value` | `engine.rand()` | script |  |
 | `Range` |  | ready | Inspector-only clamp; clamp in code if it matters. |
+| `ReadOnly` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
 | `ReadValue` | `engine.action("<action>")` | script |  |
 | `RequireComponent` | `add the component to the entity in the scene` | ready |  |
 | `Resources.Load` | `reference the asset path in a component` | rewrite | Assets are named by path in scene data and loaded at scene load. |
@@ -274,16 +310,64 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `WaitForSeconds` | `engine.after(seconds, nextStep)` | script | Inside a coroutine split into steps (see StartCoroutine). |
 | `WaitUntil` | `check the condition in update` | rewrite |  |
 | `WasPressedThisFrame` | `engine.justPressed("<action>")` | script |  |
+| `WriteOnly` |  | ready | Not needed: Rust release builds are optimized ahead of time; read-only is `&[T]`, written is `&mut [T]`. |
 | `angularVelocity` | `self.get("AngularVelocity")` | script | Read only. |
+| `float2` | `glam::Vec2 or [f32; 2]` | script |  |
+| `float3` | `glam::Vec3 or [f32; 3]` | script |  |
+| `float4` | `glam::Vec4 or [f32; 4]` | script |  |
+| `float4x4.TRS` | `glam::Mat4::from_scale_rotation_translation` | script |  |
 | `gameObject.SetActive` |  | gap | No enable/disable; move it away or keep an `active` flag in self.state. |
 | `gameObject.name` | `the entity name in the scene file` | ready |  |
 | `gameObject.tag` |  | gap | No tags; use names or a marker component. |
+| `int2` | `[i32; 2]` | script |  |
+| `int3` | `[i32; 3]` | script |  |
 | `isGrounded` | `self.get("CharacterState").grounded` | script |  |
 | `linearVelocity` | `self.get("Velocity")` | script | Read only for dynamic bodies. |
 | `magnitude` | `Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)` | script |  |
+| `math.abs` | `i32::abs / f32::abs (Rust), Math.abs (job TypeScript)` | script | Exact on every machine. |
+| `math.acos` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.asin` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.atan` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.atan2` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.ceil` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.clamp` | `i32::clamp / f32::clamp (Rust), Math.clamp (job TypeScript)` | script | Exact on every machine. |
+| `math.cmax` | `plain arithmetic (Rust or job TypeScript)` | script | Exact on every machine. |
+| `math.cmin` | `plain arithmetic (Rust or job TypeScript)` | script | Exact on every machine. |
+| `math.cos` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.cross` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.csum` | `plain arithmetic (Rust or job TypeScript)` | script | Exact on every machine. |
+| `math.distance` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.distancesq` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.dot` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.exp` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.exp2` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.floor` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.length` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.lengthsq` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.lerp` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.log` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.log2` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.max` | `i32::max / f32::max (Rust), Math.max (job TypeScript)` | script | Exact on every machine. |
+| `math.min` | `i32::min / f32::min (Rust), Math.min (job TypeScript)` | script | Exact on every machine. |
+| `math.mul` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.normalize` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.normalizesafe` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.pow` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.round` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.rsqrt` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.saturate` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.select` | `plain arithmetic (Rust or job TypeScript)` | script | Exact on every machine. |
+| `math.sign` | `plain arithmetic (Rust or job TypeScript)` | script | Exact on every machine. |
+| `math.sin` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.sincos` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
+| `math.sqrt` | `glam or plain arithmetic (Rust); Math.* (job TypeScript)` | script | + - * / and sqrt are exact (IEEE); `math.rsqrt` may use an approximation in Burst, so compare results. |
+| `math.tan` | `precomputed tables or constants` | hazard | Transcendental functions differ between CPUs and Burst float modes; precompute while porting or use sqrt-only math. |
 | `normalized` | `divide by the length if it is not zero` | script |  |
 | `onClick.AddListener` | `UiButton { action } + engine.justPressed(action)` | rewrite |  |
 | `print` | `engine.log(message)` | script |  |
+| `quaternion` | `glam::Quat` | script |  |
+| `quaternion.LookRotationSafe` | `glam::Quat::look_to_rh (mind the handedness, PORTING.md coordinates)` | rewrite |  |
+| `quaternion.identity` | `glam::Quat::IDENTITY` | script |  |
 | `sqrMagnitude` | `v.x*v.x + v.y*v.y + v.z*v.z` | script |  |
 | `transform.Find` | `engine.find(name)` | script |  |
 | `transform.GetChild` |  | gap |  |

@@ -67,8 +67,9 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   Lit GUID, the Asset Store cache folder layout (no cache on the test machine), a real import
   with a person-written declaration, and binary-serialized materials.
 - The pasted-license phrase list catches common wording only; it never grants permission.
-- Porting tools against real projects: fixtures are small hand-written Unity and Unreal samples
-  and one Blueprint text snippet. Table entries for Unity and Unreal APIs are from knowledge of
+- Porting tools against real projects: one real Unity slice (a factory game's Burst jobs, kept
+  private, decision 0072) scanned and scaffolded; otherwise small hand-written samples and one
+  Blueprint text snippet. No real Unreal project yet. Table entries for Unity and Unreal APIs are from knowledge of
   those engines, not checked against their current documentation. The skeletons type-check
   against the generated script typings (decision 0022) only in tests with `tsc` installed.
 - Generation sample answers (`crates/marionette-generate/tests/recorded/`) and the Tripo upload
@@ -92,6 +93,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
 
+- Save capture timings (decision 0073) come from a 4-core Linux container only.
 - Stability suite: frame budgets checked on one hardware GPU (RTX 2080, Windows; all 31 fast
   modes pass, PROOFS.md); not on AMD, Intel or a headset, and the long soak has not run on a
   hardware GPU. Late model streaming (decision 0068) and the heap memory probe (decision

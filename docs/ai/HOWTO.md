@@ -5,7 +5,7 @@ Run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and `cargo te
 ## Add a component (or resource)
 
 1. Define it with `#[derive(Component, Reflect, Debug, Clone, PartialEq)]` (resources:
-   `Resource`) and a doc comment; the comment becomes the schema description. Core data goes in
+   `Resource`; `Clone` is required, saves copy values with it, decision 0073) and a doc comment; the comment becomes the schema description. Core data goes in
    `crates/marionette-core/src/` (for example `spatial.rs`); module data goes in that module's
    crate (for example `crates/marionette-physics/src/components.rs`).
 2. Register it: core types in `register_builtins` (`crates/marionette-core/src/builtin.rs`),

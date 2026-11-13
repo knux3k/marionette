@@ -55,5 +55,10 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0069 | Stability memory checks read the counted heap when the binary installs it (all platforms) | accepted |
 | 0070 | Scenes and scripts run job TypeScript over job arrays saved with the scene (`JobData`, `JobSchedule`, `engine.jobs`, `JobDraw`) | accepted |
 | 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
+<<<<<<< HEAD
 | 0074 | Blend spaces (gradient band weights, phase sync) and masked or additive overlays as optional components | accepted |
 | 0075 | 3D sound through one `hear` formula (distance curves, rear muffle, Doppler, head pose), live voices, layered `Music` | accepted |
+=======
+| 0072 | Unity Burst jobs port to the game's own Rust module; the scanner sees jobs, structs and partial classes; `port_scaffold` writes `jobs.rs` | accepted |
+| 0073 | Saving copies state on the main thread and writes it elsewhere (`Sim::capture`); registered types need `Clone` | accepted |
+>>>>>>> origin/main
