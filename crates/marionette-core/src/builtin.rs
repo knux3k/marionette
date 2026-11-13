@@ -54,6 +54,17 @@ pub struct Follow {
     pub gain: f32,
 }
 
+/// A movement request in world space, written by one system and read by another without
+/// either depending on the other (decision 0232): navigation writes it, a character
+/// controller (`PlanetCharacter` in physics) or a game's own system reads it. `velocity` is
+/// in m/s; a reader uses the part along the ground and caps it at its own speed. `jump`
+/// asks for one jump; the reader sets it back to false.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct MoveIntent {
+    pub velocity: spatial::Vec3,
+    pub jump: bool,
+}
+
 /// Length of one simulation tick in seconds.
 #[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
 pub struct FixedStep {
@@ -72,6 +83,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<Velocity>();
     registry.register_component::<RandomImpulse>();
     registry.register_component::<Follow>();
+    registry.register_component::<MoveIntent>();
     registry.register_component::<crate::jobdata::JobData>();
     registry.register_component::<crate::jobdata::JobDraw>();
     registry.register_resource::<FixedStep>();

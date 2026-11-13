@@ -19,6 +19,8 @@ pub mod jobs_ts;
 #[cfg(feature = "import")]
 pub mod library;
 pub mod mcp;
+#[cfg(feature = "nav")]
+pub mod nav;
 pub mod observe;
 pub mod perf;
 #[cfg(feature = "pool")]
@@ -145,6 +147,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "nav")]
+    "nav",
     #[cfg(feature = "net")]
     "net",
 ];
@@ -166,6 +170,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         providers::ops(),
         anim::ops(),
         audio::ops(),
+        #[cfg(feature = "nav")]
+        nav::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]

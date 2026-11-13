@@ -63,6 +63,8 @@ impl EngineBuilder {
                 Part::Module(Box::new(AnimModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "nav")]
+                Part::Module(Box::new(marionette_nav::NavModule)),
             ],
             ops: crate::builtin_ops(),
         }
