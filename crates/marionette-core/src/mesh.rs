@@ -107,7 +107,7 @@ impl GameMesh {
     /// triangle (or only degenerate ones) get +Y.
     pub fn computed_normals(&self) -> Vec<[f32; 3]> {
         let mut acc = vec![[0.0f32; 3]; self.positions.len()];
-        for t in self.indices.chunks_exact(3) {
+        for t in self.indices.as_chunks::<3>().0 {
             let (a, b, c) = (t[0] as usize, t[1] as usize, t[2] as usize);
             let (Some(pa), Some(pb), Some(pc)) = (
                 self.positions.get(a),
