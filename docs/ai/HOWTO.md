@@ -173,3 +173,18 @@ Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
 2. Run `marionette op test_run '{}' --json`; results are data (`passed`, `failed`, per assertion).
 3. Format: the module docs at the top of `crates/marionette-agent/src/scenario.rs` and the
    `test_run` entry in `docs/ai/reference/operations.md`.
+
+## Make a scene playable on a headset (decision 0190)
+
+1. One entity with `XrRig` (`height_offset` 0 for standing) and `Transform`: the play space.
+   Add `XrLocomotion` for stick movement, snap or smooth turning and teleport.
+2. A head entity: `XrTracked { rig, source: Head }`, `Camera` (near 0.05), `AudioListener`.
+3. Two hands: `XrTracked` with `LeftGrip` / `RightGrip`, plus `XrHand { grab_action,
+   grab_radius, throw_scale }` and a `Model`. Things to pick up get `Grabbable` (a dynamic
+   `RigidBody` keeps colliding while held).
+4. Bind actions to `xr:<left|right>/<input>` in the action map (inputs in
+   `marionette_input::XR_INPUTS`); keep keyboard bindings too for desktop testing.
+5. Check without a headset: feed poses with `marionette_xr::pose::events` (see
+   `crates/marionette-cli/tests/xr.rs`) or an inputs file (`examples/xr-throw.inputs.json`).
+   With one: `marionette xr --probe`, then `marionette xr <scene> [--record run.inputs.json]`.
+Example: `examples/xr.scene.json`, `examples/xr.actions.json`.

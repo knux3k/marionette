@@ -1,0 +1,21 @@
+[package]
+name = "marionette-openxr"
+description = "Marionette on a headset through OpenXR: stereo rendering with the engine's renderer, tracked head and controllers, hand tracking, haptics."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-render = { path = "../marionette-render" }
+marionette-input = { path = "../marionette-input" }
+marionette-xr = { path = "../marionette-xr" }
+bevy_ecs.workspace = true
+serde_json.workspace = true
+glam = "0.34"
+# The OpenXR loader is opened at run time (feature `loaded`), so builds and machines without
+# one still work; `probe` reports what is missing.
+openxr = { version = "0.22", default-features = false, features = ["loaded"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["vulkan", "wgsl", "std", "parking_lot"] }
+ash = { version = "0.38", default-features = false, features = ["loaded", "debug", "std"] }

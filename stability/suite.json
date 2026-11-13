@@ -157,6 +157,19 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "xr-play",
+      "description": "XR gameplay: scripted tracked poses grab and throw a block, random controller input on top, both eyes rendered every tick.",
+      "kind": "render",
+      "scene": "examples/xr.scene.json",
+      "input": "examples/xr-throw.inputs.json",
+      "random_input": true,
+      "views": 2,
+      "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "factory-sim",
       "description": "Factory simulation at 4x stress (952 machines, belts and items) on the job system, headless.",
       "kind": "sim",
