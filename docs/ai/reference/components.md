@@ -624,6 +624,16 @@ Rust type: `marionette_core::spatial::Fog`.
 | `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
 | `density` | number | yes | Higher is thicker; about 2 / density meters is where fog is nearly opaque. |
 
+### `Foveation`
+
+Foveated rendering for headsets (decision 0082): outside an inner ellipse, every other 2x2 pixel block is not shaded and is filled in from its neighbours, which the eye does not notice in a headset lens's blurry edge. `inner_radius` is the ellipse size as a share of the half width and height (1.0 touches the edges; 0.6 to 0.8 for a headset). Meant for stereo views; on a flat screen the edges look slightly soft.
+
+Rust type: `marionette_core::spatial::Foveation`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `inner_radius` | number | yes |  |
+
 ### `InputConfig`
 
 Turns input on for a scene: the action map file, relative to the scene file.
@@ -656,6 +666,17 @@ Rust type: `marionette_physics::components::PhysicsSettings`.
 | --- | --- | --- | --- |
 | `gravity` | object {x, y, z} | yes | Acceleration in m/s² (2D uses x and y). |
 | `mode` | "Dim3" \| "Dim2" | yes |  |
+
+### `RenderScale`
+
+Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0.
+
+Rust type: `marionette_core::spatial::RenderScale`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `scale` | number | yes |  |
+| `sharpness` | number | yes |  |
 
 ### `Shadows`
 

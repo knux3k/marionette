@@ -365,6 +365,8 @@ pub struct Renderer {
     /// Environment background in the final and HDR target.
     sky_pipelines: [wgpu::RenderPipeline; 2],
     post: crate::post::Post,
+    /// Render scale and foveation (decisions 0081, 0082).
+    scale: crate::scale::Scale,
     instance_buffer: Option<wgpu::Buffer>,
     /// Reused per-frame arrays: instances in frame order, their group, instances by group.
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
@@ -750,6 +752,7 @@ impl Renderer {
         };
         let sky_pipelines = [sky_for(color_format), sky_for(crate::post::HDR_FORMAT)];
         let post = crate::post::Post::new(device, color_format, sample_count, depth_stencil(false));
+        let scale = crate::scale::Scale::new(device, color_format, sample_count);
 
         // Depth-only pass from the shadow-casting light: only the view group is used.
         let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -900,6 +903,7 @@ impl Renderer {
             pbr_hdr_pipeline,
             sky_pipelines,
             post,
+            scale,
             instance_buffer: None,
             scratch: Default::default(),
             material_layout,
@@ -1460,6 +1464,14 @@ impl Renderer {
         // Bloom: models go to the HDR target untone-mapped; the clear and fog colors are
         // mapped back through the tone curve so they come out unchanged (decision 0064).
         let bloom = frame.bloom;
+        // Render scale and foveation: the world goes to an internal image per view size.
+        let scaled = frame.scale.and_then(crate::scale::ScaleSettings::active);
+        let world_size = |t: &Target| match scaled {
+            Some(s) => s.internal((t.width, t.height)),
+            None => (t.width, t.height),
+        };
+        let outputs: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
+        self.scale.prepare(&self.device, &self.queue, scaled, &outputs);
         let hdr_color = |c: Vec3| match frame.exposure {
             Some(e) => {
                 Vec3::new(
@@ -1476,7 +1488,7 @@ impl Renderer {
                 let f = hdr_color(Vec3::from_slice(&lu.fog[..3]));
                 lu.fog = f.extend(lu.fog[3]).to_array();
             }
-            let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
+            let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| world_size(t)).collect();
             self.post.prepare(&self.device, &sizes);
         } else {
             // Frees the HDR targets of earlier frames with bloom.
@@ -1906,9 +1918,32 @@ impl Renderer {
             depth_pass(encoder, layer, offset, true, &mut stats);
         }
 
-        for (i, (view, target)) in views.iter().enumerate() {
+        // UI quads in screen pixels, on top of everything in the output target.
+        let draw_ui = |pass: &mut wgpu::RenderPass, i: usize, ui_offset: u32, stats: &mut RenderStats| {
+            if let (Some(vb), Some(ib), false) =
+                (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
+            {
+                pass.set_pipeline(&self.ui_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[ui_offset]);
+                pass.set_vertex_buffer(0, vb.slice(..));
+                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                for (image, range) in &ui_batches[i] {
+                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
+                        pass.set_bind_group(1, &tex.bind_group, &[]);
+                        pass.draw_indexed(range.clone(), 0, 0..1);
+                        stats.draw_calls += 1;
+                    }
+                }
+            }
+        };
+        for (i, (view, output)) in views.iter().enumerate() {
             let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
             let ui_offset = world_offset + VIEW_STRIDE as u32;
+            // The world is drawn into `target`: the output, or its internal image.
+            let internal = scaled.map(|s| self.scale.targets(s.internal((output.width, output.height))));
+            let internal_target = internal.map(crate::scale::ScaleTargets::target);
+            let target: &Target = internal_target.as_ref().unwrap_or(output);
+            let foveate = internal.filter(|_| scaled.is_some_and(|s| s.foveation > 0.0));
             let c = view.clear;
             let clear = |c: Vec3, a: f32| wgpu::Color {
                 r: c.x as f64,
@@ -1955,6 +1990,10 @@ impl Renderer {
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
+                if let Some(t) = foveate {
+                    self.scale.mask(t, &mut pass, true);
+                    stats.draw_calls += 1;
+                }
                 meshes.draw_lit(
                     &mut pass,
                     (&self.pbr_hdr_pipeline, &self.skinning.hdr_pipeline),
@@ -2012,6 +2051,10 @@ impl Renderer {
                     stats.draw_calls += 1;
                 }
                 None => {
+                    if let Some(t) = foveate {
+                        self.scale.mask(t, &mut pass, false);
+                        stats.draw_calls += 1;
+                    }
                     meshes.draw_lit(
                         &mut pass,
                         (&self.pbr_pipeline, &self.skinning.pipeline),
@@ -2044,21 +2087,42 @@ impl Renderer {
                     }
                 }
             }
-            if let (Some(vb), Some(ib), false) =
-                (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
-            {
-                pass.set_pipeline(&self.ui_pipeline);
-                pass.set_bind_group(0, &self.view_group, &[ui_offset]);
-                pass.set_vertex_buffer(0, vb.slice(..));
-                pass.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
-                for (image, range) in &ui_batches[i] {
-                    if let Some(Ok(tex)) = self.sprite_textures.get(*image) {
-                        pass.set_bind_group(1, &tex.bind_group, &[]);
-                        pass.draw_indexed(range.clone(), 0, 0..1);
-                        stats.draw_calls += 1;
-                    }
-                }
-            }
+            let Some(internal) = internal else {
+                draw_ui(&mut pass, i, ui_offset, &mut stats);
+                continue;
+            };
+            drop(pass);
+            // Output pass: the internal image resolved to the output size, then UI.
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("output"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: output.color,
+                    depth_slice: None,
+                    resolve_target: output.resolve,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(clear(rgb, c[3])),
+                        store: if output.resolve.is_some() {
+                            wgpu::StoreOp::Discard
+                        } else {
+                            wgpu::StoreOp::Store
+                        },
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: output.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            self.scale.resolve(internal, &mut pass);
+            stats.draw_calls += 1;
+            draw_ui(&mut pass, i, ui_offset, &mut stats);
         }
         drop(calls);
         drop(skinned_calls);

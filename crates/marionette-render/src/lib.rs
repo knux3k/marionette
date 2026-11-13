@@ -12,6 +12,7 @@ pub mod extract;
 pub mod gpu;
 mod post;
 pub mod renderer;
+pub mod scale;
 mod skinning;
 pub mod window;
 

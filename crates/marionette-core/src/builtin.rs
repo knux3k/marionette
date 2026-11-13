@@ -100,6 +100,8 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<spatial::Environment>();
     // Rendering cost controls (decision 0080).
     registry.register_resource::<spatial::LevelOfDetail>();
+    registry.register_resource::<spatial::RenderScale>();
+    registry.register_resource::<spatial::Foveation>();
     registry.register_component::<ui::UiNode>();
     registry.register_component::<ui::UiRect>();
     registry.register_component::<ui::UiText>();

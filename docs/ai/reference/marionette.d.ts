@@ -590,6 +590,11 @@ type Follow = {
   target: number;
 };
 
+/** Foveated rendering for headsets (decision 0082): outside an inner ellipse, every other 2x2 pixel block is not shaded and is filled in from its neighbours, which the eye does not notice in a headset lens's blurry edge. `inner_radius` is the ellipse size as a share of the half width and height (1.0 touches the edges; 0.6 to 0.8 for a headset). Meant for stereo views; on a flat screen the edges look slightly soft. */
+type Foveation = {
+  inner_radius: number;
+};
+
 /** Turns input on for a scene: the action map file, relative to the scene file. */
 type InputConfig = {
   action_map: string;
@@ -766,6 +771,12 @@ type Position = {
 /** Adds a seeded random velocity change of up to `strength` per axis each tick. */
 type RandomImpulse = {
   strength: number;
+};
+
+/** Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0. */
+type RenderScale = {
+  scale: number;
+  sharpness: number;
 };
 
 /** A body simulated by physics. Needs a `Collider` and a `Transform`. */
@@ -1041,9 +1052,11 @@ interface Resources {
   FactoryState: FactoryState;
   FixedStep: FixedStep;
   Fog: Fog;
+  Foveation: Foveation;
   InputConfig: InputConfig;
   LevelOfDetail: LevelOfDetail;
   PhysicsSettings: PhysicsSettings;
+  RenderScale: RenderScale;
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
