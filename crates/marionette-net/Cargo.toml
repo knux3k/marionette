@@ -1,0 +1,15 @@
+[package]
+name = "marionette-net"
+description = "Marionette co-op networking: pluggable transports (loopback with simulated latency and loss, UDP), a reliability layer, host-stamped lockstep sessions with state hash checks, and lobbies."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-input = { path = "../marionette-input" }
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde.workspace = true
+serde_json.workspace = true
