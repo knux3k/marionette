@@ -583,6 +583,16 @@ type JobSchedule = {
   }>;
 };
 
+/** Turns on level of detail (decision 0080): a model part far enough away to look small draws a reduced version of its mesh (about half, then a quarter of the triangles, made when the model loads), and one smaller than `hide_below` is not drawn in views at all. Sizes are the part's bounding sphere diameter as a share of the screen height (1.0 fills it). Good start: 0.2, 0.06, 0.0 (never hide); 0.004 hides bolts at a distance. Parts under 64 triangles and skinned parts keep one level. Shadow maps keep far casters. */
+type LevelOfDetail = {
+  /** Below this size, not drawn in views (0 = never). */
+  hide_below: number;
+  /** Below this size, the second reduced level (a quarter). */
+  low_below: number;
+  /** Below this size, the first reduced level (half the triangles). */
+  medium_below: number;
+};
+
 /** Points the entity's -Z axis at `target` (world space), keeping `up` as close to its +Y as possible. Overrides `Transform.rotation`. Useful for cameras. */
 type LookAt = {
   target: {
@@ -930,6 +940,7 @@ interface Resources {
   FixedStep: FixedStep;
   Fog: Fog;
   InputConfig: InputConfig;
+  LevelOfDetail: LevelOfDetail;
   PhysicsSettings: PhysicsSettings;
   Shadows: Shadows;
   SkyLight: SkyLight;

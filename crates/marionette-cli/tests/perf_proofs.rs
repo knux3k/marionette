@@ -85,8 +85,10 @@ fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
         // call per eye, whatever the size of the factory.
         assert_eq!(stats.views, 2);
         assert_eq!(stats.draw_calls, 2, "scale {scale}: {stats:?}");
-        assert_eq!(stats.instances as usize, frame.meshes.len() + items);
-        seen.push(stats.instances);
+        // Instances outside both eyes are culled (decision 0080); together they are all.
+        let total = (stats.instances + stats.culled) as usize;
+        assert_eq!(total, frame.meshes.len() + items);
+        seen.push(total);
     }
     assert!(
         seen[1] > 3 * seen[0],

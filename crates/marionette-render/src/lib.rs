@@ -6,6 +6,7 @@
 
 pub use marionette_assets as assets;
 pub mod compare;
+pub mod cull;
 mod environment;
 pub mod extract;
 pub mod gpu;

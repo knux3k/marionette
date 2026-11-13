@@ -6,9 +6,9 @@ use marionette_core::Kind;
 use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
-    AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, LookAt, Material,
-    Model, ModelPlacement, PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
-    ToneMapping, Transform,
+    AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, LevelOfDetail,
+    LookAt, Material, Model, ModelPlacement, PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite,
+    SpriteRegion, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -39,6 +39,8 @@ pub struct FrameData {
     pub bloom: Option<(f32, f32)>,
     /// Environment lighting and reflections (decision 0066).
     pub environment: Option<EnvironmentData>,
+    /// Reduced levels of detail and hiding of small far things (decision 0080).
+    pub lod: Option<crate::cull::Lod>,
 }
 
 /// The `Environment` resource plus the sky colors a generated environment is made from.
@@ -252,6 +254,11 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame.bloom = world
         .get_resource::<Bloom>()
         .map(|b| (b.threshold.max(0.0), b.intensity.max(0.0)));
+    frame.lod = world.get_resource::<LevelOfDetail>().map(|l| crate::cull::Lod {
+        medium_below: l.medium_below.max(0.0),
+        low_below: l.low_below.max(0.0),
+        hide_below: l.hide_below.max(0.0),
+    });
     frame.environment = world.get_resource::<Environment>().map(|e| {
         let (sky, ground) = world
             .get_resource::<SkyLight>()
@@ -452,7 +459,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 20] = [
+pub const READS: [(&str, Kind); 21] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -473,4 +480,5 @@ pub const READS: [(&str, Kind); 20] = [
     ("Bloom", Kind::Resource),
     ("CastShadows", Kind::Component),
     ("Environment", Kind::Resource),
+    ("LevelOfDetail", Kind::Resource),
 ];

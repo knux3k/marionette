@@ -278,6 +278,22 @@ pub struct Bloom {
     pub intensity: f32,
 }
 
+/// Turns on level of detail (decision 0080): a model part far enough away to look small
+/// draws a reduced version of its mesh (about half, then a quarter of the triangles, made
+/// when the model loads), and one smaller than `hide_below` is not drawn in views at all.
+/// Sizes are the part's bounding sphere diameter as a share of the screen height (1.0 fills
+/// it). Good start: 0.2, 0.06, 0.0 (never hide); 0.004 hides bolts at a distance. Parts under
+/// 64 triangles and skinned parts keep one level. Shadow maps keep far casters.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct LevelOfDetail {
+    /// Below this size, the first reduced level (half the triangles).
+    pub medium_below: f32,
+    /// Below this size, the second reduced level (a quarter).
+    pub low_below: f32,
+    /// Below this size, not drawn in views (0 = never).
+    pub hide_below: f32,
+}
+
 /// Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows.
 /// A spot light uses one shadow map, a point light six (one per cube face); at most 24
 /// maps per frame, given to lights in entity id order (decision 0065). A model on the same

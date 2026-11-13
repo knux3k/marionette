@@ -586,6 +586,18 @@ Rust type: `marionette_input::InputConfig`.
 | --- | --- | --- | --- |
 | `action_map` | string | yes |  |
 
+### `LevelOfDetail`
+
+Turns on level of detail (decision 0080): a model part far enough away to look small draws a reduced version of its mesh (about half, then a quarter of the triangles, made when the model loads), and one smaller than `hide_below` is not drawn in views at all. Sizes are the part's bounding sphere diameter as a share of the screen height (1.0 fills it). Good start: 0.2, 0.06, 0.0 (never hide); 0.004 hides bolts at a distance. Parts under 64 triangles and skinned parts keep one level. Shadow maps keep far casters.
+
+Rust type: `marionette_core::spatial::LevelOfDetail`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hide_below` | number | yes | Below this size, not drawn in views (0 = never). |
+| `low_below` | number | yes | Below this size, the second reduced level (a quarter). |
+| `medium_below` | number | yes | Below this size, the first reduced level (half the triangles). |
+
 ### `PhysicsSettings`
 
 Turns physics on for the scene and picks 3D or 2D.
