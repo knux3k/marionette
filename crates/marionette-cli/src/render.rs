@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn parse_size(size: &str) -> Result<(u32, u32), Errors> {
+pub(crate) fn parse_size(size: &str) -> Result<(u32, u32), Errors> {
     let parsed = size
         .split_once(['x', 'X'])
         .and_then(|(w, h)| Some((w.trim().parse::<u32>().ok()?, h.trim().parse::<u32>().ok()?)))

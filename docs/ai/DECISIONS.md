@@ -55,3 +55,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0069 | Stability memory checks read the counted heap when the binary installs it (all platforms) | accepted |
 | 0070 | Scenes and scripts run job TypeScript over job arrays saved with the scene (`JobData`, `JobSchedule`, `engine.jobs`, `JobDraw`) | accepted |
 | 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
+| 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |

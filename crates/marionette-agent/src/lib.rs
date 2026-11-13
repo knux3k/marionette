@@ -10,6 +10,8 @@ pub mod anim;
 pub mod batch;
 pub mod docs;
 pub mod edit;
+#[cfg(feature = "editor")]
+pub mod editor;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
@@ -146,6 +148,8 @@ pub const FEATURES: &[&str] = &[
     "jobs-ts",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "editor")]
+    "editor",
 ];
 
 /// Every built-in operation compiled into this build, in a stable order.
@@ -155,6 +159,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         edit::ops(),
         session::ops(),
         observe::ops(),
+        #[cfg(feature = "editor")]
+        editor::ops(),
         scenario::ops(),
         #[cfg(feature = "import")]
         library::ops(),

@@ -9,8 +9,9 @@
 //! way scripted input does.
 
 use crate::extract::extract;
+use crate::extract::{FrameData, View};
 use crate::gpu::{Gpu, pick_camera};
-use crate::renderer::{self, DEPTH_FORMAT, Renderer, Target};
+use crate::renderer::{self, DEPTH_FORMAT, RenderStats, Renderer, Target};
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};
 use marionette_core::scene::SceneId;
 use marionette_core::ui::{UiButton, UiNode, layout};
@@ -92,14 +93,113 @@ pub fn button_at(world: &mut bevy_ecs::world::World, x: f32, y: f32, w: f32, h: 
         .map(|(_, _, b)| b.action.clone())
 }
 
-struct Running {
-    window: Arc<Window>,
+/// A window's GPU side: surface, renderer and attachments. Shared by the game window
+/// ([`run_windowed`]) and other windowed tools (the scene editor), so each only handles its
+/// own events.
+pub struct Presenter {
+    pub window: Arc<Window>,
     surface: wgpu::Surface<'static>,
     config: wgpu::SurfaceConfiguration,
-    gpu: Gpu,
-    renderer: Renderer,
+    pub gpu: Gpu,
+    pub renderer: Renderer,
+    sample_count: u32,
     msaa: Option<wgpu::TextureView>,
     depth: wgpu::TextureView,
+    lost: bool,
+}
+
+impl Presenter {
+    /// Sets up the GPU for `window`: an sRGB surface with vsync, a renderer that streams
+    /// models first seen mid-game (decision 0068), and the attachments.
+    pub fn new(window: Arc<Window>, sample_count: u32, base_dir: PathBuf) -> Result<Self, Errors> {
+        let surface_err = |msg: String| Errors::from(Diagnostic::error(renderer::codes::SURFACE, msg));
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
+        let surface = instance
+            .create_surface(window.clone())
+            .map_err(|e| surface_err(format!("cannot create surface: {e}")))?;
+        let gpu = Gpu::new(instance, Some(&surface))?;
+        let size = window.inner_size();
+        let mut config = surface
+            .get_default_config(&gpu.adapter, size.width.max(1), size.height.max(1))
+            .ok_or_else(|| surface_err("the GPU cannot present to this window".into()))?;
+        // Prefer an sRGB format so shader output (linear) is encoded correctly.
+        let caps = surface.get_capabilities(&gpu.adapter);
+        if let Some(f) = caps.formats.iter().find(|f| f.is_srgb()) {
+            config.format = *f;
+        }
+        config.present_mode = wgpu::PresentMode::AutoVsync;
+        surface.configure(&gpu.device, &config);
+        let mut renderer = Renderer::new(&gpu.device, &gpu.queue, config.format, sample_count, base_dir);
+        renderer.set_streaming(true);
+        let (msaa, depth) = attachments(&gpu.device, &config, sample_count);
+        Ok(Self {
+            window,
+            surface,
+            config,
+            gpu,
+            renderer,
+            sample_count,
+            msaa,
+            depth,
+            lost: false,
+        })
+    }
+
+    /// The surface was lost (the window was destroyed from outside): close the event loop.
+    pub fn lost(&self) -> bool {
+        self.lost
+    }
+
+    /// Surface size in pixels.
+    pub fn size(&self) -> (u32, u32) {
+        (self.config.width, self.config.height)
+    }
+
+    /// Follows a window resize (zero sizes, as when minimized, are ignored).
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if width > 0 && height > 0 {
+            self.config.width = width;
+            self.config.height = height;
+            self.surface.configure(&self.gpu.device, &self.config);
+            (self.msaa, self.depth) = attachments(&self.gpu.device, &self.config, self.sample_count);
+        }
+    }
+
+    /// Prepares, renders and presents one frame from `view`. A frame the surface cannot take
+    /// right now (outdated, timeout, occluded) is skipped and returns `Ok(None)`.
+    pub fn draw(&mut self, frame: &FrameData, view: &View) -> Result<Option<RenderStats>, Errors> {
+        let errors = self.renderer.prepare(frame);
+        if !errors.is_empty() {
+            return Err(Errors(errors));
+        }
+        let texture = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                self.surface.configure(&self.gpu.device, &self.config);
+                return Ok(None);
+            }
+            // The window is gone (closed from outside): configuring again would fail.
+            wgpu::CurrentSurfaceTexture::Lost => {
+                self.lost = true;
+                return Ok(None);
+            }
+            _ => return Ok(None), // timeout or occluded: skip this frame
+        };
+        let target_view = texture.texture.create_view(&Default::default());
+        let target = Target {
+            color: self.msaa.as_ref().unwrap_or(&target_view),
+            resolve: self.msaa.as_ref().map(|_| &target_view),
+            depth: &self.depth,
+            width: self.config.width,
+            height: self.config.height,
+        };
+        let mut encoder = self.gpu.device.create_command_encoder(&Default::default());
+        let stats = self.renderer.render(frame, view, &target, &mut encoder);
+        self.gpu.queue.submit([encoder.finish()]);
+        self.window.pre_present_notify();
+        self.gpu.queue.present(texture);
+        Ok(Some(stats))
+    }
 }
 
 struct App<'h> {
@@ -110,7 +210,7 @@ struct App<'h> {
     mouse: (f32, f32),
     focused: bool,
     opts: WindowOptions,
-    running: Option<Running>,
+    running: Option<Presenter>,
     error: Option<Errors>,
     last: Option<Instant>,
     accumulator: f64,
@@ -172,51 +272,17 @@ fn attachments(
 }
 
 impl App<'_> {
-    fn start(&mut self, event_loop: &ActiveEventLoop) -> Result<Running, Errors> {
-        let surface_err = |msg: String| Errors::from(Diagnostic::error(renderer::codes::SURFACE, msg));
+    fn start(&mut self, event_loop: &ActiveEventLoop) -> Result<Presenter, Errors> {
         let attrs = Window::default_attributes()
             .with_title(self.opts.title.clone())
             .with_inner_size(winit::dpi::PhysicalSize::new(self.opts.width, self.opts.height));
-        let window = Arc::new(
-            event_loop
-                .create_window(attrs)
-                .map_err(|e| surface_err(format!("cannot open window: {e}")))?,
-        );
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let surface = instance
-            .create_surface(window.clone())
-            .map_err(|e| surface_err(format!("cannot create surface: {e}")))?;
-        let gpu = Gpu::new(instance, Some(&surface))?;
-        let size = window.inner_size();
-        let mut config = surface
-            .get_default_config(&gpu.adapter, size.width.max(1), size.height.max(1))
-            .ok_or_else(|| surface_err("the GPU cannot present to this window".into()))?;
-        // Prefer an sRGB format so shader output (linear) is encoded correctly.
-        let caps = surface.get_capabilities(&gpu.adapter);
-        if let Some(f) = caps.formats.iter().find(|f| f.is_srgb()) {
-            config.format = *f;
-        }
-        config.present_mode = wgpu::PresentMode::AutoVsync;
-        surface.configure(&gpu.device, &config);
-        let mut renderer = Renderer::new(
-            &gpu.device,
-            &gpu.queue,
-            config.format,
-            self.opts.sample_count,
-            self.opts.base_dir.clone(),
-        );
-        // Models first seen mid-game decode in the background, not in the frame (decision 0068).
-        renderer.set_streaming(true);
-        let (msaa, depth) = attachments(&gpu.device, &config, self.opts.sample_count);
-        Ok(Running {
-            window,
-            surface,
-            config,
-            gpu,
-            renderer,
-            msaa,
-            depth,
-        })
+        let window = Arc::new(event_loop.create_window(attrs).map_err(|e| {
+            Errors::from(Diagnostic::error(
+                renderer::codes::SURFACE,
+                format!("cannot open window: {e}"),
+            ))
+        })?);
+        Presenter::new(window, self.opts.sample_count, self.opts.base_dir.clone())
     }
 
     fn fail(&mut self, event_loop: &ActiveEventLoop, e: Errors) {
@@ -266,36 +332,12 @@ impl App<'_> {
             Ok(c) => c,
             Err(e) => return self.fail(event_loop, e),
         };
-        let errors = r.renderer.prepare(&frame);
-        if !errors.is_empty() {
-            return self.fail(event_loop, Errors(errors));
+        let (w, h) = r.size();
+        match r.draw(&frame, &cam.view(w as f32 / h as f32)) {
+            Err(e) => self.fail(event_loop, e),
+            Ok(_) if r.lost() => event_loop.exit(),
+            Ok(_) => {}
         }
-        let texture = match r.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                r.surface.configure(&r.gpu.device, &r.config);
-                return;
-            }
-            _ => return, // timeout or occluded: skip this frame
-        };
-        let view = texture.texture.create_view(&Default::default());
-        let target = Target {
-            color: r.msaa.as_ref().unwrap_or(&view),
-            resolve: r.msaa.as_ref().map(|_| &view),
-            depth: &r.depth,
-            width: r.config.width,
-            height: r.config.height,
-        };
-        let mut encoder = r.gpu.device.create_command_encoder(&Default::default());
-        r.renderer.render(
-            &frame,
-            &cam.view(r.config.width as f32 / r.config.height as f32),
-            &target,
-            &mut encoder,
-        );
-        r.gpu.queue.submit([encoder.finish()]);
-        r.window.pre_present_notify();
-        r.gpu.queue.present(texture);
     }
 }
 
@@ -312,6 +354,7 @@ impl ApplicationHandler for App<'_> {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested
+            | WindowEvent::Destroyed
             | WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
@@ -322,14 +365,8 @@ impl ApplicationHandler for App<'_> {
                 ..
             } => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                if let Some(r) = self.running.as_mut()
-                    && size.width > 0
-                    && size.height > 0
-                {
-                    r.config.width = size.width;
-                    r.config.height = size.height;
-                    r.surface.configure(&r.gpu.device, &r.config);
-                    (r.msaa, r.depth) = attachments(&r.gpu.device, &r.config, self.opts.sample_count);
+                if let Some(r) = self.running.as_mut() {
+                    r.resize(size.width, size.height);
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
@@ -360,7 +397,7 @@ impl ApplicationHandler for App<'_> {
                         && button == MouseButton::Left
                         && let Some(r) = self.running.as_ref()
                     {
-                        let (w, h) = (r.config.width as f32, r.config.height as f32);
+                        let (w, h) = (r.size().0 as f32, r.size().1 as f32);
                         let (x, y) = self.cursor;
                         if let Some(action) = button_at(&mut self.sim.world, x, y, w, h) {
                             let tick = self.sim.tick();
