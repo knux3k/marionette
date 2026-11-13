@@ -29,12 +29,15 @@ use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
+use marionette_core::jobdata::{JobArgMode, JobCall, JobCallArg, JobData, JobRunner, JobValues};
 use marionette_core::module::{EventLog, Module, RayCaster, RayFilter, SceneDir, Stage};
 use marionette_core::rng::SimRng;
 use marionette_core::scene::{SceneId, SceneName};
 use marionette_core::{Diagnostic, Errors, Kind, Registry};
 use rquickjs::function::Opt;
-use rquickjs::{Context, Ctx, Exception, Function, Module as JsModule, Object, Persistent, Runtime, Value};
+use rquickjs::{
+    Context, Ctx, Exception, Function, Module as JsModule, Object, Persistent, Runtime, TypedArray, Value,
+};
 use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -877,7 +880,253 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
+    install_jobs(ctx, &h, bridge)?;
     g.set("__host", h)?;
+    Ok(())
+}
+
+/// The entity a job function means: `-1` is the entity whose hook runs.
+fn job_entity(ctx: &Ctx<'_>, br: &Bridge, id: f64) -> rquickjs::Result<Entity> {
+    let id = if id < 0.0 { br.current } else { id as u64 };
+    br.ids
+        .get(&id)
+        .copied()
+        .ok_or_else(|| throw(ctx, format!("script.no_entity: entity {id} does not exist")))
+}
+
+/// A script's own typed array, copied for a job run.
+enum OwnedArray<'js> {
+    F32(TypedArray<'js, f32>, Vec<f32>),
+    F64(TypedArray<'js, f64>, Vec<f64>),
+    I32(TypedArray<'js, i32>, Vec<i32>),
+}
+
+fn copy_in<T: Copy + Default>(ta: &TypedArray<'_, T>) -> Vec<T> {
+    let Some(raw) = ta.as_raw() else {
+        return Vec::new();
+    };
+    // SAFETY: the bytes belong to a live typed array; no JavaScript runs while they are read.
+    let bytes = unsafe { raw.as_ref() };
+    let n = bytes.len() / std::mem::size_of::<T>();
+    let mut v = vec![T::default(); n];
+    // SAFETY: `v` has room for `n` elements; the byte copy needs no alignment.
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            v.as_mut_ptr().cast::<u8>(),
+            n * std::mem::size_of::<T>(),
+        )
+    };
+    v
+}
+
+fn copy_out<T: Copy>(ta: &TypedArray<'_, T>, v: &[T]) {
+    let Some(mut raw) = ta.as_raw() else {
+        return;
+    };
+    // SAFETY: as in `copy_in`; the run did not call into JavaScript, so the buffer is unchanged
+    // in size.
+    let bytes = unsafe { raw.as_mut() };
+    let n = (bytes.len() / std::mem::size_of::<T>()).min(v.len());
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            v.as_ptr().cast::<u8>(),
+            bytes.as_mut_ptr(),
+            n * std::mem::size_of::<T>(),
+        )
+    };
+}
+
+/// One parsed `engine.jobs.run` argument.
+enum JsJobArg<'js> {
+    Data(Entity, String, JobArgMode),
+    Array(OwnedArray<'js>, JobArgMode),
+    Number(f64),
+    Bool(bool),
+    ChunkStart,
+}
+
+fn job_mode(ctx: &Ctx<'_>, mode: &str) -> rquickjs::Result<JobArgMode> {
+    match mode {
+        "write" => Ok(JobArgMode::Write),
+        "read" => Ok(JobArgMode::Read),
+        "whole" => Ok(JobArgMode::Whole),
+        other => Err(throw(ctx, format!("jobts.args: unknown argument mode `{other}`"))),
+    }
+}
+
+fn parse_job_args<'js>(
+    ctx: &Ctx<'js>,
+    br: &Bridge,
+    args: &[Value<'js>],
+) -> rquickjs::Result<Vec<JsJobArg<'js>>> {
+    let mut out = Vec::with_capacity(args.len());
+    for (i, v) in args.iter().enumerate() {
+        if let Some(n) = v.as_number() {
+            out.push(JsJobArg::Number(n));
+            continue;
+        }
+        if let Some(b) = v.as_bool() {
+            out.push(JsJobArg::Bool(b));
+            continue;
+        }
+        let bad = || {
+            throw(
+                ctx,
+                format!(
+                    "jobts.args: argument {i} is not a number, boolean, job array name, typed array or engine.jobs argument"
+                ),
+            )
+        };
+        let Some(o) = v.as_object() else {
+            return Err(bad());
+        };
+        let mode: String = o.get("mode").map_err(|_| bad())?;
+        if mode == "chunk_start" {
+            out.push(JsJobArg::ChunkStart);
+            continue;
+        }
+        let mode = job_mode(ctx, &mode)?;
+        let array: Value = o.get("array")?;
+        if let Some(a) = array.as_object() {
+            let owned = if let Some(t) = a.as_typed_array::<f32>() {
+                OwnedArray::F32(t.clone(), copy_in(t))
+            } else if let Some(t) = a.as_typed_array::<f64>() {
+                OwnedArray::F64(t.clone(), copy_in(t))
+            } else if let Some(t) = a.as_typed_array::<i32>() {
+                OwnedArray::I32(t.clone(), copy_in(t))
+            } else {
+                return Err(throw(
+                    ctx,
+                    format!("jobts.args: argument {i} must be a Float32Array, Float64Array or Int32Array"),
+                ));
+            };
+            out.push(JsJobArg::Array(owned, mode));
+            continue;
+        }
+        let name: String = o.get("data").map_err(|_| bad())?;
+        let entity: f64 = o.get("entity").unwrap_or(-1.0);
+        out.push(JsJobArg::Data(job_entity(ctx, br, entity)?, name, mode));
+    }
+    Ok(out)
+}
+
+fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquickjs::Result<()> {
+    let b = bridge.clone();
+    h.set(
+        "jobs_run",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'js>, path: String, function: String, args: Vec<Value<'js>>, chunk: f64| -> rquickjs::Result<Vec<f64>> {
+                with_world(&b, |world, br| {
+                    let Some(runner) = world.get_resource::<JobRunner>().copied() else {
+                        return Err(throw(
+                            &ctx,
+                            "jobts.unavailable: this engine was built without job TypeScript (cargo feature `jobs-ts`)".into(),
+                        ));
+                    };
+                    let mut parsed = parse_job_args(&ctx, br, &args)?;
+                    let mut call_args: Vec<JobCallArg<'_>> = parsed
+                        .iter_mut()
+                        .map(|a| match a {
+                            JsJobArg::Data(e, name, mode) => JobCallArg::Data {
+                                entity: *e,
+                                name: name.clone(),
+                                mode: *mode,
+                            },
+                            JsJobArg::Array(OwnedArray::F32(_, v), mode) => JobCallArg::F32(v, *mode),
+                            JsJobArg::Array(OwnedArray::F64(_, v), mode) => JobCallArg::F64(v, *mode),
+                            JsJobArg::Array(OwnedArray::I32(_, v), mode) => JobCallArg::I32(v, *mode),
+                            JsJobArg::Number(n) => JobCallArg::Number(*n),
+                            JsJobArg::Bool(v) => JobCallArg::Bool(*v),
+                            JsJobArg::ChunkStart => JobCallArg::ChunkStart,
+                        })
+                        .collect();
+                    let call = JobCall {
+                        path: &path,
+                        function: &function,
+                        chunk: chunk.max(0.0) as usize,
+                    };
+                    let result = (runner.0)(world, call, &mut call_args);
+                    drop(call_args);
+                    // Changed script arrays go back into their typed arrays (also after an
+                    // error: chunks that finished keep their changes, like job arrays).
+                    for a in &parsed {
+                        match a {
+                            JsJobArg::Array(OwnedArray::F32(t, v), JobArgMode::Write) => copy_out(t, v),
+                            JsJobArg::Array(OwnedArray::F64(t, v), JobArgMode::Write) => copy_out(t, v),
+                            JsJobArg::Array(OwnedArray::I32(t, v), JobArgMode::Write) => copy_out(t, v),
+                            _ => {}
+                        }
+                    }
+                    result.map_err(|d| {
+                        let mut msg = format!("{}: {}", d.code, d.message);
+                        if let Some(line) = d.line {
+                            msg.push_str(&format!(" (line {line})"));
+                        }
+                        if let Some(fix) = d.fix {
+                            msg.push_str(&format!("; fix: {fix}"));
+                        }
+                        throw(&ctx, msg)
+                    })
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "jobs_get",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'js>, id: f64, name: String| -> rquickjs::Result<Value<'js>> {
+                with_world(&b, |world, br| {
+                    let e = job_entity(&ctx, br, id)?;
+                    let Some(values) = world.get::<JobData>(e).and_then(|d| d.get(&name)) else {
+                        return Ok(Value::new_null(ctx.clone()));
+                    };
+                    Ok(match values {
+                        JobValues::F32(v) => TypedArray::<f32>::new_copy(ctx.clone(), v)?.into_value(),
+                        JobValues::F64(v) => TypedArray::<f64>::new_copy(ctx.clone(), v)?.into_value(),
+                        JobValues::I32(v) => TypedArray::<i32>::new_copy(ctx.clone(), v)?.into_value(),
+                    })
+                })
+            },
+        )?,
+    )?;
+    let b = bridge.clone();
+    h.set(
+        "jobs_set",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64, name: String, values: Value<'_>| -> rquickjs::Result<()> {
+                with_world(&b, |world, br| {
+                    let e = job_entity(&ctx, br, id)?;
+                    let o = values.as_object();
+                    let values = if let Some(t) = o.and_then(|o| o.as_typed_array::<f32>()) {
+                        JobValues::F32(copy_in(t))
+                    } else if let Some(t) = o.and_then(|o| o.as_typed_array::<f64>()) {
+                        JobValues::F64(copy_in(t))
+                    } else if let Some(t) = o.and_then(|o| o.as_typed_array::<i32>()) {
+                        JobValues::I32(copy_in(t))
+                    } else {
+                        return Err(throw(
+                            &ctx,
+                            "script.bad_value: engine.jobs.set takes a Float32Array, Float64Array or Int32Array".into(),
+                        ));
+                    };
+                    match world.get_mut::<JobData>(e) {
+                        Some(mut d) => d.set(&name, values),
+                        None => {
+                            let mut d = JobData::default();
+                            d.set(&name, values);
+                            world.entity_mut(e).insert(d);
+                        }
+                    }
+                    Ok(())
+                })
+            },
+        )?,
+    )?;
     Ok(())
 }
 

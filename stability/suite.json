@@ -166,6 +166,24 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "job-swarm",
+      "description": "Job TypeScript from scene data and scripts: 4,096 particles stepped by a JobSchedule every tick, seeded and summed through engine.jobs, headless.",
+      "kind": "sim",
+      "scene": "examples/swarm.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "job-swarm-render",
+      "description": "The job swarm drawn every tick from its job arrays (JobDraw, one instanced batch) with shadows.",
+      "kind": "render",
+      "scene": "examples/swarm.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "proof-lantern-keeper",
       "description": "Proof game 1 (top-down 2D, scripted): played with random input, headless.",
       "kind": "sim",

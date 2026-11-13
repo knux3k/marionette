@@ -28,9 +28,11 @@
 
 pub mod compile;
 mod runtime;
+pub mod scene;
 
 pub use compile::{Compiled, Elem, FunctionInfo, ParamType, Safety, codes, compile, compile_with};
 pub use runtime::{Arg, DEFAULT_TIME_LIMIT_MS, JobProgram, signature};
+pub use scene::{JobSchedule, JobStep, JobsModule};
 
 use bevy_ecs::prelude::Resource;
 use marionette_core::Diagnostic;

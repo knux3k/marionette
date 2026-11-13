@@ -21,7 +21,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | W8 | Six proof scenes (line 9) | now (assets from W3/W4 help) | W6, W7 |
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | WA | Skeletal animation (skins, clips, GPU skinning, blend shapes) | done, follow-ups open | any |
-| WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | part 1 done, scene/script use next | any |
+| WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | done, from scenes and scripts too (0070); speed follow-ups open | any |
 | W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
 | W0 | Owner: create the engine and assets repositories on GitHub | done | - |
@@ -157,13 +157,15 @@ Status: done (decision 0020). Guide: PORTING.md.
   runtime, `JobLibrary` hot reload), operations `jobs_check`, `jobs_run`, `jobs_types`,
   `examples/jobs/particles.job.ts`, benchmark example `jobs_ts_bench`.
 - Owns: `crates/marionette-jobs-ts`, `crates/marionette-agent/src/jobs_ts.rs`,
-  `crates/marionette-cli/tests/jobs_ts_e2e.rs`, `examples/jobs/`, `docs/ai/JOBS-TS.md`.
-- Next: run job files from scenes and scripts without Rust (a component naming a job file and
-  the component fields it reads and writes, gathered into arrays per tick; and/or a script API
-  passing typed arrays to a job); loop versioning to drop index checks in counted loops; SIMD
-  for simple loops; zero-copy arrays in shared WebAssembly memory.
-- Acceptance for the next step: a scene whose per-tick hot loop is a job file, same state hash
-  on 1 and N threads, documented in JOBS-TS.md.
+  `crates/marionette-cli/tests/jobs_ts_e2e.rs`, `crates/marionette-cli/tests/job_scenes.rs`,
+  `crates/marionette-core/src/jobdata.rs`, `examples/jobs/`, `examples/swarm.*`,
+  `docs/ai/JOBS-TS.md`.
+- Done (decision 0070): `JobData` (core), `JobSchedule` and `JobsModule`
+  (`crates/marionette-jobs-ts/src/scene.rs`), `engine.jobs` in scripts, `JobDraw`, operation
+  `jobs_reload`, `examples/swarm.scene.json`, `crates/marionette-cli/tests/job_scenes.rs`.
+- Next: an unchecked option per schedule step; loop versioning to drop index checks in counted
+  loops; SIMD for simple loops; zero-copy arrays in shared WebAssembly memory; a low-poly
+  sphere primitive for `JobDraw`.
 
 ## WA: skeletal animation
 

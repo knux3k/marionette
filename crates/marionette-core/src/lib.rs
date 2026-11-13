@@ -6,6 +6,7 @@
 pub mod actions;
 pub mod builtin;
 pub mod error;
+pub mod jobdata;
 pub mod json_span;
 pub mod module;
 pub mod person_only;

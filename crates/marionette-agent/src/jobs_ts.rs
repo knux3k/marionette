@@ -25,6 +25,12 @@ pub(crate) fn ops() -> Vec<Op> {
             run,
         ),
         op(
+            "jobs_reload",
+            "Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned.",
+            true,
+            reload,
+        ),
+        op(
             "jobs_types",
             "Write `jobs.d.ts` (the job prelude: `type i32 = number`) into the project, for editors and `tsc`.",
             true,
@@ -298,5 +304,53 @@ fn types(agent: &mut Agent, input: TypesInput) -> Result<TypesOutput, Errors> {
     Ok(TypesOutput {
         path: out,
         bytes: text.len(),
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReloadInput {
+    pub session: String,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct ReloadedFile {
+    /// Job file, relative to the scene.
+    pub path: String,
+    /// `unchanged`, `reloaded` or `failed` (the last good version keeps running).
+    pub status: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schemars(with = "Vec<Value>")]
+    pub errors: Vec<Diagnostic>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct ReloadOutput {
+    pub session: String,
+    /// Job files loaded by the session so far (schedules and scripts).
+    pub files: Vec<ReloadedFile>,
+    pub tick: u64,
+}
+
+fn reload(agent: &mut Agent, input: ReloadInput) -> Result<ReloadOutput, Errors> {
+    let s = crate::session::get_mut(agent, &input.session)?;
+    let files = match s.sim.world.get_resource_mut::<marionette_jobs_ts::JobLibrary>() {
+        Some(mut lib) => lib
+            .reload()
+            .into_iter()
+            .map(|r| ReloadedFile {
+                path: r.path,
+                status: r.status.to_string(),
+                errors: r.errors,
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+    let changed = files.iter().filter(|f| f.status != "unchanged").count();
+    s.log("jobs_reload", format!("{changed} job files changed"));
+    Ok(ReloadOutput {
+        session: input.session,
+        files,
+        tick: s.sim.tick(),
     })
 }

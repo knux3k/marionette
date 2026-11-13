@@ -357,3 +357,35 @@ export function onDestroy(self: Entity): void {
     );
     assert_eq!(ids(&mut s), vec![2]);
 }
+
+const JOBS_WITHOUT_RUNNER: &str = r#"
+export function update(self: Entity): void {
+  if (engine.tick !== 0) return;
+  engine.jobs.set("n", new Int32Array([4, 5]));
+  const got = engine.jobs.get("n");
+  engine.emit("got", { kind: got?.constructor.name, values: Array.from(got ?? []) });
+  try {
+    engine.jobs.run("x.job.ts", "f", ["n"]);
+  } catch (e) {
+    engine.emit("caught", String((e as Error).message));
+  }
+}
+"#;
+
+/// Job arrays are core data, so scripts read and write them without job TypeScript; running a
+/// job needs the module that offers `JobRunner` (decision 0070).
+#[test]
+fn job_arrays_work_without_job_typescript_and_running_says_why_not() {
+    let d = dir("jobs", &[("boss.ts", JOBS_WITHOUT_RUNNER)]);
+    let mut s = load(&d, "boss.ts", 1).unwrap();
+    s.step();
+    no_errors(&s);
+    assert_eq!(
+        events(&s, "got")[0].2,
+        serde_json::json!({ "kind": "Int32Array", "values": [4, 5] })
+    );
+    let caught = events(&s, "caught")[0].2.as_str().unwrap().to_string();
+    assert!(caught.starts_with("jobts.unavailable"), "{caught}");
+    let boss = &scene_json(&mut s)["entities"][0]["components"]["JobData"];
+    assert_eq!(boss["arrays"][0]["values"]["I32"], serde_json::json!([4, 5]));
+}

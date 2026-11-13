@@ -296,7 +296,9 @@ impl JobProgram {
         self.time_limit_ms.store(ms.max(EPOCH_MS), Ordering::Relaxed);
     }
 
-    fn function(&self, name: &str) -> Result<&FunctionInfo, Diagnostic> {
+    /// The exported function `name`, or a `jobts.no_function` diagnostic listing the
+    /// exported ones.
+    pub fn exported(&self, name: &str) -> Result<&FunctionInfo, Diagnostic> {
         self.compiled
             .functions
             .iter()
@@ -413,7 +415,7 @@ impl JobProgram {
         chunk: usize,
         args: &mut [Arg],
     ) -> Result<Vec<f64>, Diagnostic> {
-        let info = self.function(name)?;
+        let info = self.exported(name)?;
         let plan = self.plan(info, len, args)?;
         if len > i32::MAX as usize {
             return Err(
