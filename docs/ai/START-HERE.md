@@ -33,6 +33,7 @@ table below is for everything else.
 | Assets and licenses (normative) | [ASSETS-AND-LICENSES.md](ASSETS-AND-LICENSES.md) |
 | Child processes, temp files, logs, leaks (normative) | [MEMORY-AND-CRASHES.md](MEMORY-AND-CRASHES.md) |
 | Budgets and measuring | [PERFORMANCE.md](PERFORMANCE.md) |
+| Culling, level of detail, anti-aliasing, frame cost controls | [RENDER-COST.md](RENDER-COST.md) |
 | Hot loops in TypeScript | [JOBS-TS.md](JOBS-TS.md) |
 | Unity or Unreal code | [PORTING.md](PORTING.md) |
 | Stability modes | [STABILITY.md](STABILITY.md) |
