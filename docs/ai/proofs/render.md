@@ -65,3 +65,21 @@ More looks (decisions 0064 to 0067):
   Mesa lavapipe in a 4-core cloud container: instances drawn per eye 9,792 -> 4,895,
   triangles 117,504 -> 58,740, record phase p50 1.12 -> 0.99 ms. GPU wait on lavapipe is fill
   bound (53.5 -> 50.5 ms) and says nothing about a hardware GPU; hardware numbers UNVERIFIED.
+
+## Render cost on a desktop GPU (decisions 0080 to 0082)
+
+RTX 2080, Vulkan, offscreen, release, 4x MSAA, `bench --headset` (two 2160x2160 eyes), 600
+frames after 60 warmup, commit aabe416. p50 frame ms (GPU wait p50 in brackets). b = scale
+0.75 sharpness 0.3, c = 0.5, d = foveation 0.6, e = b with d, f = scale 1.5.
+
+| Scene | plain | b | c | d | e | f |
+| --- | --- | --- | --- | --- | --- | --- |
+| looks (bloom) | 2.65 (2.07) | 2.58 (1.97) | 1.96 (1.35) | 2.85 (2.21) | 4.40 (3.56) | 5.32 (4.61) |
+| lighting | 1.12 (0.92) | 1.46 (1.23) | 1.16 (0.94) | 1.20 (0.97) | 3.09 (2.85) | 2.44 (2.20) |
+
+- 32x factory: culling 287,232 -> 145,632 triangles, p50 4.21 -> 3.86 ms, max 12.1 -> 5.8 ms;
+  the frame is bound by render record (1.4 ms) and extraction, not the GPU.
+- looks at 1080p: plain 1.00, b 0.99.
+- e was slow because with foveation the upscale used a 16-tap filter filling holes per tap.
+  Since then the fast filter runs inside the ellipse and a 4-tap bilinear outside
+  (`foveation_keeps_the_center_and_fills_the_edges` checks the combination); not yet re-timed.

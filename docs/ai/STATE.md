@@ -37,8 +37,11 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
   nor on AMD or Intel GPUs.
-- Frustum culling and `LevelOfDetail` (decision 0080): measured only on Mesa lavapipe in a
-  cloud container; hardware GPU and headset numbers not yet taken.
+- Culling, `LevelOfDetail`, `RenderScale`, `Foveation` (decisions 0080 to 0082): measured on
+  lavapipe and one desktop GPU offscreen at headset size (proofs/render.md); not in a real
+  headset, nor on AMD or Intel GPUs. The faster resolve with both scale and foveation on is
+  not yet timed on hardware. `LevelOfDetail` is unmeasured on hardware (the bench factory's
+  parts are under 64 triangles).
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
