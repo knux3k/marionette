@@ -218,6 +218,10 @@ struct App<'h> {
     focused: bool,
     /// Minimized or fully hidden: no frames are drawn.
     hidden: bool,
+    /// The OS said the window is fully covered (`Occluded`).
+    occluded: bool,
+    /// The window has zero width or height (minimized on some platforms).
+    zero_size: bool,
     modifiers: ModifiersState,
     /// Keys and mouse buttons currently held, released on focus loss.
     held: BTreeSet<String>,
@@ -232,8 +236,13 @@ struct App<'h> {
     pending_input: Option<Instant>,
     /// Earliest start of the next frame under `fps_cap`.
     next_frame: Option<Instant>,
+    presented: u64,
     stats: FrameStats,
 }
+
+/// Frames at the start of a run left out of the frame numbers (pipeline compiles, first
+/// model uploads, the window manager's first resizes).
+pub const WARMUP_FRAMES: u64 = 30;
 
 /// Opens a window and runs the simulation until the window closes (or `max_ticks`,
 /// `max_seconds`). Returns the simulation and the frame numbers.
@@ -247,6 +256,8 @@ pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) 
         mouse: (0.0, 0.0),
         focused: true,
         hidden: false,
+        occluded: false,
+        zero_size: false,
         modifiers: ModifiersState::empty(),
         held: BTreeSet::new(),
         opts,
@@ -258,6 +269,7 @@ pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) 
         last_present: None,
         pending_input: None,
         next_frame: None,
+        presented: 0,
         stats: FrameStats::default(),
     };
     event_loop
@@ -502,12 +514,18 @@ impl App<'_> {
         r.gpu.queue.present(texture);
         let done = Instant::now();
         let ms = |d: Duration| d.as_secs_f64() * 1000.0;
-        self.stats.cpu.add(ms(done - start));
-        if let Some(at) = input_at {
-            self.stats.input_latency.add(ms(done - at));
-        }
-        if let Some(prev) = self.last_present {
-            self.stats.interval.add(ms(done - prev));
+        self.presented += 1;
+        // The first frames compile pipelines and load models: counted apart (decision 0173).
+        if self.presented > WARMUP_FRAMES {
+            self.stats.cpu.add(ms(done - start));
+            if let Some(at) = input_at {
+                self.stats.input_latency.add(ms(done - at));
+            }
+            if let Some(prev) = self.last_present {
+                self.stats.interval.add(ms(done - prev));
+            }
+        } else {
+            self.stats.warmup_ms += ms(done - start);
         }
         self.last_present = Some(done);
         if let Some(cap) = self.opts.fps_cap.filter(|c| *c > 0.0 && !r.vsync) {
@@ -601,10 +619,11 @@ impl ApplicationHandler for App<'_> {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::ModifiersChanged(m) => self.modifiers = m.state(),
             WindowEvent::Resized(size) => {
-                self.set_hidden(size.width == 0 || size.height == 0);
+                self.zero_size = size.width == 0 || size.height == 0;
                 if let Some(r) = self.running.as_mut()
                     && size.width > 0
                     && size.height > 0
+                    && (size.width, size.height) != (r.config.width, r.config.height)
                 {
                     r.config.width = size.width;
                     r.config.height = size.height;
@@ -614,7 +633,7 @@ impl ApplicationHandler for App<'_> {
                     self.stats.size = (size.width, size.height);
                 }
             }
-            WindowEvent::Occluded(hidden) => self.set_hidden(hidden),
+            WindowEvent::Occluded(hidden) => self.occluded = hidden,
             WindowEvent::KeyboardInput { event, .. } => {
                 let pressed = event.state == ElementState::Pressed;
                 if pressed && self.opts.escape_exits && event.logical_key == Key::Named(NamedKey::Escape) {
@@ -678,6 +697,13 @@ impl ApplicationHandler for App<'_> {
         if self.timed_out() {
             return event_loop.exit();
         }
+        // Windows reports minimizing neither as a zero size nor as `Occluded`: ask the window.
+        let minimized = self
+            .running
+            .as_ref()
+            .and_then(|r| r.window.is_minimized())
+            .unwrap_or(false);
+        self.set_hidden(minimized || self.occluded || self.zero_size);
         if self.hidden {
             // Nothing to draw: sleep. Keep ticking at the tick rate if asked to.
             if self.opts.run_in_background {

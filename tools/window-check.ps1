@@ -34,6 +34,7 @@ function Start-Run([string]$name, [string[]]$extra) {
     $log = Join-Path $Out "$name.out.json"
     $argv = @("run", $Scene, "--mute", "--seconds", "$Seconds", "--frame-stats", $stats, "--record", $rec) + $extra
     $p = Start-Process -FilePath $Exe -ArgumentList $argv -PassThru -RedirectStandardOutput $log -WindowStyle Normal
+    $null = $p.Handle  # keeps the exit code readable in Windows PowerShell 5.1
     # Wait for the window.
     for ($i = 0; $i -lt 50 -and $p.MainWindowHandle -eq 0; $i++) { Start-Sleep -Milliseconds 100; $p.Refresh() }
     return $p

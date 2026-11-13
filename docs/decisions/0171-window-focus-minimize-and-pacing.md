@@ -15,7 +15,8 @@ rate, timer noise made some frames run 0 ticks and the next 2 (visible judder).
   for each through `WindowHooks::device` (same tick queue as live input, so recordings replay
   the release) and calls the new `WindowHooks::focus`, where hooks release what they own
   (gamepads, decision 0172).
-- Minimized (zero size) or `Occluded`: no frames, `ControlFlow::Wait`. The simulation pauses
+- Minimized (`Window::is_minimized`, checked every loop turn because Windows reports it
+  neither as a zero size nor as `Occluded`), zero size or `Occluded`: no frames, `ControlFlow::Wait`. The simulation pauses
   and does not owe the hidden time on return, unless `run_in_background`, which keeps ticking
   at the tick rate without drawing.
 - Under a vsync present mode, a measured frame time within 5% of the monitor's reported

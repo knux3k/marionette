@@ -18,6 +18,9 @@ latency. Real-screen checks need numbers an agent can compare between runs and m
   found input) to the `present` call of the first frame that simulated it. The display queue
   after `present` is invisible from inside the process and is not counted; with vsync it adds
   about `frame_latency` refreshes.
+- The first 30 presented frames (`WARMUP_FRAMES`: pipeline compiles, first uploads, the
+  window manager's first resizes) are left out of the histograms; their total main-thread
+  time is `warmup_ms`. `resizes` counts only real size changes.
 - `missed_refreshes` counts intervals longer than 1.5 refresh periods.
 - `marionette run` (windowed) prints the summary under `frames`; `--frame-stats <file>`
   also writes it.

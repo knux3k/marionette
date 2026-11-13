@@ -108,6 +108,8 @@ pub struct FrameStats {
     pub frame_latency: u32,
     pub size: (u32, u32),
     pub fullscreen: bool,
+    /// Main-thread time of the warm-up frames (`window::WARMUP_FRAMES`), not in the histograms.
+    pub warmup_ms: f64,
 }
 
 impl FrameStats {
@@ -117,10 +119,11 @@ impl FrameStats {
 
     /// The numbers as JSON, for the `run` output and `--frame-stats` files.
     pub fn summary(&self) -> Value {
-        let frames = self.interval.count() + 1;
+        let frames = self.cpu.count();
         let budget = self.refresh_hz.map(|hz| 1000.0 / hz);
         json!({
             "frames": frames,
+            "warmup_ms": (self.warmup_ms * 100.0).round() / 100.0,
             "present_mode": self.present_mode,
             "frame_latency": self.frame_latency,
             "refresh_hz": self.refresh_hz,
