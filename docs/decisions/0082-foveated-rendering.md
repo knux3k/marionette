@@ -42,3 +42,7 @@ the image edges at 1.0). It uses the internal image of decision 0081 (at the out
   (tested pixel for pixel without bloom, within 2 of 255 with bloom, whose glow blurs a little
   of the filled edge in).
 - Meant for stereo headset views; a game turns it on for its headset mode.
+- On its own it adds a copy pass, and on small example scenes it was slightly slower on a
+  desktop GPU; it pays only where edge shading is costly. With `RenderScale` below 1 the
+  periphery is upscaled bilinearly (a 16-tap filter that filled holes per tap made the pair
+  1.6x to 2.8x slower than plain).

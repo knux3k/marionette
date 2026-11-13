@@ -1,6 +1,6 @@
 ---
 name: marionette-tune-render-cost
-description: Lower a Marionette game's frame cost or raise image quality with level of detail, render scale (upscaling or supersampling), headset foveation, anti-aliasing and culling. Use when GPU wait or triangles dominate a frame, a headset frame misses 90 Hz, far objects cost too much, or edges look jagged.
+description: Lower a Marionette game's frame cost or raise image quality with level of detail, render scale, foveation, anti-aliasing and culling. Use when GPU wait or triangles dominate a frame, a headset frame misses 90 Hz, or edges look jagged.
 ---
 
 # Tune render cost

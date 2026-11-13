@@ -89,6 +89,17 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "render-3d-raytracing",
+      "description": "3D rendering with ray-traced shadows and reflections where the GPU has ray queries, else shadow cascades, a reflection probe and the rest of the fallback; HDR environment file (decisions 0090 to 0093), both eyes of an emulated headset.",
+      "kind": "render",
+      "scene": "examples/raytracing.scene.json",
+      "views": 2,
+      "size": "640x360",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "render-3d-play",
       "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
       "kind": "render",
@@ -149,6 +160,19 @@
       "description": "VR: the 3D game played with random input and rendered to both eyes of an emulated headset every tick.",
       "kind": "render",
       "scene": "examples/playground3d.scene.json",
+      "random_input": true,
+      "views": 2,
+      "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
+      "name": "xr-play",
+      "description": "XR gameplay: scripted tracked poses grab and throw a block, random controller input on top, both eyes rendered every tick.",
+      "kind": "render",
+      "scene": "examples/xr.scene.json",
+      "input": "examples/xr-throw.inputs.json",
       "random_input": true,
       "views": 2,
       "size": "256x256",

@@ -457,7 +457,7 @@ type Emissive = {
   intensity: number;
 };
 
-/** Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. */
+/** Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1, relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. An image with a bright sun also lights surfaces through it: with a `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`. */
 type Environment = {
   /** Draw the environment behind everything instead of the camera's clear color. */
   background: boolean;
@@ -593,6 +593,31 @@ type Follow = {
 /** Foveated rendering for headsets (decision 0082): outside an inner ellipse, every other 2x2 pixel block is not shaded and is filled in from its neighbours, which the eye does not notice in a headset lens's blurry edge. `inner_radius` is the ellipse size as a share of the half width and height (1.0 touches the edges; 0.6 to 0.8 for a headset). Meant for stereo views; on a flat screen the edges look slightly soft. */
 type Foveation = {
   inner_radius: number;
+};
+
+/** Can be picked up by an [`XrHand`]. With a dynamic `RigidBody` the object is moved by velocity while held, so it still collides (it cannot pass through walls); without one its `Transform` follows the hand exactly. */
+type Grabbable = {
+  /** Snap the object's origin and rotation to the grip (tools, guns); otherwise keep the offset it had when grabbed (boxes, loose items). */
+  snap: boolean;
+};
+
+/** On an object while a hand holds it. Written by the XR module. */
+type Held = {
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  hand: number;
+  /** Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). */
+  offset_rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** The object's pose relative to the grip. */
+  offset_translation: {
+    x: number;
+    y: number;
+    z: number;
+  };
 };
 
 /** Turns input on for a scene: the action map file, relative to the scene file. */
@@ -779,6 +804,30 @@ type RandomImpulse = {
   strength: number;
 };
 
+/** Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`, `Environment`), so add those as the fallback. Skinned models are not in the ray-traced scene yet. */
+type RayTracing = {
+  /** Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a good default. */
+  max_roughness: number;
+  /** Ray-traced reflections of other objects on surfaces smoother than `max_roughness`. */
+  reflections: boolean;
+  /** Ray-traced shadows for every directional, point and spot light, replacing shadow maps. */
+  shadows: boolean;
+  /** Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5). */
+  sun_size_degrees: number;
+};
+
+/** A box where shiny surfaces reflect a picture of the scene taken from the entity's position instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is taken when the probe first appears and again when it moves or changes; objects that move later are not in it (`RayTracing` reflections show those). Up to four probes; a point inside several uses the one with the lowest entity id. */
+type ReflectionProbe = {
+  /** Half size of the box in meters along x, y and z, centered on the entity. Reflections are corrected for the box's walls, so match it to the room. */
+  extent: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Size of each of the six captured faces in texels (32 to 512; 128 is a good default). */
+  resolution: number;
+};
+
 /** Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0. */
 type RenderScale = {
   scale: number;
@@ -813,6 +862,13 @@ type ScriptState = {
 /** Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore. */
 type ScriptTimers = {
   data: string;
+};
+
+/** Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map). */
+type ShadowCascades = {
+  count: number;
+  /** Distance from the camera where shadows end, in meters (capped at the camera's far plane). */
+  far: number;
 };
 
 /** Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed. */
@@ -999,6 +1055,97 @@ type Velocity = {
   z: number;
 };
 
+/** A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`. */
+type XrHand = {
+  grab_action: string;
+  /** Metres from the grip to an object's centre. */
+  grab_radius: number;
+  /** Multiplies the release velocity (1 = as moved). */
+  throw_scale: number;
+};
+
+/** Hand motion over the last few ticks. Written by the XR module. */
+type XrHandMotion = {
+  /** Rotation speed over the last tick (radians per second, world axes). */
+  angular_velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Grip rotation last tick. */
+  last_rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Recent grip positions (world), oldest first, at most [`MOTION_TICKS`]. */
+  positions: Array<{
+    x: number;
+    y: number;
+    z: number;
+  }>;
+  /** Average velocity over `positions` (m/s): a held object leaves the hand with this. */
+  velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
+/** Stick movement, turning and teleport for the rig it is on. An empty action name turns that part off. */
+type XrLocomotion = {
+  /** Forward is where this source points, flattened (`Head`, or `LeftAim` for hand-relative). */
+  direction: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+  /** Strafe action (-1 left .. 1 right). */
+  move_x: string;
+  /** Forward action (-1 back .. 1 forward). */
+  move_y: string;
+  smooth_degrees_per_second: number;
+  snap_degrees: number;
+  /** Metres per second at full stick. */
+  speed: number;
+  /** Hold to aim, release to teleport (needs physics: the aim ray must hit ground). */
+  teleport: string;
+  /** The ray used to aim a teleport. */
+  teleport_aim: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+  /** Longest teleport in metres. */
+  teleport_range: number;
+  /** Turn action (-1 left .. 1 right). */
+  turn: string;
+  /** How turning works. */
+  turn_mode: "Snap" | "Smooth" | "Off";
+  /** Comfort vignette strength while moving or turning smoothly (0 off .. 1 strong). */
+  vignette: number;
+};
+
+/** Locomotion state. Written by the XR module. */
+type XrLocomotionState = {
+  /** The turn stick returned to centre since the last snap. */
+  snap_armed: boolean;
+  /** Where a teleport would land now (only meaningful while `teleport_valid`). */
+  teleport_point: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  teleport_valid: boolean;
+};
+
+/** The play space: where the tracked area sits in the world. Tracked poses are relative to this entity's `Transform` (translation and rotation; scale is ignored). Locomotion moves and turns it. */
+type XrRig = {
+  /** Added to every tracked height: 0 for a standing play space (floor at 0); a seated player on a space whose origin is at eye level uses about 1.2. */
+  height_offset: number;
+};
+
+/** Follows a tracked pose inside a rig every tick (its `Transform` is overwritten). While the source is not tracked the entity keeps its last pose. */
+type XrTracked = {
+  /** The entity with [`XrRig`]. */
+  rig: number;
+  /** A tracked thing. */
+  source: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+};
+
 /** Every component, by the name used in scene files. */
 interface Components {
   AngularVelocity: AngularVelocity;
@@ -1019,6 +1166,8 @@ interface Components {
   FactoryBelt: FactoryBelt;
   FactoryMachine: FactoryMachine;
   Follow: Follow;
+  Grabbable: Grabbable;
+  Held: Held;
   JobData: JobData;
   JobDraw: JobDraw;
   JobSchedule: JobSchedule;
@@ -1030,6 +1179,7 @@ interface Components {
   PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;
+  ReflectionProbe: ReflectionProbe;
   RigidBody: RigidBody;
   Script: Script;
   ScriptInbox: ScriptInbox;
@@ -1046,6 +1196,12 @@ interface Components {
   UiRect: UiRect;
   UiText: UiText;
   Velocity: Velocity;
+  XrHand: XrHand;
+  XrHandMotion: XrHandMotion;
+  XrLocomotion: XrLocomotion;
+  XrLocomotionState: XrLocomotionState;
+  XrRig: XrRig;
+  XrTracked: XrTracked;
 }
 
 /** Every resource, by the name used in scene files. */
@@ -1063,7 +1219,9 @@ interface Resources {
   LevelOfDetail: LevelOfDetail;
   NetPlayers: NetPlayers;
   PhysicsSettings: PhysicsSettings;
+  RayTracing: RayTracing;
   RenderScale: RenderScale;
+  ShadowCascades: ShadowCascades;
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;

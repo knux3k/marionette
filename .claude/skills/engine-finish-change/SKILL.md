@@ -1,6 +1,6 @@
 ---
 name: engine-finish-change
-description: Close out a change to the Marionette engine repository with format, lint, tests, drift hash, reference docs, decision record, state and session log, commit identity and hygiene. Use when about to commit or open a pull request in the engine repository, at the end of a session, or when a hygiene or doc test fails.
+description: Close out a change to the Marionette engine repository with its format, lint, tests, drift hash, regenerated reference docs, decision record, state and session log, commit identity and hygiene rules. Use when about to commit or open a pull request in the engine repository, at the end of a session, or when a hygiene, doc budget or generated-docs test fails.
 ---
 
 # Finish a change (engine work)
