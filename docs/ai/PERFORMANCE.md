@@ -74,7 +74,7 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
 - `length: "quick"` is a smoke test (a tenth of the ticks, one repeat). `only: ["sim/"]`
   picks cases; `extra_scenes` adds a game's own scenes. `no_gpu` skips render cases.
 - Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.
-- Results and the machine they came from go in [BASELINE.md](BASELINE.md).
+- Results and the machine they came from go in [proofs/performance.md](proofs/performance.md), section "Shared performance suite (decision 0100)".
 
 ## Saving
 

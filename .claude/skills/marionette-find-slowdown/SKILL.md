@@ -36,7 +36,9 @@ Read p99 and max, not only the average: one stalled frame is a visible hitch.
 | Slow save | building the whole scene text on the tick | save from a copy off the tick (a Rust module can; skill `marionette-add-rust-code`) |
 | Result changes with thread count | a job writing outside its chunk | fix the job; run `perf_sim` with `threads` 1 and 4 and compare hashes |
 
-Change one thing, measure again with the same seed and ticks, keep the number.
+Change one thing, measure again with the same seed and ticks, keep the number. For a
+before and after over many scenes, `perf_suite` with `extra_scenes` and then `perf_compare`
+also check that the state hashes stayed identical.
 
 ## Memory and long runs
 

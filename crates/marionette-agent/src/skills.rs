@@ -40,6 +40,7 @@ pub const ALL: &[Skill] = &[
     skill!("engine-add-scene-or-mode"),
     skill!("engine-add-skill"),
     skill!("engine-finish-change"),
+    skill!("engine-measure-performance"),
     skill!("marionette-add-rust-code"),
     skill!("marionette-animate-model"),
     skill!("marionette-build-scene"),

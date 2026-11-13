@@ -45,6 +45,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
 | `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
+| `perf_suite` | yes | Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`. |
+| `perf_compare` | no | Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first. |
 | `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
 | `jobs_run` | no | Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time. |
 | `jobs_reload` | yes | Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned. |
@@ -1004,6 +1006,71 @@ Output:
 | `state_hash` | string | yes |  |
 | `threads` | integer | yes |  |
 | `ticks` | integer | yes |  |
+
+## `perf_suite`
+
+Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extra_scenes` | array of string |  | Extra scenes of a game to run as sim cases (and render cases if `render_extra`). |
+| `label` | string \| null |  | Name of this run, e.g. `baseline` or `lto-fat`. Default `<commit>-<profile>`. |
+| `length` | string \| null |  | `full` (default) or `quick` (a tenth of the ticks, one repeat: a smoke test). |
+| `lock` | string \| null |  | Lock file shared by every benchmark on this machine (several agents share one PC). The suite creates it before measuring and removes it after, and refuses to start while another run holds it. Default: env `MARIONETTE_BENCH_LOCK`; none if unset. |
+| `lock_owner` | string \| null |  | Who holds the lock (an area name such as `raytracing`); written into the lock file. Default: the label. |
+| `max_busy_pct` | number \| null |  | Refuse to start when other processes keep more than this share of all cores busy (default 15 percent; 100 turns the check off). |
+| `min_idle_s` | integer |  | Refuse to start unless nobody has used keyboard or mouse for this many seconds (Windows only; elsewhere not checked). Default 0. On a shared desktop use 300. |
+| `no_gpu` | boolean |  | Skip render cases (default: run them when a GPU adapter exists). |
+| `only` | array of string |  | Only cases whose name starts with one of these (`sim/`, `render/factory`). |
+| `out` | string \| null |  | Report file (relative to the project root). Default `.marionette/perf/<label>.json`. |
+| `render_extra` | boolean |  | Also render the extra scenes at 1920x1080. |
+| `repeats` | integer \| null |  | Runs of each case; timings pool all runs. Default 3 (`quick`: 1). |
+| `seed` | integer |  |  |
+| `wait_s` | integer |  | Wait up to this many seconds for a held lock or a busy CPU, checking every 30 s (default 0: refuse at once). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `build` | string | yes |  |
+| `cases` | array of string | yes | One line per case: name, then the main numbers (ms) and the short output hash. |
+| `conditions` | string | yes | Lock held and other processes' CPU load before and between cases. |
+| `errors` | integer | yes |  |
+| `machine` | string | yes |  |
+| `report` | string | yes |  |
+| `seconds` | number | yes |  |
+| `skipped` | integer | yes |  |
+
+## `perf_compare`
+
+Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `base` | string | yes | The earlier report (relative to the project root). |
+| `new` | string | yes | The later report. |
+| `threshold_pct` | number \| null |  | Report changes larger than this, percent (default 5). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `changes` | array of Change | yes | Changes beyond the threshold, largest first. |
+| `output_mismatches` | array of string | yes |  |
+| `outputs_identical` | boolean | yes | Every state hash equal, and every image hash equal when both ran on the same GPU. |
+| `same_gpu` | boolean | yes |  |
+| `same_machine` | boolean | yes |  |
+| `unmatched` | array of string | yes | Cases only in one of the two reports. |
+| `warnings` | array of string | yes | Notes on things that make the comparison weaker (different suite, length, machine). |
+| `within_threshold` | integer | yes | Metrics compared that stayed within the threshold. |
 
 ## `jobs_check`
 

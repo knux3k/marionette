@@ -43,6 +43,7 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `engine-add-scene-or-mode` | add an example or proof scene with its stability mode and reference image |
 | `engine-add-skill` | add or update a skill |
 | `engine-finish-change` | checks, records and hygiene before every commit |
+| `engine-measure-performance` | shared benchmark suite, before and after, on a shared PC |
 | `marionette-add-rust-code` | a game's own Rust module and operations |
 | `marionette-animate-model` | play and blend animation clips |
 | `marionette-build-scene` | create or change a scene through operations |
