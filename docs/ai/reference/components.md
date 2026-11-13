@@ -785,6 +785,16 @@ Rust type: `marionette_nav::NavSettings`.
 | `search_budget` | integer | yes | Cells one search may expand before it settles for the closest place. |
 | `searches_per_tick` | integer | yes | Route searches started per tick at most (agents beyond wait in order). |
 
+### `NetPlayers`
+
+The players in a networked session, by slot (0 is the host). Part of the state hash, so a peer that disagrees about who is playing is caught as a desync.
+
+Rust type: `marionette_net::sim::NetPlayers`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `slots` | array of integer | yes | Occupied slots, ascending. |
+
 ### `PhysicsSettings`
 
 Turns physics on for the scene and picks 3D or 2D.

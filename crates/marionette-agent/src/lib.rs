@@ -22,6 +22,8 @@ pub mod library;
 pub mod mcp;
 #[cfg(feature = "nav")]
 pub mod nav;
+#[cfg(feature = "netplay")]
+pub mod netplay;
 pub mod observe;
 pub mod perf;
 #[cfg(feature = "pool")]
@@ -158,6 +160,8 @@ pub const FEATURES: &[&str] = &[
     "nav",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "netplay")]
+    "netplay",
 ];
 
 /// Every built-in operation compiled into this build, in a stable order.
@@ -193,6 +197,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         port::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "netplay")]
+        netplay::ops(),
         batch::ops(),
         skills::ops(),
         handoff::ops(),
