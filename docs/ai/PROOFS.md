@@ -17,6 +17,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Scene editor view (plan line 10, decision 0130) | [proofs/editor.md](proofs/editor.md) |
 | Headsets through OpenXR (decision 0190) | [proofs/xr.md](proofs/xr.md) |
 | Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
+| Round worlds and navigation | [proofs/navigation.md](proofs/navigation.md) |
 
 ## Adding a proof
 

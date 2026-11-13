@@ -2295,6 +2295,7 @@ dependencies = [
  "marionette-input",
  "marionette-jobs",
  "marionette-jobs-ts",
+ "marionette-nav",
  "marionette-net",
  "marionette-physics",
  "marionette-platform",
@@ -2497,6 +2498,21 @@ dependencies = [
  "sha2 0.11.1",
  "wasm-encoder 0.243.0",
  "wasmtime",
+]
+
+[[package]]
+name = "marionette-nav"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-core",
+ "marionette-input",
+ "marionette-jobs",
+ "marionette-physics",
+ "postcard",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

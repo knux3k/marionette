@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "editor"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav", "editor"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
@@ -30,6 +30,7 @@ netplay = ["marionette-agent/netplay"]
 ui3d = ["marionette-agent/ui3d"]
 # Scene editor window (`marionette edit`) and the `editor_view` operation (decision 0130).
 editor = ["marionette-agent/editor", "dep:marionette-editor"]
+nav = ["marionette-agent/nav"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-agent/net"]
 

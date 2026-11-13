@@ -1,6 +1,6 @@
 ---
 name: marionette-handoff
-description: Start, claim and hand off work in a Marionette game project so the next agent, or several agents working at once, can continue without asking and without colliding. Use when starting a session in a game project, before beginning a piece of work, when finishing or pausing work, when recording a decision, or when two agents or branches may touch the same files.
+description: Start, claim and hand off work in a Marionette game project so the next agent, or several at once, continue without asking or colliding. Use when starting or finishing a session in a game project, claiming work, recording a decision, or when agents may touch the same files.
 ---
 
 # Hand work on (and pick it up)
