@@ -1,0 +1,306 @@
+{
+  "format": "marionette.ops",
+  "ops": [
+    {
+      "input": {
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "scene_create"
+    },
+    {
+      "input": {
+        "resource": "FixedStep",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "dt": 0.016666668
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "InputConfig",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "action_map": "main.actions.json"
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "AmbientLight",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "color": {
+            "a": 1.0,
+            "b": 0.455,
+            "g": 0.387,
+            "r": 0.354
+          },
+          "intensity": 0.2
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "SkyLight",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "ground": {
+            "a": 1.0,
+            "b": 0.04,
+            "g": 0.054,
+            "r": 0.058
+          },
+          "intensity": 0.6,
+          "sky": {
+            "a": 1.0,
+            "b": 0.455,
+            "g": 0.387,
+            "r": 0.354
+          }
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "Shadows",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "distance": 15.0,
+          "resolution": 2048,
+          "softness": 1.5
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "ToneMapping",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "exposure": 1.0
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "resource": "Bloom",
+        "scene": "scenes/main.scene.json",
+        "value": {
+          "intensity": 0.15,
+          "threshold": 1.0
+        }
+      },
+      "op": "resource_set"
+    },
+    {
+      "input": {
+        "components": {
+          "Camera": {
+            "clear_color": {
+              "a": 1.0,
+              "b": 0.01,
+              "g": 0.014,
+              "r": 0.008
+            },
+            "projection": {
+              "Perspective": {
+                "far": 200.0,
+                "fov_y_degrees": 45.0,
+                "near": 0.1
+              }
+            }
+          },
+          "LookAt": {
+            "target": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.3
+            },
+            "up": {
+              "x": 0.0,
+              "y": 1.0,
+              "z": 0.0
+            }
+          },
+          "Transform": {
+            "rotation": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "translation": {
+              "x": 0.0,
+              "y": 17.69,
+              "z": 11.05
+            }
+          }
+        },
+        "id": 1,
+        "name": "camera",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "components": {
+          "DirectionalLight": {
+            "color": {
+              "a": 1.0,
+              "b": 0.85,
+              "g": 0.95,
+              "r": 1.0
+            },
+            "direction": {
+              "x": 0.35,
+              "y": -1.0,
+              "z": -0.45
+            },
+            "illuminance": 1.6
+          }
+        },
+        "id": 2,
+        "name": "sun",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "components": {
+          "Material": {
+            "base_color": {
+              "a": 1.0,
+              "b": 0.126,
+              "g": 0.129,
+              "r": 0.125
+            },
+            "metallic": 0.0,
+            "roughness": 0.9
+          },
+          "Model": {
+            "asset": "primitive:plane"
+          },
+          "Transform": {
+            "rotation": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 21.0,
+              "y": 1.0,
+              "z": 15.0
+            },
+            "translation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          }
+        },
+        "id": 6,
+        "name": "floor",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "components": {
+          "Script": {
+            "path": "scripts/game.ts"
+          }
+        },
+        "id": 3,
+        "name": "game",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "components": {
+          "UiNode": {
+            "anchor": "TopLeft",
+            "layer": 1,
+            "offset": {
+              "x": 12,
+              "y": 10
+            },
+            "size": {
+              "x": 700,
+              "y": 18
+            }
+          },
+          "UiText": {
+            "color": {
+              "a": 1.0,
+              "b": 0.068,
+              "g": 0.584,
+              "r": 1.0
+            },
+            "size": 18,
+            "text": ""
+          }
+        },
+        "id": 4,
+        "name": "hud",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "components": {
+          "UiNode": {
+            "anchor": "Center",
+            "layer": 1,
+            "offset": {
+              "x": 0,
+              "y": -60
+            },
+            "size": {
+              "x": 700,
+              "y": 32
+            }
+          },
+          "UiText": {
+            "color": {
+              "a": 1.0,
+              "b": 0.068,
+              "g": 0.584,
+              "r": 1.0
+            },
+            "size": 32,
+            "text": ""
+          }
+        },
+        "id": 5,
+        "name": "banner",
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "entity_create"
+    },
+    {
+      "input": {
+        "scene": "scenes/main.scene.json"
+      },
+      "op": "scene_validate"
+    }
+  ],
+  "version": 1
+}

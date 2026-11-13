@@ -1,0 +1,13 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "background",
+  "notes": "Starter slot `background` of \"Comet Hopper\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a colorful nebula above a cratered purple moon, bright sci-fi cartoon, clean bold shapes, thick outlines, wide side-scrolling game background landscape, no characters, no text",
+  "texture": {
+    "resize": [
+      1024,
+      512
+    ]
+  }
+}

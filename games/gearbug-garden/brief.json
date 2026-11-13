@@ -1,0 +1,37 @@
+{
+  "format": "marionette.brief/1",
+  "title": "Gearbug Garden",
+  "pitch": "Wind through a clockwork hedge maze, gather every golden cog while topiary beasts roam, then slip out the brass gate.",
+  "template": "maze",
+  "view": "3d",
+  "style": "whimsical steampunk garden, stylised low-poly, warm soft light",
+  "difficulty": "normal",
+  "size": "medium",
+  "seed": 7,
+  "words": {
+    "pickups": "cogs",
+    "win": "THE GARDEN IS WOUND",
+    "lose": "RUN DOWN"
+  },
+  "colors": {
+    "background": "#16201a",
+    "accent": "#ffc94a"
+  },
+  "assets": {
+    "enemy": {
+      "describe": "a wandering topiary hedge monster with leafy teeth and stubby legs"
+    },
+    "goal": {
+      "describe": "a tall ornate brass garden gate"
+    },
+    "pickup": {
+      "describe": "a shiny golden cog gear"
+    },
+    "player": {
+      "describe": "a small brass clockwork beetle with a wind-up key on its back"
+    },
+    "wall": {
+      "describe": "a square block of neatly trimmed green boxwood hedge"
+    }
+  }
+}
