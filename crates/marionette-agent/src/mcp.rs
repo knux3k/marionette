@@ -15,7 +15,8 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
 const INSTRUCTIONS: &str = "Marionette game engine. Before working, read the project's PROTOCOL.md \
-(the owner's rules) and AGENTS.md. Loop: project_validate, edit with entity_*/component_* (validated \
+(the owner's rules) and AGENTS.md, and run handoff_status (work in progress, latest notes); end a \
+session with handoff_note. Loop: project_validate, edit with entity_*/component_* (validated \
 before writing), run with scene_run or session_start/session_step, observe with observe_*, check with \
 test_run. For a task with a tested procedure (porting, assets, scripts, jobs, lighting, performance), \
 skills_list names it and skills_get returns the steps. Errors come back as diagnostics with a code, a JSON pointer and a suggested fix. This server \
@@ -33,6 +34,7 @@ pub const CORE_GROUPS: &[&str] = &[
     "test",
     "batch",
     "skills",
+    "handoff",
 ];
 
 /// Which tools the server lists (decision 0061). Every listed tool costs the client's context

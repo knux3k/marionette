@@ -49,6 +49,7 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-find-assets` | find, import or pool an asset in the required order |
 | `marionette-find-slowdown` | measure and fix slow ticks, frames, hitches |
 | `marionette-generate-assets` | generate images, textures and models from recipes |
+| `marionette-handoff` | start, claim and hand off work in a game project |
 | `marionette-light-scene` | lighting and post-processing |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
 | `marionette-test-game` | scenarios, replays, stability soaks |

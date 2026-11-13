@@ -447,6 +447,7 @@ fn mcp_tool_groups_and_lean_listing_shrink_the_context() {
         "test",
         "batch",
         "skills",
+        "handoff",
     ];
     assert!(
         names.contains(&"entity_create") && names.contains(&"observe_query"),

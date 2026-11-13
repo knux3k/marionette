@@ -46,6 +46,7 @@ pub const ALL: &[Skill] = &[
     skill!("marionette-find-assets", Some("pool")),
     skill!("marionette-find-slowdown"),
     skill!("marionette-generate-assets", Some("generate")),
+    skill!("marionette-handoff"),
     skill!("marionette-light-scene"),
     skill!("marionette-port-unity-unreal", Some("port")),
     skill!("marionette-test-game"),
@@ -104,23 +105,21 @@ pub(crate) fn ops() -> Vec<Op> {
     vec![
         op(
             "skills_list",
-            "List the task skills shipped with the engine: name and a one-line description of when to use \
-             each. Read one with skills_get before starting a matching task.",
+            "List the task skills: name and when to use each. Read the matching one with skills_get \
+             before a task.",
             false,
             list,
         ),
         op(
             "skills_get",
-            "Return one skill's full instructions (its SKILL.md): the tested procedure, traps and checks \
-             for one kind of task.",
+            "One skill's instructions: the tested procedure, traps and checks for a kind of task.",
             false,
             get,
         ),
         op(
             "skills_install",
-            "Write the game skills into a project so skill-aware agents load them by themselves: \
-             `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md`. Replaces older copies \
-             of the engine's skills; leaves the project's own skills alone.",
+            "Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so \
+             skill-aware agents load them by themselves. The project's own skills are left alone.",
             true,
             install,
         ),

@@ -417,11 +417,14 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
 - `cargo test -p marionette-cli --test skills`: `skills_name_only_things_that_exist` (every
   operation, CLI command and flag, type, repository path, doc heading and skill a skill names),
   `the_checker_catches_stale_names` (ten stale bodies, each reported), `registry_index_and_folders_agree`
-  (folders, `skills.rs`, `AGENTS.md`, description budget), `games_get_the_skills`
+  (folders, `skills.rs`, `AGENTS.md`, description budget), `games_get_the_skills_and_handoff_files`
   (`project_init`, `skills_install`, `skills_list`, `skills_get`).
 - By hand in a fresh project (Linux container, 2026-11-13): every command line the game skills
   show ran as written (`project_schema`, `asset_search`, `generate_recipe`, `generate_plan`,
   `script_types`, `jobs_check`, `jobs_run`, `port_convert`, `observe_screenshot`, `perf_sim`,
   `test_run`, `marionette run`, `marionette bench`), and the script and job examples compiled
   and ran.
-- Sizes: 15 descriptions 4.9 KB together; bodies 1.5 to 2.8 KB.
+- Sizes: 16 descriptions 5.3 KB together; bodies 1.5 to 3.4 KB.
+- Handoffs (decision 0161): `handoffs_keep_parallel_agents_apart` in the same test file: init
+  without overwriting, two claims with separate decision blocks, overlapping area and topic
+  refused, merged colliding claims reported, notes and release, size warning, read-only.

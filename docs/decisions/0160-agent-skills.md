@@ -20,7 +20,7 @@ the documentation of two agents. One reads project skills from `.claude/skills`;
 
 1. Skills live in `.claude/skills/<name>/SKILL.md` in the engine repository, in the open
    format with only the two required front matter fields.
-2. Two kinds, by name. `marionette-*` are for games (build a scene, find assets, generate
+2. Two kinds, by name. `marionette-*` are for games (hand work on, build a scene, find assets, generate
    assets, write a script, write a job, port Unity or Unreal code, light a scene, animate,
    test, find a slowdown, add Rust code). `engine-*` are for work on the engine (add an
    operation, add a scene or mode, finish a change, add a skill).
@@ -44,7 +44,7 @@ the documentation of two agents. One reads project skills from `.claude/skills`;
 
 ## Why
 
-- Token use: the permanent cost is the descriptions (about 5 KB for 15 skills). A body
+- Token use: the permanent cost is the descriptions (about 5 KB for 16 skills). A body
   (1.5 to 3 KB) replaces reading a 6 to 13 KB doc for the common path of a task.
 - Games in their own repositories get the same guidance as the engine repository, updated by
   one command after an engine update.

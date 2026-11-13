@@ -40,6 +40,16 @@ const NOT_TYPES: &[&str] = &[
     "Reflect",
     "Resource",
 ];
+/// Paths a game project has too: its own stability suite at the default path, and the
+/// handoff files `project_init` writes (checked in `games_get_the_skills_and_handoff_files`).
+const GAME_PATHS: &[&str] = &[
+    "stability/suite.json",
+    "docs/ai/START-HERE.md",
+    "docs/ai/STATE.md",
+    "docs/ai/claims/",
+    "docs/ai/sessions/",
+    "docs/decisions/",
+];
 /// First path segments that mean "a path in the engine repository".
 const REPO_ROOTS: &[&str] = &[
     "crates/",
@@ -232,8 +242,7 @@ fn problems_of(e: &Engine, skill: &Skill, names: &BTreeSet<&str>) -> Vec<String>
             REPO_ROOTS.iter().any(|r| word.starts_with(r)) || ["CLAUDE.md", "AGENTS.md"].contains(&word);
         if is_repo_path && !word.contains(' ') {
             if skill.audience() == "game" {
-                // A game keeps its own suite at the same default path.
-                if word == "stability/suite.json" {
+                if GAME_PATHS.contains(&word) {
                     continue;
                 }
                 problems.push(format!(
@@ -384,7 +393,7 @@ fn registry_index_and_folders_agree() {
 }
 
 #[test]
-fn games_get_the_skills() {
+fn games_get_the_skills_and_handoff_files() {
     let dir = marionette_host::temp_dir("skills-test").unwrap();
     let mut agent = Agent::new(dir.path(), false);
 
@@ -404,6 +413,13 @@ fn games_get_the_skills() {
                 .join("engine-add-skill")
                 .exists(),
             "engine skills are not installed into games"
+        );
+    }
+
+    for path in GAME_PATHS.iter().filter(|p| p.starts_with("docs/")) {
+        assert!(
+            dir.path().join("game").join(path).exists(),
+            "project_init must write {path}"
         );
     }
 
@@ -442,4 +458,155 @@ fn games_get_the_skills() {
     let text = one["instructions"].as_str().unwrap();
     assert!(text.starts_with("# Port Unity or Unreal code"), "{text}");
     assert!(agent.call("skills_get", json!({ "name": "nope" })).is_err());
+}
+
+#[test]
+fn handoffs_keep_parallel_agents_apart() {
+    let dir = marionette_host::temp_dir("handoff-test").unwrap();
+    let mut agent = Agent::new(dir.path(), false);
+    let call = |agent: &mut Agent, op: &str, input: serde_json::Value| agent.call(op, input);
+
+    // A project without handoff files is told so, then gets them without losing its own.
+    let before = call(&mut agent, "handoff_status", json!({})).unwrap();
+    assert_eq!(before["problems"].as_array().unwrap().len(), 2, "{before}");
+    std::fs::create_dir_all(dir.path().join("docs/ai")).unwrap();
+    std::fs::write(dir.path().join("docs/ai/STATE.md"), "mine").unwrap();
+    let init = call(&mut agent, "handoff_init", json!({})).unwrap();
+    assert!(
+        !init["written"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("docs/ai/STATE.md"))
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("docs/ai/STATE.md")).unwrap(),
+        "mine"
+    );
+    assert_eq!(
+        call(&mut agent, "handoff_status", json!({})).unwrap()["problems"],
+        json!([])
+    );
+
+    // A generated game in a subfolder gets its own lines in a new START-HERE.md.
+    call(
+        &mut agent,
+        "handoff_init",
+        json!({ "path": "made", "title": "Lamp Run", "summary": "Carry the lamp home.",
+                "notes": ["`brief.json`: the design."] }),
+    )
+    .unwrap();
+    let start = std::fs::read_to_string(dir.path().join("made/docs/ai/START-HERE.md")).unwrap();
+    assert!(
+        start.ends_with("## This game\n\nLamp Run: Carry the lamp home.\n\n- `brief.json`: the design.\n"),
+        "{start}"
+    );
+    assert!(start.contains("## Every session ends by"));
+
+    // Two agents claim different areas and get different decision blocks.
+    std::fs::write(
+        dir.path().join("docs/decisions/0003-earlier.md"),
+        "# 0003: Earlier\n",
+    )
+    .unwrap();
+    let a = call(
+        &mut agent,
+        "handoff_claim",
+        json!({ "topic": "power-grid", "date": "2026-01-02", "summary": "Power lines carry load.",
+                "areas": ["scripts/power", "scenes/power.scene.json"], "decisions": 5 }),
+    )
+    .unwrap();
+    assert_eq!(a["decisions"], json!([4, 8]));
+    let b = call(
+        &mut agent,
+        "handoff_claim",
+        json!({ "topic": "drones", "date": "2026-01-02", "summary": "Drones carry items.",
+                "areas": ["scripts/drones/"], "decisions": 2 }),
+    )
+    .unwrap();
+    assert_eq!(b["decisions"], json!([9, 10]));
+
+    // The same area, a file inside a claimed folder, and the same topic are refused.
+    for (topic, area) in [("wires", "scripts/power/wires.ts"), ("all-scripts", "scripts")] {
+        let err = call(
+            &mut agent,
+            "handoff_claim",
+            json!({ "topic": topic, "date": "2026-01-02", "summary": "x", "areas": [area] }),
+        )
+        .unwrap_err();
+        assert!(format!("{err:?}").contains("handoff.overlap"), "{err:?}");
+    }
+    let again = call(
+        &mut agent,
+        "handoff_claim",
+        json!({ "topic": "drones", "date": "2026-01-03", "summary": "x", "areas": ["other"] }),
+    );
+    assert!(format!("{:?}", again.unwrap_err()).contains("agent.exists"));
+    for bad in [
+        json!({ "topic": "Bad Topic", "date": "2026-01-02", "summary": "x", "areas": ["a"] }),
+        json!({ "topic": "ok", "date": "January", "summary": "x", "areas": ["a"] }),
+        json!({ "topic": "ok", "date": "2026-01-02", "summary": "x", "areas": [] }),
+    ] {
+        assert!(call(&mut agent, "handoff_claim", bad).is_err());
+    }
+
+    // Claims merged from two branches that collide show up as problems.
+    std::fs::write(
+        dir.path().join("docs/ai/claims/merged.claim.json"),
+        r#"{"topic":"merged","date":"2026-01-02","summary":"From another branch.","areas":["scripts/drones/ai.ts"],"decisions":[10,12]}"#,
+    )
+    .unwrap();
+    let status = call(&mut agent, "handoff_status", json!({})).unwrap();
+    let problems = status["problems"].to_string();
+    assert!(
+        problems.contains("both cover") && problems.contains("overlapping decision numbers"),
+        "{problems}"
+    );
+    assert_eq!(status["next_decision"], 13);
+    assert_eq!(status["claims"].as_array().unwrap().len(), 3);
+    std::fs::remove_file(dir.path().join("docs/ai/claims/merged.claim.json")).unwrap();
+
+    // A session note keeps the claim; a releasing one removes it. Same day, second file.
+    let n1 = call(
+        &mut agent,
+        "handoff_note",
+        json!({ "topic": "drones", "date": "2026-01-02", "done": ["Drone script moves items; scenario drones passes."],
+                "unverified": ["Path cost on large maps; check with perf_sim."], "next": ["Charging pads."] }),
+    )
+    .unwrap();
+    assert_eq!(n1["path"], "docs/ai/sessions/2026-01-02-drones.md");
+    assert_eq!(n1["still_claimed"], true);
+    let n2 = call(
+        &mut agent,
+        "handoff_note",
+        json!({ "topic": "drones", "date": "2026-01-02", "done": ["Charging pads."], "release": true }),
+    )
+    .unwrap();
+    assert_eq!(n2["path"], "docs/ai/sessions/2026-01-02-drones-2.md");
+    assert_eq!(n2["released"], true);
+    let text = std::fs::read_to_string(dir.path().join("docs/ai/sessions/2026-01-02-drones.md")).unwrap();
+    assert!(
+        text.contains("## Unverified") && text.contains("- Charging pads."),
+        "{text}"
+    );
+    let status = call(&mut agent, "handoff_status", json!({})).unwrap();
+    assert_eq!(status["claims"].as_array().unwrap().len(), 1);
+    assert_eq!(status["sessions"], 2);
+    assert_eq!(status["problems"], json!([]));
+
+    // Always-read files that grow are reported.
+    std::fs::write(dir.path().join("docs/ai/STATE.md"), "x".repeat(17 * 1024)).unwrap();
+    let status = call(&mut agent, "handoff_status", json!({})).unwrap();
+    assert!(status["problems"].to_string().contains("limit"), "{status}");
+
+    // Read-only agents cannot claim or note.
+    let mut reader = Agent::new(dir.path(), true);
+    assert!(
+        reader
+            .call(
+                "handoff_note",
+                json!({ "topic": "power-grid", "date": "2026-01-02", "done": ["x"], "release": true })
+            )
+            .is_err()
+    );
+    assert!(dir.path().join("docs/ai/claims/power-grid.claim.json").exists());
 }

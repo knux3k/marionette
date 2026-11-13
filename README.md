@@ -87,6 +87,14 @@ slowdown, add Rust code). A new project (`project_init`) gets them in `.claude/s
 `.agents/skills`, where agents that support skills load the matching one by themselves;
 `marionette op skills_install '{}'` adds or refreshes them in an existing project. Any other
 agent reads them with `skills_list` and `skills_get`.
+
+## Handoffs
+
+Every project carries what the next agent needs: `docs/ai/START-HERE.md`, `docs/ai/STATE.md`,
+one claim file per piece of work in progress, one note per session, and decision records. An
+agent starts with `handoff_status`, claims work with `handoff_claim` (refused when it overlaps
+another agent's claim; it also reserves decision numbers) and ends with `handoff_note`.
+`marionette op handoff_init '{}'` adds the files to an existing project.
 | `marionette scene fmt <scene> [--check]` | Rewrites a scene in canonical form |
 
 ## For agents

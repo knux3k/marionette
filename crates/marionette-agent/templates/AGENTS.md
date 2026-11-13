@@ -7,7 +7,10 @@
 2. Work through Marionette operations, from the CLI (`marionette op <name> '<json>' --json`,
    list them with `marionette ops`) or the MCP server (`marionette mcp`). Both run the same
    operations.
-3. Before a task, check for a skill: a tested procedure for one kind of task (build a scene,
+3. Start every session with `handoff_status` and `docs/ai/START-HERE.md`; claim work with
+   `handoff_claim` when others may be working too; end every session with `handoff_note`
+   (skill `marionette-handoff`).
+4. Before a task, check for a skill: a tested procedure for one kind of task (build a scene,
    find or generate assets, write a script or a job, port Unity or Unreal code, light a scene,
    animate, test, find a slowdown, add Rust code). Agents that read skills find them in
    `.claude/skills/` and `.agents/skills/`; any other agent runs `skills_list`, then
