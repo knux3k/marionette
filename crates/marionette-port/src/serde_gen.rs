@@ -31,6 +31,9 @@ pub struct Options {
     pub roots: Vec<String>,
     /// Extra derives on every generated type (for example `Reflect`).
     pub derives: Vec<String>,
+    /// C# type name -> Rust path of a type the project already has (a hand-written type, or its
+    /// own vector type). Such a type is used as is and never generated.
+    pub external: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
@@ -71,6 +74,8 @@ enum Ty {
     Class(String),
     Enum(String),
     Unity(&'static str),
+    /// A type the project provides (`Options::external`): its Rust path.
+    External(String, Option<&'static str>),
     /// A reference to a `UnityEngine.Object`: saved as `{"instanceID": n}`.
     ObjectRef,
     Raw,
@@ -78,6 +83,8 @@ enum Ty {
 
 enum Resolved {
     Ty(Ty),
+    /// A usable type plus a note (a list whose elements are unknown: `Vec<Value>`).
+    Partial(Ty, String),
     Skip(String),
     Unresolved(String),
 }
@@ -105,7 +112,7 @@ const UNITY_TYPES: [(&str, &[(&str, &str)]); 9] = [
 ];
 
 /// Named constants of the value types, in field order.
-const UNITY_CONSTS: [(&str, &[f64]); 24] = [
+const UNITY_CONSTS: [(&str, &[f64]); 26] = [
     ("Vector2.zero", &[0.0, 0.0]),
     ("Vector2.one", &[1.0, 1.0]),
     ("Vector2.up", &[0.0, 1.0]),
@@ -130,6 +137,8 @@ const UNITY_CONSTS: [(&str, &[f64]); 24] = [
     ("Color.clear", &[0.0, 0.0, 0.0, 0.0]),
     ("Color.gray", &[0.5, 0.5, 0.5, 1.0]),
     ("Color.cyan", &[0.0, 1.0, 1.0, 1.0]),
+    ("Color.grey", &[0.5, 0.5, 0.5, 1.0]),
+    ("Color.magenta", &[1.0, 0.0, 1.0, 1.0]),
 ];
 
 /// `UnityEngine.Object` types a field can point at.
@@ -238,6 +247,9 @@ struct Gen<'a> {
     /// Every class by name (for base-class fields), serializable or not.
     all: BTreeMap<String, &'a RawClass>,
     enums: BTreeMap<String, (RawEnum, usize)>,
+    external: BTreeMap<String, String>,
+    /// Static and const initializers of the class being generated.
+    consts: BTreeMap<String, Vec<crate::lex::Token>>,
     notes: Vec<Note>,
     noted: BTreeSet<(String, String)>,
 }
@@ -269,6 +281,7 @@ impl<'a> Gen<'a> {
                     Resolved::Skip("nested arrays are not saved by JsonUtility".into())
                 }
                 Resolved::Ty(t) => Resolved::Ty(Ty::Vec(Box::new(t))),
+                Resolved::Unresolved(why) => Resolved::Partial(Ty::Vec(Box::new(Ty::Raw)), why),
                 other => other,
             };
         }
@@ -285,6 +298,7 @@ impl<'a> Gen<'a> {
                         Resolved::Skip("nested lists are not saved by JsonUtility".into())
                     }
                     Resolved::Ty(t) => Resolved::Ty(Ty::Vec(Box::new(t))),
+                    Resolved::Unresolved(why) => Resolved::Partial(Ty::Vec(Box::new(Ty::Raw)), why),
                     other => other,
                 },
                 ("Dictionary" | "HashSet" | "Queue" | "Stack" | "SortedList", _) => {
@@ -294,6 +308,10 @@ impl<'a> Gen<'a> {
             };
         }
         let name = last_segment(&ty);
+        if let Some(path) = self.external.get(name) {
+            let unity = UNITY_TYPES.iter().find(|(n, _)| *n == name).map(|(n, _)| *n);
+            return Resolved::Ty(Ty::External(path.clone(), unity));
+        }
         if let Some(p) = prim(name) {
             return Resolved::Ty(Ty::Prim(p));
         }
@@ -325,16 +343,86 @@ impl<'a> Gen<'a> {
             Ty::Vec(i) => format!("Vec<{}>", self.rust_ty(i)),
             Ty::Class(n) | Ty::Enum(n) => n.clone(),
             Ty::Unity(n) => (*n).into(),
+            Ty::External(p, _) => p.clone(),
             Ty::ObjectRef => "ObjectRef".into(),
             Ty::Raw => "serde_json::Value".into(),
         }
     }
 
+    /// A Unity value type's constant or constructor as a struct literal of `path`.
+    fn unity_init(&self, n: &str, path: &str, text: &str) -> Option<String> {
+        let fields = UNITY_TYPES.iter().find(|(u, _)| *u == n)?.1;
+        let values: Vec<f64> = if let Some((_, v)) = UNITY_CONSTS.iter().find(|(c, _)| *c == text) {
+            v.to_vec()
+        } else {
+            let args = text
+                .strip_prefix(&format!("new{n}("))
+                .or_else(|| text.strip_prefix(&format!("{n}(")))?
+                .strip_suffix(')')?;
+            let mut v = Vec::new();
+            for a in args.split(',') {
+                v.push(a.trim_end_matches(['f', 'F']).parse::<f64>().ok()?);
+            }
+            v
+        };
+        if values.len() > fields.len() || values.len() < fields.len().min(2) {
+            return None;
+        }
+        let mut parts = Vec::new();
+        for (i, (f, ft)) in fields.iter().enumerate() {
+            let v = match values.get(i) {
+                Some(v) => *v,
+                None if *f == "a" => 1.0,
+                None => 0.0,
+            };
+            parts.push(if ft.starts_with('f') {
+                format!("{f}: {v:?}")
+            } else {
+                format!("{f}: {}", v as i64)
+            });
+        }
+        Some(format!("{path} {{ {} }}", parts.join(", ")))
+    }
+
     /// The Rust expression for a field initializer, or None when it is not understood.
     fn init(&self, tokens: &[crate::lex::Token], t: &Ty) -> Option<String> {
+        self.init_at(tokens, t, 0)
+    }
+
+    fn init_at(&self, tokens: &[crate::lex::Token], t: &Ty, depth: u8) -> Option<String> {
         use crate::source::join;
         let text = join(tokens);
         let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+        // A name of a const or static field of the same class (also `Class.Name`).
+        if depth < 4 {
+            let name = text.rsplit('.').next().unwrap_or(&text);
+            let is_name = !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+            if is_name
+                && !matches!(text.as_str(), "true" | "false" | "null")
+                && !text.starts_with(|c: char| c.is_ascii_digit())
+                && let Some(init) = self.consts.get(name)
+            {
+                return self.init_at(init, t, depth + 1);
+            }
+        }
+        // `int.MaxValue`, `float.MinValue`, `Mathf.Infinity`.
+        if let Ty::Prim(p) = t {
+            let (head, member) = text.split_once('.').unwrap_or(("", ""));
+            if prim(head).is_some() || head == "Mathf" {
+                let float = p.starts_with('f');
+                let rust = match member {
+                    "MaxValue" => Some("MAX"),
+                    "MinValue" => Some("MIN"),
+                    "Epsilon" if float => Some("EPSILON"),
+                    "PositiveInfinity" | "Infinity" if float => Some("INFINITY"),
+                    "NegativeInfinity" if float => Some("NEG_INFINITY"),
+                    _ => None,
+                };
+                if let Some(r) = rust {
+                    return Some(format!("{p}::{r}"));
+                }
+            }
+        }
         match t {
             Ty::Prim(p) => {
                 if *p == "bool" {
@@ -416,7 +504,10 @@ impl<'a> Gen<'a> {
                     n => Some(format!("vec![Default::default(); {n}]")),
                 }
             }
-            Ty::Class(n) => (text == format!("new{n}()")).then(|| format!("{n}::default()")),
+            Ty::Class(n) => {
+                let path = text.strip_prefix("new")?.strip_suffix("()")?;
+                (path.rsplit('.').next() == Some(n.as_str())).then(|| format!("{n}::default()"))
+            }
             Ty::Enum(n) => {
                 let (e, _) = self.enums.get(n)?;
                 let member = text.strip_prefix(&format!("{n}."))?;
@@ -425,38 +516,12 @@ impl<'a> Gen<'a> {
                     .any(|(m, _)| m == member)
                     .then(|| format!("{n}::{member}"))
             }
-            Ty::Unity(n) => {
-                let fields = UNITY_TYPES.iter().find(|(u, _)| u == n)?.1;
-                let values: Vec<f64> = if let Some((_, v)) = UNITY_CONSTS.iter().find(|(c, _)| *c == text) {
-                    v.to_vec()
-                } else {
-                    let args = text
-                        .strip_prefix(&format!("new{n}("))
-                        .or_else(|| text.strip_prefix(&format!("{n}(")))?
-                        .strip_suffix(')')?;
-                    let mut v = Vec::new();
-                    for a in args.split(',') {
-                        v.push(a.trim_end_matches(['f', 'F']).parse::<f64>().ok()?);
-                    }
-                    v
-                };
-                if values.len() > fields.len() || values.len() < fields.len().min(2) {
-                    return None;
-                }
-                let mut parts = Vec::new();
-                for (i, (f, ft)) in fields.iter().enumerate() {
-                    let v = match values.get(i) {
-                        Some(v) => *v,
-                        None if *f == "a" => 1.0,
-                        None => 0.0,
-                    };
-                    parts.push(if ft.starts_with('f') {
-                        format!("{f}: {v:?}")
-                    } else {
-                        format!("{f}: {}", v as i64)
-                    });
-                }
-                Some(format!("{n} {{ {} }}", parts.join(", ")))
+            Ty::Unity(n) => self.unity_init(n, n, &text),
+            Ty::External(path, Some(n)) => self.unity_init(n, path, &text),
+            Ty::External(path, None) => {
+                let made = text.strip_prefix("new")?.strip_suffix("()")?;
+                let _ = made;
+                Some(format!("{path}::default()"))
             }
             Ty::ObjectRef | Ty::Raw => None,
         }
@@ -497,6 +562,8 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
         classes: BTreeMap::new(),
         all: BTreeMap::new(),
         enums: BTreeMap::new(),
+        external: opts.external.clone(),
+        consts: BTreeMap::new(),
         notes: Vec::new(),
         noted: BTreeSet::new(),
     };
@@ -546,7 +613,11 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
 
     // Which types to emit: the roots and everything their saved fields reach.
     let roots: Vec<String> = if opts.roots.is_empty() {
-        g.classes.keys().cloned().collect()
+        g.classes
+            .keys()
+            .filter(|k| !g.external.contains_key(*k))
+            .cloned()
+            .collect()
     } else {
         opts.roots.clone()
     };
@@ -558,7 +629,7 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
     let mut queue: Vec<String> = roots;
     let mut seen: BTreeSet<String> = BTreeSet::new();
     while let Some(name) = queue.pop() {
-        if !seen.insert(name.clone()) {
+        if !seen.insert(name.clone()) || g.external.contains_key(&name) {
             continue;
         }
         let Some(class) = g.classes.get(&name).cloned() else {
@@ -584,6 +655,15 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
             cur = base.base.clone();
         }
         chain.reverse();
+        g.consts.clear();
+        for c in &chain {
+            for f in &c.fields {
+                let has = |m: &str| f.modifiers.iter().any(|x| x == m);
+                if (has("static") || has("const") || has("readonly")) && !f.init_tokens.is_empty() {
+                    g.consts.insert(f.name.clone(), f.init_tokens.clone());
+                }
+            }
+        }
         let mut fields: Vec<Field> = Vec::new();
         let mut used_rust: BTreeSet<String> = BTreeSet::new();
         for c in &chain {
@@ -611,6 +691,16 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
                 } else {
                     match g.resolve(&f.ty) {
                         Resolved::Ty(t) => (t, None),
+                        Resolved::Partial(t, why) => {
+                            g.note(
+                                "unresolved",
+                                c.file,
+                                f.line,
+                                &at,
+                                format!("{why}; elements kept as raw JSON"),
+                            );
+                            (t, None)
+                        }
                         Resolved::Skip(why) => {
                             g.note("skipped", c.file, f.line, &at, why);
                             continue;

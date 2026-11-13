@@ -289,6 +289,10 @@ struct SerdeInput {
     /// Extra derives for every type (for example `Reflect`).
     #[serde(default)]
     derives: Vec<String>,
+    /// C# type name -> Rust path of a type the project already has (hand-written, or its own
+    /// vector type). Used as is, never generated.
+    #[serde(default)]
+    external: std::collections::BTreeMap<String, String>,
     /// Replace an existing `out` file.
     #[serde(default)]
     overwrite: bool,
@@ -318,6 +322,7 @@ fn write_serde(agent: &mut Agent, input: SerdeInput) -> Result<SerdeOutput, Erro
         &marionette_port::serde_gen::Options {
             roots: input.roots,
             derives: input.derives,
+            external: input.external,
         },
     );
     if g.types.is_empty() {

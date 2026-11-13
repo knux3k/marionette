@@ -2082,6 +2082,7 @@ Input:
 | --- | --- | --- | --- |
 | `derives` | array of string |  | Extra derives for every type (for example `Reflect`). |
 | `dry_run` | boolean |  | Return the code without writing. |
+| `external` | object |  | C# type name -> Rust path of a type the project already has (hand-written, or its own vector type). Used as is, never generated. |
 | `out` | string \| null |  | The .rs file to write, relative to the project root. Omit to get the code back. |
 | `overwrite` | boolean |  | Replace an existing `out` file. |
 | `roots` | array of string |  | Only these types and the types their saved fields reach. Default: every [Serializable] type. |

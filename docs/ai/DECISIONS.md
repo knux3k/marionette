@@ -91,3 +91,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
 | 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |
+| 0241 | `port_serde` on a real project: const and static initializers, expression-bodied properties, `external` types (also Unity value types) | accepted |
