@@ -65,3 +65,25 @@ More looks (decisions 0064 to 0067):
   Mesa lavapipe in a 4-core cloud container: instances drawn per eye 9,792 -> 4,895,
   triangles 117,504 -> 58,740, record phase p50 1.12 -> 0.99 ms. GPU wait on lavapipe is fill
   bound (53.5 -> 50.5 ms) and says nothing about a hardware GPU; hardware numbers UNVERIFIED.
+
+Remaining lighting (decisions 0090 to 0093):
+- Example `examples/raytracing.scene.json` (built by `examples/raytracing.ops.json`): HDR sky
+  file, three sun cascades, mirror floor and ball, a crystal model, ten pillars, a
+  shadow-casting lamp, a reflection probe, `RayTracing` with soft sun. Reference images
+  `examples/reference/raytracing.png` (ray queries, Mesa lavapipe) and
+  `raytracing-fallback.png` (no ray queries).
+- Tests: `crates/marionette-render/tests/lighting.rs` (cascades reach far shadows a single
+  map misses; traced shadows need no shadow maps; traced reflections and probes show other
+  objects; `.hdr` keeps light above 1.0), the raytracing entries of the reference and
+  determinism tests, `cull.rs` `ray_traced_frames_keep_everything_for_rays`, unit tests in
+  `hdr.rs`, `probes.rs`, `raytrace.rs`. Stability mode `render-3d-raytracing` (two eyes).
+- Desktop GPU (RTX 2080 class, Vulkan, the default backend there, 1920x1080, MSAA 4, 2,000
+  frames, release, at 393b663): ray tracing on 1.78 ms avg (p99 2.23; two runs within
+  0.02 ms), two eyes 3.25 ms (p99 3.83); same scene with `MARIONETTE_RAY_TRACING=0`
+  (cascades, shadow maps, probe) 1.09 ms (p99 1.34-1.37). So tracing costs about 0.7 ms per
+  1080p view, nearly all GPU (wait 1.38 vs 0.64 ms), with 21 draw calls instead of 53.
+  Baselines in the same session: looks 1.03 ms, lighting 0.47 ms, looks two eyes 1.67 ms.
+  GPU tests passed with ray queries required (`lighting` 5, `render` 18); stability
+  `render-3d-raytracing` frame p99 1.81 ms, `render-3d-looks` 1.02 ms (budget 11.1 ms).
+  Before the depth prepass and adaptive sun rays the same scene measured about 2.4 ms
+  (noisy run).

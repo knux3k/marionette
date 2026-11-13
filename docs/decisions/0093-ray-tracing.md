@@ -63,4 +63,5 @@ Resource `RayTracing { shadows, reflections, max_roughness, sun_size_degrees }`.
   and the opt-in resource keep every other scene on the plain path.
 - Reflections are mirror-sharp with flat normals and one color per triangle; rough
   reflections fade to the probe or environment rather than blurring (no denoiser yet).
-- Cost and pictures on the desktop GPU: `docs/ai/proofs/render.md` ("Remaining lighting").
+- Cost on the desktop GPU: about 0.7 ms per 1080p view over the fallback looks
+  (`docs/ai/proofs/render.md`, "Remaining lighting").

@@ -51,8 +51,8 @@ keep their own textures and emissive maps when no `Material` is set.
 
 Each look costs frame time: shadows and bloom the most. In VR every view pays again. After
 lighting a scene, measure it (skill `marionette-find-slowdown`) and drop what the budget
-cannot carry: shadow-casting local lights first, then bloom. Ray tracing roughly doubles
-the frame on a mid-range RTX card; probes cost nothing per frame after capture.
+cannot carry: shadow-casting local lights first, then bloom. Ray tracing adds about
+0.7 ms per 1080p view on an RTX 2080 class card; probes cost nothing per frame after capture.
 
 ## Checks
 
