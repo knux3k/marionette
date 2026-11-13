@@ -278,6 +278,8 @@ pub struct RawClass {
     pub is_struct: bool,
     /// C# `partial`: other parts of the class may be in other files.
     pub partial: bool,
+    /// C# attributes on the class (`Serializable`), last name segment only.
+    pub attributes: Vec<String>,
 }
 
 const MODIFIERS: [&str; 22] = [
@@ -614,6 +616,208 @@ fn members(
     (fields, methods)
 }
 
+/// Attribute names in the `[ ... ]` groups right before the class keyword at `kw` (modifiers
+/// may sit between them and the keyword).
+fn class_attributes(tokens: &[Token], kw: usize) -> Vec<String> {
+    let mut k = kw;
+    while k > 0
+        && tokens[k - 1].kind == Kind::Ident
+        && matches!(
+            tokens[k - 1].text.as_str(),
+            "public"
+                | "internal"
+                | "private"
+                | "protected"
+                | "static"
+                | "sealed"
+                | "abstract"
+                | "partial"
+                | "readonly"
+                | "ref"
+                | "unsafe"
+                | "new"
+        )
+    {
+        k -= 1;
+    }
+    let mut names = Vec::new();
+    while k > 0 && tokens[k - 1].is("]") {
+        let close = k - 1;
+        let mut depth = 0i32;
+        let mut open = None;
+        for j in (0..=close).rev() {
+            if tokens[j].is("]") {
+                depth += 1;
+            } else if tokens[j].is("[") {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(j);
+                    break;
+                }
+            }
+        }
+        let Some(open) = open else { break };
+        names.extend(attribute_names(tokens, open, close));
+        k = open;
+    }
+    names
+}
+
+/// An enum declared in C# source: members with their integer values.
+#[derive(Debug, Clone)]
+pub struct RawEnum {
+    pub name: String,
+    pub line: u32,
+    /// Underlying integer type (`int` unless declared).
+    pub underlying: String,
+    pub members: Vec<(String, i64)>,
+}
+
+/// Evaluates a C# enum member initializer: integers (decimal, hex), `<<`, `|`, `+`, `-`,
+/// parentheses and names of earlier members.
+fn eval_enum(tokens: &[Token], known: &[(String, i64)]) -> Option<i64> {
+    fn atom(t: &[Token], i: &mut usize, known: &[(String, i64)]) -> Option<i64> {
+        let tk = t.get(*i)?;
+        *i += 1;
+        if tk.is("(") {
+            let v = expr(t, i, known)?;
+            if !t.get(*i)?.is(")") {
+                return None;
+            }
+            *i += 1;
+            return Some(v);
+        }
+        if tk.is("-") {
+            return atom(t, i, known).map(|v| -v);
+        }
+        if tk.kind == Kind::Number {
+            let s = tk.text.trim_end_matches(['u', 'U', 'l', 'L']);
+            return match s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+                Some(h) => i64::from_str_radix(&h.replace('_', ""), 16).ok(),
+                None => s.replace('_', "").parse().ok(),
+            };
+        }
+        if tk.kind == Kind::Ident {
+            // `Name` or `Enum.Name`: the last segment names a member.
+            let mut name = tk.text.clone();
+            while t.get(*i).is_some_and(|x| x.is(".")) {
+                name = t.get(*i + 1)?.text.clone();
+                *i += 2;
+            }
+            return known.iter().find(|(n, _)| *n == name).map(|(_, v)| *v);
+        }
+        None
+    }
+    fn expr(t: &[Token], i: &mut usize, known: &[(String, i64)]) -> Option<i64> {
+        let mut v = atom(t, i, known)?;
+        while let Some(op) = t.get(*i) {
+            if op.is("|") {
+                *i += 1;
+                v |= atom(t, i, known)?;
+            } else if op.is("+") {
+                *i += 1;
+                v += atom(t, i, known)?;
+            } else if op.is("-") {
+                *i += 1;
+                v -= atom(t, i, known)?;
+            } else if op.is("<") && t.get(*i + 1).is_some_and(|x| x.is("<")) {
+                *i += 2;
+                v = v.checked_shl(u32::try_from(atom(t, i, known)?).ok()?)?;
+            } else {
+                break;
+            }
+        }
+        Some(v)
+    }
+    let mut i = 0;
+    let v = expr(tokens, &mut i, known)?;
+    (i == tokens.len()).then_some(v)
+}
+
+/// C# enums with their members and values. The flag is false when some member's value could
+/// not be evaluated.
+pub fn enum_decls(tokens: &[Token]) -> Vec<(RawEnum, bool)> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if !tokens[i].is("enum") {
+            i += 1;
+            continue;
+        }
+        let Some(name) = tokens.get(i + 1).filter(|t| t.kind == Kind::Ident) else {
+            i += 1;
+            continue;
+        };
+        let mut k = i + 2;
+        let mut underlying = "int".to_string();
+        if tokens.get(k).is_some_and(|t| t.is(":")) {
+            if let Some(u) = tokens.get(k + 1) {
+                underlying = u.text.clone();
+            }
+            k += 2;
+        }
+        if !tokens.get(k).is_some_and(|t| t.is("{")) {
+            i += 1;
+            continue;
+        }
+        let close = matching(tokens, k).unwrap_or(tokens.len() - 1);
+        let mut members: Vec<(String, i64)> = Vec::new();
+        let mut complete = true;
+        let mut next = 0i64;
+        let body = &tokens[k + 1..close];
+        let mut start = 0;
+        let mut depth = 0i32;
+        let mut parts: Vec<&[Token]> = Vec::new();
+        for (j, t) in body.iter().enumerate() {
+            if t.is("(") || t.is("[") {
+                depth += 1;
+            } else if t.is(")") || t.is("]") {
+                depth -= 1;
+            } else if depth == 0 && t.is(",") {
+                parts.push(&body[start..j]);
+                start = j + 1;
+            }
+        }
+        parts.push(&body[start..]);
+        for part in parts {
+            let mut p = part;
+            while p.first().is_some_and(|t| t.is("[")) {
+                match matching(p, 0) {
+                    Some(c) => p = &p[c + 1..],
+                    None => break,
+                }
+            }
+            let Some(first) = p.first().filter(|t| t.kind == Kind::Ident) else {
+                continue;
+            };
+            let value = if p.get(1).is_some_and(|t| t.is("=")) {
+                match eval_enum(&p[2..], &members) {
+                    Some(v) => v,
+                    None => {
+                        complete = false;
+                        next
+                    }
+                }
+            } else {
+                next
+            };
+            members.push((first.text.clone(), value));
+            next = value.wrapping_add(1);
+        }
+        out.push((
+            RawEnum {
+                name: name.text.clone(),
+                line: name.line,
+                underlying,
+                members,
+            },
+            complete,
+        ));
+        i = close + 1;
+    }
+    out
+}
+
 /// Finds classes in C# or C++ tokens. C++ method bodies defined outside the class
 /// (`void AFoo::Tick(...) { }`) are returned separately by [`cpp_definitions`].
 pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
@@ -728,6 +932,11 @@ pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
                 break;
             }
         }
+        let attributes = if cpp {
+            Vec::new()
+        } else {
+            class_attributes(tokens, i)
+        };
         out.push(RawClass {
             name,
             engine,
@@ -739,6 +948,7 @@ pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
             blueprint: false,
             is_struct: t.is("struct"),
             partial,
+            attributes,
         });
         // Continue inside the body too, so nested classes are found.
         i = open + 1;

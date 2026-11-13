@@ -25,3 +25,14 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   snapshot byte for byte.
 - `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_capture_budget`:
   4x factory capture 0.75 ms (budget 2 ms); the whole snapshot as text 72 ms, 2.3 MB (container).
+
+## Serializable to serde (decision 0240)
+
+- `cargo test -p marionette-port --test port serde`: a synthetic C# fixture
+  (`tests/fixtures/serial`) generates `tests/generated/serial_fixture.rs`, which is committed,
+  compiled and checked equal to the generator's output (`MARIONETTE_BLESS=1` rewrites it).
+  Checks: missing keys keep initializers, byte order mark ignored, unknown keys ignored,
+  unknown enum integers and raw JSON survive a round trip, field order base class first.
+- `serde_generation_writes_once_and_reports` (marionette-cli `port_e2e`): the operation returns
+  code on a dry run, writes once, refuses to overwrite, and reports skipped fields.
+- Not checked against files written by a real Unity build.

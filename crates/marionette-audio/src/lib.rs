@@ -28,9 +28,12 @@ use std::path::Path;
 
 pub mod music;
 mod player;
+mod synth_host;
 
+pub use marionette_synth as synth;
 pub use music::{Music, MusicLayer};
 pub use player::{MAX_VOICES, Player};
+pub use synth_host::SynthHost;
 
 /// When an `AudioSource` plays.
 #[derive(Reflect, Debug, Clone, PartialEq)]
