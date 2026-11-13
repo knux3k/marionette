@@ -237,6 +237,8 @@ pub(crate) fn write_recording(agent: &Agent, sim: &Sim, out: &str) -> Result<usi
 
 /// Plays `sound` events through the default audio device (windowed mode only).
 pub use marionette_audio::Player as SoundPlayer;
+/// The synth host and the synth crate (decision 0220).
+pub use marionette_audio::{SynthHost, synth};
 
 /// Loads a scene file with the built-in engine ([`Engine::load_file`] for a game's engine).
 pub fn load_file(path: &Path, shown: &str, seed: u64) -> Result<Sim, Errors> {
