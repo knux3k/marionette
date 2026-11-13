@@ -461,8 +461,14 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     local.sort_by_key(|(id, _)| *id);
     frame.local_lights = local.into_iter().map(|(_, l)| l).collect();
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
+        let camera = frame.cameras.first().map(|c| c.world);
+        let context = marionette_core::spatial::BulkDrawContext {
+            alpha: alpha.clamp(0.0, 1.0),
+            eye: camera.map(|m| m.w_axis.truncate().to_array()),
+            forward: camera.map(|m| (-m.z_axis.truncate()).normalize_or(Vec3::NEG_Z).to_array()),
+        };
         for hook in &hooks.0 {
-            hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);
+            hook(world, &context, &mut frame.bulk);
         }
     }
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::QuadDrawHooks>() {

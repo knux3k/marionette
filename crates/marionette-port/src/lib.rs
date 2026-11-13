@@ -18,6 +18,7 @@ pub mod convert;
 pub mod lex;
 pub mod map;
 pub mod scaffold;
+pub mod serde_gen;
 pub mod source;
 
 use map::{Engine, Entry, Role, Status, table};
@@ -398,6 +399,7 @@ pub fn analyze(root: PathBuf, files: Vec<SourceFile>, skipped: Vec<Skipped>) -> 
                 blueprint: false,
                 is_struct: false,
                 partial: false,
+                attributes: Vec::new(),
             });
         }
     }
@@ -596,6 +598,7 @@ fn blueprint_class(fi: usize, f: &SourceFile, occurrences: &mut Vec<Occurrence>)
         blueprint: true,
         is_struct: false,
         partial: false,
+        attributes: Vec::new(),
     }
 }
 
