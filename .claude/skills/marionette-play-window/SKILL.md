@@ -1,6 +1,6 @@
 ---
 name: marionette-play-window
-description: Play a scene in a real window and make it feel right - present mode, frame queue, frame cap, fullscreen, mouse look, gamepads - and measure frame pacing and input latency. Use when a game should run on a screen, feels laggy or juddery, needs controller or fullscreen support, or a windowed run needs numbers.
+description: Play a scene in a real window and tune its feel (present mode, frame queue, fullscreen, mouse look, gamepads) and measure frame pacing and input latency. Use when a game runs on a screen, feels laggy or juddery, or needs controllers or fullscreen.
 ---
 
 # Play in a window and measure it
