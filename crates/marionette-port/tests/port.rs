@@ -336,3 +336,60 @@ fn missing_and_empty_sources_are_errors() {
     let e = scan(&empty).err().unwrap();
     assert_eq!(e.0[0].code, marionette_port::codes::NOTHING_FOUND);
 }
+
+/// Burst jobs, partial classes and C# tuple types (a real project crashed the scanner on
+/// tuple types; decision 0072).
+#[test]
+fn unity_jobs_partials_and_tuples() {
+    let (a, r) = report("unity-jobs");
+    assert_eq!(class(&r, "FlowJob").role, Role::Job);
+    assert_eq!(class(&r, "Cell").role, Role::Plain);
+    assert_eq!(r.summary.jobs, 1);
+    // The two parts of FlowWorld are one class: a behaviour (base from the second part)
+    // with the methods of both files.
+    let parts: Vec<_> = r.classes.iter().filter(|c| c.name == "FlowWorld").collect();
+    assert_eq!(parts.len(), 1, "partial class reported once");
+    let w = parts[0];
+    assert_eq!(w.role, Role::Behaviour);
+    for m in ["Count", "Step", "Update", "OnDestroy"] {
+        assert!(w.methods.iter().any(|x| x.name == m), "{m} missing");
+    }
+    assert!(!w.methods.iter().any(|x| x.name == "readonly"));
+    assert_eq!(uses(&r, "NativeArray").map(|u| u.0), Some(Status::Rewrite));
+    assert_eq!(uses(&r, "BurstCompile").map(|u| u.0), Some(Status::Ready));
+    assert_eq!(uses(&r, "math.min").map(|u| u.0), Some(Status::Script));
+    assert!(r.next_steps.iter().any(|s| s.contains("job struct")));
+
+    // The Rust skeleton names the job and its struct, maps the types, keeps the body.
+    let rs = scaffold::rust_jobs(&a).expect("jobs found");
+    assert!(rs.contains("pub struct Cell {"));
+    assert!(rs.contains("pub kind: i32 /* enum CellKind */,"));
+    assert!(rs.contains("pub cells: Vec<Cell>,"));
+    assert!(rs.contains("pub order: Vec<i32>, // read-only"));
+    assert!(rs.contains("pub tick: i64,"));
+    assert!(rs.contains("pub fn execute(&mut self) {"));
+    assert!(rs.contains("//       tick.Value = tick.Value + 1;"));
+    // It compiles as it is when rustc is on the path.
+    let dir = std::env::temp_dir().join(format!("marionette-port-jobs-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("jobs.rs");
+    std::fs::write(&file, &rs).unwrap();
+    if let Ok(out) = std::process::Command::new("rustc")
+        .args([
+            "--edition",
+            "2024",
+            "--crate-type",
+            "lib",
+            "--emit",
+            "metadata",
+            "-o",
+        ])
+        .arg(dir.join("jobs.rmeta"))
+        .arg(&file)
+        .output()
+    {
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    }
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(scaffold::rust_jobs(&report("unity").0).is_none());
+}

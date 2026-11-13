@@ -396,9 +396,31 @@ pub fn analyze(root: PathBuf, files: Vec<SourceFile>, skipped: Vec<Skipped>) -> 
                 fields: Vec::new(),
                 methods: vec![def],
                 blueprint: false,
+                is_struct: false,
+                partial: false,
             });
         }
     }
+    // C# partial classes: one class, whatever number of files its parts are in. Parts are
+    // merged into the first part found (files are scanned in path order); each method keeps
+    // the file its body is in.
+    let mut merged: Vec<RawClass> = Vec::with_capacity(raw.len());
+    for c in raw {
+        if c.partial
+            && let Some(first) = merged
+                .iter_mut()
+                .find(|m| m.partial && m.name == c.name && m.engine == c.engine)
+        {
+            if first.base.is_none() {
+                first.base = c.base;
+            }
+            first.fields.extend(c.fields);
+            first.methods.extend(c.methods);
+            continue;
+        }
+        merged.push(c);
+    }
+    let raw = merged;
     // Resolve roles through inheritance between scanned classes.
     let bases: BTreeMap<String, Option<String>> =
         raw.iter().map(|c| (c.name.clone(), c.base.clone())).collect();
@@ -572,6 +594,8 @@ fn blueprint_class(fi: usize, f: &SourceFile, occurrences: &mut Vec<Occurrence>)
         fields: Vec::new(),
         methods,
         blueprint: true,
+        is_struct: false,
+        partial: false,
     }
 }
 
@@ -685,6 +709,10 @@ pub struct Summary {
     pub classes: usize,
     /// Classes that become scripts (behaviours, actors, components, Blueprints).
     pub scripts: usize,
+    /// Unity job structs (`IJob`, `IJobFor`, ...): they become systems of the game's own
+    /// Rust module (`port_scaffold` writes `jobs.rs`), not scripts.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub jobs: usize,
     /// Engine API uses by status (every occurrence counts).
     pub uses: BTreeMap<String, usize>,
     /// Gaps used most, most first: what Marionette needs to run this code unchanged.
@@ -969,6 +997,7 @@ impl Analysis {
             ..Default::default()
         };
         summary.scripts = self.classes.iter().filter(|c| Self::makes_script(c)).count();
+        summary.jobs = self.classes.iter().filter(|c| c.role == Role::Job).count();
         let mut actions = BTreeSet::new();
         for o in &self.occurrences {
             *summary.uses.entry(o.status.as_str().to_string()).or_default() += 1;
@@ -1061,6 +1090,12 @@ impl Analysis {
             "Run `port_scaffold` with the same source to write one TypeScript skeleton per gameplay class."
                 .to_string(),
         ];
+        if summary.jobs > 0 {
+            next_steps.push(format!(
+                "Port the {} job struct(s) to a Rust module of the game (PORTING.md \"Burst jobs\"); `port_scaffold` writes their skeletons to `jobs.rs`.",
+                summary.jobs
+            ));
+        }
         if !summary.actions.is_empty() {
             next_steps.push(format!(
                 "Define these input actions in the scene's action map: {}.",
@@ -1112,6 +1147,10 @@ pub fn strip_type(ty: &str) -> String {
 }
 
 /// Maps a C# or C++ type to a TypeScript type for `self.state`: (type, kind, note).
+fn is_zero(n: &usize) -> bool {
+    *n == 0
+}
+
 pub fn ts_type(engine: Engine, ty: &str, enums: &BTreeSet<String>) -> (String, String, String) {
     let t = table(engine);
     let s = ty.trim().replace("const ", "");
@@ -1123,6 +1162,9 @@ pub fn ts_type(engine: Engine, ty: &str, enums: &BTreeSet<String>) -> (String, S
         ("TSet<", false),
         ("Dictionary<", true),
         ("TMap<", true),
+        ("NativeArray<", false),
+        ("NativeList<", false),
+        ("NativeSlice<", false),
     ] {
         if let Some(inner) = s.strip_prefix(open) {
             let inner = inner.strip_suffix('>').unwrap_or(inner);
@@ -1139,6 +1181,9 @@ pub fn ts_type(engine: Engine, ty: &str, enums: &BTreeSet<String>) -> (String, S
             let (e, _, _) = ts_type(engine, inner, enums);
             return (format!("{e}[]"), "collection".into(), String::new());
         }
+    }
+    if let Some(inner) = s.strip_prefix("NativeReference<") {
+        return ts_type(engine, inner.strip_suffix('>').unwrap_or(inner), enums);
     }
     if let Some(inner) = s.strip_suffix("[]") {
         let (e, _, _) = ts_type(engine, inner, enums);
