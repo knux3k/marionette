@@ -789,7 +789,7 @@ impl Renderer {
         );
 
         let world_quads = crate::worldquads::WorldQuadPass::new(
-            &device,
+            device,
             &view_layout,
             &sprite_tex_layout,
             color_format,
@@ -991,8 +991,9 @@ impl Renderer {
         for q in &frame.quads {
             if let Some(msg) = self.ensure_texture(&q.image) {
                 errors.push(
-                    Diagnostic::error(codes::ASSET, msg.clone())
-                        .fix("a module draws world-space quads with an image that is missing or was replaced"),
+                    Diagnostic::error(codes::ASSET, msg.clone()).fix(
+                        "a module draws world-space quads with an image that is missing or was replaced",
+                    ),
                 );
             }
         }
@@ -1911,9 +1912,14 @@ impl Renderer {
                     }
                 }
             }
-            stats.draw_calls += self.world_quads.draw(&mut pass, &self.view_group, world_offset, |image| {
-                self.sprite_textures.get(image).and_then(|t| t.as_ref().ok()).map(|t| &t.bind_group)
-            });
+            stats.draw_calls += self
+                .world_quads
+                .draw(&mut pass, &self.view_group, world_offset, |image| {
+                    self.sprite_textures
+                        .get(image)
+                        .and_then(|t| t.as_ref().ok())
+                        .map(|t| &t.bind_group)
+                });
             if let (Some(vb), Some(ib), false) =
                 (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
             {

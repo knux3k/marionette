@@ -27,19 +27,36 @@ fn point_clicks_a_button_and_panels_lists_it() {
     let sim = agent.session_sim(&id).unwrap();
     sim.world.spawn((
         SceneId(7),
-        UiPanel { size: Vec2 { x: 0.4, y: 0.2 }, ..Default::default() },
+        UiPanel {
+            size: Vec2 { x: 0.4, y: 0.2 },
+            ..Default::default()
+        },
         UiContent {
-            items: vec![UiItem::new("ok", UiWidget::Button { text: "OK".into(), action: String::new() })],
+            items: vec![UiItem::new(
+                "ok",
+                UiWidget::Button {
+                    text: "OK".into(),
+                    action: String::new(),
+                },
+            )],
         },
         Transform {
             translation: Vec3::new(0.0, 0.0, 0.0),
-            rotation: Quat { x: 0.0, y: 0.0, z: 0.0, w: 1.0 },
+            rotation: Quat {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
             scale: Vec3::new(1.0, 1.0, 1.0),
         },
     ));
     let listing = agent.call("ui3d_panels", json!({ "session": id })).unwrap();
     let r = &listing["panels"][0]["items"][0]["rect"];
-    let (cx, cy) = (r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.0, r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.0);
+    let (cx, cy) = (
+        r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.0,
+        r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.0,
+    );
     let ray = |pressed: bool| {
         json!({ "session": id, "pointers": [{
             "origin": [0.0, 0.0, 1.0],

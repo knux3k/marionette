@@ -8,12 +8,10 @@ use crate::runtime::*;
 use bevy_ecs::prelude::*;
 use glam::{Mat3, Quat, Vec3};
 use marionette_core::actions::ActionState;
-use marionette_core::builtin::{FixedStep, Position, DEFAULT_DT};
+use marionette_core::builtin::{DEFAULT_DT, FixedStep, Position};
 use marionette_core::module::{Module, SceneDir, Stage};
 use marionette_core::scene::SceneId;
-use marionette_core::spatial::{
-    Camera, QuadContext, QuadDrawHooks, QuadVertex, Transform, WorldQuads,
-};
+use marionette_core::spatial::{Camera, QuadContext, QuadDrawHooks, QuadVertex, Transform, WorldQuads};
 use marionette_core::{Diagnostic, Errors, Registry, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -52,7 +50,10 @@ impl Module for Ui3dModule {
         let font = if config.font.is_empty() {
             FontData::builtin()
         } else {
-            let dir = world.get_resource::<SceneDir>().map(|d| d.0.clone()).unwrap_or_default();
+            let dir = world
+                .get_resource::<SceneDir>()
+                .map(|d| d.0.clone())
+                .unwrap_or_default();
             let loaded = std::fs::read(dir.join(&config.font))
                 .map_err(|e| format!("cannot read {}: {e}", config.font))
                 .and_then(|bytes| FontData::from_ttf(&bytes));
@@ -75,19 +76,34 @@ impl Module for Ui3dModule {
         }
         world.insert_resource(UiEvents::default());
         QuadDrawHooks::add(world, quad_hook);
-        if errors.is_empty() { Ok(()) } else { Err(Errors(errors)) }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(Errors(errors))
+        }
     }
 }
 
 /// A panel's world pose: centre and rotation (its +Z faces the front).
 fn pose(t: Option<&Transform>, p: Option<&Position>) -> (Vec3, Quat) {
     let t = t.copied().unwrap_or_default();
-    let pos = p.map_or(Vec3::new(t.translation.x, t.translation.y, t.translation.z), |p| Vec3::new(p.x, p.y, p.z));
-    (pos, Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize())
+    let pos = p.map_or(
+        Vec3::new(t.translation.x, t.translation.y, t.translation.z),
+        |p| Vec3::new(p.x, p.y, p.z),
+    );
+    (
+        pos,
+        Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize(),
+    )
 }
 
 fn to_quat(q: Quat) -> marionette_core::spatial::Quat {
-    marionette_core::spatial::Quat { x: q.x, y: q.y, z: q.z, w: q.w }
+    marionette_core::spatial::Quat {
+        x: q.x,
+        y: q.y,
+        z: q.z,
+        w: q.w,
+    }
 }
 
 /// Rotation whose +Z points along `toward`, keeping +Y up as far as possible. Only
@@ -146,17 +162,27 @@ fn anchors_and_facing(world: &mut World, dt: f32) {
             }
         }
         for (e, a) in anchored {
-            let Some((tp, tr)) = targets.get(&a.target.0).copied() else { continue };
+            let Some((tp, tr)) = targets.get(&a.target.0).copied() else {
+                continue;
+            };
             let off = Vec3::new(a.offset.x, a.offset.y, a.offset.z);
             let want = tp + if a.relative { tr * off } else { off };
             let (now, _) = pose(world.get::<Transform>(e), world.get::<Position>(e));
-            let k = if a.smoothing > 0.0 { dt / (a.smoothing + dt) } else { 1.0 };
+            let k = if a.smoothing > 0.0 {
+                dt / (a.smoothing + dt)
+            } else {
+                1.0
+            };
             set_translation(world, e, now + (want - now) * k);
         }
     }
     let mut turning: Vec<(Entity, UiFace)> = Vec::new();
     let mut q = world.query::<(Entity, &UiPanel)>();
-    turning.extend(q.iter(world).filter(|(_, p)| p.face != UiFace::Fixed).map(|(e, p)| (e, p.face)));
+    turning.extend(
+        q.iter(world)
+            .filter(|(_, p)| p.face != UiFace::Fixed)
+            .map(|(e, p)| (e, p.face)),
+    );
     if turning.is_empty() {
         return;
     }
@@ -167,7 +193,10 @@ fn anchors_and_facing(world: &mut World, dt: f32) {
             if let Some(mut t) = world.get_mut::<Transform>(e) {
                 t.rotation = to_quat(rot);
             } else {
-                world.entity_mut(e).insert(Transform { rotation: to_quat(rot), ..Default::default() });
+                world.entity_mut(e).insert(Transform {
+                    rotation: to_quat(rot),
+                    ..Default::default()
+                });
             }
         }
     }
@@ -217,7 +246,12 @@ fn hit(info: &PanelInfo, p: &UiPointer) -> Option<Hit> {
     let local = info.rot.inverse() * (point - info.centre);
     let (w, h) = (info.panel.size.x, info.panel.size.y);
     let (x, y) = (local.x + w / 2.0, h / 2.0 - local.y);
-    Some(Hit { dist, x, y, inside: x >= 0.0 && x <= w && y >= 0.0 && y <= h })
+    Some(Hit {
+        dist,
+        x,
+        y,
+        inside: x >= 0.0 && x <= w && y >= 0.0 && y <= h,
+    })
 }
 
 fn pressed(p: &UiPointer, h: Option<&Hit>, info: Option<&PanelInfo>) -> bool {
@@ -252,7 +286,13 @@ fn ui_tick(world: &mut World) {
         let mut q = world.query::<(Entity, &SceneId, &UiPanel, Option<&Transform>, Option<&Position>)>();
         for (e, id, panel, t, p) in q.iter(world) {
             let (centre, rot) = pose(t, p);
-            infos.push(PanelInfo { entity: e, id: id.0, centre, rot, panel: panel.clone() });
+            infos.push(PanelInfo {
+                entity: e,
+                id: id.0,
+                centre,
+                rot,
+                panel: panel.clone(),
+            });
         }
     }
     infos.sort_by_key(|i| i.id);
@@ -270,7 +310,10 @@ fn ui_tick(world: &mut World) {
         let grab = rt.grabs.get(&p.id).map(|g| (g.panel, g.item));
         // The grabbed panel keeps the pointer even when it slides off it (slider drags).
         let target = match grab {
-            Some((panel, _)) => infos.iter().find(|i| i.id == panel).and_then(|i| hit(i, p).map(|h| (i, h))),
+            Some((panel, _)) => infos
+                .iter()
+                .find(|i| i.id == panel)
+                .and_then(|i| hit(i, p).map(|h| (i, h))),
             None => infos
                 .iter()
                 .filter(|i| i.panel.interactive)
@@ -290,7 +333,11 @@ fn ui_tick(world: &mut World) {
             continue;
         };
         let lay = rt.layout(info.id, &info.panel, &content);
-        let under = if h.inside { item_at(info, &content, &lay, h.x, h.y) } else { None };
+        let under = if h.inside {
+            item_at(info, &content, &lay, h.x, h.y)
+        } else {
+            None
+        };
         let s0 = info.panel.text_size;
         let st = states.entry(info.id).or_default();
         st.hover = under;
@@ -308,8 +355,12 @@ fn ui_tick(world: &mut World) {
             0
         };
         // Press: start a grab; sliders react at once.
-        if down && !was_down && under.is_some() && grab.is_none() {
-            rt.grabs.insert(p.id, Grab { panel: info.id, item: under.expect("checked") });
+        if down
+            && !was_down
+            && grab.is_none()
+            && let Some(item) = under
+        {
+            rt.grabs.insert(p.id, Grab { panel: info.id, item });
         }
         let grab = rt.grabs.get(&p.id).map(|g| g.item);
         if let Some(i) = grab {
@@ -317,7 +368,11 @@ fn ui_tick(world: &mut World) {
             let item = &content.items[i];
             if down && let UiWidget::Slider { min, max, value, .. } = &item.widget {
                 let (l, r, _) = layout::slider_track(lay.rects[i], s0);
-                let f = if r > l { ((h.x - l) / (r - l)).clamp(0.0, 1.0) } else { 0.0 };
+                let f = if r > l {
+                    ((h.x - l) / (r - l)).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
                 let v = min + f * (max - min);
                 if v != *value {
                     set(&mut changed);
@@ -326,33 +381,61 @@ fn ui_tick(world: &mut World) {
                     {
                         *value = v;
                     }
-                    events.push(UiEvent { panel: info.id, item: item.id.clone(), kind: UiEventKind::Slide, value: v, pointer: p.id });
+                    events.push(UiEvent {
+                        panel: info.id,
+                        item: item.id.clone(),
+                        kind: UiEventKind::Slide,
+                        value: v,
+                        pointer: p.id,
+                    });
                 }
             }
             if !down && was_down {
                 if under == Some(i) {
                     match &item.widget {
                         UiWidget::Button { action, .. } => {
-                            events.push(UiEvent { panel: info.id, item: item.id.clone(), kind: UiEventKind::Click, value: 1.0, pointer: p.id });
+                            events.push(UiEvent {
+                                panel: info.id,
+                                item: item.id.clone(),
+                                kind: UiEventKind::Click,
+                                value: 1.0,
+                                pointer: p.id,
+                            });
                             if !action.is_empty() {
                                 clicks.push(action.clone());
                             }
                         }
                         UiWidget::Toggle { on, .. } => {
                             set(&mut changed);
-                            if let Some(UiWidget::Toggle { on: o, .. }) = changed.as_mut().map(|c| &mut c.items[i].widget) {
+                            if let Some(UiWidget::Toggle { on: o, .. }) =
+                                changed.as_mut().map(|c| &mut c.items[i].widget)
+                            {
                                 *o = !*on;
                             }
-                            events.push(UiEvent { panel: info.id, item: item.id.clone(), kind: UiEventKind::Toggle, value: if *on { 0.0 } else { 1.0 }, pointer: p.id });
+                            events.push(UiEvent {
+                                panel: info.id,
+                                item: item.id.clone(),
+                                kind: UiEventKind::Toggle,
+                                value: if *on { 0.0 } else { 1.0 },
+                                pointer: p.id,
+                            });
                         }
                         UiWidget::List { rows, scroll, .. } => {
                             if let Some(row) = st.hover_row.filter(|r| *r < rows.len()) {
                                 let _ = scroll;
                                 set(&mut changed);
-                                if let Some(UiWidget::List { selected, .. }) = changed.as_mut().map(|c| &mut c.items[i].widget) {
+                                if let Some(UiWidget::List { selected, .. }) =
+                                    changed.as_mut().map(|c| &mut c.items[i].widget)
+                                {
                                     *selected = row as i32;
                                 }
-                                events.push(UiEvent { panel: info.id, item: item.id.clone(), kind: UiEventKind::Select, value: row as f32, pointer: p.id });
+                                events.push(UiEvent {
+                                    panel: info.id,
+                                    item: item.id.clone(),
+                                    kind: UiEventKind::Select,
+                                    value: row as f32,
+                                    pointer: p.id,
+                                });
                             }
                         }
                         _ => {}
@@ -362,16 +445,29 @@ fn ui_tick(world: &mut World) {
             }
         } else if p.scroll != 0.0
             && let Some(i) = under
-            && let UiWidget::List { rows, visible, scroll, .. } = &content.items[i].widget
+            && let UiWidget::List {
+                rows,
+                visible,
+                scroll,
+                ..
+            } = &content.items[i].widget
         {
             let max = rows.len().saturating_sub((*visible).max(1) as usize) as f32;
             let v = (scroll + p.scroll).clamp(0.0, max);
             if v != *scroll {
                 set(&mut changed);
-                if let Some(UiWidget::List { scroll: s, .. }) = changed.as_mut().map(|c| &mut c.items[i].widget) {
+                if let Some(UiWidget::List { scroll: s, .. }) =
+                    changed.as_mut().map(|c| &mut c.items[i].widget)
+                {
                     *s = v;
                 }
-                events.push(UiEvent { panel: info.id, item: content.items[i].id.clone(), kind: UiEventKind::Scroll, value: v, pointer: p.id });
+                events.push(UiEvent {
+                    panel: info.id,
+                    item: content.items[i].id.clone(),
+                    kind: UiEventKind::Scroll,
+                    value: v,
+                    pointer: p.id,
+                });
             }
         }
         rt.down.insert(p.id, down);
@@ -397,8 +493,16 @@ fn ui_tick(world: &mut World) {
 
 /// Turns every visible panel into quads, far panels first so blending stacks correctly.
 fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
-    let Some(rt) = world.get_resource::<UiRuntime>() else { return };
-    let Some(mut q) = world.try_query::<(&SceneId, &UiPanel, &UiContent, Option<&Transform>, Option<&Position>)>() else {
+    let Some(rt) = world.get_resource::<UiRuntime>() else {
+        return;
+    };
+    let Some(mut q) = world.try_query::<(
+        &SceneId,
+        &UiPanel,
+        &UiContent,
+        Option<&Transform>,
+        Option<&Position>,
+    )>() else {
         return;
     };
     let eye = Vec3::from(ctx.eye);
@@ -418,7 +522,10 @@ fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
         return;
     }
     visible.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
-    let mut quads = WorldQuads { image: rt.font.image_name.clone(), vertices: Vec::new() };
+    let mut quads = WorldQuads {
+        image: rt.font.image_name.clone(),
+        vertices: Vec::new(),
+    };
     quads.vertices.reserve(visible.len() * 64);
     for (_, id, panel, content, centre, rot) in visible {
         let mesh = rt.quads(id, panel, content);
@@ -429,9 +536,18 @@ fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
             let (yt, yb) = (hh - r.y, hh - r.y - r.h);
             let z = quad.layer as f32 * LAYER_STEP;
             let [u0, v0, u1, v1] = quad.uv;
-            for (x, y, u, v) in [(x0, yb, u0, v0), (x1, yb, u1, v0), (x1, yt, u1, v1), (x0, yt, u0, v1)] {
+            for (x, y, u, v) in [
+                (x0, yb, u0, v0),
+                (x1, yb, u1, v0),
+                (x1, yt, u1, v1),
+                (x0, yt, u0, v1),
+            ] {
                 let w = centre + rot * Vec3::new(x, y, z);
-                quads.vertices.push(QuadVertex { position: w.to_array(), uv: [u, v], color: quad.color });
+                quads.vertices.push(QuadVertex {
+                    position: w.to_array(),
+                    uv: [u, v],
+                    color: quad.color,
+                });
             }
         }
     }

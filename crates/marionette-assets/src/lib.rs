@@ -430,7 +430,8 @@ pub mod generated {
 /// Loads a sprite image by its scene `image` string (see `marionette_core::spatial::Sprite`).
 pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
     if let Some(key) = name.strip_prefix("generated:") {
-        return generated::get(key).ok_or_else(|| format!("no generated image `{key}` (it was replaced or never made)"));
+        return generated::get(key)
+            .ok_or_else(|| format!("no generated image `{key}` (it was replaced or never made)"));
     }
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {

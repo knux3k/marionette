@@ -3,8 +3,8 @@
 
 use crate::observe::{WorldTarget, with_world};
 use crate::{Agent, Op, op};
-use marionette_core::scene::SceneId;
 use marionette_core::Errors;
+use marionette_core::scene::SceneId;
 use marionette_ui3d::{PointerKind, UiEvents, UiPointer, UiPointers, UiRuntime};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -76,14 +76,21 @@ pub struct PointOutput {
 }
 
 fn point(agent: &mut Agent, input: PointInput) -> Result<PointOutput, Errors> {
-    let target = WorldTarget { session: Some(input.session), ..Default::default() };
+    let target = WorldTarget {
+        session: Some(input.session),
+        ..Default::default()
+    };
     with_world(agent, &target, |_, sim, _| {
         let pointers = input
             .pointers
             .iter()
             .map(|p| UiPointer {
                 id: p.id,
-                kind: if p.kind.as_deref() == Some("touch") { PointerKind::Touch } else { PointerKind::Ray },
+                kind: if p.kind.as_deref() == Some("touch") {
+                    PointerKind::Touch
+                } else {
+                    PointerKind::Ray
+                },
                 origin: p.origin,
                 direction: p.direction,
                 pressed: p.pressed,
@@ -110,7 +117,10 @@ fn point(agent: &mut Agent, input: PointInput) -> Result<PointOutput, Errors> {
         for p in &mut sim.world.resource_mut::<UiPointers>().0 {
             p.scroll = 0.0;
         }
-        Ok(PointOutput { tick: sim.tick(), events })
+        Ok(PointOutput {
+            tick: sim.tick(),
+            events,
+        })
     })
 }
 
@@ -174,10 +184,20 @@ fn panels(agent: &mut Agent, input: PanelsInput) -> Result<PanelsOutput, Errors>
                             UiWidget::List { selected, .. } => ("list", Some(*selected as f32)),
                             UiWidget::Spacer => ("spacer", None),
                         };
-                        ItemOut { id: item.id.clone(), kind: kind.into(), rect: [r.x, r.y, r.w, r.h], value }
+                        ItemOut {
+                            id: item.id.clone(),
+                            kind: kind.into(),
+                            rect: [r.x, r.y, r.w, r.h],
+                            value,
+                        }
                     })
                     .collect();
-                PanelOut { id, size: [panel.size.x, panel.size.y], overflow: lay.overflow, items }
+                PanelOut {
+                    id,
+                    size: [panel.size.x, panel.size.y],
+                    overflow: lay.overflow,
+                    items,
+                }
             })
             .collect();
         Ok(PanelsOutput { panels })

@@ -69,11 +69,36 @@ impl Default for UiPanel {
             face: UiFace::Fixed,
             max_distance: 0.0,
             interactive: true,
-            background: Color { r: 0.02, g: 0.03, b: 0.05, a: 0.85 },
-            text_color: Color { r: 0.92, g: 0.95, b: 1.0, a: 1.0 },
-            widget: Color { r: 0.12, g: 0.17, b: 0.24, a: 1.0 },
-            hover: Color { r: 0.2, g: 0.3, b: 0.42, a: 1.0 },
-            accent: Color { r: 0.1, g: 0.55, b: 0.95, a: 1.0 },
+            background: Color {
+                r: 0.02,
+                g: 0.03,
+                b: 0.05,
+                a: 0.85,
+            },
+            text_color: Color {
+                r: 0.92,
+                g: 0.95,
+                b: 1.0,
+                a: 1.0,
+            },
+            widget: Color {
+                r: 0.12,
+                g: 0.17,
+                b: 0.24,
+                a: 1.0,
+            },
+            hover: Color {
+                r: 0.2,
+                g: 0.3,
+                b: 0.42,
+                a: 1.0,
+            },
+            accent: Color {
+                r: 0.1,
+                g: 0.55,
+                b: 0.95,
+                a: 1.0,
+            },
         }
     }
 }
@@ -89,12 +114,22 @@ pub enum UiWidget {
     /// A switch: `on` flips on click.
     Toggle { text: String, on: bool },
     /// A slider from `min` to `max`, dragged along its track.
-    Slider { text: String, min: f32, max: f32, value: f32 },
+    Slider {
+        text: String,
+        min: f32,
+        max: f32,
+        value: f32,
+    },
     /// A bar filled `value` (0..1).
     Progress { text: String, value: f32 },
     /// Rows of text, `visible` of them at a time from row `scroll`; clicking a row selects it
     /// (`selected`, -1 for none); a pointer's scroll axis moves `scroll`.
-    List { rows: Vec<String>, visible: u32, scroll: f32, selected: i32 },
+    List {
+        rows: Vec<String>,
+        visible: u32,
+        scroll: f32,
+        selected: i32,
+    },
     /// Empty space.
     Spacer,
 }
@@ -113,7 +148,12 @@ pub struct UiItem {
 
 impl UiItem {
     pub fn new(id: &str, widget: UiWidget) -> Self {
-        Self { id: id.to_string(), span: 1, height: 0.0, widget }
+        Self {
+            id: id.to_string(),
+            span: 1,
+            height: 0.0,
+            widget,
+        }
     }
 }
 

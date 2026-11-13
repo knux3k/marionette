@@ -200,7 +200,12 @@ fn pack(bakes: Vec<Bake>, spread: u32, line_height: f32, ascent: f32) -> FontDat
     }
     let digest = Sha256::digest(&rgba);
     let key: String = digest.iter().take(8).map(|b| format!("{b:02x}")).collect();
-    let atlas = Arc::new(Image { width: ATLAS_W, height, rgba, srgb: false });
+    let atlas = Arc::new(Image {
+        width: ATLAS_W,
+        height,
+        rgba,
+        srgb: false,
+    });
     let key = format!("sdf-{key}");
     marionette_assets::generated::put(&key, atlas.clone());
     FontData {

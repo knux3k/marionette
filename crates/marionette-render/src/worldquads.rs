@@ -116,7 +116,8 @@ impl WorldQuadPass {
             }));
             for k in 0..(count / 4) as u32 {
                 let b = base + k * 4;
-                self.scratch_i.extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
+                self.scratch_i
+                    .extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
             }
             let end = self.scratch_i.len() as u32;
             match self.batches.last_mut() {
@@ -127,8 +128,20 @@ impl WorldQuadPass {
         if self.batches.is_empty() {
             return;
         }
-        write_growable(device, queue, &mut self.vertices, &self.scratch_v, wgpu::BufferUsages::VERTEX);
-        write_growable(device, queue, &mut self.indices, &self.scratch_i, wgpu::BufferUsages::INDEX);
+        write_growable(
+            device,
+            queue,
+            &mut self.vertices,
+            &self.scratch_v,
+            wgpu::BufferUsages::VERTEX,
+        );
+        write_growable(
+            device,
+            queue,
+            &mut self.indices,
+            &self.scratch_i,
+            wgpu::BufferUsages::INDEX,
+        );
     }
 
     /// Draws the uploaded quads into `pass`; returns the draw calls made. `texture` finds the

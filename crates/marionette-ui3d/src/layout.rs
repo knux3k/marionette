@@ -130,7 +130,11 @@ pub fn wrap(font: &FontData, text: &str, s: f32, max_w: f32) -> Vec<String> {
     for para in text.split('\n') {
         let mut line = String::new();
         for word in para.split(' ') {
-            let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
+            let candidate = if line.is_empty() {
+                word.to_string()
+            } else {
+                format!("{line} {word}")
+            };
             if width(&candidate) <= max_w || line.is_empty() {
                 line = candidate;
             } else {
@@ -158,7 +162,12 @@ impl Builder<'_> {
             return;
         }
         let [u, v] = self.font.white_uv;
-        self.out.push(Quad { rect, uv: [u, v, u, v], color, layer });
+        self.out.push(Quad {
+            rect,
+            uv: [u, v, u, v],
+            color,
+            layer,
+        });
     }
 
     /// Draws one line of text; returns its width. `y` is the top of the line.
@@ -203,12 +212,31 @@ impl Builder<'_> {
 }
 
 /// The quads of a panel, back to front.
-pub fn mesh(panel: &UiPanel, content: &UiContent, layout: &Layout, font: &FontData, state: PanelState) -> Vec<Quad> {
-    let mut b = Builder { font, out: Vec::new() };
-    let full = Rect { x: 0.0, y: 0.0, w: panel.size.x, h: panel.size.y };
+pub fn mesh(
+    panel: &UiPanel,
+    content: &UiContent,
+    layout: &Layout,
+    font: &FontData,
+    state: PanelState,
+) -> Vec<Quad> {
+    let mut b = Builder {
+        font,
+        out: Vec::new(),
+    };
+    let full = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: panel.size.x,
+        h: panel.size.y,
+    };
     b.rect(full, rgba(panel.background), 0);
     let s0 = panel.text_size;
-    let (text, widget, hover, accent) = (rgba(panel.text_color), rgba(panel.widget), rgba(panel.hover), rgba(panel.accent));
+    let (text, widget, hover, accent) = (
+        rgba(panel.text_color),
+        rgba(panel.widget),
+        rgba(panel.hover),
+        rgba(panel.accent),
+    );
     let bottom = panel.size.y - panel.padding;
     for (i, item) in content.items.iter().enumerate() {
         let r = layout.rects[i];
@@ -217,12 +245,23 @@ pub fn mesh(panel: &UiPanel, content: &UiContent, layout: &Layout, font: &FontDa
         }
         let hot = state.hover == Some(i);
         let down = state.pressed == Some(i);
-        let fill = if down { accent } else if hot { hover } else { widget };
+        let fill = if down {
+            accent
+        } else if hot {
+            hover
+        } else {
+            widget
+        };
         match &item.widget {
             UiWidget::Label { text: t, size, align } => {
                 let s = if *size > 0.0 { *size } else { s0 };
                 for (n, line) in wrap(font, t, s, r.w).iter().enumerate() {
-                    let lr = Rect { x: r.x, y: r.y + n as f32 * font.line_height * s, w: r.w, h: font.line_height * s };
+                    let lr = Rect {
+                        x: r.x,
+                        y: r.y + n as f32 * font.line_height * s,
+                        w: r.w,
+                        h: font.line_height * s,
+                    };
                     b.aligned(line, s, lr, *align, text, 2);
                 }
             }
@@ -232,39 +271,110 @@ pub fn mesh(panel: &UiPanel, content: &UiContent, layout: &Layout, font: &FontDa
             }
             UiWidget::Toggle { text: t, on } => {
                 b.aligned(t, s0, r, UiAlign::Left, text, 2);
-                let track = Rect { x: r.x + r.w - 2.0 * s0, y: r.y + r.h / 2.0 - 0.5 * s0, w: 2.0 * s0, h: s0 };
-                b.rect(track, if *on { accent } else if hot { hover } else { widget }, 1);
+                let track = Rect {
+                    x: r.x + r.w - 2.0 * s0,
+                    y: r.y + r.h / 2.0 - 0.5 * s0,
+                    w: 2.0 * s0,
+                    h: s0,
+                };
+                b.rect(
+                    track,
+                    if *on {
+                        accent
+                    } else if hot {
+                        hover
+                    } else {
+                        widget
+                    },
+                    1,
+                );
                 let knob = Rect {
-                    x: if *on { track.x + track.w - s0 + 0.12 * s0 } else { track.x + 0.12 * s0 },
+                    x: if *on {
+                        track.x + track.w - s0 + 0.12 * s0
+                    } else {
+                        track.x + 0.12 * s0
+                    },
                     y: track.y + 0.12 * s0,
                     w: 0.76 * s0,
                     h: 0.76 * s0,
                 };
                 b.rect(knob, text, 2);
             }
-            UiWidget::Slider { text: t, min, max, value } => {
-                let top = Rect { x: r.x, y: r.y, w: r.w, h: 1.2 * s0 };
+            UiWidget::Slider {
+                text: t,
+                min,
+                max,
+                value,
+            } => {
+                let top = Rect {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: 1.2 * s0,
+                };
                 b.aligned(t, s0, top, UiAlign::Left, text, 2);
                 b.aligned(&format!("{value:.2}"), s0, top, UiAlign::Right, text, 2);
                 let (l, rt, cy) = slider_track(r, s0);
-                let track = Rect { x: l, y: cy - 0.15 * s0, w: rt - l, h: 0.3 * s0 };
+                let track = Rect {
+                    x: l,
+                    y: cy - 0.15 * s0,
+                    w: rt - l,
+                    h: 0.3 * s0,
+                };
                 b.rect(track, fill, 1);
-                let f = if max > min { ((value - min) / (max - min)).clamp(0.0, 1.0) } else { 0.0 };
-                b.rect(Rect { w: track.w * f, ..track }, accent, 2);
+                let f = if max > min {
+                    ((value - min) / (max - min)).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                b.rect(
+                    Rect {
+                        w: track.w * f,
+                        ..track
+                    },
+                    accent,
+                    2,
+                );
                 let kx = l + (rt - l) * f;
-                b.rect(Rect { x: kx - 0.4 * s0, y: cy - 0.4 * s0, w: 0.8 * s0, h: 0.8 * s0 }, text, 3);
+                b.rect(
+                    Rect {
+                        x: kx - 0.4 * s0,
+                        y: cy - 0.4 * s0,
+                        w: 0.8 * s0,
+                        h: 0.8 * s0,
+                    },
+                    text,
+                    3,
+                );
             }
             UiWidget::Progress { text: t, value } => {
                 b.rect(r, widget, 1);
-                b.rect(Rect { w: r.w * value.clamp(0.0, 1.0), ..r }, accent, 2);
+                b.rect(
+                    Rect {
+                        w: r.w * value.clamp(0.0, 1.0),
+                        ..r
+                    },
+                    accent,
+                    2,
+                );
                 b.aligned(t, s0, r, UiAlign::Center, text, 3);
             }
-            UiWidget::List { rows, visible, scroll, selected } => {
+            UiWidget::List {
+                rows,
+                visible,
+                scroll,
+                selected,
+            } => {
                 let rh = row_height(s0);
                 let first = scroll.max(0.0) as usize;
                 for n in 0..(*visible).max(1) as usize {
                     let Some(row) = rows.get(first + n) else { break };
-                    let rr = Rect { x: r.x, y: r.y + n as f32 * rh, w: r.w, h: rh };
+                    let rr = Rect {
+                        x: r.x,
+                        y: r.y + n as f32 * rh,
+                        w: r.w,
+                        h: rh,
+                    };
                     let idx = (first + n) as i32;
                     let color = if *selected == idx {
                         accent
@@ -273,8 +383,19 @@ pub fn mesh(panel: &UiPanel, content: &UiContent, layout: &Layout, font: &FontDa
                     } else {
                         widget
                     };
-                    b.rect(Rect { h: rh - 0.1 * s0, ..rr }, color, 1);
-                    let tr = Rect { x: rr.x + 0.4 * s0, w: rr.w - 0.8 * s0, ..rr };
+                    b.rect(
+                        Rect {
+                            h: rh - 0.1 * s0,
+                            ..rr
+                        },
+                        color,
+                        1,
+                    );
+                    let tr = Rect {
+                        x: rr.x + 0.4 * s0,
+                        w: rr.w - 0.8 * s0,
+                        ..rr
+                    };
                     b.aligned(row, s0, tr, UiAlign::Left, text, 2);
                 }
             }
