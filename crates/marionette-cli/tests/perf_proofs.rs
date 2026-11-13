@@ -93,3 +93,25 @@ fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
         "the larger factory really drew more: {seen:?}"
     );
 }
+
+/// Saving off the tick (decision 0073): `Sim::capture` on the main thread, then the scene
+/// built on another thread is byte for byte the scene `snapshot` gives.
+#[test]
+fn capture_saved_on_another_thread_equals_snapshot() {
+    fn is_send<T: Send>(_: &T) {}
+    let dir = temp_dir();
+    let mut agent = Agent::new(&dir, false);
+    let factory = factory_scene(&mut agent, &dir, 1);
+    let swarm = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/swarm.scene.json");
+    for scene in [factory, swarm] {
+        let mut sim = engine::load_file(&scene, "capture", 0).unwrap();
+        sim.run(30);
+        let cap = sim.capture();
+        is_send(&cap);
+        let registry = engine::registry();
+        let text = std::thread::spawn(move || cap.into_scene(&registry).to_text())
+            .join()
+            .unwrap();
+        assert_eq!(text, sim.snapshot().to_text(), "{}", scene.display());
+    }
+}

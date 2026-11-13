@@ -186,6 +186,13 @@ impl Sim {
         scene::extract(&mut self.world, &self.registry)
     }
 
+    /// A copy of the current state for saving without holding up the tick: cheap here,
+    /// then [`scene::Capture::into_scene`] (the slow part) can run on another thread with
+    /// a shared [`Registry`]. Gives the same scene as [`Sim::snapshot`].
+    pub fn capture(&mut self) -> scene::Capture {
+        scene::capture(&mut self.world, &self.registry)
+    }
+
     /// SHA-256 (hex) of all simulation state: the canonical scene text plus the tick
     /// counter and RNG state.
     pub fn state_hash(&mut self) -> String {
