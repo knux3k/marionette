@@ -37,11 +37,11 @@ jobs:
       - name: Link-time sysroots (glibc 2.31 ALSA)
         run: scripts/package-sysroots.sh target/sysroots >> "$GITHUB_ENV"
       - name: Package
-        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target linux-x64 --target steamdeck --target steam-frame --out target/dist
+        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target linux-x64 --target steamdeck --target steam-frame --out target/packages
       - uses: actions/upload-artifact@v4
         with:
           name: packages-linux
-          path: target/dist/*.zip
+          path: target/packages/*.zip
           if-no-files-found: error
 
   windows:
@@ -55,11 +55,11 @@ jobs:
           key: package
       - name: Package
         shell: bash
-        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target windows-x64 --out target/dist
+        run: cargo run --locked -q -p marionette-cli -- --json package "$GAME" --target windows-x64 --out target/packages
       - uses: actions/upload-artifact@v4
         with:
           name: packages-windows
-          path: target/dist/*.zip
+          path: target/packages/*.zip
           if-no-files-found: error
 
   frame-on-arm64:

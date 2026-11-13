@@ -555,7 +555,13 @@ fn build_binary(opts: &Options, game: &Game, target: &Target, builder: &Builder)
         &triple,
     ]);
     if opts.release {
-        cmd.arg("--release");
+        // Shipped games use the workspace's `dist` profile (fat LTO, decision 0101) when it
+        // has one, else release.
+        if has_dist_profile(&opts.workspace) {
+            cmd.args(["--profile", "dist"]);
+        } else {
+            cmd.arg("--release");
+        }
     }
     cmd.args(select_args(opts, game));
     if *builder == Builder::Zigbuild {
@@ -618,6 +624,12 @@ fn build_binary(opts: &Options, game: &Game, target: &Target, builder: &Builder)
             .fix("give the game's Cargo.toml exactly one [[bin]] (see examples/rust-module)")
             .into()
     })
+}
+
+/// Whether the workspace manifest defines `[profile.dist]`.
+pub fn has_dist_profile(workspace: &Path) -> bool {
+    std::fs::read_to_string(workspace.join("Cargo.toml"))
+        .is_ok_and(|t| t.lines().any(|l| l.trim() == "[profile.dist]"))
 }
 
 /// Link-time sysroot for `arch` (`x86_64` or `aarch64`): the option, else

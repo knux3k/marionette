@@ -60,6 +60,9 @@ Game settings in `marionette.json` (all optional):
 - A Linux build machine whose own glibc is 2.31 or older builds its own architecture with plain
   cargo and needs neither.
 
+Builds use the workspace's cargo profile `dist` (fat LTO, decision 0101) when `Cargo.toml` defines
+`[profile.dist]`, else `--release`; `--debug` builds debug.
+
 Checks every package run makes: the Linux binary's newest `GLIBC_` symbol version must be <= 2.31
 (`package.glibc`), and when the binary can run on the build machine it runs the entry scene
 headless for 60 ticks (`package.smoke`).
