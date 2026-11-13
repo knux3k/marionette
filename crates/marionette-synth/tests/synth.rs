@@ -345,3 +345,18 @@ fn render_cost_leaves_headroom() {
         "480 frames (10 ms of audio) took {per_block} s"
     );
 }
+
+#[test]
+fn soft_limit_is_smooth_and_bounded() {
+    use marionette_synth::engine::soft_limit;
+    assert_eq!(soft_limit(0.5), 0.5);
+    let mut last = 0.0f32;
+    for i in 0..=2000 {
+        let x = i as f32 * 0.005; // 0..10
+        let y = soft_limit(x);
+        assert!(y >= last - 1e-6 && y <= 1.0 + 1e-6, "{x} -> {y}");
+        assert!((y - last).abs() < 0.01, "jump at {x}");
+        last = y;
+    }
+    assert!(soft_limit(-5.0) < -0.99);
+}
