@@ -1,0 +1,13 @@
+[package]
+name = "marionette-platform"
+description = "Marionette platform services behind interfaces: achievements and stats from a definitions file, cloud files and a save-folder sync, with an offline backend."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+schemars = "1.2"

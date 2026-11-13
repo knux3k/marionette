@@ -42,6 +42,15 @@
       "tick_budget_ms": 2.0
     },
     {
+      "name": "coop-netplay",
+      "description": "Networked co-op scene: per-player actions (p<slot>.*) and the NetPlayers roster read by scripts (decision 0211).",
+      "kind": "sim",
+      "scene": "examples/coop.scene.json",
+      "fast_ticks": 600,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
       "name": "scripted-spawning",
       "description": "Scripts that spawn, clone and destroy entities and run timers (entity churn over a long run).",
       "kind": "sim",

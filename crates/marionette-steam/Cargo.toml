@@ -1,0 +1,12 @@
+[package]
+name = "marionette-steam"
+description = "Optional Steam backend for Marionette (networking messages, lobbies, achievements, stats, cloud files). Loads the game's own steam_api library at run time; contains no Steamworks SDK files."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-net = { path = "../marionette-net" }
+marionette-platform = { path = "../marionette-platform" }
+libloading = "0.8"
