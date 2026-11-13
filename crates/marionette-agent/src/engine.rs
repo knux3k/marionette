@@ -61,6 +61,8 @@ impl EngineBuilder {
                 Part::Script,
                 Part::Module(Box::new(FactoryModule)),
                 Part::Module(Box::new(AnimModule)),
+                #[cfg(feature = "ui3d")]
+                Part::Module(Box::new(marionette_ui3d::Ui3dModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
                 #[cfg(feature = "netplay")]

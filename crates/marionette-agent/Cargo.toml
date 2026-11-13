@@ -15,6 +15,7 @@ marionette-physics = { path = "../marionette-physics" }
 marionette-audio = { path = "../marionette-audio" }
 marionette-import = { path = "../marionette-import", optional = true }
 marionette-anim = { path = "../marionette-anim" }
+marionette-ui3d = { path = "../marionette-ui3d", optional = true }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 marionette-assets = { path = "../marionette-assets" }
@@ -56,5 +57,8 @@ jobs-ts = ["dep:marionette-jobs-ts"]
 # `NetModule` and the net_simulate and achievements_check operations (decision 0210). The
 # Steam backend is a separate crate a game adds itself (decision 0212).
 netplay = ["dep:marionette-net", "dep:marionette-platform"]
+# World-space UI: panels and text placed in the 3D world (ui3d_* operations; decision 0200).
+# Off by default: a game that wants it adds the feature or `Ui3dModule` itself.
+ui3d = ["dep:marionette-ui3d"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-providers/net"]

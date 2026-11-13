@@ -51,6 +51,7 @@ pub const ALL: &[Skill] = &[
     skill!("marionette-multiplayer", Some("netplay")),
     skill!("marionette-port-unity-unreal", Some("port")),
     skill!("marionette-test-game"),
+    skill!("marionette-world-ui", Some("ui3d")),
     skill!("marionette-write-job", Some("jobs-ts")),
     skill!("marionette-write-script", Some("script")),
 ];
@@ -74,7 +75,7 @@ impl Skill {
         front_matter(self.text, "description").unwrap_or("")
     }
 
-    fn compiled_in(&self) -> bool {
+    pub fn compiled_in(&self) -> bool {
         self.feature.is_none_or(|f| crate::FEATURES.contains(&f))
     }
 }
