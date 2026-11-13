@@ -8,6 +8,7 @@
 
 pub mod anim;
 pub mod audio;
+pub mod synth;
 pub mod batch;
 pub mod docs;
 pub mod edit;
@@ -166,6 +167,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         providers::ops(),
         anim::ops(),
         audio::ops(),
+        synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]
