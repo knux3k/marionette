@@ -128,7 +128,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, Vulkan, OpenXR loader, Monado, Xvfb)
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
       - name: Build
         run: cargo build --locked -p marionette-cli --tests
       - name: Start the simulated headset
