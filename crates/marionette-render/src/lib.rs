@@ -9,6 +9,7 @@ pub mod compare;
 pub mod cull;
 mod environment;
 pub mod extract;
+pub mod frame_stats;
 pub mod gpu;
 mod post;
 mod probes;

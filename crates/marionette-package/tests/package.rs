@@ -42,7 +42,12 @@ fn every_proof_game_has_a_package_plan_without_tests_or_recipes() {
             }
         }
         // The proof games script in TypeScript and use no job TypeScript.
-        assert_eq!(g.features, vec!["script".to_string()], "{}", g.name);
+        assert_eq!(
+            g.features,
+            vec!["gamepad".to_string(), "script".to_string()],
+            "{}",
+            g.name
+        );
     }
 }
 
@@ -66,7 +71,10 @@ fn job_typescript_is_detected_and_unreferenced_assets_are_listed() {
     std::fs::write(d.join("assets/spare.png"), b"x").unwrap();
     std::fs::write(d.join("assets/spare.provenance.json"), b"{}").unwrap();
     let g = read_game(d).unwrap();
-    assert_eq!(g.features, vec!["jobs-ts".to_string(), "xr".to_string()]);
+    assert_eq!(
+        g.features,
+        ["gamepad", "jobs-ts", "xr"].map(String::from).to_vec()
+    );
     assert!(marionette_package::is_vr(&g));
     assert_eq!(
         g.left_out,

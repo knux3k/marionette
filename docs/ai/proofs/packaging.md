@@ -11,3 +11,9 @@
 | Real ARM64 machine (GitHub Ubuntu 24.04 ARM64 runner) | CI workflow `package`, job `frame-on-arm64`: the cross-built steam-frame zip, `run scenes/main.scene.json --headless --ticks 600 --seed 1` | cloudstep `331d72c7...d642`, equal to x86-64 |
 | Full test suite on ARM64, GPU tests on lavapipe | job `test-arm64` | passes; drift hash equal |
 | Windows package | job `windows` | builds, smoke run passes |
+
+## Gamepads in packages (2026-11-13)
+
+After windowed play (decision 0172) landed, packages carry the `gamepad` feature. Linux sysroots
+hold Ubuntu 20.04 libudev 245. Cloudstep packaged for linux-x64 (smoke passed, glibc 2.30 needed)
+and steam-frame (glibc 2.30) from the cloud container. No gamepad was connected.

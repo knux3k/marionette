@@ -226,7 +226,7 @@ pub(crate) fn readme(game: &Game, target: &Target, bin: &str) -> String {
                  - As a non-Steam game: copy this folder to the Deck, add {bin} with \"Add a Non-Steam Game\" in desktop mode.\n\
                  - Through the SteamOS Devkit Client: Start Command `{bin}`, Runtime \"Steam Linux Runtime 3.0 (sniper)\".\n\
                  - On Steam: Linux depot with this folder, launch option `{bin}`, Linux Runtime \"Steam Linux Runtime 3.0 (sniper)\".\n\
-                 - Controls are keyboard and mouse: pick the Steam Input template \"Keyboard (WASD) and Mouse\".\n"
+                 - Controls: the game reads gamepads; for keyboard-and-mouse games pick the Steam Input template \"Keyboard (WASD) and Mouse\".\n"
             )
         }
         "steam-frame" => {
@@ -234,7 +234,7 @@ pub(crate) fn readme(game: &Game, target: &Target, bin: &str) -> String {
                 "Steam Frame (Linux ARM64)\n\
                  - Through the SteamOS Devkit Client: Title Upload with this folder, Start Command `{bin}`, Runtime \"Steam Linux Runtime 3.0 ARM64 (sniper)\".\n\
                  - VR games start in the headset through OpenXR; other games run as a flat window.\n\
-                 - Flat games use keyboard and mouse (map the controllers with Steam Input); VR games read the controllers through OpenXR.\n"
+                 - Flat games read gamepads (or a Steam Input keyboard-and-mouse layout); VR games read the controllers through OpenXR.\n"
             )
         }
         _ => {}

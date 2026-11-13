@@ -38,7 +38,7 @@ Valve's Steam Frame pages (2026-11-13) say the Frame runs SteamOS on a Snapdrago
 - All six proof games package for Linux x64 and Steam Frame; on ARM64 (emulated) their state
   hashes equal x86-64. Proofs: `docs/ai/proofs/packaging.md`.
 - VR games (`XrRig`) package with the `xr` feature and start in the headset, else a window;
-  flat games play as a window. Deck and Frame flat controls need a Steam Input keyboard layout until a gamepad backend exists.
+  flat games play as a window. Packages carry gamepad input (decision 0172) for Deck and Frame controls.
 - Focus check (FOCUSES.md): modularity (own crate behind a feature; games with their own Rust
   binary package the same way), tokens (one command, compact results, PACKAGING.md read only
   for this task), performance (release builds, smaller binaries: 46 MB to 34 MB without job

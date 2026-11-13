@@ -64,6 +64,11 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
         record: None,
         mute: false,
         title: Some(&game.title),
+        window: crate::render::WindowFlags {
+            present: "vsync".into(),
+            frame_latency: 2,
+            ..Default::default()
+        },
     });
     marionette_host::shutdown();
     match result {

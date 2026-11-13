@@ -43,7 +43,7 @@ tries the headset through OpenXR first and opens a window when no runtime or hea
 (`xr.no_*`). Linux and the Frame use the system OpenXR loader; on Windows put
 `openxr_loader.dll` in the game folder (the build warns when it is missing).
 
-The engine binary gets only the runtime features the game uses: `script` when it has
+The engine binary gets `gamepad` (decision 0172) and only the other runtime features the game uses: `script` when it has
 TypeScript, `jobs-ts` when text names `JobData`, `JobSchedule` or `engine.jobs` (wasmtime is
 about 12 MB), `xr` when a scene has an `XrRig`. A game with its own `Cargo.toml` (decision 0062) is built from that package.
 
@@ -61,7 +61,7 @@ Game settings in `marionette.json` (all optional):
   `rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu`, then
   `scripts/package-sysroots.sh target/sysroots` and export the two variables it prints
   (`MARIONETTE_SYSROOT_X86_64`, `MARIONETTE_SYSROOT_AARCH64`). The sysroots hold the ALSA
-  library of Ubuntu 20.04 (glibc 2.31) so the binary never links the build machine's newer one.
+  and udev (gamepad) libraries of Ubuntu 20.04 (glibc 2.31) so the binary never links the build machine's newer one.
 - A Linux build machine whose own glibc is 2.31 or older builds its own architecture with plain
   cargo and needs neither.
 
@@ -84,7 +84,8 @@ headless for 60 ticks (`package.smoke`).
 
 ## Gaps
 
-- No gamepad backend: on Deck and Frame the player uses a Steam Input keyboard-and-mouse layout.
+- Gamepads never tested on a Deck or Frame: Steam Input may present the built-in controls as a
+  virtual pad; keyboard-and-mouse layouts also work.
 - VR packages never ran on a real headset or in the Frame's runtime.
 - Ray tracing is not tested on ARM64: Mesa's llvmpipe crashes in its JIT with ray queries
   on, so the ARM64 CI job sets `MARIONETTE_RAY_TRACING=0`. The Frame's own GPU is unchecked.

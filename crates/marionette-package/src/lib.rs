@@ -51,16 +51,17 @@ pub const MANIFEST: &str = "game.package.json";
 pub const FORMAT: &str = "marionette.package";
 /// Oldest glibc a Linux package may need: Steam Linux Runtime 3.0 (sniper) ships 2.31.
 pub const GLIBC_FLOOR: (u32, u32) = (2, 31);
-/// Engine features a packaged game may get when it has no binary of its own: scripts and job
-/// TypeScript, each only when the game uses it ([`detect_features`]). Import, pool,
+/// Engine features a packaged game may get when it has no binary of its own: gamepads always,
+/// scripts, job TypeScript and OpenXR only when the game uses them ([`detect_features`]). Import, pool,
 /// generation, porting and packaging are editor tools and stay out.
-pub const RUNTIME_FEATURES: &[&str] = &["script", "jobs-ts", "xr"];
+pub const RUNTIME_FEATURES: &[&str] = &["gamepad", "script", "jobs-ts", "xr"];
 
-/// The runtime features a game's files use: `script` when it has TypeScript files,
+/// The runtime features a game's files use: `gamepad` always (Deck and Frame players hold one,
+/// decision 0172), `script` when it has TypeScript files,
 /// `jobs-ts` when any text names `JobData`, `JobSchedule` or `engine.jobs` (job TypeScript
 /// brings wasmtime, about 12 MB of binary), `xr` when a scene has an `XrRig` (decision 0190).
 pub fn detect_features(dir: &Path, files: &[String]) -> Vec<String> {
-    let mut out = Vec::new();
+    let mut out = vec!["gamepad".to_string()];
     if files.iter().any(|f| f.ends_with(".ts")) {
         out.push("script".to_string());
     }
@@ -650,14 +651,19 @@ fn sysroot(opts: &Options, arch: &str) -> Result<PathBuf, Errors> {
         .get(arch)
         .cloned()
         .or_else(|| std::env::var_os(&var).map(PathBuf::from));
-    let lib = |d: &PathBuf| d.join(format!("usr/lib/{arch}-linux-gnu/pkgconfig/alsa.pc"));
+    let pc = |d: &PathBuf, lib: &str| d.join(format!("usr/lib/{arch}-linux-gnu/pkgconfig/{lib}.pc"));
     match dir {
-        Some(d) if lib(&d).is_file() => Ok(d),
+        Some(d) if pc(&d, "alsa").is_file() && pc(&d, "libudev").is_file() => Ok(d),
         found => Err(Diagnostic::error(
             codes::TOOLCHAIN,
             match found {
-                Some(d) => format!("sysroot `{}` has no usr/lib/{arch}-linux-gnu/pkgconfig/alsa.pc", d.display()),
-                None => format!("a {arch} Linux package needs a sysroot with the ALSA library of glibc 2.31 to link against"),
+                Some(d) => format!(
+                    "sysroot `{}` lacks usr/lib/{arch}-linux-gnu/pkgconfig/alsa.pc or libudev.pc",
+                    d.display()
+                ),
+                None => format!(
+                    "a {arch} Linux package needs a sysroot with the ALSA and udev libraries of glibc 2.31 to link against"
+                ),
             },
         )
         .fix(format!("run scripts/package-sysroots.sh and set {var} to the folder it prints (docs/ai/PACKAGING.md)"))
