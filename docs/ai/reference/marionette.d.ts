@@ -590,6 +590,31 @@ type Follow = {
   target: number;
 };
 
+/** Can be picked up by an [`XrHand`]. With a dynamic `RigidBody` the object is moved by velocity while held, so it still collides (it cannot pass through walls); without one its `Transform` follows the hand exactly. */
+type Grabbable = {
+  /** Snap the object's origin and rotation to the grip (tools, guns); otherwise keep the offset it had when grabbed (boxes, loose items). */
+  snap: boolean;
+};
+
+/** On an object while a hand holds it. Written by the XR module. */
+type Held = {
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  hand: number;
+  /** Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). */
+  offset_rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** The object's pose relative to the grip. */
+  offset_translation: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
 /** Turns input on for a scene: the action map file, relative to the scene file. */
 type InputConfig = {
   action_map: string;
@@ -972,6 +997,97 @@ type Velocity = {
   z: number;
 };
 
+/** A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`. */
+type XrHand = {
+  grab_action: string;
+  /** Metres from the grip to an object's centre. */
+  grab_radius: number;
+  /** Multiplies the release velocity (1 = as moved). */
+  throw_scale: number;
+};
+
+/** Hand motion over the last few ticks. Written by the XR module. */
+type XrHandMotion = {
+  /** Rotation speed over the last tick (radians per second, world axes). */
+  angular_velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Grip rotation last tick. */
+  last_rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Recent grip positions (world), oldest first, at most [`MOTION_TICKS`]. */
+  positions: Array<{
+    x: number;
+    y: number;
+    z: number;
+  }>;
+  /** Average velocity over `positions` (m/s): a held object leaves the hand with this. */
+  velocity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
+/** Stick movement, turning and teleport for the rig it is on. An empty action name turns that part off. */
+type XrLocomotion = {
+  /** Forward is where this source points, flattened (`Head`, or `LeftAim` for hand-relative). */
+  direction: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+  /** Strafe action (-1 left .. 1 right). */
+  move_x: string;
+  /** Forward action (-1 back .. 1 forward). */
+  move_y: string;
+  smooth_degrees_per_second: number;
+  snap_degrees: number;
+  /** Metres per second at full stick. */
+  speed: number;
+  /** Hold to aim, release to teleport (needs physics: the aim ray must hit ground). */
+  teleport: string;
+  /** The ray used to aim a teleport. */
+  teleport_aim: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+  /** Longest teleport in metres. */
+  teleport_range: number;
+  /** Turn action (-1 left .. 1 right). */
+  turn: string;
+  /** How turning works. */
+  turn_mode: "Snap" | "Smooth" | "Off";
+  /** Comfort vignette strength while moving or turning smoothly (0 off .. 1 strong). */
+  vignette: number;
+};
+
+/** Locomotion state. Written by the XR module. */
+type XrLocomotionState = {
+  /** The turn stick returned to centre since the last snap. */
+  snap_armed: boolean;
+  /** Where a teleport would land now (only meaningful while `teleport_valid`). */
+  teleport_point: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  teleport_valid: boolean;
+};
+
+/** The play space: where the tracked area sits in the world. Tracked poses are relative to this entity's `Transform` (translation and rotation; scale is ignored). Locomotion moves and turns it. */
+type XrRig = {
+  /** Added to every tracked height: 0 for a standing play space (floor at 0); a seated player on a space whose origin is at eye level uses about 1.2. */
+  height_offset: number;
+};
+
+/** Follows a tracked pose inside a rig every tick (its `Transform` is overwritten). While the source is not tracked the entity keeps its last pose. */
+type XrTracked = {
+  /** The entity with [`XrRig`]. */
+  rig: number;
+  /** A tracked thing. */
+  source: "Head" | "LeftGrip" | "RightGrip" | "LeftAim" | "RightAim";
+};
+
 /** Every component, by the name used in scene files. */
 interface Components {
   AngularVelocity: AngularVelocity;
@@ -992,6 +1108,8 @@ interface Components {
   FactoryBelt: FactoryBelt;
   FactoryMachine: FactoryMachine;
   Follow: Follow;
+  Grabbable: Grabbable;
+  Held: Held;
   JobData: JobData;
   JobDraw: JobDraw;
   JobSchedule: JobSchedule;
@@ -1019,6 +1137,12 @@ interface Components {
   UiRect: UiRect;
   UiText: UiText;
   Velocity: Velocity;
+  XrHand: XrHand;
+  XrHandMotion: XrHandMotion;
+  XrLocomotion: XrLocomotion;
+  XrLocomotionState: XrLocomotionState;
+  XrRig: XrRig;
+  XrTracked: XrTracked;
 }
 
 /** Every resource, by the name used in scene files. */

@@ -18,10 +18,14 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
+| 10 | Later (OpenXR, AI while playing, inspector) | OpenXR in progress (decision 0190): `marionette xr` renders to a headset (checked on a simulated headset), tracked head and hands, grab and throw, snap/smooth turn, teleport, vignette, hand tracking, haptics. AI while playing and inspector not started. |
 
 ## UNVERIFIED
 
+- Headsets (decision 0190): never worn. Not checked: SteamVR on Windows, a standalone ARM64
+  headset, controller bindings per device (only the suggested profiles are listed), hand
+  tracking (the simulated headset has none), haptics, comfort settings, frame timing at 90 Hz
+  on a desktop GPU.
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
@@ -88,7 +92,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
   export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
-  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; the OpenXR path (decision 0190) has run only
+  on Monado's simulated headset on lavapipe.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.

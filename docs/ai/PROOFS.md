@@ -432,3 +432,7 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
   snapshot byte for byte.
 - `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_capture_budget`:
   4x factory capture 0.75 ms (budget 2 ms); the whole snapshot as text 72 ms, 2.3 MB (container).
+
+## Headsets through OpenXR (decision 0190)
+
+In [proofs/xr.md](proofs/xr.md).
