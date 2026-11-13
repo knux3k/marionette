@@ -19,6 +19,8 @@ pub mod jobs_ts;
 pub mod library;
 pub mod mcp;
 pub mod observe;
+#[cfg(feature = "package")]
+pub mod package;
 pub mod perf;
 #[cfg(feature = "pool")]
 pub mod pool;
@@ -144,6 +146,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "package")]
+    "package",
     #[cfg(feature = "net")]
     "net",
 ];
@@ -175,6 +179,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         port::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "package")]
+        package::ops(),
         batch::ops(),
     ];
     groups.into_iter().flatten().collect()

@@ -1,0 +1,16 @@
+[package]
+name = "marionette-package"
+description = "Marionette game packaging: one command turns a game into a folder (and zip) for Windows x64, Linux x64, Steam Deck or Steam Frame (Linux ARM64)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-host.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+schemars = "1.2"
+flate2 = "1.1"

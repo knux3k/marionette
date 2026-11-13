@@ -220,6 +220,8 @@ pub struct WindowedRun<'a> {
     pub input: Option<&'a str>,
     pub record: Option<&'a str>,
     pub mute: bool,
+    /// Window title (default `Marionette - <scene>`); packaged games use the game's title.
+    pub title: Option<&'a str>,
 }
 
 pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
@@ -233,6 +235,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         input,
         record,
         mute,
+        title,
     } = run;
     let (width, height) = parse_size(size)?;
     let mut sim = load(o_engine, path, seed)?;
@@ -250,7 +253,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         }
     }
     let opts = WindowOptions {
-        title: format!("Marionette - {path}"),
+        title: title.map_or_else(|| format!("Marionette - {path}"), str::to_string),
         width,
         height,
         camera,

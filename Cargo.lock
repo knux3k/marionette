@@ -2219,6 +2219,7 @@ dependencies = [
  "marionette-input",
  "marionette-jobs",
  "marionette-jobs-ts",
+ "marionette-package",
  "marionette-physics",
  "marionette-pool",
  "marionette-port",
@@ -2276,9 +2277,11 @@ dependencies = [
  "marionette-generate",
  "marionette-host",
  "marionette-jobs",
+ "marionette-package",
  "marionette-render",
  "serde",
  "serde_json",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2397,6 +2400,19 @@ dependencies = [
  "sha2 0.11.1",
  "wasm-encoder 0.243.0",
  "wasmtime",
+]
+
+[[package]]
+name = "marionette-package"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "marionette-core",
+ "marionette-host",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]
