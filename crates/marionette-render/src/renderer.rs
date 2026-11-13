@@ -367,6 +367,7 @@ pub struct Renderer {
     sprite_vertices: Option<wgpu::Buffer>,
     sprite_indices: Option<wgpu::Buffer>,
     ui_pipeline: wgpu::RenderPipeline,
+    world_quads: crate::worldquads::WorldQuadPass,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
@@ -789,6 +790,15 @@ impl Renderer {
             },
         );
 
+        let world_quads = crate::worldquads::WorldQuadPass::new(
+            device,
+            &view_layout,
+            &sprite_tex_layout,
+            color_format,
+            DEPTH_FORMAT,
+            multisample,
+        );
+
         let sampler = |label, filter, address| {
             device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some(label),
@@ -862,6 +872,7 @@ impl Renderer {
             sprite_vertices: None,
             sprite_indices: None,
             ui_pipeline,
+            world_quads,
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
@@ -918,6 +929,7 @@ impl Renderer {
             .iter()
             .map(|s| s.image.as_str())
             .chain(frame.ui.iter().map(|u| u.look.image()))
+            .chain(crate::worldquads::WorldQuadPass::images(&frame.quads))
             .collect();
         let before = self.cached_assets();
         self.models.retain(|k, _| models.contains(k.as_str()));
@@ -975,6 +987,15 @@ impl Renderer {
                         .entity(ui.entity)
                         .component("UiImage")
                         .fix("check the PNG path (relative to the scene file) or use a builtin: image"),
+                );
+            }
+        }
+        for q in &frame.quads {
+            if let Some(msg) = self.ensure_texture(&q.image) {
+                errors.push(
+                    Diagnostic::error(codes::ASSET, msg.clone()).fix(
+                        "a module draws world-space quads with an image that is missing or was replaced",
+                    ),
                 );
             }
         }
@@ -1715,6 +1736,8 @@ impl Renderer {
             );
         }
 
+        self.world_quads.upload(&self.device, &self.queue, &frame.quads);
+
         let meshes = MeshCalls {
             calls: &calls,
             instances: self.instance_buffer.as_ref(),
@@ -1898,6 +1921,14 @@ impl Renderer {
                     }
                 }
             }
+            stats.draw_calls += self
+                .world_quads
+                .draw(&mut pass, &self.view_group, world_offset, |image| {
+                    self.sprite_textures
+                        .get(image)
+                        .and_then(|t| t.as_ref().ok())
+                        .map(|t| &t.bind_group)
+                });
             if let (Some(vb), Some(ib), false) =
                 (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
             {

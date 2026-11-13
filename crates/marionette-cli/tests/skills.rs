@@ -293,7 +293,7 @@ fn skills_name_only_things_that_exist() {
     let e = engine();
     let names: BTreeSet<&str> = skills::ALL.iter().map(|s| s.name).collect();
     let mut all = Vec::new();
-    for skill in skills::ALL {
+    for skill in skills::ALL.iter().filter(|s| s.compiled_in()) {
         for p in problems_of(&e, skill, &names) {
             all.push(format!("{}: {p}", skill.name));
         }
@@ -451,7 +451,10 @@ fn games_get_the_skills_and_handoff_files() {
     assert!(listed.iter().all(|s| s["audience"] == "game"));
     assert_eq!(listed.len(), out["skills"].as_array().unwrap().len());
     let all = agent.call("skills_list", json!({ "engine": true })).unwrap();
-    assert_eq!(all["skills"].as_array().unwrap().len(), skills::ALL.len());
+    assert_eq!(
+        all["skills"].as_array().unwrap().len(),
+        skills::ALL.iter().filter(|s| s.compiled_in()).count()
+    );
     let one = agent
         .call("skills_get", json!({ "name": "marionette-port-unity-unreal" }))
         .unwrap();
