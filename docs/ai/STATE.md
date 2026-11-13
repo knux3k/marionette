@@ -121,3 +121,5 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
   is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
   check: a dry run over a project the owner has, with their permission.
+
+- `port_serde` (0240): field order and float text unchecked against real JsonUtility files.

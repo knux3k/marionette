@@ -175,6 +175,19 @@ on the tick thread and `Capture::into_scene` elsewhere: a large factory's state 
 of scene text. Per-entity number loops that fit `JobData` arrays can be job TypeScript
 instead (decision 0070); it has no structs and no 64-bit integers.
 
+## Saved data (`[Serializable]` and JsonUtility)
+
+`marionette op port_serde '{"source": "<Assets>", "out": "crates/<game>/src/serial.rs"}'`
+(decision 0240) writes serde types for every `[Serializable]` class and struct: the module
+reads and writes the JSON `JsonUtility` makes. Pass `roots: ["Name"]` for one type and what it
+reaches, `derives: ["Reflect"]` for extra derives, `dry_run: true` to get the code back.
+Read `notes` before using it: `skipped` fields are not saved by Unity either (dictionaries,
+nested arrays, non-[Serializable] classes), `unresolved` fields are kept as raw JSON (type not
+in the scanned source), `initializer` means a default needed a method call and is zero.
+Load with `from_json::<T>(text)` and write with `to_json(&value)`. The module is generated:
+change the C# or the tool, never the output. Values the game computes after loading (indexes,
+caches) belong in other types, not in the generated ones.
+
 ## Not ported
 
 C# `partial` classes are reported once, with the members of every part.

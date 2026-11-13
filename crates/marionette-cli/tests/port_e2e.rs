@@ -146,3 +146,34 @@ fn scaffold_writes_skeletons_and_refuses_to_overwrite() {
         .0
     );
 }
+
+#[test]
+fn serde_generation_writes_once_and_reports() {
+    let root = temp_dir("serde");
+    let src = fixture("serial");
+    let (ok, v) = op(&root, "port_serde", &json!({ "source": src, "roots": ["Slot"] }));
+    assert!(ok, "{v}");
+    assert_eq!(v["result"]["written"], json!(false));
+    assert!(v["result"]["rust"].as_str().unwrap().contains("pub struct Slot"));
+    let (ok, v) = op(
+        &root,
+        "port_serde",
+        &json!({ "source": src, "out": "src/serial.rs" }),
+    );
+    assert!(ok, "{v}");
+    assert_eq!(v["result"]["written"], json!(true));
+    assert!(root.join("src/serial.rs").exists());
+    assert!(
+        v["result"]["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["at"] == "Profile.lookup" && n["kind"] == "skipped")
+    );
+    let (ok, _) = op(
+        &root,
+        "port_serde",
+        &json!({ "source": src, "out": "src/serial.rs" }),
+    );
+    assert!(!ok, "second write must refuse to overwrite");
+}
