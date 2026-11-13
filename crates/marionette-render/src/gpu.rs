@@ -56,8 +56,27 @@ impl Gpu {
                 ),
             )
         })?;
+        // Ray queries (decision 0093) where the adapter has them, unless turned off with
+        // MARIONETTE_RAY_TRACING=0. Scenes use them only with the `RayTracing` resource.
+        let ray_query = wgpu::Features::EXPERIMENTAL_RAY_QUERY;
+        let rt = adapter.features().contains(ray_query)
+            && std::env::var("MARIONETTE_RAY_TRACING").map_or(true, |v| v != "0");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("marionette"),
+            required_features: if rt { ray_query } else { wgpu::Features::empty() },
+            required_limits: if rt {
+                wgpu::Limits::default().using_acceleration_structure_values(adapter.limits())
+            } else {
+                wgpu::Limits::default()
+            },
+            // SAFETY: wgpu marks ray queries experimental: its API may change and may have
+            // bugs. Only ray query use is enabled; it runs only when a scene asks for
+            // `RayTracing`, and MARIONETTE_RAY_TRACING=0 turns it off entirely.
+            experimental_features: if rt {
+                unsafe { wgpu::ExperimentalFeatures::enabled() }
+            } else {
+                wgpu::ExperimentalFeatures::disabled()
+            },
             ..Default::default()
         }))
         .map_err(|e| device_error(format!("cannot open GPU device: {e}")))?;
@@ -88,6 +107,13 @@ impl Gpu {
             samplers: hub.samplers.num_kept_from_user,
             render_pipelines: hub.render_pipelines.num_kept_from_user,
         })
+    }
+
+    /// True when the device can trace rays (decision 0093).
+    pub fn ray_tracing(&self) -> bool {
+        self.device
+            .features()
+            .contains(wgpu::Features::EXPERIMENTAL_RAY_QUERY)
     }
 
     /// GPU name and backend, e.g. `<adapter name> (Vulkan)`.

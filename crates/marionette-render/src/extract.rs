@@ -7,8 +7,8 @@ use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
     AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, LookAt, Material,
-    Model, ModelPlacement, PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
-    ToneMapping, Transform,
+    Model, ModelPlacement, PointLight, Projection, RayTracing, ReflectionProbe, ShadowCascades, Shadows,
+    SkyLight, SpotLight, Sprite, SpriteRegion, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -39,7 +39,25 @@ pub struct FrameData {
     pub bloom: Option<(f32, f32)>,
     /// Environment lighting and reflections (decision 0066).
     pub environment: Option<EnvironmentData>,
+    /// Sun shadow cascades: count (2 to 4) and how far they reach (decision 0090).
+    pub cascades: Option<(u32, f32)>,
+    /// Reflection probes, sorted by entity id, at most four (decision 0092).
+    pub probes: Vec<ProbeData>,
+    /// Ray-traced lighting, when the scene asks for it (decision 0093).
+    pub ray_tracing: Option<RayTracing>,
 }
+
+/// A reflection probe: where its picture is taken and the box it applies to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProbeData {
+    pub entity: u64,
+    pub position: Vec3,
+    pub extent: Vec3,
+    pub resolution: u32,
+}
+
+/// Most reflection probes a frame uses (lowest entity ids win).
+pub const MAX_PROBES: usize = 4;
 
 /// The `Environment` resource plus the sky colors a generated environment is made from.
 #[derive(Debug, Clone, PartialEq)]
@@ -266,7 +284,26 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
             ground,
         }
     });
+    frame.cascades = world
+        .get_resource::<ShadowCascades>()
+        .filter(|c| c.count >= 2 && c.far > 0.0)
+        .map(|c| (c.count.min(4), c.far));
+    frame.ray_tracing = world.get_resource::<RayTracing>().copied();
     type Place<'a> = (Option<&'a Transform>, Option<&'a Position>, Option<&'a LookAt>);
+    if let Some(mut q) = world.try_query::<(&SceneId, &ReflectionProbe, Place)>() {
+        let mut probes: Vec<ProbeData> = q
+            .iter(world)
+            .map(|(id, probe, (t, p, l))| ProbeData {
+                entity: id.0,
+                position: world_matrix(t, p, l).w_axis.truncate(),
+                extent: v3(probe.extent).abs().max(Vec3::splat(0.05)),
+                resolution: probe.resolution.clamp(32, 512),
+            })
+            .collect();
+        probes.sort_by_key(|p| p.entity);
+        probes.truncate(MAX_PROBES);
+        frame.probes = probes;
+    }
 
     if let Some(mut q) = world.try_query::<(&SceneId, &Camera, Place)>() {
         for (id, camera, (t, p, l)) in q.iter(world) {
@@ -452,7 +489,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 20] = [
+pub const READS: [(&str, Kind); 23] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -473,4 +510,7 @@ pub const READS: [(&str, Kind); 20] = [
     ("Bloom", Kind::Resource),
     ("CastShadows", Kind::Component),
     ("Environment", Kind::Resource),
+    ("ShadowCascades", Kind::Resource),
+    ("ReflectionProbe", Kind::Component),
+    ("RayTracing", Kind::Resource),
 ];

@@ -32,14 +32,23 @@ const FLAG_FOG: u32 = 4;
 const FLAG_SKY: u32 = 8;
 const FLAG_HDR: u32 = 16;
 const FLAG_ENV: u32 = 32;
+/// Ray-traced shadows and reflections (decision 0093).
+const FLAG_RT_SHADOWS: u32 = 64;
+const FLAG_RT_REFLECT: u32 = 128;
+/// Reflection probes (decision 0092).
+const FLAG_PROBES: u32 = 256;
 /// Shadow maps for point and spot lights per frame (a point light takes six).
 pub const MAX_LOCAL_SHADOW_LAYERS: usize = 24;
 /// Dynamic uniform offsets must be multiples of this (WebGPU minimum alignment).
 const VIEW_STRIDE: u64 = 256;
-/// View buffer slots: world and UI per view, the sun's shadow map, local shadow layers.
-const VIEW_SLOTS: u64 = 2 * MAX_VIEWS as u64 + 1 + MAX_LOCAL_SHADOW_LAYERS as u64;
+/// Most sun shadow cascades (decision 0090).
+pub const MAX_CASCADES: usize = 4;
+/// View buffer slots: world and UI per view, the sun's cascades, local shadow layers.
+const VIEW_SLOTS: u64 = 2 * MAX_VIEWS as u64 + MAX_CASCADES as u64 + MAX_LOCAL_SHADOW_LAYERS as u64;
+/// First view buffer slot of the sun's shadow cascades.
+const SUN_SHADOW_SLOT: u64 = 2 * MAX_VIEWS as u64;
 /// First view buffer slot of the local light shadow layers.
-const LOCAL_SHADOW_SLOT: u64 = 2 * MAX_VIEWS as u64 + 1;
+const LOCAL_SHADOW_SLOT: u64 = SUN_SHADOW_SLOT + MAX_CASCADES as u64;
 /// Most views one [`Renderer::render_views`] call can draw (two for stereo; more for
 /// split screen or mirrors).
 pub const MAX_VIEWS: usize = 8;
@@ -66,7 +75,7 @@ struct LightsUniform {
     direction: [[f32; 4]; MAX_LIGHTS],
     radiance: [[f32; 4]; MAX_LIGHTS],
     ambient: [f32; 4],
-    /// Directional lights, local lights, flags.
+    /// Directional lights, local lights, flags, sun shadow cascades.
     count: [u32; 4],
     ground: [f32; 4],
     fog: [f32; 4],
@@ -82,6 +91,15 @@ struct LightsUniform {
     /// Environment intensity, last mip level.
     env: [f32; 4],
     sh: [[f32; 4]; 9],
+    /// Cascades 1 to 3 of the sun's shadow (cascade 0 is `shadow_view_proj`).
+    cascade_mats: [[[f32; 4]; 4]; MAX_CASCADES - 1],
+    /// Normal offset (m) per cascade.
+    cascade_offsets: [f32; 4],
+    /// Ray tracing: reflection roughness limit, tangent of the sun disc's radius.
+    rt: [f32; 4],
+    /// Reflection probes: center (w = 1 when captured) and box half size.
+    probe_pos: [[f32; 4]; crate::extract::MAX_PROBES],
+    probe_ext: [[f32; 4]; crate::extract::MAX_PROBES],
 }
 
 /// Per-material uniform (group 2, binding 0).
@@ -91,7 +109,8 @@ struct MaterialUniform {
     emissive: [f32; 4],
 }
 
-/// Shadow maps of point and spot lights: one depth texture array, one layer per map.
+/// Shadow maps (point and spot lights, or the sun's cascades): one depth texture array, one
+/// layer per map.
 struct LocalShadowMaps {
     resolution: u32,
     layers: u32,
@@ -107,13 +126,13 @@ struct GpuEnvironment {
 }
 
 /// One instanced draw of a static mesh part.
-struct DrawCall<'a> {
+pub(crate) struct DrawCall<'a> {
     /// The model shares its entity with a shadow-casting point or spot light: it does not
     /// cast into local light shadow maps (a lantern would otherwise block its own light).
-    lamp: bool,
-    part: &'a GpuPart,
-    material: &'a wgpu::BindGroup,
-    instances: std::ops::Range<u32>,
+    pub lamp: bool,
+    pub part: &'a GpuPart,
+    pub material: &'a wgpu::BindGroup,
+    pub instances: std::ops::Range<u32>,
 }
 
 /// Everything a frame draws for models, shared by the shadow, HDR and final passes.
@@ -236,6 +255,9 @@ pub struct RenderStats {
     pub triangles: u64,
 }
 
+/// Bytes per mesh vertex (position first, as ray tracing structures read it).
+pub(crate) const MESH_VERTEX_STRIDE: u64 = size_of::<MeshVertex>() as u64;
+
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct MeshVertex {
@@ -263,6 +285,8 @@ pub(crate) struct GpuPart {
     /// Skin and morph target data for parts the GPU deforms (drawn by `skinning.rs`, not
     /// the static path).
     pub deform: Option<crate::skinning::Deform>,
+    /// Ray tracing data (decision 0093), on devices that can trace rays.
+    pub rt: Option<crate::raytrace::RtPart>,
 }
 
 pub(crate) struct GpuModel {
@@ -326,8 +350,8 @@ pub struct Renderer {
     lights_buffer: wgpu::Buffer,
     lights_layout: wgpu::BindGroupLayout,
     lights_group: wgpu::BindGroup,
-    /// Shadow map (resolution, view) while a scene asks for shadows; a 1x1 map otherwise.
-    shadow_map: (u32, wgpu::TextureView),
+    /// Sun shadow map, one layer per cascade, while a scene asks for shadows; 1x1 otherwise.
+    shadow_map: LocalShadowMaps,
     shadow_sampler: wgpu::Sampler,
     shadow_pipeline: wgpu::RenderPipeline,
     /// Point and spot light shadow maps (decision 0065); one 1x1 layer when none cast.
@@ -337,17 +361,22 @@ pub struct Renderer {
     /// Stand-in environment texture (1x1 black).
     no_environment: wgpu::TextureView,
     env_sampler: wgpu::Sampler,
-    /// Models into the HDR target, for bloom (decision 0064).
-    pbr_hdr_pipeline: wgpu::RenderPipeline,
-    /// Environment background in the final and HDR target.
-    sky_pipelines: [wgpu::RenderPipeline; 2],
+    /// Lit model and sky pipelines into the final and the HDR target.
+    lit: LitPipelines,
+    view_layout: wgpu::BindGroupLayout,
+    /// Ray-traced lighting (decision 0093), made when a scene first asks for it on a GPU with
+    /// ray queries.
+    rt: Option<crate::raytrace::RayTracer>,
+    /// Reflection probe pictures (decision 0092); a 1x1 stand-in while no scene has probes.
+    probes: crate::probes::Probes,
+    /// Drawing a probe's faces: linear light into the HDR target, no bloom, sprites or UI.
+    capturing: bool,
     post: crate::post::Post,
     instance_buffer: Option<wgpu::Buffer>,
     /// Reused per-frame arrays: instances in frame order, their group, instances by group.
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
     material_layout: wgpu::BindGroupLayout,
     sprite_tex_layout: wgpu::BindGroupLayout,
-    pbr_pipeline: wgpu::RenderPipeline,
     sprite_pipeline: wgpu::RenderPipeline,
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
@@ -477,40 +506,7 @@ impl Renderer {
             })
         };
         let view_layout = layout("view", &[uniform_entry(0, vf, true, view_size)]);
-        let lights_layout = layout(
-            "lights",
-            &[
-                uniform_entry(0, wgpu::ShaderStages::FRAGMENT, false, lights_size),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                texture_entry(4),
-                sampler_entry(5),
-            ],
-        );
+        let lights_layout = layout("lights", &lights_layout_entries());
         let material_layout = layout(
             "material",
             &[
@@ -559,7 +555,7 @@ impl Renderer {
             compare: Some(wgpu::CompareFunction::LessEqual),
             ..Default::default()
         });
-        let shadow_map = (0, shadow_texture(device, 1));
+        let shadow_map = local_shadow_maps(device, 1, 1);
         let local_shadows = local_shadow_maps(device, 1, 1);
         let env_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("environment"),
@@ -579,11 +575,17 @@ impl Renderer {
                 px: vec![Vec3::ZERO],
             }],
         );
+        let probes = crate::probes::Probes::new(device, 1);
         let lights_group = lights_bind_group(
             device,
             &lights_layout,
             &lights_buffer,
-            [&shadow_map.1, &local_shadows.array, &no_environment],
+            [
+                &shadow_map.array,
+                &local_shadows.array,
+                &no_environment,
+                &probes.view,
+            ],
             [&shadow_sampler, &env_sampler],
         );
 
@@ -604,93 +606,15 @@ impl Renderer {
             label: Some("pbr"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/pbr.wgsl").into()),
         });
-        let pbr_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("pbr"),
-            bind_group_layouts: &[Some(&view_layout), Some(&lights_layout), Some(&material_layout)],
-            immediate_size: 0,
-        });
+        let lit = lit_pipelines(
+            device,
+            &pbr_shader,
+            [&view_layout, &lights_layout, &material_layout],
+            color_format,
+            multisample,
+        );
         let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
-        let instance_attrs = wgpu::vertex_attr_array![
-            3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
-            7 => Float32x4, 8 => Float32x4, 12 => Float32x4
-        ];
-        let pbr_for = |format: wgpu::TextureFormat| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("pbr"),
-                layout: Some(&pbr_layout),
-                vertex: wgpu::VertexState {
-                    module: &pbr_shader,
-                    entry_point: Some("vs_main"),
-                    compilation_options: Default::default(),
-                    buffers: &[
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: size_of::<MeshVertex>() as u64,
-                            step_mode: wgpu::VertexStepMode::Vertex,
-                            attributes: &mesh_attrs,
-                        }),
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: size_of::<InstanceData>() as u64,
-                            step_mode: wgpu::VertexStepMode::Instance,
-                            attributes: &instance_attrs,
-                        }),
-                    ],
-                },
-                primitive: wgpu::PrimitiveState {
-                    cull_mode: Some(wgpu::Face::Back),
-                    ..Default::default()
-                },
-                depth_stencil: Some(depth_stencil(true)),
-                multisample,
-                fragment: Some(wgpu::FragmentState {
-                    module: &pbr_shader,
-                    entry_point: Some("fs_main"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
-        };
-        let pbr_pipeline = pbr_for(color_format);
-        let pbr_hdr_pipeline = pbr_for(crate::post::HDR_FORMAT);
-        // Sky background: full-screen triangle at the far plane, depth-tested, not written.
-        let sky_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sky"),
-            bind_group_layouts: &[Some(&view_layout), Some(&lights_layout)],
-            immediate_size: 0,
-        });
-        let sky_for = |format: wgpu::TextureFormat| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("sky"),
-                layout: Some(&sky_layout),
-                vertex: wgpu::VertexState {
-                    module: &pbr_shader,
-                    entry_point: Some("vs_sky"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: Some(depth_stencil(false)),
-                multisample,
-                fragment: Some(wgpu::FragmentState {
-                    module: &pbr_shader,
-                    entry_point: Some("fs_sky"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
-        };
-        let sky_pipelines = [sky_for(color_format), sky_for(crate::post::HDR_FORMAT)];
+        let instance_attrs = INSTANCE_ATTRS;
         let post = crate::post::Post::new(device, color_format, sample_count, depth_stencil(false));
 
         // Depth-only pass from the shadow-casting light: only the view group is used.
@@ -832,6 +756,10 @@ impl Renderer {
             lights_buffer,
             lights_layout,
             lights_group,
+            view_layout,
+            rt: None,
+            probes,
+            capturing: false,
             shadow_map,
             shadow_sampler,
             shadow_pipeline,
@@ -839,14 +767,12 @@ impl Renderer {
             environment: None,
             no_environment,
             env_sampler,
-            pbr_hdr_pipeline,
-            sky_pipelines,
+            lit,
             post,
             instance_buffer: None,
             scratch: Default::default(),
             material_layout,
             sprite_tex_layout,
-            pbr_pipeline,
             sprite_pipeline,
             material_sampler,
             sprite_sampler,
@@ -987,11 +913,75 @@ impl Renderer {
             errors.push(
                 Diagnostic::error(codes::ASSET, msg)
                     .component("Environment")
-                    .fix("give an equirectangular PNG (2:1) relative to the scene file, or \"\" for a sky from SkyLight colors"),
+                    .fix("give an equirectangular PNG, .hdr or .exr image (2:1) relative to the scene file, or \"\" for a sky from SkyLight colors"),
             );
+        }
+        if let Err(msg) = self.update_probes(frame) {
+            errors.push(Diagnostic::error(codes::DEVICE, msg).component("ReflectionProbe"));
         }
         self.prepared_once = true;
         errors
+    }
+
+    /// Captures probes that are new, moved or changed (decision 0092); frees the pictures when
+    /// no probe is left. Blocks for the GPU once per capture.
+    fn update_probes(&mut self, frame: &FrameData) -> Result<(), String> {
+        if frame.probes.is_empty() {
+            if !self.probes.is_stand_in() {
+                self.probes = crate::probes::Probes::new(&self.device, 1);
+                self.rebuild_lights_group();
+            }
+            return Ok(());
+        }
+        if self.probes.is_stand_in() {
+            self.probes = crate::probes::Probes::new(&self.device, crate::extract::MAX_PROBES as u32);
+            self.rebuild_lights_group();
+        }
+        let far = frame
+            .cameras
+            .first()
+            .map_or(200.0, |c| match c.camera.projection {
+                marionette_core::spatial::Projection::Perspective { far, .. } => far,
+                _ => 200.0,
+            });
+        for (i, probe) in frame.probes.iter().enumerate() {
+            if self.probes.held[i] == Some(*probe) {
+                continue;
+            }
+            let size = crate::probes::face_size(probe.resolution);
+            let views = crate::probes::face_views(probe.position, far);
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("probe capture"),
+                });
+            // Draw the six faces with this frame's lights, minus probe reflections.
+            let t = self.probes.targets(&self.device, size, self.sample_count);
+            let (msaa, depth, faces) = (t.msaa.clone(), t.depth.clone(), t.face_views.clone());
+            let targets: Vec<Target> = faces
+                .iter()
+                .map(|f| Target {
+                    color: msaa.as_ref().unwrap_or(f),
+                    resolve: msaa.as_ref().map(|_| f),
+                    depth: &depth,
+                    width: size,
+                    height: size,
+                })
+                .collect();
+            let pairs: Vec<(View, &Target)> = views.iter().copied().zip(targets.iter()).collect();
+            self.capturing = true;
+            self.render_views(frame, &pairs, &mut encoder);
+            self.capturing = false;
+            drop(pairs);
+            drop(targets);
+            self.probes
+                .finish_capture(&self.device, &self.queue, encoder, i, &views)?;
+            self.probes.held[i] = Some(*probe);
+        }
+        for held in self.probes.held.iter_mut().skip(frame.probes.len()) {
+            *held = None;
+        }
+        Ok(())
     }
 
     /// Streaming (decision 0068): after the first prepared frame, a model no earlier frame
@@ -1081,6 +1071,10 @@ impl Renderer {
         }
         let base = match &source {
             Source::Sky { sky, ground } => e::sky_image(Vec3::from(*sky), Vec3::from(*ground)),
+            Source::Image(path) if assets::is_hdr_name(path) => {
+                let img = assets::load_hdr_image(path, &self.base_dir)?;
+                e::from_linear(img.width, img.height, &img.rgb)
+            }
             Source::Image(path) => {
                 let img = assets::load_image(path, &self.base_dir)?;
                 e::from_rgba8(img.width, img.height, &img.rgba, true)
@@ -1106,7 +1100,12 @@ impl Renderer {
             &self.device,
             &self.lights_layout,
             &self.lights_buffer,
-            [&self.shadow_map.1, &self.local_shadows.array, env],
+            [
+                &self.shadow_map.array,
+                &self.local_shadows.array,
+                env,
+                &self.probes.view,
+            ],
             [&self.shadow_sampler, &self.env_sampler],
         );
     }
@@ -1135,6 +1134,16 @@ impl Renderer {
                 (group, m)
             })
             .collect();
+        let rt = self
+            .device
+            .features()
+            .contains(wgpu::Features::EXPERIMENTAL_RAY_QUERY);
+        // Ray tracing structures read vertex and index buffers directly.
+        let blas_input = if rt {
+            wgpu::BufferUsages::BLAS_INPUT
+        } else {
+            wgpu::BufferUsages::empty()
+        };
         let parts = model
             .parts
             .iter()
@@ -1150,18 +1159,21 @@ impl Renderer {
                     vertices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("mesh vertices"),
                         contents: bytemuck::cast_slice(&vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
+                        usage: wgpu::BufferUsages::VERTEX | blas_input,
                     }),
                     indices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("mesh indices"),
                         contents: bytemuck::cast_slice(&p.mesh.indices),
-                        usage: wgpu::BufferUsages::INDEX,
+                        usage: wgpu::BufferUsages::INDEX | blas_input,
                     }),
                     index_count: p.mesh.indices.len() as u32,
                     material: p.material,
                     transform: p.transform,
                     node: p.node,
                     deform: crate::skinning::Deform::upload(&self.device, p, model.rig.skins.len()),
+                    rt: (rt && p.mesh.joints.is_empty()).then(|| {
+                        crate::raytrace::RtPart::new(&p.mesh, model.materials.get(p.material), &model.images)
+                    }),
                 }
             })
             .collect();
@@ -1238,6 +1250,47 @@ impl Renderer {
             self.queue.write_buffer(&self.view_buffer, 0, &view_bytes);
         }
 
+        // Ray tracing (decision 0093): only on devices with ray queries; elsewhere the scene's
+        // other looks stay as they are.
+        let rt_cfg = frame.ray_tracing.filter(|r| {
+            (r.shadows || r.reflections)
+                && self
+                    .device
+                    .features()
+                    .contains(wgpu::Features::EXPERIMENTAL_RAY_QUERY)
+        });
+        if rt_cfg.is_some() && self.rt.is_none() {
+            self.rt = Some(crate::raytrace::RayTracer::new(
+                &self.device,
+                crate::raytrace::Setup {
+                    view_layout: &self.view_layout,
+                    material_layout: &self.material_layout,
+                    deform_layout: &self.skinning.layout,
+                    color_format: self.color_format,
+                    multisample: wgpu::MultisampleState {
+                        count: self.sample_count,
+                        mask: !0,
+                        alpha_to_coverage_enabled: false,
+                    },
+                    depth: wgpu::DepthStencilState {
+                        format: DEPTH_FORMAT,
+                        depth_write_enabled: Some(true),
+                        depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                        stencil: wgpu::StencilState::default(),
+                        bias: wgpu::DepthBiasState::default(),
+                    },
+                    mesh_stride: MESH_VERTEX_STRIDE,
+                },
+            ));
+        }
+        if let Some(rt) = self.rt.as_mut() {
+            rt.group = None;
+            if rt_cfg.is_some() {
+                rt.prepare_models(&self.device, &self.queue, &mut self.models);
+            }
+        }
+        let rt_shadows = rt_cfg.is_some_and(|r| r.shadows);
+
         // Per-frame lights.
         let mut lu = LightsUniform::zeroed();
         for (i, l) in frame.lights.iter().take(MAX_LIGHTS).enumerate() {
@@ -1266,40 +1319,63 @@ impl Renderer {
             flags |= FLAG_FOG;
             lu.fog = color.extend(density).to_array();
         }
-        // Shadows: the first directional light, seen from the first view.
-        let shadow = match (frame.shadows, frame.lights.first(), views.first()) {
-            (Some(s), Some(light), Some((view, _))) if s.distance > 0.0 => {
+        // Shadows: the first directional light, seen from the first view; one map, or
+        // cascades split along the view (decision 0090).
+        let cascades: Vec<Mat4> = match (frame.shadows, frame.lights.first(), views.first()) {
+            (Some(s), Some(light), Some((view, _))) if s.distance > 0.0 && !rt_shadows => {
                 let resolution = s.resolution.clamp(256, 4096);
-                let vp = shadow_view_proj(light.direction, view, s.distance, resolution);
-                let texel = 2.0 * s.distance / resolution as f32;
-                lu.shadow_view_proj = mat(vp);
+                let split = frame.cascades.and_then(|(count, far)| {
+                    cascade_view_projs(light.direction, view, count, far, resolution)
+                });
+                let maps: Vec<(Mat4, f32)> = split.unwrap_or_else(|| {
+                    let vp = shadow_view_proj(light.direction, view, s.distance, resolution);
+                    vec![(vp, 2.0 * s.distance / resolution as f32)]
+                });
+                lu.shadow_view_proj = mat(maps[0].0);
+                for (k, (m, texel)) in maps.iter().enumerate() {
+                    if k > 0 {
+                        lu.cascade_mats[k - 1] = mat(*m);
+                    }
+                    lu.cascade_offsets[k] = texel * 1.5;
+                }
+                lu.count[3] = maps.len() as u32;
                 lu.post[1] = 1.0 / resolution as f32;
                 lu.post[2] = s.softness.clamp(0.0, 4.0);
-                lu.post[3] = texel * 1.5;
+                lu.post[3] = maps[0].1 * 1.5;
                 flags |= FLAG_SHADOWS;
-                if self.shadow_map.0 != resolution {
-                    self.shadow_map = (resolution, shadow_texture(&self.device, resolution));
+                let layers = maps.len() as u32;
+                if self.shadow_map.resolution != resolution || self.shadow_map.layers != layers {
+                    self.shadow_map = local_shadow_maps(&self.device, resolution, layers);
                     self.rebuild_lights_group();
                 }
-                let at = 2 * MAX_VIEWS * VIEW_STRIDE as usize;
-                let su = ViewUniform {
-                    view_proj: mat(vp),
-                    eye: [0.0, 0.0, 0.0, 1.0],
-                    inv_view_proj: mat(vp.inverse()),
-                };
+                let mut bytes = vec![0u8; maps.len() * VIEW_STRIDE as usize];
+                for (k, (m, _)) in maps.iter().enumerate() {
+                    let su = ViewUniform {
+                        view_proj: mat(*m),
+                        eye: [0.0, 0.0, 0.0, 1.0],
+                        inv_view_proj: mat(m.inverse()),
+                    };
+                    let at = k * VIEW_STRIDE as usize;
+                    bytes[at..at + size_of::<ViewUniform>()].copy_from_slice(bytemuck::bytes_of(&su));
+                }
                 self.queue
-                    .write_buffer(&self.view_buffer, at as u64, bytemuck::bytes_of(&su));
-                true
+                    .write_buffer(&self.view_buffer, SUN_SHADOW_SLOT * VIEW_STRIDE, &bytes);
+                maps.into_iter().map(|(m, _)| m).collect()
             }
-            _ => false,
+            _ => Vec::new(),
         };
+        if cascades.is_empty() && self.shadow_map.resolution > 1 {
+            // No sun shadows any more: give the map back.
+            self.shadow_map = local_shadow_maps(&self.device, 1, 1);
+            self.rebuild_lights_group();
+        }
         // Point and spot light shadows (decision 0065): layers in light order until the
         // budget runs out; a point light needs six (one per cube face), a spot light one.
         let mut layer_mats: Vec<Mat4> = Vec::new();
         let mut layer_res = 0u32;
         for (j, l) in frame.local_lights.iter().take(MAX_LOCAL_LIGHTS).enumerate() {
             lu.local_shadow[j][0] = -1.0;
-            let Some((resolution, softness)) = l.shadow else {
+            let Some((resolution, softness)) = l.shadow.filter(|_| !rt_shadows) else {
                 continue;
             };
             let point = l.cos_outer < -1.0;
@@ -1352,6 +1428,16 @@ impl Renderer {
             self.queue
                 .write_buffer(&self.view_buffer, LOCAL_SHADOW_SLOT * VIEW_STRIDE, &bytes);
         }
+        if let Some(r) = rt_cfg {
+            if r.shadows {
+                flags |= FLAG_RT_SHADOWS;
+            }
+            if r.reflections {
+                flags |= FLAG_RT_REFLECT;
+            }
+            let sun_radius = (r.sun_size_degrees.clamp(0.0, 10.0) * 0.5).to_radians().tan();
+            lu.rt = [r.max_roughness.clamp(0.0, 1.0), sun_radius, 0.0, 0.0];
+        }
         // Environment (built in `prepare`).
         let env = match (&frame.environment, &self.environment) {
             (Some(e), Some(g)) => {
@@ -1362,9 +1448,16 @@ impl Renderer {
             }
             _ => false,
         };
+        // Reflection probes (decision 0092): not while capturing them.
+        if !frame.probes.is_empty() && !self.capturing && !self.probes.is_stand_in() {
+            flags |= FLAG_PROBES;
+            (lu.probe_pos, lu.probe_ext) = crate::probes::uniform(&frame.probes, &self.probes.held);
+        }
         // Bloom: models go to the HDR target untone-mapped; the clear and fog colors are
         // mapped back through the tone curve so they come out unchanged (decision 0064).
-        let bloom = frame.bloom;
+        // A probe capture writes linear light the same way, without the glow.
+        let capture = self.capturing;
+        let bloom = if capture { None } else { frame.bloom };
         let hdr_color = |c: Vec3| match frame.exposure {
             Some(e) => {
                 Vec3::new(
@@ -1375,15 +1468,17 @@ impl Renderer {
             }
             None => c,
         };
-        if bloom.is_some() {
+        if bloom.is_some() || capture {
             flags |= FLAG_HDR;
             if flags & FLAG_FOG != 0 {
                 let f = hdr_color(Vec3::from_slice(&lu.fog[..3]));
                 lu.fog = f.extend(lu.fog[3]).to_array();
             }
+        }
+        if bloom.is_some() {
             let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
             self.post.prepare(&self.device, &sizes);
-        } else {
+        } else if !capture {
             // Frees the HDR targets of earlier frames with bloom.
             self.post.prepare(&self.device, &[]);
         }
@@ -1536,7 +1631,8 @@ impl Renderer {
                 &self.queue,
                 &mut self.instance_buffer,
                 &instances,
-                wgpu::BufferUsages::VERTEX,
+                // Storage too: ray-traced hits read the hit instance's material (decision 0093).
+                wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
             );
         }
 
@@ -1706,6 +1802,44 @@ impl Renderer {
             );
         }
 
+        if rt_cfg.is_some()
+            && let (Some(rt), Some(ib)) = (self.rt.as_mut(), self.instance_buffer.as_ref())
+        {
+            let env = self
+                .environment
+                .as_ref()
+                .map_or(&self.no_environment, |g| &g.view);
+            rt.frame(
+                &self.device,
+                &self.queue,
+                encoder,
+                &calls,
+                &instances,
+                &self.plain_material,
+                crate::raytrace::LightsResources {
+                    uniform: &self.lights_buffer,
+                    uniform_size: size_of::<LightsUniform>() as u64,
+                    views: [
+                        &self.shadow_map.array,
+                        &self.local_shadows.array,
+                        env,
+                        &self.probes.view,
+                    ],
+                    samplers: [&self.shadow_sampler, &self.env_sampler],
+                    instances: ib,
+                },
+            );
+        }
+        // Lit pipelines and lights group: the ray tracing variant when it ran this frame.
+        let (lit, skinned_lit, lights_group) =
+            match self.rt.as_ref().and_then(|r| Some((r, r.group.as_ref()?))) {
+                Some((rt, group)) => (&rt.lit, [&rt.skinned[0], &rt.skinned[1]], group),
+                None => (
+                    &self.lit,
+                    [&self.skinning.pipeline, &self.skinning.hdr_pipeline],
+                    &self.lights_group,
+                ),
+            };
         let meshes = MeshCalls {
             calls: &calls,
             instances: self.instance_buffer.as_ref(),
@@ -1736,9 +1870,9 @@ impl Renderer {
             });
             meshes.draw_depth(&mut pass, depth_pipelines, &self.view_group, offset, local, stats);
         };
-        if shadow {
-            let offset = (2 * MAX_VIEWS as u64 * VIEW_STRIDE) as u32;
-            depth_pass(encoder, &self.shadow_map.1, offset, false, &mut stats);
+        for (k, layer) in self.shadow_map.per_layer.iter().take(cascades.len()).enumerate() {
+            let offset = ((SUN_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
+            depth_pass(encoder, layer, offset, false, &mut stats);
         }
         for (k, layer) in self
             .local_shadows
@@ -1802,16 +1936,16 @@ impl Renderer {
                 });
                 meshes.draw_lit(
                     &mut pass,
-                    (&self.pbr_hdr_pipeline, &self.skinning.hdr_pipeline),
+                    (&lit.pbr[1], skinned_lit[1]),
                     &self.view_group,
                     world_offset,
-                    &self.lights_group,
+                    lights_group,
                     &mut stats,
                 );
                 if env {
-                    pass.set_pipeline(&self.sky_pipelines[1]);
+                    pass.set_pipeline(&lit.sky[1]);
                     pass.set_bind_group(0, &self.view_group, &[world_offset]);
-                    pass.set_bind_group(1, &self.lights_group, &[]);
+                    pass.set_bind_group(1, lights_group, &[]);
                     pass.draw(0..3, 0..1);
                     stats.draw_calls += 1;
                 }
@@ -1826,7 +1960,7 @@ impl Renderer {
                     depth_slice: None,
                     resolve_target: target.resolve,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear(rgb, c[3])),
+                        load: wgpu::LoadOp::Clear(clear(if capture { hdr_color(rgb) } else { rgb }, c[3])),
                         store: if target.resolve.is_some() {
                             wgpu::StoreOp::Discard
                         } else {
@@ -1857,26 +1991,30 @@ impl Renderer {
                     stats.draw_calls += 1;
                 }
                 None => {
+                    // A probe capture draws into the floating-point target.
+                    let fi = usize::from(capture);
                     meshes.draw_lit(
                         &mut pass,
-                        (&self.pbr_pipeline, &self.skinning.pipeline),
+                        (&lit.pbr[fi], skinned_lit[fi]),
                         &self.view_group,
                         world_offset,
-                        &self.lights_group,
+                        lights_group,
                         &mut stats,
                     );
                     if env {
-                        pass.set_pipeline(&self.sky_pipelines[0]);
+                        pass.set_pipeline(&lit.sky[fi]);
                         pass.set_bind_group(0, &self.view_group, &[world_offset]);
-                        pass.set_bind_group(1, &self.lights_group, &[]);
+                        pass.set_bind_group(1, lights_group, &[]);
                         pass.draw(0..3, 0..1);
                         stats.draw_calls += 1;
                     }
                 }
             }
-            if let (Some(vb), Some(ib), false) =
-                (&self.sprite_vertices, &self.sprite_indices, batches.is_empty())
-            {
+            if let (Some(vb), Some(ib), false) = (
+                &self.sprite_vertices,
+                &self.sprite_indices,
+                batches.is_empty() || capture,
+            ) {
                 pass.set_pipeline(&self.sprite_pipeline);
                 pass.set_bind_group(0, &self.view_group, &[world_offset]);
                 pass.set_vertex_buffer(0, vb.slice(..));
@@ -1889,9 +2027,11 @@ impl Renderer {
                     }
                 }
             }
-            if let (Some(vb), Some(ib), false) =
-                (&self.ui_vertices, &self.ui_indices, ui_batches[i].is_empty())
-            {
+            if let (Some(vb), Some(ib), false) = (
+                &self.ui_vertices,
+                &self.ui_indices,
+                ui_batches[i].is_empty() || capture,
+            ) {
                 pass.set_pipeline(&self.ui_pipeline);
                 pass.set_bind_group(0, &self.view_group, &[ui_offset]);
                 pass.set_vertex_buffer(0, vb.slice(..));
@@ -1908,6 +2048,9 @@ impl Renderer {
         drop(calls);
         drop(skinned_calls);
         drop(deform_groups);
+        if rt_cfg.is_some() {
+            crate::raytrace::RayTracer::built(&mut self.models);
+        }
         self.scratch = (raw, gid, instances);
         stats
     }
@@ -1928,32 +2071,13 @@ pub(crate) fn shadow_depth_state() -> wgpu::DepthStencilState {
     }
 }
 
-fn shadow_texture(device: &wgpu::Device, size: u32) -> wgpu::TextureView {
-    device
-        .create_texture(&wgpu::TextureDescriptor {
-            label: Some("shadow map"),
-            size: wgpu::Extent3d {
-                width: size,
-                height: size,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: SHADOW_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        })
-        .create_view(&wgpu::TextureViewDescriptor::default())
-}
-
 /// Lights group: uniform, sun shadow map, comparison sampler, local shadow maps,
 /// environment texture and its sampler.
 fn lights_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
-    [shadow, local, env]: [&wgpu::TextureView; 3],
+    [shadow, local, env, probes]: [&wgpu::TextureView; 4],
     [compare, env_sampler]: [&wgpu::Sampler; 2],
 ) -> wgpu::BindGroup {
     let view = |binding, view| wgpu::BindGroupEntry {
@@ -1977,6 +2101,7 @@ fn lights_bind_group(
             view(3, local),
             view(4, env),
             sampler(5, env_sampler),
+            view(10, probes),
         ],
     })
 }
@@ -2095,6 +2220,75 @@ pub(crate) fn shadow_view_proj(light_dir: Vec3, view: &View, distance: f32, reso
         2.0 * depth,
     );
     proj * light_view
+}
+
+/// Sun shadow cascades (decision 0090): the view from the camera's near plane to `far` is cut
+/// into `count` slices (a blend of even and logarithmic splits), and each slice gets an
+/// orthographic map around the sphere holding it. The sphere's size depends only on the slice,
+/// not on where the camera looks, and its center snaps to whole texels, so edges do not
+/// shimmer as the camera turns or moves. Returns each cascade's view-projection and the world
+/// size of one texel, or `None` for a camera that is not a perspective one.
+pub(crate) fn cascade_view_projs(
+    light_dir: Vec3,
+    view: &View,
+    count: u32,
+    far: f32,
+    resolution: u32,
+) -> Option<Vec<(Mat4, f32)>> {
+    if view.proj.z_axis.w.abs() < 0.5 {
+        return None; // orthographic: one map
+    }
+    let count = (count as usize).clamp(2, MAX_CASCADES);
+    let inv = (view.proj * view.view).inverse();
+    let corners = |z: f32| {
+        [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
+            .map(|(x, y)| inv.project_point3(Vec3::new(x, y, z)))
+    };
+    let (near_c, far_c) = (corners(0.0), corners(1.0));
+    let depth = |p: Vec3| -view.view.transform_point3(p).z;
+    let (near, cam_far) = (depth(near_c[0]), depth(far_c[0]));
+    if !(near > 0.0 && cam_far > near) {
+        return None;
+    }
+    let far = far.clamp(near * 2.0, cam_far);
+    let split = |i: usize| {
+        let f = i as f32 / count as f32;
+        let log = near * (far / near).powf(f);
+        let even = near + (far - near) * f;
+        0.75 * log + 0.25 * even
+    };
+    let at = |d: f32| {
+        let t = (d - near) / (cam_far - near);
+        [0, 1, 2, 3].map(|k| near_c[k].lerp(far_c[k], t))
+    };
+    let d = light_dir.normalize_or(Vec3::NEG_Y);
+    let up = if d.y.abs() > 0.99 { Vec3::Z } else { Vec3::Y };
+    let rot = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, d, up);
+    let mut out = Vec::with_capacity(count);
+    for i in 0..count {
+        let (a, b) = (at(split(i)), at(split(i + 1)));
+        let pts = [a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3]];
+        let center = pts.iter().copied().sum::<Vec3>() / 8.0;
+        let radius = pts.iter().map(|p| p.distance(center)).fold(0.0f32, f32::max);
+        // Round up so float noise in the corners cannot change the size frame to frame.
+        let radius = (radius * 16.0).ceil() / 16.0;
+        let texel = 2.0 * radius / resolution as f32;
+        let c = rot.transform_point3(center);
+        let (sx, sy) = ((c.x / texel).floor() * texel, (c.y / texel).floor() * texel);
+        // Room behind the slice for casters between it and the sun.
+        let back = radius + far;
+        let light_view = Mat4::from_translation(-Vec3::new(sx, sy, c.z + back)) * rot;
+        let proj = glam::camera::rh::proj::directx::orthographic(
+            -radius,
+            radius,
+            -radius,
+            radius,
+            0.0,
+            back + radius,
+        );
+        out.push((proj * light_view, texel));
+    }
+    Some(out)
 }
 
 /// View-projections of a local light's shadow maps (decision 0065): six 90-degree faces
@@ -2231,4 +2425,161 @@ pub fn create_texture_view(device: &wgpu::Device, queue: &wgpu::Queue, img: &Ima
         size,
     );
     texture.create_view(&wgpu::TextureViewDescriptor::default())
+}
+
+/// Per-instance vertex attributes of [`InstanceData`] (matches `InstIn` in `pbr.wgsl`).
+pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+    3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
+    7 => Float32x4, 8 => Float32x4, 12 => Float32x4
+];
+
+/// Lit model pipelines (final format, HDR) and sky pipelines (final format, HDR).
+pub(crate) struct LitPipelines {
+    pub pbr: [wgpu::RenderPipeline; 2],
+    pub sky: [wgpu::RenderPipeline; 2],
+}
+
+/// Bindings of the lights group (group 1); the ray tracing variant adds its own after these.
+pub(crate) fn lights_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
+    let depth_array = |binding| wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Depth,
+            view_dimension: wgpu::TextureViewDimension::D2Array,
+            multisampled: false,
+        },
+        count: None,
+    };
+    vec![
+        uniform_entry(
+            0,
+            wgpu::ShaderStages::FRAGMENT,
+            false,
+            size_of::<LightsUniform>() as u64,
+        ),
+        depth_array(1),
+        wgpu::BindGroupLayoutEntry {
+            binding: 2,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+            count: None,
+        },
+        depth_array(3),
+        texture_entry(4),
+        sampler_entry(5),
+        wgpu::BindGroupLayoutEntry {
+            binding: 10,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D2Array,
+                multisampled: false,
+            },
+            count: None,
+        },
+    ]
+}
+
+/// The lit model and sky pipelines from `shader` (the plain PBR shader or its ray tracing
+/// variant) and groups view, lights, material.
+pub(crate) fn lit_pipelines(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    [view_layout, lights_layout, material_layout]: [&wgpu::BindGroupLayout; 3],
+    color_format: wgpu::TextureFormat,
+    multisample: wgpu::MultisampleState,
+) -> LitPipelines {
+    let depth_stencil = |write: bool| wgpu::DepthStencilState {
+        format: DEPTH_FORMAT,
+        depth_write_enabled: Some(write),
+        depth_compare: Some(wgpu::CompareFunction::LessEqual),
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+    };
+    let pbr_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("pbr"),
+        bind_group_layouts: &[Some(view_layout), Some(lights_layout), Some(material_layout)],
+        immediate_size: 0,
+    });
+    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let pbr_for = |format: wgpu::TextureFormat| {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("pbr"),
+            layout: Some(&pbr_layout),
+            vertex: wgpu::VertexState {
+                module: shader,
+                entry_point: Some("vs_main"),
+                compilation_options: Default::default(),
+                buffers: &[
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<MeshVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &mesh_attrs,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: size_of::<InstanceData>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &INSTANCE_ATTRS,
+                    }),
+                ],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: Some(wgpu::Face::Back),
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil(true)),
+            multisample,
+            fragment: Some(wgpu::FragmentState {
+                module: shader,
+                entry_point: Some("fs_main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        })
+    };
+    // Sky background: full-screen triangle at the far plane, depth-tested, not written.
+    let sky_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("sky"),
+        bind_group_layouts: &[Some(view_layout), Some(lights_layout)],
+        immediate_size: 0,
+    });
+    let sky_for = |format: wgpu::TextureFormat| {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("sky"),
+            layout: Some(&sky_layout),
+            vertex: wgpu::VertexState {
+                module: shader,
+                entry_point: Some("vs_sky"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: Some(depth_stencil(false)),
+            multisample,
+            fragment: Some(wgpu::FragmentState {
+                module: shader,
+                entry_point: Some("fs_sky"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        })
+    };
+    let hdr = crate::post::HDR_FORMAT;
+    LitPipelines {
+        pbr: [pbr_for(color_format), pbr_for(hdr)],
+        sky: [sky_for(color_format), sky_for(hdr)],
+    }
 }

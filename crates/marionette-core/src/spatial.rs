@@ -239,6 +239,18 @@ pub struct Shadows {
     pub softness: f32,
 }
 
+/// Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters
+/// from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp
+/// up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution`
+/// map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an
+/// orthographic camera keeps one map).
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ShadowCascades {
+    pub count: u32,
+    /// Distance from the camera where shadows end, in meters (capped at the camera's far plane).
+    pub far: f32,
+}
+
 /// Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so
 /// bright light rolls off smoothly instead of clipping at white. Without it, colors clamp
 /// at 1.0.
@@ -292,9 +304,11 @@ pub struct CastShadows {
 }
 
 /// Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces
-/// reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1,
-/// relative to the scene file); empty makes one from `SkyLight` colors (or a default sky).
-/// Replaces `AmbientLight` and `SkyLight` ambient for models.
+/// reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1,
+/// relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose
+/// values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from
+/// `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for
+/// models.
 #[derive(Resource, Reflect, Debug, Clone, PartialEq)]
 pub struct Environment {
     pub image: String,
@@ -302,6 +316,38 @@ pub struct Environment {
     pub intensity: f32,
     /// Draw the environment behind everything instead of the camera's clear color.
     pub background: bool,
+}
+
+/// A box where shiny surfaces reflect a picture of the scene taken from the entity's position
+/// instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is
+/// taken when the probe first appears and again when it moves or changes; objects that move
+/// later are not in it (`RayTracing` reflections show those). Up to four probes; a point
+/// inside several uses the one with the lowest entity id.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ReflectionProbe {
+    /// Half size of the box in meters along x, y and z, centered on the entity. Reflections
+    /// are corrected for the box's walls, so match it to the room.
+    pub extent: Vec3,
+    /// Size of each of the six captured faces in texels (32 to 512; 128 is a good default).
+    pub resolution: u32,
+}
+
+/// Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact
+/// shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere
+/// the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`,
+/// `Environment`), so add those as the fallback. Skinned models are not in the ray-traced
+/// scene yet.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct RayTracing {
+    /// Ray-traced shadows for every directional, point and spot light, replacing shadow maps.
+    pub shadows: bool,
+    /// Ray-traced reflections of other objects on surfaces smoother than `max_roughness`.
+    pub reflections: bool,
+    /// Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a
+    /// good default.
+    pub max_roughness: f32,
+    /// Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5).
+    pub sun_size_degrees: f32,
 }
 
 /// Many copies of one model drawn from a module's own arrays (belt items, crowds,

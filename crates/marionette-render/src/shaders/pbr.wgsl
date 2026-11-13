@@ -19,13 +19,18 @@ const FLAG_SKY: u32 = 8u;
 // Write unclamped linear light for the bloom pass; tone mapping happens there.
 const FLAG_HDR: u32 = 16u;
 const FLAG_ENV: u32 = 32u;
+// Ray-traced shadows and reflections (decision 0093); only the ray tracing variant of this
+// shader (raytrace.wgsl in place of the stubs below) ever sees them set.
+const FLAG_RT_SHADOWS: u32 = 64u;
+const FLAG_RT_REFLECT: u32 = 128u;
+const FLAG_PROBES: u32 = 256u; // reflection probes (decision 0092)
 const MAX_LOCAL: u32 = 16u;
 
 struct LightsU {
     direction: array<vec4<f32>, 4>, // xyz = direction the light travels
     radiance: array<vec4<f32>, 4>,  // rgb = color * illuminance
     ambient: vec4<f32>,             // rgb (sky color with FLAG_SKY)
-    count: vec4<u32>,               // directional lights, local lights, flags
+    count: vec4<u32>,               // directional lights, local lights, flags, sun cascades
     ground: vec4<f32>,              // rgb = ground ambient (FLAG_SKY)
     fog: vec4<f32>,                 // rgb = color, w = density
     post: vec4<f32>,                // exposure, shadow texel size, softness (texels), normal offset
@@ -39,6 +44,11 @@ struct LightsU {
     shadow_mats: array<mat4x4<f32>, 24>, // view-projection per shadow layer
     env: vec4<f32>,                      // intensity, last mip level
     sh: array<vec4<f32>, 9>,             // environment irradiance / PI (SH9, rgb)
+    cascade_mats: array<mat4x4<f32>, 3>, // sun shadow cascades 1 to 3 (decision 0090)
+    cascade_offsets: vec4<f32>,          // normal offset (m) per cascade
+    rt: vec4<f32>,                       // reflection roughness limit, tan(sun disc radius)
+    probe_pos: array<vec4<f32>, 4>,      // probe center, w = 1 when captured
+    probe_ext: array<vec4<f32>, 4>,      // probe box half size
 };
 
 struct MaterialU {
@@ -48,11 +58,12 @@ struct MaterialU {
 
 @group(0) @binding(0) var<uniform> view: ViewU;
 @group(1) @binding(0) var<uniform> lights: LightsU;
-@group(1) @binding(1) var shadow_map: texture_depth_2d;
+@group(1) @binding(1) var shadow_map: texture_depth_2d_array;
 @group(1) @binding(2) var shadow_samp: sampler_comparison;
 @group(1) @binding(3) var local_shadow_map: texture_depth_2d_array;
 @group(1) @binding(4) var env_tex: texture_2d<f32>;
 @group(1) @binding(5) var env_samp: sampler;
+@group(1) @binding(10) var probe_tex: texture_2d_array<f32>;
 @group(2) @binding(0) var<uniform> material: MaterialU;
 @group(2) @binding(1) var base_tex: texture_2d<f32>;
 @group(2) @binding(2) var mr_tex: texture_2d<f32>;
@@ -120,6 +131,22 @@ fn vs_shadow(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
 
 const PI: f32 = 3.14159265;
 
+// RT:BEGIN Ray tracing stubs. The ray tracing variant (raytrace.rs) replaces them, up to the
+// end marker, with shaders/raytrace.wgsl; they keep the plain shader free of ray queries.
+// Fraction of light reaching `p` from the sun along `l` (pixel `px` picks soft-shadow rays).
+fn rt_sun(p: vec3<f32>, ng: vec3<f32>, l: vec3<f32>, px: vec2<f32>) -> f32 {
+    return 1.0;
+}
+// 1 when nothing blocks the segment from `p` toward `l` up to `dist` (local lights).
+fn rt_visible(p: vec3<f32>, ng: vec3<f32>, l: vec3<f32>, dist: f32, mask: u32) -> f32 {
+    return 1.0;
+}
+// Light arriving at `p` along the mirror direction `r` (rgb); a = 0 when nothing was traced.
+fn rt_reflect(p: vec3<f32>, ng: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec4<f32> {
+    return vec4<f32>(0.0);
+}
+// RT:END
+
 // Tangent frame from screen-space derivatives (no tangents needed in the mesh).
 // glTF normal maps use +Y toward the top of the image (decreasing v), hence -b.
 fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, sample: vec3<f32>, scale: f32) -> vec3<f32> {
@@ -143,25 +170,37 @@ fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, sample: vec3<f32>, 
 
 // Fraction of the first directional light reaching `p` (1 = lit), filtered over 3x3 taps.
 // The normal offset grows with the angle between surface and light (none when the light is
-// straight on, where it would only push the shadow away from its caster's base).
+// straight on, where it would only push the shadow away from its caster's base). With
+// cascades (decision 0090) the first cascade whose map holds the point is used.
 fn shadow_factor(p: vec3<f32>, n: vec3<f32>, l: vec3<f32>) -> f32 {
     let n_dot_l = clamp(dot(n, l), 0.0, 1.0);
-    let offset = n * (lights.post.w * sqrt(1.0 - n_dot_l * n_dot_l));
-    let clip = lights.shadow_view_proj * vec4<f32>(p + offset, 1.0);
-    let ndc = clip.xyz / clip.w;
-    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z > 1.0 || ndc.z < 0.0) {
-        return 1.0;
-    }
+    let slope = sqrt(1.0 - n_dot_l * n_dot_l);
+    let count = max(lights.count.w, 1u);
     let step = lights.post.y * lights.post.z;
-    var lit = 0.0;
-    for (var y = -1; y <= 1; y = y + 1) {
-        for (var x = -1; x <= 1; x = x + 1) {
-            let o = vec2<f32>(f32(x), f32(y)) * step;
-            lit += textureSampleCompareLevel(shadow_map, shadow_samp, uv + o, ndc.z);
+    // Keep the 3x3 filter inside the map before trusting a cascade.
+    let margin = select(0.0, step + lights.post.y, count > 1u);
+    for (var c = 0u; c < count; c = c + 1u) {
+        var m = lights.shadow_view_proj;
+        if (c > 0u) {
+            m = lights.cascade_mats[c - 1u];
         }
+        let offset = n * (lights.cascade_offsets[c] * slope);
+        let clip = m * vec4<f32>(p + offset, 1.0);
+        let ndc = clip.xyz / clip.w;
+        let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+        if (uv.x < margin || uv.x > 1.0 - margin || uv.y < margin || uv.y > 1.0 - margin || ndc.z > 1.0 || ndc.z < 0.0) {
+            continue;
+        }
+        var lit = 0.0;
+        for (var y = -1; y <= 1; y = y + 1) {
+            for (var x = -1; x <= 1; x = x + 1) {
+                let o = vec2<f32>(f32(x), f32(y)) * step;
+                lit += textureSampleCompareLevel(shadow_map, shadow_samp, uv + o, i32(c), ndc.z);
+            }
+        }
+        return lit / 9.0;
     }
-    return lit / 9.0;
+    return 1.0;
 }
 
 // Fraction of local light `j` reaching `p` (1 = lit). A spot light has one shadow layer; a
@@ -204,6 +243,33 @@ fn env_uv(d: vec3<f32>) -> vec2<f32> {
     let u = atan2(d.x, -d.z) / (2.0 * PI) + 0.5;
     let v = acos(clamp(d.y, -1.0, 1.0)) / PI;
     return vec2<f32>(u, v);
+}
+
+// Reflection from the first captured probe whose box holds `p` (decision 0092): the mirror
+// direction `r` is corrected for the box (it hits the box's wall, and the probe is looked up
+// toward that point), and blurred to the roughness. a = weight, fading out just outside the box.
+fn probe_reflection(p: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec4<f32> {
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        let c = lights.probe_pos[i];
+        let e = lights.probe_ext[i].xyz;
+        let d = p - c.xyz;
+        // Full weight inside the box, fading to none a margin outside it (so a floor or wall
+        // on the box's face is fully covered).
+        let margin = 0.1 * min(min(e.x, e.y), e.z) + 0.05;
+        if (c.w < 0.5 || any(abs(d) > e + vec3<f32>(margin))) {
+            continue;
+        }
+        let inv = 1.0 / select(r, vec3<f32>(1e-6), abs(r) < vec3<f32>(1e-6));
+        let far = max((e - d) * inv, (-e - d) * inv);
+        let t = min(min(far.x, far.y), far.z);
+        let dir = normalize(d + r * max(t, 0.0));
+        let edge = min(min(e.x - abs(d.x), e.y - abs(d.y)), e.z - abs(d.z));
+        let w = clamp(1.0 + edge / margin, 0.0, 1.0);
+        let level = roughness * lights.env.y;
+        let rgb = textureSampleLevel(probe_tex, env_samp, env_uv(dir), i32(i), level).rgb;
+        return vec4<f32>(rgb, w);
+    }
+    return vec4<f32>(0.0);
 }
 
 // Irradiance / PI from the environment's nine spherical harmonics coefficients.
@@ -273,6 +339,25 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     let a2 = a * a;
 
     let flags = lights.count.z;
+    // Geometric normal facing the viewer's side, for ray origins.
+    var ng = normalize(in.normal);
+    if (!front) {
+        ng = -ng;
+    }
+    // Reflections of other objects, premultiplied (rgb) with their total weight (a); the
+    // environment or ambient reflection fills the rest. A probe (decision 0092), then on top
+    // a ray-traced reflection (decision 0093): mirror-sharp, fading out toward the roughness
+    // limit.
+    var refl = vec4<f32>(0.0);
+    if ((flags & FLAG_PROBES) != 0u) {
+        let pr = probe_reflection(in.world_pos, reflect(-v, n), roughness);
+        refl = vec4<f32>(pr.rgb * pr.a, pr.a);
+    }
+    if ((flags & FLAG_RT_REFLECT) != 0u && roughness < lights.rt.x) {
+        let traced = rt_reflect(in.world_pos, ng, reflect(-v, n), roughness);
+        let a = traced.a * (1.0 - smoothstep(0.5 * lights.rt.x, lights.rt.x, roughness));
+        refl = vec4<f32>(refl.rgb * (1.0 - a) + traced.rgb * a, refl.a * (1.0 - a) + a);
+    }
     var color = vec3<f32>(0.0);
     for (var i = 0u; i < lights.count.x; i = i + 1u) {
         let l = -normalize(lights.direction[i].xyz);
@@ -294,6 +379,9 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         if (i == 0u && (flags & FLAG_SHADOWS) != 0u) {
             lit = lit * shadow_factor(in.world_pos, normalize(in.normal), l);
         }
+        if ((flags & FLAG_RT_SHADOWS) != 0u) {
+            lit = lit * rt_sun(in.world_pos, ng, l, in.clip.xy);
+        }
         color += lit;
     }
     // Point and spot lights: inverse-square falloff, windowed to zero at the range.
@@ -314,6 +402,10 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         if (atten > 0.0 && lights.local_shadow[j].x >= 0.0) {
             atten = atten * local_shadow_factor(j, in.world_pos, normalize(in.normal), l, sqrt(dist2));
         }
+        if (atten > 0.0 && (flags & FLAG_RT_SHADOWS) != 0u) {
+            // Mask 1: models holding a shadow-casting lamp do not block lamps (decision 0065).
+            atten = atten * rt_visible(in.world_pos, ng, l, sqrt(dist2), 1u);
+        }
         if (atten > 0.0) {
             color += shade(n, v, l, base.rgb, f0, metallic, a2) * lights.local_rad[j].rgb * atten;
         }
@@ -328,8 +420,17 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         // the roughness, weighted by the split-sum BRDF.
         let r = reflect(-v, n);
         let spec = textureSampleLevel(env_tex, env_samp, env_uv(r), roughness * lights.env.y).rgb;
-        color += lights.env.x * (sh_irradiance(n) * base.rgb * (1.0 - metallic)
-            + spec * env_brdf(f0, roughness, n_dot_v));
+        if (refl.a > 0.0) {
+            color += lights.env.x * sh_irradiance(n) * base.rgb * (1.0 - metallic)
+                + (lights.env.x * spec * (1.0 - refl.a) + refl.rgb) * env_brdf(f0, roughness, n_dot_v);
+        } else {
+            color += lights.env.x * (sh_irradiance(n) * base.rgb * (1.0 - metallic)
+                + spec * env_brdf(f0, roughness, n_dot_v));
+        }
+    } else if (refl.a > 0.0) {
+        color += ambient_light * base.rgb * (1.0 - metallic)
+            + ambient_light * f0 * (1.0 - 0.5 * roughness) * (1.0 - refl.a)
+            + refl.rgb * env_brdf(f0, roughness, n_dot_v);
     } else {
         color += ambient_light * (base.rgb * (1.0 - metallic) + f0 * (1.0 - 0.5 * roughness));
     }
