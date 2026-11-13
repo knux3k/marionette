@@ -274,6 +274,10 @@ pub struct RawClass {
     pub fields: Vec<RawField>,
     pub methods: Vec<RawMethod>,
     pub blueprint: bool,
+    /// Declared with `struct` (C# value type or C++ struct).
+    pub is_struct: bool,
+    /// C# `partial`: other parts of the class may be in other files.
+    pub partial: bool,
 }
 
 const MODIFIERS: [&str; 22] = [
@@ -366,6 +370,31 @@ fn find_at_depth0(tokens: &[Token], from: usize, to: usize, wanted: &[&str]) -> 
     None
 }
 
+/// The `(` that opens a method's parameter list in a member header, if any. A `(` right
+/// after the modifiers, or after anything but a name, opens a C# tuple type
+/// (`(int a, int b) Split(..)`, `static readonly (string, float)[] table = ..`), not a
+/// parameter list, so it is skipped together with its contents; so are generic arguments.
+fn parameter_paren(header: &[Token], h: usize) -> Option<usize> {
+    let mut k = h;
+    while k < header.len() {
+        let t = &header[k];
+        if t.is("<") {
+            k = matching(header, k).map_or(k + 1, |c| c + 1);
+            continue;
+        }
+        if t.is("(") {
+            let named = k > h && header[k - 1].kind == Kind::Ident;
+            if named {
+                return Some(k);
+            }
+            k = matching(header, k).map_or(k + 1, |c| c + 1);
+            continue;
+        }
+        k += 1;
+    }
+    None
+}
+
 /// Parses the members of a class body `{`..`}`.
 fn members(
     tokens: &[Token],
@@ -450,7 +479,6 @@ fn members(
             break;
         };
         let header = &tokens[j..term];
-        let paren = header.iter().position(|t| t.is("("));
         let mut modifiers = Vec::new();
         let mut h = 0;
         while h < header.len()
@@ -460,6 +488,7 @@ fn members(
             modifiers.push(header[h].text.clone());
             h += 1;
         }
+        let paren = parameter_paren(header, h);
         if let Some(p) = paren {
             // A method (or constructor / destructor).
             let name_tok = p.checked_sub(1).map(|k| &header[k]);
@@ -593,7 +622,12 @@ pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
     let mut i = 0;
     while i < tokens.len() {
         let t = &tokens[i];
-        if !(t.is("class") || (cpp && t.is("struct"))) || i > 0 && tokens[i - 1].is("enum") {
+        if !(t.is("class") || t.is("struct")) || i > 0 && tokens[i - 1].is("enum") {
+            i += 1;
+            continue;
+        }
+        // C# `where T : struct` / `where T : class` constraints.
+        if !cpp && i > 0 && tokens[i - 1].is(":") {
             i += 1;
             continue;
         }
@@ -668,6 +702,32 @@ pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
         }
         let close = matching(tokens, open).unwrap_or(tokens.len() - 1);
         let (fields, methods) = members(tokens, open, close, cpp, file);
+        // Modifiers before the keyword (`public sealed partial class`).
+        let mut b = i;
+        let mut partial = false;
+        while b > 0 && tokens[b - 1].kind == Kind::Ident && !cpp {
+            b -= 1;
+            if tokens[b].is("partial") {
+                partial = true;
+            }
+            if !matches!(
+                tokens[b].text.as_str(),
+                "public"
+                    | "internal"
+                    | "private"
+                    | "protected"
+                    | "static"
+                    | "sealed"
+                    | "abstract"
+                    | "partial"
+                    | "readonly"
+                    | "ref"
+                    | "unsafe"
+                    | "new"
+            ) {
+                break;
+            }
+        }
         out.push(RawClass {
             name,
             engine,
@@ -677,6 +737,8 @@ pub fn classes(tokens: &[Token], engine: Engine, file: usize) -> Vec<RawClass> {
             fields,
             methods,
             blueprint: false,
+            is_struct: t.is("struct"),
+            partial,
         });
         // Continue inside the body too, so nested classes are found.
         i = open + 1;

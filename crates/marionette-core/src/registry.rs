@@ -24,6 +24,9 @@ pub enum Kind {
     Resource,
 }
 
+/// Copies a registered value out of a world (`entity` is `None` for resources).
+type CopyFn = fn(&World, Option<Entity>) -> Option<Box<dyn Reflect>>;
+
 /// Type-erased operations for one registered type.
 pub struct TypeEntry {
     /// Name used in scene files and the schema (the short type name, e.g. `Position`).
@@ -38,6 +41,8 @@ pub struct TypeEntry {
     insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
     /// Reads the value. `entity` is `None` for resources.
     get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
+    /// Copies the value with the type's own `Clone` (fast; used to save off the tick).
+    copy: CopyFn,
     /// Makes the type known to a world before any value exists (components only), so
     /// queries that mention it optionally work on every world.
     init: fn(&mut World),
@@ -52,6 +57,11 @@ impl TypeEntry {
     }
     pub fn get<'w>(&self, world: &'w World, entity: Option<Entity>) -> Option<&'w dyn Reflect> {
         (self.get)(world, entity)
+    }
+
+    /// An owned copy of the value (the type's `Clone`). `entity` is `None` for resources.
+    pub fn copy(&self, world: &World, entity: Option<Entity>) -> Option<Box<dyn Reflect>> {
+        (self.copy)(world, entity)
     }
 }
 
@@ -83,7 +93,7 @@ impl Registry {
 
     pub fn register_component<T>(&mut self)
     where
-        T: Component + Reflect + FromReflect + Typed + TypePath + GetTypeRegistration,
+        T: Component + Reflect + FromReflect + Typed + TypePath + GetTypeRegistration + Clone,
     {
         self.add::<T>(
             Kind::Component,
@@ -98,18 +108,29 @@ impl Registry {
                 let entity = entity?;
                 world.get::<T>(entity).map(|c| c as &dyn Reflect)
             },
+            |world, entity| {
+                let entity = entity?;
+                world
+                    .get::<T>(entity)
+                    .map(|c| Box::new(c.clone()) as Box<dyn Reflect>)
+            },
         );
     }
 
     pub fn register_resource<T>(&mut self)
     where
-        T: Resource + Reflect + FromReflect + Typed + TypePath + GetTypeRegistration,
+        T: Resource + Reflect + FromReflect + Typed + TypePath + GetTypeRegistration + Clone,
     {
         self.add::<T>(
             Kind::Resource,
             |_| {},
             |world, _, value| world.insert_resource(downcast::<T>(value)),
             |world, _| world.get_resource::<T>().map(|r| r as &dyn Reflect),
+            |world, _| {
+                world
+                    .get_resource::<T>()
+                    .map(|r| Box::new(r.clone()) as Box<dyn Reflect>)
+            },
         );
     }
 
@@ -119,6 +140,7 @@ impl Registry {
         init: fn(&mut World),
         insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
         get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
+        copy: CopyFn,
     ) where
         T: Reflect + FromReflect + Typed + TypePath + GetTypeRegistration,
     {
@@ -150,6 +172,7 @@ impl Registry {
                 from_reflect: boxed_from_reflect::<T>,
                 insert,
                 get,
+                copy,
                 init,
             },
         );

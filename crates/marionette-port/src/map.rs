@@ -93,6 +93,10 @@ pub enum Role {
     Editor,
     /// A Blueprint graph exported as text.
     Blueprint,
+    /// A Unity job struct (`IJob`, `IJobFor`, `IJobParallelFor`, ...), usually Burst
+    /// compiled: data-parallel code over native arrays. Becomes a system of the game's own
+    /// Rust module (decision 0062) or a job TypeScript step (decision 0070), never a script.
+    Job,
     /// Other engine classes.
     Other,
     /// A plain class with no engine base: ported as ordinary TypeScript.
