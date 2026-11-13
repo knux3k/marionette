@@ -66,6 +66,8 @@ impl EngineBuilder {
                 Part::Module(Box::new(marionette_ui3d::Ui3dModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "save")]
+                Part::Module(Box::new(marionette_save::SaveModule::default())),
                 #[cfg(feature = "nav")]
                 Part::Module(Box::new(marionette_nav::NavModule)),
                 #[cfg(feature = "netplay")]
@@ -82,6 +84,21 @@ impl EngineBuilder {
     }
 
     /// Adds one operation (make it with [`crate::op`]).
+    /// Replaces the module that has the same [`Module::name`] (for example the standard
+    /// `save` module with `SaveModule::with(migrations)`); adds it if there is none.
+    pub fn replace(mut self, module: impl Module) -> Self {
+        let name = module.name();
+        let at = self
+            .parts
+            .iter()
+            .position(|p| matches!(p, Part::Module(m) if m.name() == name));
+        match at {
+            Some(i) => self.parts[i] = Part::Module(Box::new(module)),
+            None => self.parts.push(Part::Module(Box::new(module))),
+        }
+        self
+    }
+
     pub fn op(mut self, op: Op) -> Self {
         self.ops.push(op);
         self

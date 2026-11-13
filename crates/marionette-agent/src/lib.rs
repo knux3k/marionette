@@ -37,6 +37,8 @@ pub mod prefab;
 pub mod project;
 #[cfg(feature = "generate")]
 pub mod providers;
+#[cfg(feature = "save")]
+pub mod save;
 pub mod scenario;
 #[cfg(feature = "script")]
 pub mod script;
@@ -158,6 +160,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "save")]
+    "save",
     #[cfg(feature = "starter")]
     "starter",
     #[cfg(feature = "ui3d")]
@@ -205,6 +209,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         pool::ops(),
         #[cfg(feature = "port")]
         port::ops(),
+        #[cfg(feature = "save")]
+        save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
         #[cfg(feature = "starter")]

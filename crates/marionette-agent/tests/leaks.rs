@@ -85,6 +85,8 @@ fn memory_stays_flat_under_repeated_work() {
         ("playground3d.scene.json", Some("playground3d.inputs.json")),
         ("playground2d.scene.json", Some("playground2d.inputs.json")),
     ];
+    let saves = std::env::temp_dir().join(format!("marionette-leaks-saves-{}", std::process::id()));
+    let saves = saves.to_string_lossy().into_owned();
     steady("session load/unload", 3, 40, |i| {
         let (scene, input) = scenes[i % scenes.len()];
         let s = call(
@@ -104,8 +106,22 @@ fn memory_stays_flat_under_repeated_work() {
             "session_restore",
             json!({ "session": id, "snapshot": "a" }),
         );
+        // Save games (decision 0076): write and load a slot.
+        if cfg!(feature = "save") {
+            call(
+                &mut agent,
+                "save_write",
+                json!({ "session": id, "slot": "leak", "dir": saves }),
+            );
+            call(
+                &mut agent,
+                "save_load",
+                json!({ "session": id, "slot": "leak", "dir": saves }),
+            );
+        }
         call(&mut agent, "session_stop", json!({ "session": id }));
     });
+    let _ = std::fs::remove_dir_all(&saves);
 
     // 2. A long run that fills the event log past its bound (10 events per tick): the Rust
     //    heap and the script heap must level off.

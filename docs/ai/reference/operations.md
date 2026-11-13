@@ -88,6 +88,11 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `save_write` | yes | Save a live session to a slot (crash-safe, keeps a backup). |
+| `save_load` | yes | Load a slot into a live session, migrating old saves. |
+| `save_list` | no | List save slots (headers only). |
+| `save_check` | no | Check that a slot would load into a session. |
+| `save_delete` | yes | Delete a slot and its backup. |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
 | `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
@@ -2111,6 +2116,125 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `save_write`
+
+Save a live session to a slot (crash-safe, keeps a backup).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Folder of slots, relative to the project root (default `saves`). |
+| `label` | string |  | Text for a slot menu. |
+| `meta` | any |  | Small JSON for a slot menu (at most 16 KB): play time, chapter. |
+| `session` | string | yes |  |
+| `slot` | string | yes | Slot name: 1 to 48 of a-z, 0-9, `_`, `-` (autosaves use `auto-N`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `capture_ms` | number | yes | Main-thread part: copying the state. |
+| `path` | string | yes |  |
+| `slot` | string | yes |  |
+| `tick` | integer | yes |  |
+| `version` | integer | yes |  |
+| `write_ms` | number | yes | The rest: scene text, checksum, file (a game does this on its save thread). |
+
+## `save_load`
+
+Load a slot into a live session, migrating old saves.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `exact` | boolean | yes | Module state (physics internals, held input) restored too: the game continues exactly as it would have. False after a migration. |
+| `from_version` | integer | yes |  |
+| `recovered` | string \| null |  | Why the slot's backup was loaded instead, if it was. |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `tick` | integer | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_list`
+
+List save slots (headers only).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `slots` | array of SlotRow | yes |  |
+
+## `save_check`
+
+Check that a slot would load into a session.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes | A live session of the game that would load the save (its format and migrations). |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from_version` | integer \| null |  |  |
+| `ok` | boolean | yes | Loading would succeed. |
+| `problems` | array of any | yes | What would stop the load (empty when `ok`). |
+| `recovered` | string \| null |  |  |
+| `slot` | string | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_delete`
+
+Delete a slot and its backup.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `deleted` | boolean | yes | False when the slot did not exist. |
+| `slot` | string | yes |  |
 
 ## `prefab_instantiate`
 

@@ -59,6 +59,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0073 | Saving copies state on the main thread and writes it elsewhere (`Sim::capture`); registered types need `Clone` | accepted |
 | 0074 | Blend spaces (gradient band weights, phase sync) and masked or additive overlays as optional components | accepted |
 | 0075 | 3D sound through one `hear` formula (distance curves, rear muffle, Doppler, head pose), live voices, layered `Music` | accepted |
+| 0076 | Save games: `marionette-save` with slots, crash-safe `.msave` files and backups, versioned saves with data and Rust migrations, background writer, autosave | accepted |
 | 0080 | Frustum culling always on (pixel-identical, shadow casters kept); level of detail opt-in (`LevelOfDetail`, generated levels) | accepted |
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
