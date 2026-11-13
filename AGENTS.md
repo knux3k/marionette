@@ -53,7 +53,9 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-inspect-scene` | see the editor view, pick entities at pixels, inspect and frame |
 | `marionette-light-scene` | lighting and post-processing |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
+| `marionette-synth-audio` | synth voices, streamed music, generated samples, audio checked as numbers |
 | `marionette-test-game` | scenarios, replays, stability soaks |
+| `marionette-tune-render-cost` | level of detail, render scale, foveation, anti-aliasing |
 | `marionette-world-ui` | panels, buttons and text in the 3D world, pointer and touch input |
 | `marionette-write-job` | hot loops in job TypeScript |
 | `marionette-write-script` | gameplay scripts in TypeScript |

@@ -1,6 +1,6 @@
 ---
 name: marionette-light-scene
-description: Make a Marionette 3D scene look good with the opt-in lighting and post-processing components (shadows, point and spot lights, sky and environment lighting, emissive, tone mapping, bloom, fog) and check the result in a screenshot. Use when a scene looks flat, dark, washed out or unlit, or when adding lamps, glow, reflections or atmosphere.
+description: Make a Marionette 3D scene look good with the opt-in lighting and post-processing components (shadows, point and spot lights, sky and environment lighting, emissive, tone mapping, bloom, fog). Use when a scene looks flat, dark, washed out or unlit, or when adding lamps, glow, reflections or atmosphere.
 ---
 
 # Light a scene

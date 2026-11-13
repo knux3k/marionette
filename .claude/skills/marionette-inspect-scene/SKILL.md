@@ -1,6 +1,6 @@
 ---
 name: marionette-inspect-scene
-description: Look at a Marionette scene the way a person does in the scene editor window, `marionette edit`; render the editor view offscreen, find which entity is at a pixel, read the selected entity's components, and frame an object. Use when asked what is on screen, which object is where, why something looks wrong in the editor, or to show a person a scene from a free camera.
+description: See a Marionette scene as the scene editor shows it (`editor_view`), which entity is at a pixel, and the selected entity's components. Use when asked what is on screen or where an object is, or to show a scene from a free camera.
 ---
 
 # Inspect a scene through the editor view

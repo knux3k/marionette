@@ -17,3 +17,10 @@ glam = "0.34"
 pollster = "1.0.1"
 serde.workspace = true
 serde_json.workspace = true
+meshopt = { version = "0.7.0", optional = true }
+
+[features]
+default = ["lod"]
+# Reduced levels of detail built with meshoptimizer's simplifier (decision 0080). Without it
+# `LevelOfDetail` still hides small far things but every part keeps one level.
+lod = ["dep:meshopt"]
