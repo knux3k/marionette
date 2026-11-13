@@ -126,22 +126,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: System libraries (ALSA, Vulkan, OpenXR loader, Monado, Xvfb)
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev mesa-vulkan-drivers libopenxr-loader1 monado-service xvfb
+      - name: Build
+        run: cargo build --locked -p marionette-cli --tests
       - name: Start the simulated headset
         run: |
           Xvfb :99 -screen 0 1280x720x24 &
           sleep 1
           # monado-service watches stdin; keep it open.
           (sleep 3600 | DISPLAY=:99 XRT_COMPOSITOR_FORCE_XCB=1 SIMULATED_ENABLE=1 monado-service > monado.log 2>&1 &)
-          for i in $(seq 1 30); do [ -S /tmp/monado_comp_ipc ] && break; sleep 1; done
-          ls -l /tmp/monado_comp_ipc
+          # Ready when an OpenXR client can see the headset.
+          for i in $(seq 1 90); do
+            ./target/debug/marionette xr --probe 2>/dev/null && exit 0
+            sleep 2
+          done
+          exit 1
       - name: XR tests on the runtime
         run: cargo test --locked -p marionette-cli --test xr -- --test-threads=1 --nocapture
         env:
           MARIONETTE_XR_RUNTIME: "1"
           MARIONETTE_REQUIRE_GPU: "1"
           WGPU_BACKEND: vulkan
-      - name: Probe
-        run: cargo run --locked -q -p marionette-cli -- xr --probe
       - name: Monado log
         if: always()
         run: tail -50 monado.log || true
