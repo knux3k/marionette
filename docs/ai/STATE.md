@@ -27,7 +27,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
   nor on AMD or Intel GPUs.
-- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041)
+- CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
+  cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
   build machine's network blocks those sites, so no live search or download has run.
 

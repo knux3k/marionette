@@ -367,7 +367,15 @@ pub fn add(
                 return Err(err(
                     codes::NO_PROOF,
                     format!("page `{page}` is not on {}", src.name),
-                    &format!("give the asset's https page on {}", src.domains.join(" or ")),
+                    &format!(
+                        "give the asset's https page on {}",
+                        src.domains
+                            .iter()
+                            .chain(src.prefixes)
+                            .copied()
+                            .collect::<Vec<_>>()
+                            .join(" or ")
+                    ),
                 ));
             }
             if let Some(d) = c.source.downloads.iter().find(|d| !src.owns(d)) {

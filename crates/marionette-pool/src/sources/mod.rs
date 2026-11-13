@@ -2,7 +2,10 @@
 //!
 //! Each library's license policy is recorded with the URL and the sentence it was checked
 //! against (decision 0041). Poly Haven and ambientCG have public JSON APIs (search and ingest);
-//! Kenney and Quaternius publish archives that carry a license file, which admission requires.
+//! Kenney and Quaternius publish archives that carry a license file, which admission requires;
+//! KayKit publishes its packs on GitHub with LICENSE.txt (same rule); cgbookcase states CC0 for
+//! every texture on its site. ShareTextures is not a library here: its license is a custom one
+//! that forbids redistribution and automated downloads (decision 0071).
 //! The API formats were read from live responses on 2026-11-12; parsing is by key name.
 
 pub mod ambientcg;
@@ -20,6 +23,9 @@ pub struct Library {
     pub name: &'static str,
     /// Pages and downloads must be on one of these domains (or their subdomains).
     pub domains: &'static [&'static str],
+    /// For libraries hosted on a shared site (GitHub): https URL prefixes that belong to the
+    /// library, such as its GitHub organization.
+    pub prefixes: &'static [&'static str],
     pub license_url: &'static str,
     /// The library's own words, as read on its license page.
     pub license_quote: &'static str,
@@ -34,6 +40,10 @@ pub struct Library {
 impl Library {
     pub fn owns(&self, url: &str) -> bool {
         self.domains.iter().any(|d| crate::net::on_domain(url, d))
+            || self
+                .prefixes
+                .iter()
+                .any(|p| url.starts_with(p) && !url[p.len()..].contains(".."))
     }
 
     pub fn policy_proof(&self) -> Proof {
@@ -50,6 +60,7 @@ pub const LIBRARIES: &[Library] = &[
         id: "polyhaven",
         name: "Poly Haven",
         domains: &["polyhaven.com", "polyhaven.org"],
+        prefixes: &[],
         license_url: "https://polyhaven.com/license",
         license_quote: "Our assets are all licensed as CC0",
         needs_license_file: false,
@@ -60,6 +71,7 @@ pub const LIBRARIES: &[Library] = &[
         id: "ambientcg",
         name: "ambientCG",
         domains: &["ambientcg.com"],
+        prefixes: &[],
         license_url: "https://docs.ambientcg.com/license/",
         license_quote: "All ambientCG assets are provided under the Creative Commons CC0 1.0 Universal License.",
         needs_license_file: false,
@@ -70,6 +82,7 @@ pub const LIBRARIES: &[Library] = &[
         id: "kenney",
         name: "Kenney",
         domains: &["kenney.nl"],
+        prefixes: &[],
         license_url: "https://kenney.nl/support",
         license_quote: "Yes, all game assets on the asset pages are public domain licensed (CC0).",
         needs_license_file: true,
@@ -80,11 +93,38 @@ pub const LIBRARIES: &[Library] = &[
         id: "quaternius",
         name: "Quaternius",
         domains: &["quaternius.com"],
+        prefixes: &[],
         license_url: "https://quaternius.com/faq.html",
         license_quote: "All models are under the CC0 License.",
         needs_license_file: true,
         searchable: false,
         browse: "https://quaternius.com",
+    },
+    Library {
+        id: "kaykit",
+        name: "KayKit",
+        domains: &["kaylousberg.com", "kaylousberg.itch.io"],
+        // The official GitHub mirrors of the packs (each with LICENSE.txt).
+        prefixes: &[
+            "https://github.com/KayKit-Game-Assets/",
+            "https://raw.githubusercontent.com/KayKit-Game-Assets/",
+        ],
+        license_url: "https://kaylousberg.itch.io/kaykit-dungeon-remastered",
+        license_quote: "Free for personal and commercial use, no attribution required. (CC0 Licensed)",
+        needs_license_file: true,
+        searchable: false,
+        browse: "https://kaylousberg.com/game-assets",
+    },
+    Library {
+        id: "cgbookcase",
+        name: "cgbookcase",
+        domains: &["cgbookcase.com", "cgbookcase.b-cdn.net"],
+        prefixes: &[],
+        license_url: "https://www.cgbookcase.com/textures",
+        license_quote: "The textures are published under the CC0 1.0 license, which means means you can use them for free without giving credit.",
+        needs_license_file: false,
+        searchable: false,
+        browse: "https://www.cgbookcase.com/textures",
     },
 ];
 
@@ -148,4 +188,28 @@ pub fn to_png(bytes: &[u8]) -> Result<Vec<u8>, String> {
         img.height(),
         img.as_raw(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::library;
+
+    #[test]
+    fn libraries_on_shared_hosts_own_only_their_prefix() {
+        let kk = library("kaykit").unwrap();
+        assert!(kk.owns("https://github.com/KayKit-Game-Assets/KayKit-Prototype-Bits-1.0"));
+        assert!(kk.owns(
+            "https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Prototype-Bits-1.0/main/LICENSE.txt"
+        ));
+        assert!(kk.owns("https://kaylousberg.itch.io/kaykit-dungeon-remastered"));
+        assert!(!kk.owns("https://github.com/someone-else/KayKit-Copy"));
+        assert!(!kk.owns("https://github.com/KayKit-Game-Assets/../someone-else/x"));
+        assert!(!kk.owns("http://github.com/KayKit-Game-Assets/x"));
+        assert!(library("sharetextures").is_none());
+        assert!(
+            library("cgbookcase")
+                .unwrap()
+                .owns("https://www.cgbookcase.com/textures/bark-19")
+        );
+    }
 }

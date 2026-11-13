@@ -7,7 +7,8 @@ the engine.
 
 1. An agent that needs an asset MUST search, in this order, and stop at the first acceptable
    result: (1) the project's own files; (2) the user's owned library; (3) the CC0 pool; (4) free
-   CC0 libraries online (Poly Haven, ambientCG, Kenney, Quaternius); (5) generation.
+   CC0 libraries online (Poly Haven, ambientCG, Kenney, Quaternius, KayKit, cgbookcase; decision
+   0071); (5) generation.
 2. The owned library is a per-user folder shared across that user's projects. It MUST NOT be
    inside the engine repository and MUST NOT be synced to the public pool.
 3. Generation uses Qwen for images only and Tripo for 3D models. Rigging: Tripo auto-rig first
@@ -20,7 +21,7 @@ the engine.
    recorded.
 5. The pool MUST refuse every imported owned asset and every asset whose license is not CC0.
 5a. Every pooled asset MUST carry proof that it is CC0: made for the project (with how), or
-    from a known CC0 library (Poly Haven, ambientCG, Kenney, Quaternius) with its page, and for
+    from a known CC0 library (Poly Haven, ambientCG, Kenney, Quaternius, KayKit, cgbookcase) with its page, and for
     archive libraries the archive's own CC0 license file.
 5b. Provider-generated assets MUST be refused unless a PERSON wrote a CC0 dedication
     (`<name>.cc0.json`, format `marionette.cc0_dedication/1`). An AI agent MUST NOT write it.
