@@ -78,7 +78,7 @@ fn script_seeds_the_arrays_and_the_schedule_moves_them() {
     assert!(energy.iter().all(|e| *e > 0.0));
     // One instanced draw of 4,096 cubes.
     let mut draws = Vec::new();
-    draw_job_data(&sim.world, 0.0, &mut draws);
+    draw_job_data(&sim.world, &Default::default(), &mut draws);
     assert_eq!(draws.len(), 1);
     assert_eq!(draws[0].asset, "primitive:cube");
     assert_eq!(draws[0].transforms.len(), 4096);

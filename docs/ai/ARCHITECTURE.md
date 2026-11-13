@@ -95,7 +95,8 @@ state as snapshots into crash-safe `.msave` slot files. Snapshots (`session_snap
 1. PBR models, instanced: one draw call per (asset, part, material override) group, per-instance
    model matrix and material factors in a vertex buffer, normal matrix computed in the shader.
    Bind groups: 0 view (dynamic offset, one slot per view), 1 lights, 2 material textures.
-   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025).
+   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025);
+   the hook gets a `BulkDrawContext` with the camera's eye and forward for culling and levels of detail (decision 0110).
 2. Sprites, same view, alpha blended, depth-tested without depth writes.
 3. UI in screen pixels (separate view buffer), no depth test.
 
