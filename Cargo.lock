@@ -2428,6 +2428,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-platform"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "marionette-pool"
 version = "0.1.0"
 dependencies = [
