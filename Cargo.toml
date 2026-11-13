@@ -27,3 +27,17 @@ debug = "line-tables-only"
 [profile.dev.package."*"]
 debug = false
 opt-level = 1
+
+# Build-setting experiments (decision 0100); temporary.
+[profile.x-thin]
+inherits = "release"
+lto = "thin"
+
+[profile.x-fat]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
+[profile.x-cgu1]
+inherits = "release"
+codegen-units = 1
