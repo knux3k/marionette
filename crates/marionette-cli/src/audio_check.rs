@@ -99,6 +99,8 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
         eprintln!("the audio device never asked for samples");
         return ExitCode::from(2);
     }
+    // Keep the sum of voices inside full scale, so `clipped` means something.
+    let velocity = (8.0 / voices.max(1) as f32).min(0.7);
     let presets = ["pluck", "pad", "bass", "lead", "bell", "thump"];
     let mut id = 0u32;
     let mut scheduled = 0u64;
@@ -112,7 +114,7 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
             let at = stats.now() + host.handle.frames((next_note - t).max(0.0) + 0.05);
             let p = synth::Patch::preset(presets[id as usize % presets.len()]).expect("preset");
             let freq = synth::dsp::midi_hz(36.0 + (id * 7 % 48) as f32);
-            if host.handle.note_on(at, id, freq, 0.7, p) {
+            if host.handle.note_on(at, id, freq, velocity, p) {
                 host.handle.note_off(at + host.handle.frames(1.0), id);
                 scheduled += 1;
             }
@@ -137,7 +139,7 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
         "stream_underruns": stream_handle.underruns(),
         "stream_frames": stream_handle.played(),
         "stream_error": stream_handle.error(),
-        "note": "slow_blocks counts callbacks that took longer than the audio they produced; max_block_us is the longest callback",
+        "note": "slow_blocks counts callbacks that took longer than the audio they produced; max_block_us is the longest callback; max_load_permille is the worst callback as thousandths of its deadline; buffer_frames is the device callback size",
     });
     if json_out {
         println!("{report}");

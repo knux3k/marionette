@@ -75,8 +75,16 @@ Line 6 (input, physics, audio, UI):
   480-frame blocks at 48 kHz): sustained voices as percent of one core: 64 voices 5.6 to 6.5,
   128 voices 11.7 to 13.0, 256 voices 20 to 30, 512 voices 37 to 58.
 - `marionette audio-check` without a device exits 2 with a message (checked here).
-- Not checked: any of it through a real audio device; OGG streaming (WAV only is tested; the
+- Not checked: OGG streaming (WAV only is tested; the
   decoder is shared); the PC figures. Planned PC run (Unity lock free, PC idle 5 minutes):
   `cargo run --release -p marionette-cli -- audio-check --seconds 30 --voices 128`, then 256,
   expecting `pass: true`; record `max_block_us` and the device rate here.
+- First real-device run (2026-11-13, Ryzen 7 2700X, USB speakers, 48 kHz, release build,
+  `audio-check --seconds 30`, PC idle 12 minutes, no Unity): 64 voices (79 at peak) passed with
+  0 slow callbacks, 0 underruns, 0 dropped, longest callback 2.4 ms. 128 voices (155 peak):
+  3 slow callbacks, longest 3.2 ms. 256 voices (309 peak): 12 slow, longest 3.0 ms. No stream
+  underruns, drops or late commands in any run. The test mix clipped heavily (notes were too
+  loud), so the check now scales velocity by voice count. The check also reports the device
+  callback size and worst callback load (`buffer_frames`, `max_load_permille`) to tell compute
+  from scheduling jitter; the 128 and 256 figures above are not yet explained.
 

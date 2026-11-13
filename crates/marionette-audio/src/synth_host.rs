@@ -41,7 +41,12 @@ impl Sound for SynthSound {
         let took = started.elapsed();
         let stats = self.synth.stats();
         stats.max_block_us.fetch_max(took.as_micros() as u64, Relaxed);
-        if took.as_secs_f64() > out.len() as f64 * dt {
+        let budget = out.len() as f64 * dt;
+        stats.buffer_frames.store(out.len() as u32, Relaxed);
+        stats
+            .max_load_permille
+            .fetch_max((took.as_secs_f64() / budget * 1000.0) as u32, Relaxed);
+        if took.as_secs_f64() > budget {
             stats.slow_blocks.fetch_add(1, Relaxed);
         }
     }
