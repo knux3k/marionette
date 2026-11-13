@@ -16,6 +16,8 @@ use serde_json::{Value, json};
 use std::process::ExitCode;
 
 mod audio_check;
+#[cfg(feature = "editor")]
+mod edit;
 mod packaged;
 mod render;
 mod stability;
@@ -71,8 +73,30 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        /// Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request`
+        /// events, F5 quick save and F9 quick load (slot `quick`).
+        #[arg(long)]
+        saves: Option<String>,
         #[command(flatten)]
         window: render::WindowFlags,
+    },
+    /// Open the scene editor window: fly around (right mouse + WASD), click things to inspect
+    /// them, play, pause and step, and move, copy or delete entities (written through the
+    /// edit operations, with undo). Keys are listed in the window's bottom bar.
+    #[cfg(feature = "editor")]
+    Edit {
+        scene: String,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Window size, e.g. 1600x900.
+        #[arg(long, default_value = "1600x900")]
+        size: String,
+        /// Do not open the audio device.
+        #[arg(long)]
+        mute: bool,
+        /// Close after this many frames (for scripted checks).
+        #[arg(long)]
+        frames: Option<u64>,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -490,6 +514,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            saves,
             window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
@@ -502,7 +527,28 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             record: record.as_deref(),
             mute,
             title: None,
+            saves: saves.as_deref(),
             window,
+        }),
+        #[cfg(feature = "editor")]
+        Command::Edit {
+            scene,
+            seed,
+            size,
+            mute,
+            frames,
+        } => render::parse_size(&size).and_then(|(width, height)| {
+            edit::edit(
+                &mut agent,
+                edit::EditRun {
+                    scene: &scene,
+                    seed,
+                    width,
+                    height,
+                    mute,
+                    frames,
+                },
+            )
         }),
         Command::Screenshot {
             scene,

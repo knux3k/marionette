@@ -13,6 +13,8 @@ pub(crate) const FORMAT: &str = "marionette.package";
 
 pub(crate) struct Packaged {
     dir: PathBuf,
+    /// Folder name for the player's saves.
+    name: String,
     title: String,
     entry: String,
     window: String,
@@ -34,6 +36,7 @@ pub(crate) fn read(dir: &Path) -> Option<Packaged> {
     }
     Some(Packaged {
         dir: dir.to_path_buf(),
+        name: v["game"].as_str().unwrap_or("marionette-game").to_string(),
         title: v["title"].as_str().unwrap_or("Marionette").to_string(),
         entry: v["entry"].as_str()?.to_string(),
         window: v["window"].as_str().unwrap_or("1280x720").to_string(),
@@ -53,6 +56,7 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
         marionette_host::shutdown();
         return code;
     }
+    let saves = save_dir(&game.name).map(|d| d.display().to_string());
     let result = crate::render::windowed(crate::render::WindowedRun {
         engine,
         path: &scene,
@@ -64,6 +68,7 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
         record: None,
         mute: false,
         title: Some(&game.title),
+        saves: saves.as_deref(),
         window: crate::render::WindowFlags {
             present: "vsync".into(),
             frame_latency: 2,
@@ -78,6 +83,19 @@ pub(crate) fn play(engine: &Engine, game: &Packaged) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Where a packaged game keeps the player's saves (decision 0076): `%APPDATA%\<game>\saves` on
+/// Windows, `$XDG_DATA_HOME/<game>/saves` (default `~/.local/share`) elsewhere. The game folder
+/// may be read-only (a Steam install), so saves never go there.
+fn save_dir(name: &str) -> Option<PathBuf> {
+    let var = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    let base = if cfg!(windows) {
+        var("APPDATA")?
+    } else {
+        var("XDG_DATA_HOME").or_else(|| var("HOME").map(|h| h.join(".local/share")))?
+    };
+    Some(base.join(name).join("saves"))
 }
 
 /// A VR game plays in the headset when an OpenXR runtime and headset are there; `None` means

@@ -214,7 +214,8 @@ pub(crate) fn readme(game: &Game, target: &Target, bin: &str) -> String {
         _ => s += &format!("Play: run ./{bin} (or double-click it in a file manager).\n"),
     }
     s += "Needs a GPU with Vulkan (Linux), or DirectX 12 or Vulkan (Windows).\n\
-          Escape closes the game.\n\n";
+          Escape closes the game. F5 saves, F9 loads; saves are kept in %APPDATA% (Windows) or\n\
+          ~/.local/share (Linux), in a folder named after the game.\n\n";
     if crate::is_vr(game) {
         s += "VR: with an OpenXR runtime active (SteamVR, Monado) and a headset on, the game starts\n\
               in the headset; otherwise it opens in a window.\n\n";

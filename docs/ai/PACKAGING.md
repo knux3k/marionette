@@ -36,6 +36,8 @@ Same as operations `package_build` and `package_targets` (MCP group `package`). 
   file's size and SHA-256.
 - `licenses/`: the engine's MIT and Apache-2.0 files, and `THIRD-PARTY.txt` listing every
   linked crate with its license and license files (identical texts once).
+- Saves (autosave, F5, F9) go to `%APPDATA%\<game>\saves` on Windows and
+  `$XDG_DATA_HOME/<game>/saves` (default `~/.local/share`) on Linux, never the game folder.
 - `README.txt` for the player, with Steam Deck and Steam Frame steps on those targets.
 
 VR games (a scene with `XrRig`, decision 0190) get `"vr": true` in the manifest: the binary
@@ -43,7 +45,7 @@ tries the headset through OpenXR first and opens a window when no runtime or hea
 (`xr.no_*`). Linux and the Frame use the system OpenXR loader; on Windows put
 `openxr_loader.dll` in the game folder (the build warns when it is missing).
 
-The engine binary gets `gamepad` (decision 0172) and only the other runtime features the game uses: `script` when it has
+The engine binary gets `gamepad` (decision 0172) and `save` (decision 0076) and only the other runtime features the game uses: `script` when it has
 TypeScript, `jobs-ts` when text names `JobData`, `JobSchedule` or `engine.jobs` (wasmtime is
 about 12 MB), `xr` when a scene has an `XrRig`. A game with its own `Cargo.toml` (decision 0062) is built from that package.
 

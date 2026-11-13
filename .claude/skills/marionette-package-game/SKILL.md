@@ -36,5 +36,6 @@ seen by the reference check: list it in a scene or set `keep_unreferenced`.
 - A game with its own `Cargo.toml` is built from it and needs exactly one binary.
 - A scene with `XrRig` makes a VR package: headset first, window if none. On Windows put
   `openxr_loader.dll` in the game folder.
-- Packages always carry gamepad input (`pad:`/`axis:` actions); Linux sysroots hold libudev for it.
+- Packages always carry gamepad input (Linux sysroots hold libudev for it) and saving; saves go
+  to the player's data folder (`%APPDATA%` or `~/.local/share`), not the game folder.
 - Uploading to Steam, signing, or sending a package to anyone is the owner's call: ask first.

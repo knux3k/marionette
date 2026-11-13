@@ -17,3 +17,4 @@
 After windowed play (decision 0172) landed, packages carry the `gamepad` feature. Linux sysroots
 hold Ubuntu 20.04 libudev 245. Cloudstep packaged for linux-x64 (smoke passed, glibc 2.30 needed)
 and steam-frame (glibc 2.30) from the cloud container. No gamepad was connected.
+Packages also carry `save` (decision 0076); a packaged game saves to the player's data folder.

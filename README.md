@@ -25,6 +25,7 @@ Commands (all accept `--json`):
 | `marionette validate <scene>` | Checks a scene; errors have a code, line, entity and suggested fix |
 | `marionette run <scene> --headless --ticks N --seed S` | Simulates and prints a SHA-256 state hash |
 | `marionette run <scene>` | Opens a window (Escape closes; `--ticks N` closes after N ticks) |
+| `marionette edit <scene>` | Opens the scene editor: right mouse + WASD to fly, click to inspect, P to play; keys in its bottom bar |
 | `marionette screenshot <scene> --ticks N --seed S --camera ID --size WxH --out f.png` | Renders one PNG with no window |
 | `marionette bench <scene> --frames N --size WxH` | Measures offscreen frame time |
 | `marionette ops` | Lists every operation with its JSON Schemas |

@@ -25,12 +25,15 @@ marionette-pool = { path = "../marionette-pool", optional = true }
 marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-jobs-ts = { path = "../marionette-jobs-ts", optional = true }
+marionette-save = { workspace = true, optional = true }
 marionette-nav = { path = "../marionette-nav", optional = true }
 marionette-providers = { path = "../marionette-providers", optional = true }
 marionette-generate = { path = "../marionette-generate", optional = true }
 marionette-script = { path = "../marionette-script", optional = true }
 marionette-port = { path = "../marionette-port", optional = true }
 marionette-package = { path = "../marionette-package", optional = true }
+marionette-editor = { path = "../marionette-editor", optional = true }
+glam = { version = "0.34", optional = true }
 marionette-starter = { path = "../marionette-starter", optional = true }
 marionette-net = { path = "../marionette-net", optional = true }
 marionette-platform = { path = "../marionette-platform", optional = true }
@@ -45,7 +48,7 @@ tokio = { version = "1", features = ["rt"] }
 # Optional engine parts (decision 0062). A game that does not use one builds without it:
 # `default-features = false, features = ["script"]`. Each feature adds its operations (and
 # for `script`, the script module).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "nav", "starter"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "nav", "starter", "save", "editor"]
 # TypeScript game scripts (QuickJS and the oxc TypeScript stripper).
 script = ["dep:marionette-script"]
 # Owned-asset library and prefab import (library_*, prefab_* operations).
@@ -60,6 +63,8 @@ port = ["dep:marionette-port"]
 jobs-ts = ["dep:marionette-jobs-ts"]
 # Game packaging for Windows, Linux, Steam Deck and Steam Frame (package_* operations).
 package = ["dep:marionette-package"]
+# Save games: slots, crash-safe files, migrations, autosave (save_* operations; decision 0076).
+save = ["dep:marionette-save"]
 # Co-op networking (lockstep, transports, lobbies), achievements and cloud files: the
 # `NetModule` and the net_simulate and achievements_check operations (decision 0210). The
 # Steam backend is a separate crate a game adds itself (decision 0212).
@@ -69,6 +74,8 @@ starter = ["script", "pool", "generate", "dep:marionette-starter"]
 # World-space UI: panels and text placed in the 3D world (ui3d_* operations; decision 0200).
 # Off by default: a game that wants it adds the feature or `Ui3dModule` itself.
 ui3d = ["dep:marionette-ui3d"]
+# Scene editor view: the `editor_view` operation (decision 0130).
+editor = ["dep:marionette-editor", "dep:glam"]
 # Navigation on round, changing worlds (NavSurface, NavAgent; decision 0231).
 nav = ["dep:marionette-nav"]
 # Network transport for paid providers (off by default; decision 0045).
