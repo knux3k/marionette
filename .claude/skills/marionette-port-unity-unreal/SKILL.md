@@ -1,6 +1,6 @@
 ---
 name: marionette-port-unity-unreal
-description: Port Unity C# or Unreal C++ and Blueprint gameplay code to Marionette with the engine's scan, map, scaffold and convert tools. Use when converting a MonoBehaviour, Actor, ActorComponent, Burst job, prefab or whole game from Unity or Unreal, or when asking what a Unity or Unreal API becomes in Marionette.
+description: Port Unity C# or Unreal C++ and Blueprint gameplay code to Marionette with the engine's scan, map, scaffold and convert tools. Use when converting a MonoBehaviour, Actor, ActorComponent, Burst job, prefab or whole game from Unity or Unreal, or when asking what a Unity or Unreal API becomes.
 ---
 
 # Port Unity or Unreal code
@@ -18,6 +18,9 @@ There is no frame-rate update: everything runs in fixed ticks and must be determ
    skeleton per class, with the original code as comments and a `->` line under every engine
    call naming its equivalent, plus `PORT-NOTES.md`. Use `"dry_run": true` to see the list.
    Burst jobs get a Rust skeleton instead (`jobs.rs`).
+   Saved data (`[Serializable]` classes read by Unity JsonUtility): `port_serde` with `source`
+   and `out` writes Rust serde types that read and write the same JSON; read its `notes`
+   (fields Unity does not save, unknown types kept raw, untranslated initializers).
 3. Build the scene with operations (skill `marionette-build-scene`): one entity per object,
    the components the class report lists, and its `Script`.
 4. Convert every position, rotation, scale and length with `port_convert`

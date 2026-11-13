@@ -1,6 +1,6 @@
 ---
 name: marionette-multiplayer
-description: Make a Marionette game co-op and ship it on Steam - lockstep sessions with hash checks, lobbies, late join, per-player input, achievements, stats and cloud saves, tested without Steam. Use when a task mentions multiplayer, co-op, netcode, lobby, host or join, desync, Steam, achievements, stats or cloud saves.
+description: Co-op lockstep with hash checks, lobbies, late join, Steam, achievements, cloud saves. Use when a task mentions multiplayer, co-op, netcode, lobby, desync, Steam, achievements or cloud saves.
 ---
 
 # Co-op, Steam, achievements, cloud saves
