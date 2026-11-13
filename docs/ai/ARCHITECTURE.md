@@ -9,6 +9,7 @@
 | `crates/marionette-assets` | CPU assets: glTF/GLB models, PNG, primitive shapes, built-in images and font | glam, gltf, png | wgpu, winit, any marionette crate |
 | `crates/marionette-render` | wgpu renderer (PBR, sprites, UI), offscreen capture, image diff, the window | core, assets, wgpu, winit, glam, bytemuck, pollster | physics, input, audio, agent |
 | `crates/marionette-input` | Action maps, input event queue, recording, `Stage::Input` system | core | render, winit, physics, audio |
+| `crates/marionette-gamepad` | Controllers (gilrs) to `pad:`/`axis:` device inputs, polled by window hooks (decision 0172) | gilrs | core, render, winit |
 | `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
 | `crates/marionette-audio` | Sound triggers, `hear` (3D gain, pan, rear low-pass, Doppler), headless sound log, layered `Music`, kira player with live voices (decision 0075) | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |

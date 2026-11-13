@@ -67,6 +67,8 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        #[command(flatten)]
+        window: render::WindowFlags,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -332,6 +334,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -342,6 +345,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            window,
         }),
         Command::Screenshot {
             scene,

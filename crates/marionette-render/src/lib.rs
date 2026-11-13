@@ -8,6 +8,7 @@ pub use marionette_assets as assets;
 pub mod compare;
 mod environment;
 pub mod extract;
+pub mod frame_stats;
 pub mod gpu;
 mod post;
 pub mod renderer;
