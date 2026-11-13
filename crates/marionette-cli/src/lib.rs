@@ -112,6 +112,10 @@ enum Command {
         /// Untimed ticks (each with a frame) before measuring.
         #[arg(long, default_value_t = 30)]
         warmup: u32,
+        /// Draw every instance in every view (frustum culling off), to measure what culling
+        /// saves (decision 0080).
+        #[arg(long)]
+        no_cull: bool,
     },
     /// Stability suite (operation `stability_run`): run every game mode with seeded random
     /// input and check no panic, no hang, replay and snapshot determinism, time budgets and
@@ -375,9 +379,11 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             eyes,
             headset,
             warmup,
+            no_cull,
         } => render::bench(render::BenchOptions {
             engine: &engine,
             warmup,
+            no_cull,
             path: &scene,
             frames,
             seed,

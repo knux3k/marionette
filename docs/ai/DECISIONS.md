@@ -59,6 +59,10 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0073 | Saving copies state on the main thread and writes it elsewhere (`Sim::capture`); registered types need `Clone` | accepted |
 | 0074 | Blend spaces (gradient band weights, phase sync) and masked or additive overlays as optional components | accepted |
 | 0075 | 3D sound through one `hear` formula (distance curves, rear muffle, Doppler, head pose), live voices, layered `Music` | accepted |
+| 0080 | Frustum culling always on (pixel-identical, shadow casters kept); level of detail opt-in (`LevelOfDetail`, generated levels) | accepted |
+| 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
+| 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
+| 0083 | No DLSS (license forbids open source use; owner chose not to use it); vendor-neutral upscaling only | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
