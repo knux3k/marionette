@@ -16,6 +16,7 @@ marionette-audio = { path = "../marionette-audio" }
 marionette-synth = { path = "../marionette-synth" }
 marionette-import = { path = "../marionette-import", optional = true }
 marionette-anim = { path = "../marionette-anim" }
+marionette-xr = { path = "../marionette-xr" }
 marionette-ui3d = { path = "../marionette-ui3d", optional = true }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true

@@ -18,6 +18,8 @@ use std::process::ExitCode;
 mod audio_check;
 mod render;
 mod stability;
+#[cfg(feature = "xr")]
+mod xr;
 
 #[derive(Parser)]
 #[command(name = "marionette", version, about = "Marionette game engine CLI")]
@@ -121,6 +123,44 @@ enum Command {
         /// saves (decision 0080).
         #[arg(long)]
         no_cull: bool,
+    },
+    /// Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered,
+    /// head, controllers and hands fed in as input (marionette-xr). With --probe, only report
+    /// the runtime and headset. Ends when the runtime ends the session, or after --frames or
+    /// --ticks.
+    #[cfg(feature = "xr")]
+    Xr {
+        /// Scene file (not needed with --probe).
+        scene: Option<String>,
+        /// Only check for a runtime and headset.
+        #[arg(long)]
+        probe: bool,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Camera entity id (default: the lowest-id camera; put it on the tracked head).
+        #[arg(long)]
+        camera: Option<u64>,
+        /// MSAA sample count per eye (1 or 4).
+        #[arg(long, default_value_t = 4)]
+        msaa: u32,
+        /// Stop after this many headset frames.
+        #[arg(long)]
+        frames: Option<u64>,
+        /// Stop after this many ticks.
+        #[arg(long)]
+        ticks: Option<u64>,
+        /// Eye size relative to the runtime's recommendation (0.25 to 2).
+        #[arg(long, default_value_t = 1.0)]
+        scale: f32,
+        /// Scripted input or a recording to replay alongside the headset.
+        #[arg(long)]
+        input: Option<String>,
+        /// Write every input action change (poses included) to this file when the run ends.
+        #[arg(long)]
+        record: Option<String>,
+        /// Do not open the audio device.
+        #[arg(long)]
+        mute: bool,
     },
     /// Stability suite (operation `stability_run`): run every game mode with seeded random
     /// input and check no panic, no hang, replay and snapshot determinism, time budgets and
@@ -423,6 +463,41 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             eyes: if headset { 2 } else { eyes },
             headset,
         }),
+        #[cfg(feature = "xr")]
+        Command::Xr { probe: true, .. } => xr::probe(),
+        #[cfg(feature = "xr")]
+        Command::Xr {
+            scene,
+            seed,
+            camera,
+            msaa,
+            frames,
+            ticks,
+            scale,
+            input,
+            record,
+            mute,
+            ..
+        } => match scene {
+            None => Err(marionette_core::Diagnostic::error(
+                "cli.no_scene",
+                "marionette xr needs a scene (or --probe)",
+            )
+            .into()),
+            Some(scene) => xr::run(xr::XrRun {
+                engine: &engine,
+                path: &scene,
+                seed,
+                camera,
+                msaa,
+                frames,
+                ticks,
+                scale,
+                input: input.as_deref(),
+                record: record.as_deref(),
+                mute,
+            }),
+        },
         Command::Stability {
             suite,
             modes,

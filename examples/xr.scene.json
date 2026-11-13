@@ -1,0 +1,550 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "XrLocomotion": {
+          "direction": "Head",
+          "move_x": "move_x",
+          "move_y": "move_y",
+          "smooth_degrees_per_second": 90.0,
+          "snap_degrees": 30.0,
+          "speed": 2.0,
+          "teleport": "teleport",
+          "teleport_aim": "RightAim",
+          "teleport_range": 12.0,
+          "turn": "turn",
+          "turn_mode": "Snap",
+          "vignette": 0.6
+        },
+        "XrRig": {
+          "height_offset": 0.0
+        }
+      },
+      "id": 1,
+      "name": "rig"
+    },
+    {
+      "components": {
+        "AudioListener": {
+          "volume": 1.0
+        },
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.75,
+            "g": 0.5,
+            "r": 0.35
+          },
+          "projection": {
+            "Perspective": {
+              "far": 200.0,
+              "fov_y_degrees": 90.0,
+              "near": 0.05
+            }
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 1.6,
+            "z": 0.0
+          }
+        },
+        "XrTracked": {
+          "rig": 1,
+          "source": "Head"
+        }
+      },
+      "id": 2,
+      "name": "head"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.7,
+            "g": 0.8,
+            "r": 0.95
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.08,
+            "y": 0.08,
+            "z": 0.08
+          },
+          "translation": {
+            "x": -0.2,
+            "y": 1.1,
+            "z": -0.3
+          }
+        },
+        "XrHand": {
+          "grab_action": "grab_left",
+          "grab_radius": 0.15,
+          "throw_scale": 1.0
+        },
+        "XrTracked": {
+          "rig": 1,
+          "source": "LeftGrip"
+        }
+      },
+      "id": 3,
+      "name": "left-hand"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.7,
+            "g": 0.8,
+            "r": 0.95
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.08,
+            "y": 0.08,
+            "z": 0.08
+          },
+          "translation": {
+            "x": 0.2,
+            "y": 1.1,
+            "z": -0.3
+          }
+        },
+        "XrHand": {
+          "grab_action": "grab_right",
+          "grab_radius": 0.15,
+          "throw_scale": 1.0
+        },
+        "XrTracked": {
+          "rig": 1,
+          "source": "RightGrip"
+        }
+      },
+      "id": 4,
+      "name": "right-hand"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.4,
+            "y": -1.0,
+            "z": -0.5
+          },
+          "illuminance": 1.1
+        }
+      },
+      "id": 5,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.38,
+            "g": 0.36,
+            "r": 0.35
+          },
+          "metallic": 0.0,
+          "roughness": 0.9
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 20.0,
+            "y": 1.0,
+            "z": 20.0
+          },
+          "translation": {
+            "x": 0.0,
+            "y": -0.5,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 6,
+      "name": "floor"
+    },
+    {
+      "components": {
+        "Collider": {
+          "density": 1.0,
+          "friction": 0.8,
+          "restitution": 0.0,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.3,
+            "r": 0.45
+          },
+          "metallic": 0.0,
+          "roughness": 0.7
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 0.8,
+            "z": 0.6
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.4,
+            "z": -0.6
+          }
+        }
+      },
+      "id": 7,
+      "name": "table"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 400.0,
+          "friction": 0.7,
+          "restitution": 0.1,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Grabbable": {
+          "snap": false
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.3,
+            "r": 0.9
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.05,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.0,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.12,
+            "y": 0.12,
+            "z": 0.12
+          },
+          "translation": {
+            "x": -0.3,
+            "y": 0.86,
+            "z": -0.5
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 10,
+      "name": "block-1"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 400.0,
+          "friction": 0.7,
+          "restitution": 0.1,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Grabbable": {
+          "snap": false
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.35,
+            "g": 0.7,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.05,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.0,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.12,
+            "y": 0.12,
+            "z": 0.12
+          },
+          "translation": {
+            "x": 0.0,
+            "y": 0.86,
+            "z": -0.5
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 11,
+      "name": "block-2"
+    },
+    {
+      "components": {
+        "AngularVelocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Collider": {
+          "density": 400.0,
+          "friction": 0.7,
+          "restitution": 0.1,
+          "sensor": false,
+          "shape": {
+            "Cuboid": {
+              "half_extents": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              }
+            }
+          }
+        },
+        "Grabbable": {
+          "snap": false
+        },
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.9,
+            "g": 0.45,
+            "r": 0.3
+          },
+          "metallic": 0.0,
+          "roughness": 0.5
+        },
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "RigidBody": {
+          "angular_damping": 0.05,
+          "gravity_scale": 1.0,
+          "kind": "Dynamic",
+          "linear_damping": 0.0,
+          "lock_rotations": false
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 0.12,
+            "y": 0.12,
+            "z": 0.12
+          },
+          "translation": {
+            "x": 0.3,
+            "y": 0.86,
+            "z": -0.5
+          }
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 12,
+      "name": "block-3"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "AmbientLight": {
+      "color": {
+        "a": 1.0,
+        "b": 1.0,
+        "g": 0.7,
+        "r": 0.6
+      },
+      "intensity": 0.35
+    },
+    "FixedStep": {
+      "dt": 0.016666668
+    },
+    "InputConfig": {
+      "action_map": "xr.actions.json"
+    },
+    "PhysicsSettings": {
+      "gravity": {
+        "x": 0.0,
+        "y": -9.81,
+        "z": 0.0
+      },
+      "mode": "Dim3"
+    }
+  },
+  "version": 1
+}
