@@ -23,6 +23,7 @@ public static class W {
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hgt, bool repaint);
   [DllImport("user32.dll")] public static extern IntPtr GetShellWindow();
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   public static void Down(byte vk) { keybd_event(vk, 0, 0, UIntPtr.Zero); }
   public static void Up(byte vk) { keybd_event(vk, 0, 2, UIntPtr.Zero); }
 }
@@ -42,8 +43,14 @@ function Start-Run([string]$name, [string[]]$extra) {
 
 function Drive($p, [bool]$disturb) {
     $h = $p.MainWindowHandle
+    # A tap of Alt lets this process move another window to the front (Windows foreground lock).
+    [W]::Down(0x12); [W]::Up(0x12)
     [W]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Seconds 2
+    # Synthetic keys go to the foreground window; Task View, a lock screen or another app in
+    # front means the input steps test nothing.
+    $script:foreground = ([W]::GetForegroundWindow() -eq $h)
+    if (-not $script:foreground) { Write-Warning "window not in the foreground: input steps will not land" }
     # Taps of W (0x57) and D (0x44) for input latency samples.
     for ($i = 0; $i -lt 20; $i++) {
         $vk = if ($i % 2) { 0x44 } else { 0x57 }
@@ -80,10 +87,13 @@ $runs = @(
 $summary = @{}
 foreach ($r in $runs) {
     $p = Start-Run $r.name $r.extra
+    $script:foreground = $false
     $minCpu = Drive $p $r.disturb
     if (-not $p.WaitForExit(($Seconds + 15) * 1000)) { $p.Kill(); $summary[$r.name] = @{ error = "did not close" }; continue }
     $frames = Get-Content (Join-Path $Out "$($r.name).frames.json") -Raw | ConvertFrom-Json
-    $summary[$r.name] = @{ exit = $p.ExitCode; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
+    # Whether the synthetic keys reached the game: the recording has events only if they did.
+    $events = (Get-Content (Join-Path $Out "$($r.name).inputs.json") -Raw | ConvertFrom-Json).events.Count
+    $summary[$r.name] = @{ exit = $p.ExitCode; foreground = $script:foreground; recorded_events = $events; minimized_cpu_ms_per_2s = $minCpu; frames = $frames }
     Start-Sleep -Seconds 1
 }
 $summary | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $Out "summary.json")

@@ -942,6 +942,20 @@ Rust type: `marionette_core::spatial::RenderScale`.
 | `scale` | number | yes |  |
 | `sharpness` | number | yes |  |
 
+### `SaveFormat`
+
+How a game's saves are named and versioned. Put it in the game's scene; a world without it saves as game `""`, version 1, with autosave off.
+
+Rust type: `marionette_save::SaveFormat`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `autosave_every` | integer | yes | Autosave every this many ticks (0: only on `save_request` events). |
+| `autosave_slots` | integer | yes | Autosave slots `auto-0` .. `auto-(n-1)`, overwritten oldest first (at least 1). |
+| `game` | string | yes | Game id written in every save; a save of another game is refused on load. |
+| `migrations` | string | yes | Data migrations file (JSON, relative to the scene folder); empty for none. |
+| `version` | integer | yes | Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. |
+
 ### `ShadowCascades`
 
 Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map).

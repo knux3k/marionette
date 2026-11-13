@@ -2346,10 +2346,12 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
+ "glam 0.34.3",
  "marionette-anim",
  "marionette-assets",
  "marionette-audio",
  "marionette-core",
+ "marionette-editor",
  "marionette-factory",
  "marionette-generate",
  "marionette-host",
@@ -2359,12 +2361,14 @@ dependencies = [
  "marionette-jobs-ts",
  "marionette-nav",
  "marionette-net",
+ "marionette-package",
  "marionette-physics",
  "marionette-platform",
  "marionette-pool",
  "marionette-port",
  "marionette-providers",
  "marionette-render",
+ "marionette-save",
  "marionette-script",
  "marionette-starter",
  "marionette-synth",
@@ -2420,6 +2424,7 @@ dependencies = [
  "glam 0.34.3",
  "marionette-agent",
  "marionette-core",
+ "marionette-editor",
  "marionette-gamepad",
  "marionette-generate",
  "marionette-host",
@@ -2427,10 +2432,13 @@ dependencies = [
  "marionette-jobs",
  "marionette-net",
  "marionette-openxr",
+ "marionette-package",
  "marionette-render",
+ "marionette-save",
  "marionette-xr",
  "serde",
  "serde_json",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2442,6 +2450,18 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.1",
+]
+
+[[package]]
+name = "marionette-editor"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "glam 0.34.3",
+ "marionette-core",
+ "marionette-render",
+ "serde_json",
+ "winit",
 ]
 
 [[package]]
@@ -2603,6 +2623,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-package"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "marionette-core",
+ "marionette-host",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "marionette-physics"
 version = "0.1.0"
 dependencies = [
@@ -2683,6 +2716,18 @@ dependencies = [
  "serde_json",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "marionette-save"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-core",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]
