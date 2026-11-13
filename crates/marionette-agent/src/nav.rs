@@ -13,16 +13,14 @@ pub(crate) fn ops() -> Vec<Op> {
     vec![
         op(
             "nav_path",
-            "A route over a NavSurface between two world points (session, or a scene after \
-             `ticks`): corner points on the ground, length in metres, and whether it reaches \
-             `to` (false: it ends at the closest reachable place).",
+            "Route over a NavSurface between two world points: ground corners, length, and \
+             whether it reaches `to`.",
             false,
             path,
         ),
         op(
             "nav_agents",
-            "How the NavAgents are doing: a count per status (Idle, Waiting, Moving, Partial, \
-             Arrived, Unreachable), then up to `limit` agents (not arrived first) with \
+            "NavAgent count per status, then up to `limit` agents (not arrived first) with \
              status, speed and corners left.",
             false,
             agents,

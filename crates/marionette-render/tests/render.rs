@@ -524,3 +524,175 @@ fn streaming_decodes_late_models_off_the_frame() {
     assert_eq!(first.models_loading(), 0);
     assert!(first.read_pixels(&gpu).unwrap() == exact);
 }
+
+fn render_with(gpu: &Gpu, sim: &Sim, culling: bool) -> (Vec<u8>, marionette_render::RenderStats) {
+    let mut off = Offscreen::new(gpu, 160, 90, 4, repo().join("examples"));
+    off.set_culling(culling);
+    let stats = off.render(gpu, &extract(&sim.world), None).unwrap();
+    (off.read_pixels(gpu).unwrap(), stats)
+}
+
+fn cube(id: u32, x: f32, y: f32, z: f32, sy: f32) -> String {
+    format!(
+        r#", {{"id": {id}, "name": "c{id}", "components": {{
+        "Model": {{"asset": "primitive:cube"}},
+        "Material": {{"base_color": {{"r": 0.3, "g": 0.6, "b": 0.9, "a": 1}}, "metallic": 0, "roughness": 0.9}},
+        "Transform": {{"translation": {{"x": {x}, "y": {y}, "z": {z}}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": {sy}, "z": 1}}}}}}}}"#
+    )
+}
+
+/// Decision 0080: frustum culling leaves the picture unchanged (exactly) while things
+/// outside the view are not drawn; a tower outside the view still casts its shadow into it.
+#[test]
+fn culling_drops_unseen_instances_without_changing_the_image() {
+    let Some(gpu) = gpu() else { return };
+    let mut extra = String::new();
+    // A box up near the camera and off to the side (the view is only 4 m wide up there):
+    // the low sun throws its shadow into the middle of the view.
+    extra += &cube(10, 10.0, 10.0, 0.0, 1.0);
+    // A field of boxes far away in every direction: drawn nowhere.
+    let mut id = 20;
+    for gx in -5..=5 {
+        for gz in -5..=5 {
+            if gx == 0 && gz == 0 {
+                continue;
+            }
+            extra += &cube(id, gx as f32 * 80.0, 0.5, gz as f32 * 80.0, 1.0);
+            id += 1;
+        }
+    }
+    extra += r#", {"id": 9, "name": "sun", "components": {"DirectionalLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "direction": {"x": -1, "y": -1, "z": 0}, "illuminance": 2.0}}}"#;
+    let shadows = r#""AmbientLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "intensity": 0.2},
+        "Shadows": {"distance": 40.0, "resolution": 1024, "softness": 0.0}"#;
+    let sim = stage(&extra, shadows);
+    let (all, all_stats) = render_with(&gpu, &sim, false);
+    let (culled, stats) = render_with(&gpu, &sim, true);
+    assert!(all == culled, "culling changed pixels");
+    assert_eq!(all_stats.culled, 0);
+    // Ground and red box seen; the high box (shadow only) and the field are not drawn in view.
+    assert_eq!(stats.instances, 2, "{stats:?}");
+    assert_eq!(stats.culled, 121, "{stats:?}");
+    assert!(all_stats.instances > 100);
+    // The high box's shadow lands mid-view: darker than open ground.
+    let shade = (stage_x(-0.2), 43, stage_x(0.2), 47);
+    let open = (stage_x(-8.0), 43, stage_x(-7.6), 47);
+    assert!(
+        mean(&culled, shade) + 10.0 < mean(&culled, open),
+        "{} vs {}",
+        mean(&culled, shade),
+        mean(&culled, open)
+    );
+}
+
+/// Decision 0080: with `LevelOfDetail`, a far sphere draws a reduced mesh (fewer triangles,
+/// nearly the same picture) and a tiny one is hidden; without it nothing changes.
+#[test]
+fn level_of_detail_reduces_far_triangles_only_when_asked() {
+    let Some(gpu) = gpu() else { return };
+    let ball = |id: u32, x: f32, s: f32| {
+        format!(
+            r#", {{"id": {id}, "name": "b{id}", "components": {{
+            "Model": {{"asset": "primitive:sphere"}},
+            "Material": {{"base_color": {{"r": 0.9, "g": 0.9, "b": 0.2, "a": 1}}, "metallic": 0, "roughness": 0.6}},
+            "Transform": {{"translation": {{"x": {x}, "y": 1, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": {s}, "y": {s}, "z": {s}}}}}}}}}"#
+        )
+    };
+    let extra = format!(
+        "{}{}{}",
+        ball(4, -4.0, 1.0),
+        ball(5, 4.0, 1.0),
+        ball(6, -8.0, 0.01)
+    );
+    let light = r#""AmbientLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "intensity": 1.0}"#;
+    let lod = r#", "LevelOfDetail": {"medium_below": 0.3, "low_below": 0.0, "hide_below": 0.005}"#;
+    let (full, full_stats) = render_with(&gpu, &stage(&extra, light), true);
+    let (reduced, stats) = render_with(&gpu, &stage(&extra, &format!("{light}{lod}")), true);
+    assert_eq!(full_stats.instances, 5);
+    assert_eq!(stats.instances, 4, "the tiny ball is hidden: {stats:?}");
+    assert!(
+        stats.triangles * 10 < full_stats.triangles * 8,
+        "{} vs {}",
+        stats.triangles,
+        full_stats.triangles
+    );
+    let d = diff(&full, &reduced, REFERENCE_THRESHOLD);
+    assert!(d.mean < 2.0, "{d:?}");
+}
+
+fn render_scene_with(
+    gpu: &Gpu,
+    scene: &str,
+    resources: &str,
+    size: (u32, u32),
+) -> (Vec<u8>, marionette_render::RenderStats) {
+    let path = repo().join("examples").join(scene);
+    let mut v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let extra: serde_json::Value = serde_json::from_str(&format!("{{{resources}}}")).unwrap();
+    for (k, val) in extra.as_object().unwrap() {
+        v["resources"][k] = val.clone();
+    }
+    let mut sim = Sim::from_text(&v.to_string(), None, default_registry(), SEED).unwrap();
+    sim.run(TICKS);
+    let mut off = Offscreen::new(gpu, size.0, size.1, 4, repo().join("examples"));
+    let stats = off.render(gpu, &extract(&sim.world), None).unwrap();
+    (off.read_pixels(gpu).unwrap(), stats)
+}
+
+/// Decision 0081: render scale draws the world smaller (or larger) and resolves it to the
+/// output; the picture stays close to native in the plain and the bloom path, and scale 1
+/// without foveation takes the direct path (identical image, no extra pass).
+#[test]
+fn render_scale_resizes_the_world_and_keeps_the_picture() {
+    let Some(gpu) = gpu() else { return };
+    let size = (320, 180);
+    for scene in ["lighting.scene.json", "looks.scene.json"] {
+        let (native, native_stats) = render_scene_with(&gpu, scene, "", size);
+        let (same, same_stats) = render_scene_with(
+            &gpu,
+            scene,
+            r#""RenderScale": {"scale": 1.0, "sharpness": 0.5}"#,
+            size,
+        );
+        assert!(native == same, "{scene}: scale 1 changed pixels");
+        assert_eq!(native_stats.draw_calls, same_stats.draw_calls);
+        for (scale, limit) in [(0.75, 4.0), (0.5, 6.0), (2.0, 3.0)] {
+            let res = format!(r#""RenderScale": {{"scale": {scale}, "sharpness": 0.3}}"#);
+            let (scaled, stats) = render_scene_with(&gpu, scene, &res, size);
+            let d = diff(&native, &scaled, REFERENCE_THRESHOLD);
+            assert!(d.mean < limit, "{scene} at {scale}: {d:?}");
+            // One resolve pass (bloom's glow chain also changes length with the image size).
+            if scene == "lighting.scene.json" {
+                assert_eq!(stats.draw_calls, native_stats.draw_calls + 1, "{scene}");
+            }
+        }
+    }
+}
+
+/// Decision 0082: foveation leaves the middle of the view as it was and fills the skipped
+/// quads at the edges from their neighbours (no black holes), in the plain and bloom paths.
+#[test]
+fn foveation_keeps_the_center_and_fills_the_edges() {
+    let Some(gpu) = gpu() else { return };
+    let size = (320, 180);
+    for scene in ["lighting.scene.json", "looks.scene.json"] {
+        let (native, _) = render_scene_with(&gpu, scene, "", size);
+        let (fov, _) = render_scene_with(&gpu, scene, r#""Foveation": {"inner_radius": 0.5}"#, size);
+        let px = |img: &[u8], x: u32, y: u32| {
+            let i = ((y * size.0 + x) * 4) as usize;
+            [img[i], img[i + 1], img[i + 2]]
+        };
+        // Center block: identical without bloom; with bloom the glow blurs a little of the
+        // filled edge in, so within 2 of 255.
+        let tolerance = if scene == "looks.scene.json" { 2 } else { 0 };
+        for y in 80..100 {
+            for x in 150..170 {
+                let (a, b) = (px(&native, x, y), px(&fov, x, y));
+                let worst = (0..3).map(|k| a[k].abs_diff(b[k])).max().unwrap();
+                assert!(worst <= tolerance, "{scene} center ({x},{y}): {a:?} vs {b:?}");
+            }
+        }
+        let d = diff(&native, &fov, REFERENCE_THRESHOLD);
+        assert!(d.mean < 3.0, "{scene}: {d:?}");
+        assert!(d.max < 160, "{scene}: no unfilled holes: {d:?}");
+    }
+}
