@@ -7,6 +7,7 @@
 //! and produce them.
 
 pub mod anim;
+pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
@@ -168,6 +169,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        audio::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]

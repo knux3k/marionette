@@ -229,6 +229,10 @@ fn write_scaffold(agent: &mut Agent, input: ScaffoldInput) -> Result<ScaffoldOut
         scripts.push((ci, rel.clone()));
         planned.push((rel, c.raw.name.clone(), Some(hint), text));
     }
+    if let Some(text) = scaffold::rust_jobs(&a) {
+        let rel = format!("{}/jobs.rs", out_rel.trim_end_matches('/'));
+        planned.push((rel, "(job structs)".into(), None, text));
+    }
     let notes_rel = format!("{}/PORT-NOTES.md", out_rel.trim_end_matches('/'));
     planned.push((notes_rel, "-".into(), None, scaffold::notes(&a, &scripts)));
     if !input.overwrite {
