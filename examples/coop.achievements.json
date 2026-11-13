@@ -1,0 +1,19 @@
+{
+  "format": "marionette.achievements",
+  "version": 1,
+  "achievements": [
+    { "id": "FIRST_JUMP", "name": "Lift-off", "description": "Jump once." },
+    {
+      "id": "JUMPS_100",
+      "name": "Spring legs",
+      "description": "Jump 100 times.",
+      "stat": "jumps",
+      "at": 100
+    },
+    { "id": "FULL_HOUSE", "name": "Full house", "description": "Play with four players.", "hidden": true }
+  ],
+  "stats": [
+    { "id": "jumps", "kind": "int", "max": 1000000 },
+    { "id": "distance", "kind": "float" }
+  ]
+}
