@@ -494,3 +494,33 @@ fn imports_gltf_emissive() {
     assert!(model.images[t].srgb);
     assert_eq!(model.materials[0].emissive, [0.0; 3]);
 }
+
+#[test]
+fn streaming_decodes_late_models_off_the_frame() {
+    // Decision 0068: with streaming on, a model file first needed after the first frame is
+    // decoded in the background; the frame that first needs it does not wait for it.
+    let Some(gpu) = gpu() else { return };
+    let sprites = extract(&sim("sprites.scene.json").world);
+    let showcase = extract(&sim("showcase.scene.json").world);
+    let exact = render(&gpu, "showcase.scene.json", (64, 64));
+
+    let mut off = Offscreen::new(&gpu, 64, 64, 4, repo().join("examples"));
+    off.set_streaming(true);
+    off.render(&gpu, &sprites, None).unwrap(); // first frame: loads in place
+    off.render(&gpu, &showcase, None).unwrap();
+    assert_eq!(off.models_loading(), 1, "gem.glb decodes in the background");
+    off.finish_loading();
+    assert_eq!(off.models_loading(), 0);
+    off.render(&gpu, &showcase, None).unwrap();
+    assert!(
+        off.read_pixels(&gpu).unwrap() == exact,
+        "once loaded, the frame equals an exact render"
+    );
+
+    // The first prepared frame always loads everything, so pictures stay exact.
+    let mut first = Offscreen::new(&gpu, 64, 64, 4, repo().join("examples"));
+    first.set_streaming(true);
+    first.render(&gpu, &showcase, None).unwrap();
+    assert_eq!(first.models_loading(), 0);
+    assert!(first.read_pixels(&gpu).unwrap() == exact);
+}

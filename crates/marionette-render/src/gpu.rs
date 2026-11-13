@@ -204,6 +204,21 @@ impl Offscreen {
         (self.width, self.height)
     }
 
+    /// See [`Renderer::set_streaming`].
+    pub fn set_streaming(&mut self, on: bool) {
+        self.renderer.set_streaming(on);
+    }
+
+    /// See [`Renderer::models_loading`].
+    pub fn models_loading(&self) -> usize {
+        self.renderer.models_loading()
+    }
+
+    /// See [`Renderer::finish_loading`].
+    pub fn finish_loading(&mut self) {
+        self.renderer.finish_loading();
+    }
+
     /// See [`Renderer::trim`].
     pub fn trim(&mut self, frame: &FrameData) -> usize {
         self.renderer.trim(frame)

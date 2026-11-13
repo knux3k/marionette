@@ -19,7 +19,7 @@ it finds every `*.scene.json` outside `crates/`, `spikes/`, `docs/` and `target/
 | Deterministic | `nondeterminism` | a second run with the same scene, seed and input gives the same state hash |
 | Snapshots work | `snapshot` | restore the snapshot taken halfway, run to the end, same hash |
 | Time budget | `budget` | p99 tick (`tick_budget_ms`) and p99 frame (`frame_budget_ms`) x budget scale; release builds only (debug timings mean nothing); frame budgets only on a hardware GPU (a software rasterizer such as lavapipe or WARP draws on the CPU, decision 0023), shown as `frame_budget_checked` |
-| Memory steady | `memory` | growth after warm-up (first fifth of the run) at most `memory_growth_mib` (default 32) |
+| Memory steady | `memory` | growth after warm-up (first fifth of the run) at most `memory_growth_mib` (default 32); counted heap when the binary installs `marionette_host::alloc::Counting` (the `marionette` binary does), else resident size (decision 0069) |
 | Scripts healthy | `script_error` | no `script_error` events unless `allow_script_errors` |
 | Loads and operations | `error` | load errors, setup operations and agent operations must succeed |
 
@@ -32,7 +32,7 @@ scripted file. The generator is separate from the simulation RNG.
 | Kind | What runs |
 | --- | --- |
 | `sim` | headless ticks (servers, batch runs, the simulation side of every game) |
-| `render` | one tick plus one offscreen frame per step: the windowed game loop without the window; skipped without a GPU unless `MARIONETTE_REQUIRE_GPU=1` |
+| `render` | one tick plus one offscreen frame per step: the windowed game loop without the window (models first seen mid-run decode in the background, decision 0068); skipped without a GPU unless `MARIONETTE_REQUIRE_GPU=1` |
 | `agent` | a live session driven through the operation table (step with input, query, stats, events, create and delete entities, snapshot, restore), as the CLI and MCP server run it |
 
 `views: 2` renders both eyes of an emulated headset every frame (`Offscreen::render_eyes`, 64 mm
@@ -104,5 +104,8 @@ caught. Never use it in the suite file.
 
 - A real window and a real audio device (the `render` kind runs the same loop offscreen; opening
   windows on a user's screen needs the owner's approval).
-- Memory on Windows: the default probe reads `/proc/self/statm`. A binary can install another
-  with `marionette_agent::stability::set_memory_probe` (a counting allocator).
+- GPU driver memory: the heap probe sees only the Rust heap (decision 0069); resident growth
+  is reported as `resident_growth_mib` but not judged.
+- Single slow frames: budgets judge p99, and a fast run has about 100 frames, so one stalled
+  frame passes. Read `frame.max_ms` too (the first hardware GPU run found a 42 ms model decode
+  this way, fixed by decision 0068).
