@@ -3,6 +3,8 @@
 Commands and tests that prove each done part of the engine. Read only the section for the
 part you are changing. Moved out of STATE.md (decision 0061); add new proofs here.
 
+Co-op networking, Steam, achievements and cloud saves: [proofs/networking.md](proofs/networking.md).
+
 Line 1: `cargo build`, `cargo test`, `cargo clippy --all-targets -- -D warnings`,
 `cargo fmt --all -- --check` all pass. Workflow: `.github/workflows/ci.yml`.
 

@@ -23,6 +23,8 @@ pub mod observe;
 pub mod perf;
 #[cfg(feature = "pool")]
 pub mod pool;
+#[cfg(feature = "netplay")]
+pub mod netplay;
 #[cfg(feature = "port")]
 pub mod port;
 #[cfg(feature = "import")]
@@ -147,6 +149,8 @@ pub const FEATURES: &[&str] = &[
     "jobs-ts",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "netplay")]
+    "netplay",
 ];
 
 /// Every built-in operation compiled into this build, in a stable order.
@@ -177,6 +181,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         port::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "netplay")]
+        netplay::ops(),
         batch::ops(),
     ];
     groups.into_iter().flatten().collect()

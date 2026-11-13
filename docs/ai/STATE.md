@@ -18,10 +18,15 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
+| 10 | Later (OpenXR, AI while playing, inspector) | Not started. Co-op networking (host-stamped lockstep, loopback/UDP, lobbies), achievements, cloud saves and an optional Steam backend done (decisions 0210 to 0213, `docs/ai/proofs/networking.md`). |
 
 ## UNVERIFIED
 
+- Networking and Steam (decisions 0210 to 0213): sessions proven on the loopback network and
+  on 127.0.0.1 UDP only, never between two machines or over the internet. The Steam backend
+  has never talked to a Steam client: function signatures, struct offsets and callback ids are
+  from the public flat API, unchecked at run time. First check: `steam_check` example and a
+  two-machine lobby with app id 480, which needs a Steam login (owner).
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked

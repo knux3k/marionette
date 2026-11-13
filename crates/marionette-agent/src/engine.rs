@@ -63,6 +63,8 @@ impl EngineBuilder {
                 Part::Module(Box::new(AnimModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "netplay")]
+                Part::Module(Box::new(marionette_net::NetModule)),
             ],
             ops: crate::builtin_ops(),
         }

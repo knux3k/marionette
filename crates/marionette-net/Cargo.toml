@@ -13,3 +13,4 @@ bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+schemars = "1.2"

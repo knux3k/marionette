@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 
 const STEP: Micros = 16_667;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields, default)]
 pub struct SimulateOptions {
     /// Players at the start, including the host (1..=8).
@@ -60,7 +60,7 @@ impl Default for SimulateOptions {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, schemars::JsonSchema)]
 pub struct PeerReport {
     pub slot: u8,
     /// Fixed steps where a welcomed client had no frame to run.
@@ -74,7 +74,7 @@ pub struct PeerReport {
     pub final_hash: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, schemars::JsonSchema)]
 pub struct SimulateReport {
     /// Every peer still playing ended in the host's state.
     pub all_equal: bool,
