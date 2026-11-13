@@ -370,6 +370,8 @@ pub struct WindowedRun<'a> {
     pub input: Option<&'a str>,
     pub record: Option<&'a str>,
     pub mute: bool,
+    /// Window title (default `Marionette - <scene>`); packaged games use the game's title.
+    pub title: Option<&'a str>,
     /// Save folder (autosave, F5 and F9); `None` saves nothing.
     pub saves: Option<&'a str>,
     pub window: WindowFlags,
@@ -386,6 +388,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         input,
         record,
         mute,
+        title,
         saves,
         window: flags,
     } = run;
@@ -432,7 +435,10 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
             Err(m) => live.problems.push(m),
         }
     }
-    let mut opts = WindowOptions::new(format!("Marionette - {path}"), scene_dir(path));
+    let mut opts = WindowOptions::new(
+        title.map_or_else(|| format!("Marionette - {path}"), str::to_string),
+        scene_dir(path),
+    );
     opts.width = width;
     opts.height = height;
     opts.camera = camera;

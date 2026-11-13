@@ -69,6 +69,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
 | 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
+| 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |
 | 0150 | Game starter: a brief (or a prompt) and genre templates with an autopilot make a playable, tested game (`game_brief`, `game_make`, `marionette make`) | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |

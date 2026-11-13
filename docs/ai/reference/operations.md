@@ -94,6 +94,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `save_check` | no | Check that a slot would load into a session. |
 | `save_delete` | yes | Delete a slot and its backup. |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
+| `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
 | `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
 | `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
 | `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
@@ -2264,6 +2266,50 @@ Output:
 | `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
+
+## `package_targets`
+
+List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | string \| null |  | Game folder (holds marionette.json), relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | Game \| null |  | With `game`: what a package would hold. |
+| `host` | string | yes |  |
+| `targets` | array of TargetRow | yes |  |
+
+## `package_build`
+
+Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `archive` | boolean |  | Write a zip next to each folder (default true). |
+| `debug` | boolean |  | Debug build instead of release (faster to build, slow to play). |
+| `game` | string | yes | Game folder (holds marionette.json), relative to the project root. |
+| `out` | string |  | Output folder, relative to the project root. |
+| `smoke` | boolean |  | Run the packaged binary headless for a few ticks when this machine can (default true). |
+| `sysroots` | object |  | Link-time sysroots by architecture (`x86_64`, `aarch64`) for zigbuild builds (default: MARIONETTE_SYSROOT_X86_64 / MARIONETTE_SYSROOT_AARCH64; scripts/package-sysroots.sh makes them). |
+| `targets` | array of string |  | Targets, or `["all"]` for every target this machine can build. Default: this machine's own. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `packages` | array of Built | yes |  |
 
 ## `game_brief`
 

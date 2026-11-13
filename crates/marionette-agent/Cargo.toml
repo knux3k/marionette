@@ -31,6 +31,7 @@ marionette-providers = { path = "../marionette-providers", optional = true }
 marionette-generate = { path = "../marionette-generate", optional = true }
 marionette-script = { path = "../marionette-script", optional = true }
 marionette-port = { path = "../marionette-port", optional = true }
+marionette-package = { path = "../marionette-package", optional = true }
 marionette-editor = { path = "../marionette-editor", optional = true }
 glam = { version = "0.34", optional = true }
 marionette-starter = { path = "../marionette-starter", optional = true }
@@ -47,7 +48,7 @@ tokio = { version = "1", features = ["rt"] }
 # Optional engine parts (decision 0062). A game that does not use one builds without it:
 # `default-features = false, features = ["script"]`. Each feature adds its operations (and
 # for `script`, the script module).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "nav", "starter", "save", "editor"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "nav", "starter", "save", "editor"]
 # TypeScript game scripts (QuickJS and the oxc TypeScript stripper).
 script = ["dep:marionette-script"]
 # Owned-asset library and prefab import (library_*, prefab_* operations).
@@ -60,6 +61,8 @@ generate = ["dep:marionette-generate", "dep:marionette-providers"]
 port = ["dep:marionette-port"]
 # Job TypeScript compiled to WebAssembly (wasmtime, jobs_ts_* operations).
 jobs-ts = ["dep:marionette-jobs-ts"]
+# Game packaging for Windows, Linux, Steam Deck and Steam Frame (package_* operations).
+package = ["dep:marionette-package"]
 # Save games: slots, crash-safe files, migrations, autosave (save_* operations; decision 0076).
 save = ["dep:marionette-save"]
 # Co-op networking (lockstep, transports, lobbies), achievements and cloud files: the

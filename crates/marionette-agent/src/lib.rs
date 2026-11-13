@@ -27,6 +27,8 @@ pub mod nav;
 #[cfg(feature = "netplay")]
 pub mod netplay;
 pub mod observe;
+#[cfg(feature = "package")]
+pub mod package;
 pub mod perf;
 #[cfg(feature = "pool")]
 pub mod pool;
@@ -160,6 +162,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "package")]
+    "package",
     #[cfg(feature = "save")]
     "save",
     #[cfg(feature = "starter")]
@@ -213,6 +217,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "package")]
+        package::ops(),
         #[cfg(feature = "starter")]
         starter::ops(),
         #[cfg(feature = "netplay")]

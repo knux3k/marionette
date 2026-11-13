@@ -18,6 +18,7 @@ use std::process::ExitCode;
 mod audio_check;
 #[cfg(feature = "editor")]
 mod edit;
+mod packaged;
 mod render;
 mod stability;
 #[cfg(feature = "xr")]
@@ -283,6 +284,33 @@ enum Command {
         #[arg(long)]
         lean: bool,
     },
+    /// Package a game for players (operation `package_build`, decision 0140): a folder and a
+    /// zip per target with the game binary, its runtime files, licenses and a manifest. The
+    /// binary plays the entry scene when started with no arguments.
+    #[cfg(feature = "package")]
+    Package {
+        /// Game folder (holds marionette.json), e.g. games/cloudstep.
+        game: Option<String>,
+        /// windows-x64, linux-x64, steamdeck, steam-frame or all (repeatable; default: this
+        /// machine's own).
+        #[arg(long = "target")]
+        targets: Vec<String>,
+        /// Output folder.
+        #[arg(long, default_value = "dist")]
+        out: String,
+        /// Do not write zips.
+        #[arg(long)]
+        no_zip: bool,
+        /// Do not start the packaged binary for a headless check.
+        #[arg(long)]
+        no_smoke: bool,
+        /// Debug build (quick to build, slow to play).
+        #[arg(long)]
+        debug: bool,
+        /// List targets and what this machine can build (operation `package_targets`).
+        #[arg(long)]
+        list: bool,
+    },
     /// Play a synth stress test through the real audio device and report glitch counters:
     /// callbacks that ran longer than the audio they made, stream underruns, dropped commands,
     /// stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device.
@@ -391,6 +419,12 @@ pub fn main() -> ExitCode {
 /// The `marionette` tool with a game's engine (its own modules and operations added with
 /// [`marionette_agent::EngineBuilder`]). Every command, the MCP server included, uses it.
 pub fn main_with(engine: Engine) -> ExitCode {
+    // A packaged game started with no arguments plays its entry scene (decision 0140).
+    if std::env::args_os().len() == 1
+        && let Some(game) = packaged::find()
+    {
+        return packaged::play(&engine, &game);
+    }
     // Parsing may print help and exit; nothing is held yet at that point.
     let cli = Cli::parse();
     // Tie child processes to this process and remove what crashed engine processes left
@@ -424,6 +458,27 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             return audio_check::run(seconds, voices, stream.as_deref(), cli.json);
         }
         Command::Docs { out, check } => docs(&agent, &out, check),
+        #[cfg(feature = "package")]
+        Command::Package {
+            game,
+            targets,
+            out,
+            no_zip,
+            no_smoke,
+            debug,
+            list,
+        } => match (list, game) {
+            (true, game) | (false, game @ None) => agent
+                .call("package_targets", json!({ "game": game }))
+                .map(|v| merge("package_targets", v)),
+            (false, Some(game)) => agent
+                .call(
+                    "package_build",
+                    json!({ "game": game, "targets": targets, "out": out, "archive": !no_zip,
+                            "smoke": !no_smoke, "debug": debug }),
+                )
+                .map(|v| merge("package_build", v)),
+        },
         Command::Ops { brief, tools } => ops(&agent, brief, &tools),
         Command::Op { name, input } => parse_input(input.as_deref())
             .and_then(|input| agent.call(&name, input))
@@ -471,6 +526,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            title: None,
             saves: saves.as_deref(),
             window,
         }),
