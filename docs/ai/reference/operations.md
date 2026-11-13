@@ -6,7 +6,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 
 | Operation | Mutating | Summary |
 | --- | --- | --- |
-| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json. |
+| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json and the game skills (`.claude/skills`, `.agents/skills`). |
 | `project_validate` | no | Validate every *.scene.json and *.test.json under the project. Read-only. |
 | `project_schema` | no | List component and resource types. Pass `types` for their JSON Schemas, or `full: true` for the whole scene-file schema. |
 | `scene_create` | yes | Create a new scene file (empty, or `basic` with camera, light and ground). |
@@ -80,10 +80,13 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
+| `skills_list` | no | List the task skills shipped with the engine: name and a one-line description of when to use each. Read one with skills_get before starting a matching task. |
+| `skills_get` | no | Return one skill's full instructions (its SKILL.md): the tested procedure, traps and checks for one kind of task. |
+| `skills_install` | yes | Write the game skills into a project so skill-aware agents load them by themselves: `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md`. Replaces older copies of the engine's skills; leaves the project's own skills alone. |
 
 ## `project_init`
 
-Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json.
+Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json and the game skills (`.claude/skills`, `.agents/skills`).
 
 Mutating: yes.
 
@@ -1862,4 +1865,62 @@ Output:
 | --- | --- | --- | --- |
 | `ran` | array of string | yes | Operation name of each step, in order. |
 | `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
+
+## `skills_list`
+
+List the task skills shipped with the engine: name and a one-line description of when to use each. Read one with skills_get before starting a matching task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | boolean |  | Also list the skills for work on the engine itself (default: game skills only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `skills` | array of SkillSummary | yes |  |
+
+## `skills_get`
+
+Return one skill's full instructions (its SKILL.md): the tested procedure, traps and checks for one kind of task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Skill name from skills_list. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `instructions` | string | yes | The instructions, without the front matter. |
+| `name` | string | yes |  |
+
+## `skills_install`
+
+Write the game skills into a project so skill-aware agents load them by themselves: `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md`. Replaces older copies of the engine's skills; leaves the project's own skills alone.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string \| null |  | Project folder to install into (default: the project root). |
+| `targets` | array \| null |  | Which skill folders to write: `claude` (`.claude/skills`) and `agents` (`.agents/skills`). Default: both. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | integer | yes | Files written. |
+| `folders` | array of string | yes | Skill folders written, relative to the project root. |
+| `skills` | array of string | yes | Skill names installed. |
 

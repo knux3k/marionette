@@ -33,6 +33,7 @@ pub mod scenario;
 #[cfg(feature = "script")]
 pub mod script;
 pub mod session;
+pub mod skills;
 pub mod stability;
 
 use marionette_core::{Diagnostic, Errors, Registry};
@@ -176,6 +177,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "import")]
         prefab::ops(),
         batch::ops(),
+        skills::ops(),
     ];
     groups.into_iter().flatten().collect()
 }

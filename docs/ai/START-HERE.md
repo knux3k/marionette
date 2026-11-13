@@ -13,6 +13,12 @@ when the task calls for it, and then only the section that matters.
 2. [FOCUSES.md](FOCUSES.md): the four standing focuses and the open gaps.
 3. [STATE.md](STATE.md): status per plan line and the UNVERIFIED list.
 
+## Skills first
+
+For a task with a procedure, load its skill instead of a doc: `.claude/skills/<name>/SKILL.md`
+(index in `AGENTS.md`; agents that read skills load them by themselves; decision 0160). The
+table below is for everything else.
+
 ## Read when the task needs it
 
 | Task | Read |
@@ -32,6 +38,7 @@ when the task calls for it, and then only the section that matters.
 | Stability modes | [STABILITY.md](STABILITY.md) |
 | Generating images and models | [GENERATION.md](GENERATION.md) |
 | The six proof games and their gaps | [PROOF-SCENES.md](PROOF-SCENES.md) |
+| Add or update a skill | `.claude/skills/engine-add-skill/SKILL.md` |
 | Terms | [GLOSSARY.md](GLOSSARY.md) |
 
 Generated reference in `docs/ai/reference/` (large; search it, do not read it whole):

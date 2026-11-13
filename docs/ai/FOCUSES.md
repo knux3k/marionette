@@ -32,6 +32,8 @@ little text loaded as possible.
   before details, no repeated input.
 - MCP clients can load only the operation groups they need (`marionette mcp --tools`), and
   tool listings can leave out output schemas (`--lean`).
+- Procedures are skills (`.claude/skills/`, decision 0160): descriptions always in context,
+  bodies loaded when the task matches.
 - Check: before adding a doc section or an output field, ask who reads it and how often.
 
 ### 3. Performance
@@ -63,6 +65,7 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | Modularity | The module set and operation table are fixed in `marionette-agent`: a game cannot add a Rust module or operation without editing the engine | done: `Engine::builder()`, `marionette_cli::main_with`, template `examples/rust-module` (decision 0062) |
 | Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | done: features `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, CI lean build (decision 0062) |
 | Modularity | Job TypeScript cannot be called from scenes or scripts yet (WJ next) | done: `JobData`, `JobSchedule`, `engine.jobs`, `JobDraw` (decision 0070) |
+| Tokens | Procedures reached an agent only as docs it had to find and read; games in their own repositories got none | done: 15 task skills, loaded by description, installed into games, checked by a test (decision 0160) |
 | Performance | No hardware-GPU run of frame budgets yet (needs the owner's PC) | open |
 | Performance | Saving a large scene held the tick for 50 to 70 ms at 4x (a real port's budget is 2 ms) | done: `Sim::capture`, text written off the tick (decision 0073) |
 | Modularity | Porting tools could not see Unity Burst jobs and crashed on real code | done: job role, `jobs.rs` skeletons, partial classes (decision 0072) |

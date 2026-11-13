@@ -57,3 +57,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0071 | More CC0 sources: KayKit (GitHub mirrors, prefix-scoped) and cgbookcase; ShareTextures refused | accepted |
 | 0072 | Unity Burst jobs port to the game's own Rust module; the scanner sees jobs, structs and partial classes; `port_scaffold` writes `jobs.rs` | accepted |
 | 0073 | Saving copies state on the main thread and writes it elsewhere (`Sim::capture`); registered types need `Clone` | accepted |
+| 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
