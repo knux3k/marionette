@@ -18,8 +18,11 @@ const FRAGMENT: u8 = 1;
 const ACK: u8 = 2;
 /// Payload bytes per reliable fragment.
 const FRAGMENT_PAYLOAD: usize = 1100;
-/// Fragments in flight per peer before new ones wait.
-const WINDOW: usize = 256;
+/// Fragments in flight per peer before new ones wait. About 53 KB: below the smallest common
+/// OS receive buffer (64 KB on Windows), so a burst is not dropped whole by the receiver.
+const WINDOW: usize = 48;
+/// Resends per peer per poll, oldest first: a lossy link is not flooded by a timer burst.
+const MAX_RESENDS: usize = 16;
 const RTO_START: Micros = 200_000;
 const RTO_MIN: Micros = 40_000;
 const RTO_MAX: Micros = 2_000_000;
@@ -167,7 +170,7 @@ impl<D: Datagram> Endpoint<D> {
         if ahead > u32::MAX / 2 {
             return; // old duplicate; the ack above tells the sender again
         }
-        if ahead as usize > WINDOW * 4 {
+        if ahead as usize > 1024 {
             return; // far outside any window: hostile or broken, ignore
         }
         p.out_of_order
@@ -282,6 +285,9 @@ impl<D: Datagram> Transport for Endpoint<D> {
             let p = self.peers.get_mut(&id).expect("listed");
             let rto = p.rto();
             for u in p.unacked.values_mut() {
+                if out.len() >= MAX_RESENDS {
+                    break;
+                }
                 let wait = rto.saturating_mul(1 << (u.sends - 1).min(4)).min(RTO_MAX);
                 if now.saturating_sub(u.last_sent) >= wait {
                     u.last_sent = now;
