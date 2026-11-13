@@ -42,8 +42,8 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
   nor on AMD or Intel GPUs.
-- Frustum culling and `LevelOfDetail` (decision 0080): measured only on Mesa lavapipe in a
-  cloud container; hardware GPU and headset numbers not yet taken.
+- Render cost controls (0080 to 0082): one desktop GPU offscreen only; not in a headset or
+  on AMD/Intel. Scale plus foveation resolve not re-timed.
 - Ray tracing (0093): lavapipe and one desktop GPU only; skinned models are not traced.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
