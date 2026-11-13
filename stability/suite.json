@@ -127,6 +127,15 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "blend-and-sound",
+      "description": "Blend spaces with phase sync, a masked additive overlay, an orbiting 3D sound and layered music driven by scripts, rendered every tick.",
+      "kind": "render",
+      "scene": "examples/blend-and-sound.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "vr-headset",
       "description": "VR: the 3D game played with random input and rendered to both eyes of an emulated headset every tick.",
       "kind": "render",

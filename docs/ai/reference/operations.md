@@ -58,7 +58,11 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_play` | yes | Play a clip on an entity's Animator (added if missing), cross-fading every other clip out over `fade` seconds. Target: `scene` (file) or `session` (live world). |
 | `anim_blend` | yes | Set one clip's blend weight (fading over `fade` seconds) without touching other clips, e.g. walk 0.7 + run 0.3. Adds the clip if it is not playing. |
 | `anim_stop` | yes | Fade out one clip, or every clip when `clip` is omitted, over `fade` seconds. |
+| `anim_space` | yes | Define or steer a blend space: clips mixed by parameter `x` (and `y`), e.g. idle at 0, walk at 1.5, run at 4 by speed. `points` (re)defines it; `x`/`y` set where it goes (gliding at `rate` units/s). Play it with anim_play using its `name` as clip. |
+| `anim_overlay` | yes | Play a clip on a named overlay over the base pose: limited to `mask` bones (with their children), replacing them or `additive`, at strength `weight` (fading over `fade`). E.g. a wave on the upper body while walking. `stop: true` fades it out. |
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
+| `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
+| `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
 | `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
 | `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
@@ -1322,6 +1326,65 @@ Output:
 | `id` | integer | yes | The entity the edit was about. |
 | `target` | string | yes | The scene file or session that was changed. |
 
+## `anim_space`
+
+Define or steer a blend space: clips mixed by parameter `x` (and `y`), e.g. idle at 0, walk at 1.5, run at 4 by speed. `points` (re)defines it; `x`/`y` set where it goes (gliding at `rate` units/s). Play it with anim_play using its `name` as clip.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `name` | string | yes | Space name; play it with anim_play `clip: <name>`. |
+| `points` | array \| null |  | Clips and where they sit; replaces the space's points. Required to create a space. |
+| `rate` | number \| null |  | Units per second toward the target (0 = jump). Omitted keeps the current rate. |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `sync` | boolean \| null |  | Keep every clip at the same phase (walk/run cycles). Default true when creating. |
+| `x` | number \| null |  | Parameter target. Omitted keeps the current one. |
+| `y` | number \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `anim_overlay`
+
+Play a clip on a named overlay over the base pose: limited to `mask` bones (with their children), replacing them or `additive`, at strength `weight` (fading over `fade`). E.g. a wave on the upper body while walking. `stop: true` fades it out.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `additive` | boolean \| null |  | Add the clip's motion instead of replacing bones. |
+| `clip` | string \| null |  | Clip or blend space to play on the overlay (cross-fades its other clips out). |
+| `fade` | number \| null |  | Seconds for a full strength change and the clip cross-fade. Default 0.2. |
+| `id` | integer | yes |  |
+| `looping` | boolean \| null |  | Default true. |
+| `mask` | array \| null |  | Bone names (each with its children); replaces the mask. Empty = whole model. |
+| `name` | string | yes | Overlay name (created if missing). |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `speed` | number \| null |  |  |
+| `stop` | boolean \| null |  | Fade the overlay out (its clips stop once silent). |
+| `weight` | number \| null |  | Strength target 0..1. Default 1 (0 with `stop`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
 ## `anim_pose`
 
 World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list.
@@ -1345,6 +1408,59 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `nodes` | array of NodePose | yes |  |
+| `tick` | integer | yes |  |
+
+## `audio_music`
+
+Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `fade` | number \| null |  | Seconds for a full layer fade. |
+| `id` | integer | yes |  |
+| `intensity` | number \| null |  |  |
+| `playing` | boolean \| null |  |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+| `volume` | number \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `audio_mix`
+
+What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most sources to list. Default 20. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `listener` | boolean | yes | False when the world has no AudioListener (sources are then heard at their volume). |
+| `more` | integer | yes | Sources left out by `limit`. |
+| `music` | array of HeardLayer | yes |  |
+| `sources` | array of HeardSource | yes |  |
 | `tick` | integer | yes |  |
 
 ## `generate_recipe`

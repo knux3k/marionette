@@ -2208,6 +2208,7 @@ name = "marionette-agent"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "bevy_reflect",
  "glam 0.34.3",
  "marionette-anim",
  "marionette-assets",

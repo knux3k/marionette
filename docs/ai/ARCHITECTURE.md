@@ -10,13 +10,13 @@
 | `crates/marionette-render` | wgpu renderer (PBR, sprites, UI), offscreen capture, image diff, the window | core, assets, wgpu, winit, glam, bytemuck, pollster | physics, input, audio, agent |
 | `crates/marionette-input` | Action maps, input event queue, recording, `Stage::Input` system | core | render, winit, physics, audio |
 | `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
-| `crates/marionette-audio` | Sound triggers, headless sound log, kira player | core, kira | render, input, physics |
+| `crates/marionette-audio` | Sound triggers, `hear` (3D gain, pan, rear low-pass, Doppler), headless sound log, layered `Music`, kira player with live voices (decision 0075) | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
 | `crates/marionette-jobs` | Deterministic data-parallel jobs (`Jobs` resource over rayon) | bevy_ecs, rayon | any other marionette crate |
 | `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend caps and ledger, keys files, network transport behind feature `net` | core, assets, sha2, schemars, ureq (optional) | render, input, physics, audio (decisions 0019, 0045) |
 | `crates/marionette-generate` | Asset generation: recipes, request-keyed cache, provenance, image approval, PNG and GLB post-processing (decision 0045) | core, assets, providers, glam, gltf | render, input, physics, audio, script |
-| `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028) | core, assets | render, input, physics, audio, script |
+| `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028); blend spaces and masked or additive overlays (decision 0074) | core, assets | render, input, physics, audio, script |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts`, `JobsModule` (`JobSchedule` steps over `JobData`, the `JobRunner` for scripts, decision 0070) | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
@@ -43,9 +43,10 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
 4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): bodies for
    spawned entities and removal of bodies of removed ones (`sync`), kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
-5. `Stage::Effects`: `play_sounds` (`crates/marionette-audio/src/lib.rs`): sound events;
-   `animate` (`crates/marionette-anim/src/lib.rs`): advance `Animator` layers, write `Pose`
-   (decision 0028). The two touch disjoint data, so their order inside the stage does not
+5. `Stage::Effects`: `play_sounds` then `advance_music` (`crates/marionette-audio`): sound
+   events, music layer levels (decision 0075); `animate` (`crates/marionette-anim/src/lib.rs`):
+   advance `Animator` layers, blend spaces and overlays, write `Pose` (decisions 0028, 0074).
+   The audio and animation systems touch disjoint data, so their order inside the stage does not
    matter.
 6. `Stage::End`: `advance_clock` increments `SimClock.tick`.
 

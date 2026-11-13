@@ -121,6 +121,14 @@ interface Entity {
   blendClip(clip: string, weight: number, options?: { fade?: number; speed?: number; looping?: boolean }): void;
   /** Fades out one clip, or every clip when `clip` is omitted. */
   stopClip(clip?: string, options?: { fade?: number }): void;
+  /** Steers blend space `space` (see `anim_space`) to parameter (x, y), gliding at `rate`
+   *  units per second when given. Play the space with `playClip(space)`. */
+  setBlend(space: string, x: number, y?: number, options?: { rate?: number }): void;
+  /** Plays a clip on overlay `name` over the base pose: only `mask` bones (with children),
+   *  replacing them or `additive`, at strength `weight` (default 1). Like `anim_overlay`. */
+  playOverlay(name: string, clip: string, options?: { weight?: number; mask?: string[]; additive?: boolean; fade?: number; speed?: number; looping?: boolean }): void;
+  /** Fades overlay `name` out. */
+  stopOverlay(name: string, options?: { fade?: number }): void;
   /** Same as `engine.destroy(this, seconds)`. */
   destroy(seconds?: number): void;
 }

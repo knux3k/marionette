@@ -331,8 +331,29 @@ Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
 - Test character `examples/assets/puppet.glb` (CC0, made by
   `cargo run -p marionette-anim --example make_puppet -- examples/assets/puppet.glb`,
   byte-identical every run).
-- Not yet: root motion, additive layers, bone masks, animation events, IK; FBX blend shapes
+- Not yet: root motion, animation events, IK, state machines; FBX blend shapes (additive
+  layers and bone masks: decision 0074, next section)
   (the FBX converter of the FBX branch writes skins and clips; blend shapes not yet).
+
+## Blend spaces, overlays, 3D sound, music layers (decisions 0074, 0075)
+
+- Scene `examples/blend-and-sound.scene.json`, built by
+  `cargo run -q -p marionette-cli -- op batch_run '{"file":"examples/blend-and-sound.ops.json"}'`
+  (scripts `examples/scripts/strider.ts`, `orbit.ts`, `conductor.ts`).
+- `cargo run -q -p marionette-cli -- run examples/blend-and-sound.scene.json --headless --ticks 600 --seed 1`
+  prints `d344027414b14c0f555f9de4b443777a25a1b6f07886cda765a49bfd0938e236`.
+- Tests: `crates/marionette-cli/tests/blend_and_sound.rs` (recorded hash twice, synced space
+  phase runs at the blended cycle length and parameters glide, a space at an edge poses like
+  that clip, a masked overlay changes only masked bones and their children, unknown clips in
+  spaces and overlays refused, the orbiting hum pans right, muffles behind and pans left
+  through `audio_mix`, music layers fade in by intensity and out through `audio_music`); unit
+  tests in `crates/marionette-anim/src/blend.rs` (1D and 2D weights, parameter glide,
+  quaternion helpers), `crates/marionette-audio/src/lib.rs` (distance curves, rear muffle and
+  head turn, Doppler, stems decode) and `crates/marionette-audio/src/music.rs` (levels, stems
+  loop without a click).
+- Stability mode `blend-and-sound` (render).
+- Drift hash and every earlier pinned hash unchanged (new components only).
+- Not yet: heard through a real audio device or headset; HRTF, occlusion, reverb.
 
 ## Performance (workstream WP)
 
@@ -411,22 +432,7 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
   snapshot byte for byte.
 - `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_capture_budget`:
   4x factory capture 0.75 ms (budget 2 ms); the whole snapshot as text 72 ms, 2.3 MB (container).
+
 ## Scene editor view (decision 0130)
 
-- `cargo test -p marionette-editor`: fly camera starts exactly at a scene camera's view, flies,
-  turns (pitch clamped), frames a box, pans and zooms in 2D; screen rays and projection;
-  nearest box first, rotated boxes, markers within 10 px, top sprite first at equal distance;
-  inspector values read through the registry and printed compactly, wrapped and cut; overlay
-  adds only top-layer UI, the highlight and the grid; edit plans and their undo calls.
-- `cargo test -p marionette-cli --test editor`: through a real agent on a temp project, clicks
-  select a model, a list row and a light marker; move, duplicate and delete write the scene
-  file through the operations and undo restores it; edits wait for a reset after a step.
-  `editor_view` on `examples/showcase.scene.json` (GPU): the pick at (640, 400) hits the gem,
-  then the ground; inspector components come back; read-only output is refused outside
-  `.marionette/`; framing the crate puts it under the image center.
-- Window, Linux container, Mesa lavapipe, virtual X display (Xvfb), driven with `xdotool`:
-  `marionette edit examples/showcase.scene.json` opens; a click selects the gem; arrow keys
-  move it in the file (+0.25 m each); Ctrl+D copies it as #7 and Ctrl+Z removes the copy;
-  right-drag turns; P plays, C shows the game camera; `--frames 120` closes by itself; a
-  window destroyed from outside closes cleanly (the game window too: a lost surface now ends
-  the loop instead of failing in `Surface::configure`).
+In [proofs/editor.md](proofs/editor.md).
