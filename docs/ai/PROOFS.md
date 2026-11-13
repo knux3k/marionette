@@ -432,3 +432,11 @@ particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on fo
   snapshot byte for byte.
 - `cargo test --release -p marionette-cli --test perf_budgets -- --ignored save_capture_budget`:
   4x factory capture 0.75 ms (budget 2 ms); the whole snapshot as text 72 ms, 2.3 MB (container).
+
+Serializable to serde (decision 0240):
+- `cargo test -p marionette-port --test port serde`: a synthetic C# fixture
+  (`tests/fixtures/serial`) generates `tests/generated/serial_fixture.rs`, which is committed,
+  compiled and checked equal to the generator's output (`MARIONETTE_BLESS=1` rewrites it).
+  Checks: missing keys keep initializers, BOM ignored, unknown keys ignored, unknown enum
+  integers and raw JSON survive a round trip, field order base class first.
+- Not yet checked against files written by a real Unity build.
