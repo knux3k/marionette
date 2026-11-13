@@ -61,6 +61,7 @@ pub struct BenchOptions<'a> {
     pub eyes: u32,
     pub headset: bool,
     pub warmup: u32,
+    pub no_cull: bool,
 }
 
 /// Head turn for headset emulation: yaw in radians at frame `i` (90 Hz, 2 s period).
@@ -82,6 +83,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         eyes,
         headset,
         warmup,
+        no_cull,
     } = o;
     let (width, height) = parse_size(size)?;
     check_msaa(msaa)?;
@@ -99,6 +101,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
     let mut sim = load(o_engine, path, seed)?;
     let gpu = Gpu::headless()?;
     let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
+    offscreen.set_culling(!no_cull);
     // Warm-up: load assets, compile pipelines, settle clocks. Not measured.
     for _ in 0..warmup {
         sim.step();
@@ -154,6 +157,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         "msaa": msaa,
         "eyes": eyes,
         "headset": headset,
+        "culling": !no_cull,
         "frames": frames,
         "avg_ms": round(avg),
         "p50_ms": pct(&times, 0.5),

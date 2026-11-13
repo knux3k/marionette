@@ -1,6 +1,6 @@
 ---
 name: marionette-save-games
-description: Add save and load to a Marionette game (save slots, autosave, checkpoints, quick save) and keep old saves loading after the game's data changes (save versions and migrations). Use when a game needs saving or loading, a save will not load, a save is from an older or newer version, or saved data changes shape.
+description: Add save and load to a Marionette game (slots, autosave, checkpoints) and keep old saves loading when saved data changes (versions, migrations). Use when a game needs saving, a save will not load, or saved data changes shape.
 ---
 
 # Save games

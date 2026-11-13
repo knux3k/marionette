@@ -253,6 +253,9 @@ Options:
           
           [default: 30]
 
+      --no-cull
+          Draw every instance in every view (frustum culling off), to measure what culling saves (decision 0080)
+
   -h, --help
           Print help
 

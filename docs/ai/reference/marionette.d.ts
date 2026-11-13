@@ -590,6 +590,11 @@ type Follow = {
   target: number;
 };
 
+/** Foveated rendering for headsets (decision 0082): outside an inner ellipse, every other 2x2 pixel block is not shaded and is filled in from its neighbours, which the eye does not notice in a headset lens's blurry edge. `inner_radius` is the ellipse size as a share of the half width and height (1.0 touches the edges; 0.6 to 0.8 for a headset). Meant for stereo views; on a flat screen the edges look slightly soft. */
+type Foveation = {
+  inner_radius: number;
+};
+
 /** Turns input on for a scene: the action map file, relative to the scene file. */
 type InputConfig = {
   action_map: string;
@@ -644,6 +649,16 @@ type JobSchedule = {
     /** Job file (`*.job.ts`), relative to the scene file. */
     path: string;
   }>;
+};
+
+/** Turns on level of detail (decision 0080): a model part far enough away to look small draws a reduced version of its mesh (about half, then a quarter of the triangles, made when the model loads), and one smaller than `hide_below` is not drawn in views at all. Sizes are the part's bounding sphere diameter as a share of the screen height (1.0 fills it). Good start: 0.2, 0.06, 0.0 (never hide); 0.004 hides bolts at a distance. Parts under 64 triangles and skinned parts keep one level. Shadow maps keep far casters. */
+type LevelOfDetail = {
+  /** Below this size, not drawn in views (0 = never). */
+  hide_below: number;
+  /** Below this size, the second reduced level (a quarter). */
+  low_below: number;
+  /** Below this size, the first reduced level (half the triangles). */
+  medium_below: number;
 };
 
 /** Points the entity's -Z axis at `target` (world space), keeping `up` as close to its +Y as possible. Overrides `Transform.rotation`. Useful for cameras. */
@@ -756,6 +771,12 @@ type Position = {
 /** Adds a seeded random velocity change of up to `strength` per axis each tick. */
 type RandomImpulse = {
   strength: number;
+};
+
+/** Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0. */
+type RenderScale = {
+  scale: number;
+  sharpness: number;
 };
 
 /** A body simulated by physics. Needs a `Collider` and a `Transform`. */
@@ -1045,8 +1066,11 @@ interface Resources {
   FactoryState: FactoryState;
   FixedStep: FixedStep;
   Fog: Fog;
+  Foveation: Foveation;
   InputConfig: InputConfig;
+  LevelOfDetail: LevelOfDetail;
   PhysicsSettings: PhysicsSettings;
+  RenderScale: RenderScale;
   SaveFormat: SaveFormat;
   Shadows: Shadows;
   SkyLight: SkyLight;
