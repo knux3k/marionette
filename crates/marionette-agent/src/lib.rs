@@ -7,6 +7,8 @@
 //! and produce them.
 
 pub mod anim;
+#[cfg(feature = "ui3d")]
+mod ui3d;
 pub mod audio;
 pub mod batch;
 pub mod docs;
@@ -165,6 +167,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        #[cfg(feature = "ui3d")]
+        ui3d::ops(),
         audio::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),

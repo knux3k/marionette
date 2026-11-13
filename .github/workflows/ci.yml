@@ -41,6 +41,8 @@ jobs:
         run: |
           cargo clippy --locked -p marionette-agent -p marionette-cli --no-default-features --all-targets -- -D warnings
           cargo test --locked -p marionette-example-rust-module
+          cargo clippy --locked -p marionette-agent -p marionette-cli --features marionette-agent/ui3d,marionette-cli/ui3d --all-targets -- -D warnings
+          cargo test --locked -p marionette-agent --features ui3d --test ui3d_ops
       - name: State hash of the example scene
         run: cargo run --locked -q -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
 
