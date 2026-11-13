@@ -694,5 +694,18 @@ fn foveation_keeps_the_center_and_fills_the_edges() {
         let d = diff(&native, &fov, REFERENCE_THRESHOLD);
         assert!(d.mean < 3.0, "{scene}: {d:?}");
         assert!(d.max < 160, "{scene}: no unfilled holes: {d:?}");
+        // With render scale too: fast filter inside the ellipse, bilinear outside.
+        let (both, _) = render_scene_with(
+            &gpu,
+            scene,
+            r#""Foveation": {"inner_radius": 0.5}, "RenderScale": {"scale": 0.75, "sharpness": 0.3}"#,
+            size,
+        );
+        let d = diff(&native, &both, REFERENCE_THRESHOLD);
+        assert!(d.mean < 6.0, "{scene} scaled and foveated: {d:?}");
+        assert!(
+            d.max < 200,
+            "{scene} scaled and foveated: no unfilled holes: {d:?}"
+        );
     }
 }
