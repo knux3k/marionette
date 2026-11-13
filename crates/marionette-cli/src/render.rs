@@ -176,6 +176,8 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
 struct Live {
     player: Option<engine::SoundPlayer>,
     problems: Vec<String>,
+    /// When the player last followed the world (real time, for Doppler velocities).
+    last_audio: Option<std::time::Instant>,
 }
 
 impl Live {
@@ -200,7 +202,12 @@ impl WindowHooks for Live {
     }
     fn after_ticks(&mut self, sim: &mut Sim) {
         if let Some(p) = self.player.as_mut() {
-            for m in p.play_new(sim.events()) {
+            let now = std::time::Instant::now();
+            let dt = self.last_audio.map_or(0.0, |t| (now - t).as_secs_f32());
+            self.last_audio = Some(now);
+            let mut problems = p.play_new(sim.events());
+            problems.extend(p.update(&mut sim.world, dt));
+            for m in problems {
                 if self.problems.len() < 20 && !self.problems.contains(&m) {
                     self.problems.push(m);
                 }
@@ -242,6 +249,7 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
     let mut live = Live {
         player: None,
         problems: Vec::new(),
+        last_audio: None,
     };
     if !mute {
         match engine::SoundPlayer::new(scene_dir(path)) {
