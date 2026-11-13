@@ -68,7 +68,30 @@
   const matches = (t, which) =>
     which === undefined || (typeof which === "number" ? t.id === which : t.call === (typeof which === "function" ? which.name : which));
 
+  // Job arguments as the native side reads them (see `parse_job_args`).
+  const jobRef = (mode) => (x, entity) => {
+    const e = entity === undefined || entity === null ? -1 : idOf(entity);
+    return Object.freeze(typeof x === "string" ? { mode, data: x, entity: e } : { mode, array: x });
+  };
+  const jobArg = (a) => (typeof a === "string" ? { mode: "write", data: a, entity: -1 } : ArrayBuffer.isView(a) ? { mode: "write", array: a } : a);
+  const jobRun = (path, fn, args, options) => {
+    if (args !== undefined && !Array.isArray(args)) throw new Error("jobts.args: job arguments are an array, in parameter order");
+    const chunk = options && options.chunk !== undefined ? options.chunk : 0;
+    return h.jobs_run(String(path), String(fn), (args ?? []).map(jobArg), chunk);
+  };
+  const jobs = Object.freeze({
+    run: jobRun,
+    sum: (path, fn, args, options) => jobRun(path, fn, args, options).reduce((a, b) => a + b, 0),
+    get: (name, entity) => h.jobs_get(entity === undefined || entity === null ? -1 : idOf(entity), String(name)) ?? null,
+    set: (name, values, entity) => h.jobs_set(entity === undefined || entity === null ? -1 : idOf(entity), String(name), values),
+    read: jobRef("read"),
+    whole: jobRef("whole"),
+    write: jobRef("write"),
+    chunkStart: Object.freeze({ mode: "chunk_start" }),
+  });
+
   const engine = Object.freeze({
+    jobs,
     get tick() {
       return h.tick();
     },

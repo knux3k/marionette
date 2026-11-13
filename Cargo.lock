@@ -2275,6 +2275,7 @@ dependencies = [
  "marionette-core",
  "marionette-generate",
  "marionette-host",
+ "marionette-jobs",
  "marionette-render",
  "serde",
  "serde_json",
@@ -2384,6 +2385,7 @@ name = "marionette-jobs-ts"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "bevy_reflect",
  "libm",
  "marionette-core",
  "marionette-jobs",

@@ -1,0 +1,280 @@
+{
+ "format": "marionette.ops",
+ "version": 1,
+ "ops": [
+  {
+   "op": "scene_create",
+   "input": {
+    "scene": "examples/swarm.scene.json"
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "resource": "SkyLight",
+    "value": {
+     "sky": {
+      "r": 0.45,
+      "g": 0.55,
+      "b": 0.9,
+      "a": 1.0
+     },
+     "ground": {
+      "r": 0.2,
+      "g": 0.16,
+      "b": 0.14,
+      "a": 1.0
+     },
+     "intensity": 0.3
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "resource": "Shadows",
+    "value": {
+     "distance": 12.0,
+     "resolution": 2048,
+     "softness": 1.5
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "resource": "ToneMapping",
+    "value": {
+     "exposure": 1.1
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "name": "camera",
+    "components": {
+     "Camera": {
+      "clear_color": {
+       "r": 0.08,
+       "g": 0.09,
+       "b": 0.14,
+       "a": 1.0
+      },
+      "projection": {
+       "Perspective": {
+        "far": 100.0,
+        "fov_y_degrees": 50.0,
+        "near": 0.1
+       }
+      }
+     },
+     "LookAt": {
+      "target": {
+       "x": 0.0,
+       "y": 1.6,
+       "z": 0.0
+      },
+      "up": {
+       "x": 0.0,
+       "y": 1.0,
+       "z": 0.0
+      }
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 4.5,
+       "z": 10.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "name": "sun",
+    "components": {
+     "DirectionalLight": {
+      "color": {
+       "r": 1.0,
+       "g": 0.9,
+       "b": 0.75,
+       "a": 1.0
+      },
+      "direction": {
+       "x": -0.5,
+       "y": -0.8,
+       "z": -0.35
+      },
+      "illuminance": 1.0
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "name": "ground",
+    "components": {
+     "Model": {
+      "asset": "primitive:plane"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.16,
+       "g": 0.17,
+       "b": 0.2,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.9
+     },
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 30.0,
+       "y": 1.0,
+       "z": 30.0
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/swarm.scene.json",
+    "name": "swarm",
+    "components": {
+     "Transform": {
+      "translation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0
+      },
+      "rotation": {
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "w": 1.0
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     },
+     "JobData": {
+      "arrays": [
+       {
+        "name": "px",
+        "values": {
+         "F32": []
+        }
+       },
+       {
+        "name": "py",
+        "values": {
+         "F32": []
+        }
+       },
+       {
+        "name": "pz",
+        "values": {
+         "F32": []
+        }
+       },
+       {
+        "name": "vx",
+        "values": {
+         "F32": []
+        }
+       },
+       {
+        "name": "vy",
+        "values": {
+         "F32": []
+        }
+       },
+       {
+        "name": "vz",
+        "values": {
+         "F32": []
+        }
+       }
+      ]
+     },
+     "JobSchedule": {
+      "steps": [
+       {
+        "path": "jobs/swarm.job.ts",
+        "function": "step",
+        "args": [
+         "px",
+         "py",
+         "pz",
+         "vx",
+         "vy",
+         "vz",
+         "dt",
+         "tick",
+         "chunk_start"
+        ],
+        "chunk": 1024
+       }
+      ]
+     },
+     "JobDraw": {
+      "asset": "primitive:cube",
+      "material": {
+       "base_color": {
+        "r": 1.0,
+        "g": 0.55,
+        "b": 0.2,
+        "a": 1.0
+       },
+       "metallic": 0.0,
+       "roughness": 0.4
+      },
+      "x": "px",
+      "y": "py",
+      "z": "pz",
+      "scale": 0.07
+     },
+     "Script": {
+      "path": "scripts/swarm.ts"
+     }
+    }
+   }
+  }
+ ]
+}

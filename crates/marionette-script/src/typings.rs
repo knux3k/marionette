@@ -223,7 +223,39 @@ declare const engine: {
    *  next turn: this tick if the target's id is higher than the sender's, otherwise next
    *  tick. `detail` must be plain JSON. Throws if the target has no `Script`. */
   send(target: Entity | number, kind: string, detail?: unknown): void;
+  /** Job TypeScript (`*.job.ts`, compiled, parallel) and job arrays (`JobData`). */
+  readonly jobs: Jobs;
 };
+
+/** The typed arrays a job function takes. */
+type JobArray = Float32Array | Float64Array | Int32Array;
+/** An array argument made by `engine.jobs.read` or `engine.jobs.whole`. */
+interface JobArgRef { readonly mode: "write" | "read" | "whole" }
+/** One argument of a job function, in parameter order: a number (for `number` or `i32`),
+ *  a boolean, a job array name of this entity (chunked, changes kept), a typed array of the
+ *  script (chunked, changed in place), or a `read`/`whole`/`chunkStart` argument. */
+type JobArg = number | boolean | string | JobArray | JobArgRef;
+interface Jobs {
+  /** Runs an exported function of a job file (path relative to the scene) in parallel
+   *  chunks of `chunk` elements (default 16384) over the chunked arrays, which must have
+   *  equal lengths (no chunked array: one call). Job arrays are used in place. Returns one
+   *  value per chunk in chunk order (empty for `void`). Throws `jobts.*` errors. */
+  run(path: string, fn: string, args?: JobArg[], options?: { chunk?: number }): number[];
+  /** `run`, then the per-chunk values added in chunk order (deterministic). */
+  sum(path: string, fn: string, args?: JobArg[], options?: { chunk?: number }): number;
+  /** A copy of a job array of `entity` (default: the entity whose hook runs), or null. */
+  get(name: string, entity?: Entity | number): JobArray | null;
+  /** Creates or replaces a job array (its type follows the typed array). Saved as state. */
+  set(name: string, values: JobArray, entity?: Entity | number): void;
+  /** A chunked, read-only argument (a job array name, or a typed array). */
+  read(array: string | JobArray, entity?: Entity | number): JobArgRef;
+  /** The whole array to every chunk, read only (lookup tables, neighbours). */
+  whole(array: string | JobArray, entity?: Entity | number): JobArgRef;
+  /** A job array of another entity, chunked, changes kept. */
+  write(array: string | JobArray, entity?: Entity | number): JobArgRef;
+  /** An `i32` argument receiving the chunk's first element index. */
+  readonly chunkStart: JobArgRef;
+}
 
 declare const console: { log(...parts: unknown[]): void; warn(...parts: unknown[]): void; error(...parts: unknown[]): void };
 "#;

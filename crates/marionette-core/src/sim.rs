@@ -67,6 +67,8 @@ impl Sim {
         world.insert_resource(clock);
         world.insert_resource(SceneDir(self.scene_dir.clone()));
         world.insert_resource(EventLog::default());
+        // `JobDraw` is core data; its drawing hook is present in every world.
+        crate::spatial::BulkDrawHooks::add(&mut world, crate::jobdata::draw_job_data);
         for m in self.modules.iter() {
             m.init(&mut world).map_err(|e| match file {
                 Some(f) => e.with_file(f),

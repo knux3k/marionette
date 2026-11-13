@@ -94,6 +94,50 @@ closures and arrow functions, classes and `this`, `switch`, `for...of`/`for...in
   interpreter gives bit-identical arrays (test `compiled_and_interpreted_runs_are_bit_identical`
   in `crates/marionette-jobs-ts/tests/jobs.rs`).
 
+## From a scene (no code)
+
+Arrays live on an entity as `JobData` (saved with the scene, part of the state hash). A
+`JobSchedule` runs steps every tick in `Stage::Logic` (after scripts, before physics), entities
+in id order, steps in order. `JobDraw` draws one model copy per element. Decision 0070;
+example `examples/swarm.scene.json` (recipe `examples/swarm.ops.json`).
+
+```json
+"JobData": { "arrays": [ { "name": "py", "values": { "F32": [] } },
+                         { "name": "vy", "values": { "F32": [] } } ] },
+"JobSchedule": { "steps": [ { "path": "jobs/particles.job.ts", "function": "step",
+                              "args": ["py", "vy", "dt", "0.001"], "chunk": 0 } ] }
+```
+
+`JobDraw { asset, material, x, y, z, scale }` names three arrays (`z` may be `""`) and draws
+copy `i` at `(x[i], y[i], z[i])` through the entity's `Transform`, one instanced batch.
+
+`args`, one per parameter: `name` (the entity's array, chunked, changes kept), `in:name`
+(chunked, read only), `all:name` (whole, read only), `dt`, `tick`, `len` (elements in the run),
+`chunk_start`, `rand` (seeded, new per run: [0, 1) for `number`, 0 to 2^31 - 1 for `i32`),
+numbers, `true`/`false`. `chunk: 0` means 16,384. Chunked arrays must have equal lengths; an
+empty array is fine (a script may fill it). The load fails with `jobts.*` diagnostics (entity,
+`JobSchedule`, `steps[i]`) when a file does not compile, a function is not exported, or an
+argument does not fit. A step that fails during a tick records a `job_error` event (entity,
+path, function, code, message, line) and the tick goes on. `jobs_reload '{"session": ...}'`
+recompiles changed files of a live session.
+
+## From a script
+
+```ts
+engine.jobs.set("vx", new Float32Array(4096));            // create or replace a job array
+engine.jobs.run("jobs/swarm.job.ts", "seed", ["px", "vx", engine.jobs.chunkStart, 7]);
+const e = engine.jobs.sum("jobs/swarm.job.ts", "energy", [engine.jobs.read("vx")]);
+const mine = new Float32Array([1, 2, 3]);                 // a script's own array: changed in place
+engine.jobs.run("jobs/t.job.ts", "scale", [mine, 2], { chunk: 1024 });
+const copy = engine.jobs.get("vx");                        // a copy, or null
+```
+
+Array names mean the current entity's job arrays (used in place); pass an entity as the second
+argument of `engine.jobs.read/whole/write` for another entity's. Numbers fit `number` or `i32`
+parameters (an `i32` needs a whole number). `run` returns one value per chunk; `sum` adds them
+in chunk order. Errors throw `jobts.<code>: message (line n); fix: ...`. Without the `jobs-ts`
+cargo feature, `run` throws `jobts.unavailable`. Typings: `docs/ai/reference/marionette.d.ts`.
+
 ## Running a job from Rust
 
 ```rust
