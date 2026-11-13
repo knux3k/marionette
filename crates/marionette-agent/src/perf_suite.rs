@@ -78,14 +78,38 @@ struct Case {
 }
 
 const fn sim(name: &'static str, source: Source, ticks: u64) -> Case {
-    Case { name, source, ticks, warmup: 60, render: None }
+    Case {
+        name,
+        source,
+        ticks,
+        warmup: 60,
+        render: None,
+    }
 }
 
-const HD: RenderSpec = RenderSpec { width: 1920, height: 1080, eyes: 1, msaa: 4, headset: false };
-const HEADSET: RenderSpec = RenderSpec { width: 2160, height: 2160, eyes: 2, msaa: 4, headset: true };
+const HD: RenderSpec = RenderSpec {
+    width: 1920,
+    height: 1080,
+    eyes: 1,
+    msaa: 4,
+    headset: false,
+};
+const HEADSET: RenderSpec = RenderSpec {
+    width: 2160,
+    height: 2160,
+    eyes: 2,
+    msaa: 4,
+    headset: true,
+};
 
 const fn render(name: &'static str, source: Source, frames: u64, spec: RenderSpec) -> Case {
-    Case { name, source, ticks: frames, warmup: 30, render: Some(spec) }
+    Case {
+        name,
+        source,
+        ticks: frames,
+        warmup: 30,
+        render: Some(spec),
+    }
 }
 
 /// The suite. Order is the report order. Cover each engine system once: core logic, physics
@@ -94,27 +118,98 @@ const fn render(name: &'static str, source: Source, frames: u64, spec: RenderSpe
 /// headset.
 const CASES: &[Case] = &[
     sim("sim/drift", Source::File("examples/drift.scene.json"), 1000),
-    sim("sim/physics-3d", Source::File("examples/playground3d.scene.json"), 1000),
-    sim("sim/physics-2d", Source::File("examples/playground2d.scene.json"), 1000),
+    sim(
+        "sim/physics-3d",
+        Source::File("examples/playground3d.scene.json"),
+        1000,
+    ),
+    sim(
+        "sim/physics-2d",
+        Source::File("examples/playground2d.scene.json"),
+        1000,
+    ),
     sim("sim/scripts", Source::File("examples/scripted.scene.json"), 1000),
     sim("sim/spawner", Source::File("examples/spawner.scene.json"), 1000),
-    sim("sim/animation", Source::File("examples/animation.scene.json"), 1000),
+    sim(
+        "sim/animation",
+        Source::File("examples/animation.scene.json"),
+        1000,
+    ),
     sim("sim/job-swarm", Source::File("examples/swarm.scene.json"), 600),
     sim("sim/factory-4x", Source::Factory(4), 1200),
     sim("sim/factory-32x", Source::Factory(32), 300),
-    sim("sim/game-lantern-keeper", Source::File("games/lantern-keeper/scenes/main.scene.json"), 600),
-    sim("sim/game-ember-run", Source::File("games/ember-run/scenes/main.scene.json"), 600),
-    sim("sim/game-cloudstep", Source::File("games/cloudstep/scenes/main.scene.json"), 600),
-    sim("sim/game-crystal-ward", Source::File("games/crystal-ward/scenes/main.scene.json"), 600),
-    sim("sim/game-dust-circuit", Source::File("games/dust-circuit/scenes/main.scene.json"), 600),
-    sim("sim/game-signal-yard", Source::File("games/signal-yard/scenes/main.scene.json"), 600),
-    render("render/showcase-1080p", Source::File("examples/showcase.scene.json"), 300, HD),
-    render("render/looks-1080p", Source::File("examples/looks.scene.json"), 300, HD),
-    render("render/lighting-1080p", Source::File("examples/lighting.scene.json"), 300, HD),
-    render("render/sprites-1080p", Source::File("examples/sprites.scene.json"), 300, HD),
-    render("render/animation-1080p", Source::File("examples/animation.scene.json"), 300, HD),
-    render("render/job-swarm-1080p", Source::File("examples/swarm.scene.json"), 300, HD),
-    render("render/game-crystal-ward-1080p", Source::File("games/crystal-ward/scenes/main.scene.json"), 300, HD),
+    sim(
+        "sim/game-lantern-keeper",
+        Source::File("games/lantern-keeper/scenes/main.scene.json"),
+        600,
+    ),
+    sim(
+        "sim/game-ember-run",
+        Source::File("games/ember-run/scenes/main.scene.json"),
+        600,
+    ),
+    sim(
+        "sim/game-cloudstep",
+        Source::File("games/cloudstep/scenes/main.scene.json"),
+        600,
+    ),
+    sim(
+        "sim/game-crystal-ward",
+        Source::File("games/crystal-ward/scenes/main.scene.json"),
+        600,
+    ),
+    sim(
+        "sim/game-dust-circuit",
+        Source::File("games/dust-circuit/scenes/main.scene.json"),
+        600,
+    ),
+    sim(
+        "sim/game-signal-yard",
+        Source::File("games/signal-yard/scenes/main.scene.json"),
+        600,
+    ),
+    render(
+        "render/showcase-1080p",
+        Source::File("examples/showcase.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/looks-1080p",
+        Source::File("examples/looks.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/lighting-1080p",
+        Source::File("examples/lighting.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/sprites-1080p",
+        Source::File("examples/sprites.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/animation-1080p",
+        Source::File("examples/animation.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/job-swarm-1080p",
+        Source::File("examples/swarm.scene.json"),
+        300,
+        HD,
+    ),
+    render(
+        "render/game-crystal-ward-1080p",
+        Source::File("games/crystal-ward/scenes/main.scene.json"),
+        300,
+        HD,
+    ),
     render("render/factory-4x-headset", Source::Factory(4), 300, HEADSET),
     render("render/factory-32x-headset", Source::Factory(32), 120, HEADSET),
 ];
@@ -266,7 +361,140 @@ pub struct Report {
     pub machine: MachineInfo,
     pub started_unix_s: u64,
     pub seconds: f64,
+    #[serde(default)]
+    pub conditions: Conditions,
     pub cases: Vec<CaseResult>,
+}
+
+/// What else was going on while the suite ran.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Default, PartialEq)]
+pub struct Conditions {
+    /// The lock file held during the run, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lock: Option<String>,
+    /// Whole-machine CPU busy share just before the run (other processes), percent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_busy_before_pct: Option<f64>,
+    /// Highest whole-machine CPU busy share in the pauses between cases (this process is
+    /// idle then, so it is other processes), percent. Above about 10, timings are suspect.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_busy_between_max_pct: Option<f64>,
+    /// Lock holders seen while waiting.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub waited_for: Vec<String>,
+}
+
+/// Holds the machine's benchmark lock; removes the file when dropped (also on a panic) if it
+/// is still ours.
+struct BenchLock {
+    path: PathBuf,
+    mine: String,
+}
+
+impl Drop for BenchLock {
+    fn drop(&mut self) {
+        if std::fs::read_to_string(&self.path).is_ok_and(|t| t == self.mine) {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
+fn busy_error(what: String) -> Errors {
+    Diagnostic::error("perf.machine_busy", what)
+        .fix("wait for the other run to finish, or pass `wait_s` to wait for it")
+        .into()
+}
+
+/// Takes the lock (if any) and checks the CPU is quiet, waiting up to `wait_s`.
+fn take_machine(
+    lock: Option<PathBuf>,
+    owner: &str,
+    wait_s: u64,
+    max_busy: f64,
+    min_idle_s: u64,
+    conditions: &mut Conditions,
+) -> Result<Option<BenchLock>, Errors> {
+    let deadline = Instant::now() + std::time::Duration::from_secs(wait_s);
+    let pause = || std::thread::sleep(std::time::Duration::from_secs(30));
+    loop {
+        let guard = match &lock {
+            None => None,
+            Some(path) => {
+                let mine = format!("{owner} {} pid {}\n", unix_now(), std::process::id());
+                match std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(path)
+                {
+                    Ok(mut f) => {
+                        use std::io::Write;
+                        f.write_all(mine.as_bytes())
+                            .map_err(|e| busy_error(format!("cannot write lock: {e}")))?;
+                        Some(BenchLock {
+                            path: path.clone(),
+                            mine,
+                        })
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                        let holder = std::fs::read_to_string(path)
+                            .unwrap_or_default()
+                            .trim()
+                            .to_string();
+                        if !conditions.waited_for.contains(&holder) && conditions.waited_for.len() < 16 {
+                            conditions.waited_for.push(holder.clone());
+                        }
+                        if Instant::now() >= deadline {
+                            return Err(busy_error(format!(
+                                "benchmark lock {} is held: {holder}",
+                                path.display()
+                            )));
+                        }
+                        pause();
+                        continue;
+                    }
+                    Err(e) => return Err(busy_error(format!("cannot create lock {}: {e}", path.display()))),
+                }
+            }
+        };
+        if min_idle_s > 0
+            && let Some(idle) = marionette_host::machine::user_idle()
+            && idle.as_secs() < min_idle_s
+        {
+            drop(guard);
+            if Instant::now() >= deadline {
+                return Err(busy_error(format!(
+                    "the desktop was used {} s ago (need {min_idle_s} s idle)",
+                    idle.as_secs()
+                )));
+            }
+            pause();
+            continue;
+        }
+        let busy = marionette_host::machine::cpu_busy_pct(std::time::Duration::from_secs(1));
+        conditions.cpu_busy_before_pct = busy.map(r2);
+        match busy {
+            Some(b) if b > max_busy && max_busy < 100.0 => {
+                drop(guard);
+                if Instant::now() >= deadline {
+                    return Err(busy_error(format!(
+                        "other processes keep {b:.0}% of the CPU busy (limit {max_busy}%)"
+                    )));
+                }
+                pause();
+            }
+            _ => {
+                conditions.lock = lock.as_ref().map(|p| p.display().to_string());
+                return Ok(guard);
+            }
+        }
+    }
+}
+
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -297,6 +525,24 @@ pub struct SuiteInput {
     pub no_gpu: bool,
     #[serde(default)]
     pub seed: u64,
+    /// Lock file shared by every benchmark on this machine (several agents share one PC).
+    /// The suite creates it before measuring and removes it after, and refuses to start while
+    /// another run holds it. Default: env `MARIONETTE_BENCH_LOCK`; none if unset.
+    pub lock: Option<String>,
+    /// Who holds the lock (an area name such as `raytracing`); written into the lock file.
+    /// Default: the label.
+    pub lock_owner: Option<String>,
+    /// Wait up to this many seconds for a held lock or a busy CPU, checking every 30 s
+    /// (default 0: refuse at once).
+    #[serde(default)]
+    pub wait_s: u64,
+    /// Refuse to start unless nobody has used keyboard or mouse for this many seconds
+    /// (Windows only; elsewhere not checked). Default 0. On a shared desktop use 300.
+    #[serde(default)]
+    pub min_idle_s: u64,
+    /// Refuse to start when other processes keep more than this share of all cores busy
+    /// (default 15 percent; 100 turns the check off).
+    pub max_busy_pct: Option<f64>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -305,6 +551,8 @@ pub struct SuiteOutput {
     pub machine: String,
     pub build: String,
     pub seconds: f64,
+    /// Lock held and other processes' CPU load before and between cases.
+    pub conditions: String,
     /// One line per case: name, then the main numbers (ms) and the short output hash.
     pub cases: Vec<String>,
     pub errors: usize,
@@ -357,7 +605,12 @@ fn build_info(root: &Path) -> BuildInfo {
     .map(|(n, _)| n.to_string())
     .collect();
     BuildInfo {
-        profile: if cfg!(debug_assertions) { "debug" } else { "release" }.into(),
+        profile: if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        }
+        .into(),
         features: crate::FEATURES.iter().map(|s| s.to_string()).collect(),
         target_features,
         os: std::env::consts::OS.into(),
@@ -441,17 +694,16 @@ fn summary_line(c: &CaseResult) -> String {
 
 fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
     let started = Instant::now();
-    let started_unix_s = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let started_unix_s = unix_now();
     let quick = match input.length.as_deref().unwrap_or("full") {
         "full" => false,
         "quick" => true,
         other => {
-            return Err(Diagnostic::error(crate::codes::BAD_INPUT, format!("unknown length `{other}`"))
-                .fix("use `full` or `quick`")
-                .into());
+            return Err(
+                Diagnostic::error(crate::codes::BAD_INPUT, format!("unknown length `{other}`"))
+                    .fix("use `full` or `quick`")
+                    .into(),
+            );
         }
     };
     let repeats = input.repeats.unwrap_or(if quick { 1 } else { 3 }).clamp(1, 20);
@@ -461,16 +713,40 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         .label
         .clone()
         .unwrap_or_else(|| format!("{}-{}", build.commit, build.profile));
-    if label.is_empty() || !label.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c)) {
-        return Err(Diagnostic::error(crate::codes::BAD_NAME, format!("label `{label}` is not a plain name"))
-            .fix("use letters, digits, `-`, `_` or `.`")
-            .into());
+    if label.is_empty()
+        || !label
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+    {
+        return Err(Diagnostic::error(
+            crate::codes::BAD_NAME,
+            format!("label `{label}` is not a plain name"),
+        )
+        .fix("use letters, digits, `-`, `_` or `.`")
+        .into());
     }
     let out = input
         .out
         .clone()
         .unwrap_or_else(|| format!(".marionette/perf/{label}.json"));
     let out_path = agent.resolve(&out)?;
+    let lock = input
+        .lock
+        .clone()
+        .or_else(|| std::env::var("MARIONETTE_BENCH_LOCK").ok())
+        .filter(|l| !l.is_empty())
+        .map(|l| agent.resolve(&l))
+        .transpose()?;
+    let mut conditions = Conditions::default();
+    let owner = input.lock_owner.clone().unwrap_or_else(|| label.clone());
+    let _lock = take_machine(
+        lock,
+        &owner,
+        input.wait_s,
+        input.max_busy_pct.unwrap_or(15.0),
+        input.min_idle_s,
+        &mut conditions,
+    )?;
 
     let mut cases: Vec<Case> = CASES
         .iter()
@@ -507,7 +783,12 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
     };
 
     let mut results = Vec::new();
-    if input.only.is_empty() || input.only.iter().any(|p| "startup/".starts_with(p.as_str()) || p.starts_with("startup")) {
+    if input.only.is_empty()
+        || input
+            .only
+            .iter()
+            .any(|p| "startup/".starts_with(p.as_str()) || p.starts_with("startup"))
+    {
         results.push(startup_engine(repeats));
         results.push(startup_process(&root, repeats));
     }
@@ -517,7 +798,14 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         machine.gpu = Some(gpu.describe());
         machine.gpu_kind = Some(format!("{:?}", info.device_type));
     }
+    let mut between_max: Option<f64> = None;
     for case in &cases {
+        // Others' load while this process is idle, so a disturbed run shows in the report.
+        if !quick
+            && let Some(b) = marionette_host::machine::cpu_busy_pct(std::time::Duration::from_millis(300))
+        {
+            between_max = Some(between_max.map_or(b, |m: f64| m.max(b)));
+        }
         let mut result = CaseResult {
             name: case.name.into(),
             kind: if case.render.is_some() { "render" } else { "sim" }.into(),
@@ -546,21 +834,50 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
             }
         };
         if case.render.is_some() && !gpu_ok {
-            result.skipped = Some(if input.no_gpu { "no_gpu set" } else { "no GPU adapter" }.into());
+            result.skipped = Some(
+                if input.no_gpu {
+                    "no_gpu set"
+                } else {
+                    "no GPU adapter"
+                }
+                .into(),
+            );
             results.push(result);
             continue;
         }
-        let ticks = if quick { (case.ticks / 10).max(10) } else { case.ticks };
-        let warmup = if quick { (case.warmup / 4).max(5) } else { case.warmup };
+        let ticks = if quick {
+            (case.ticks / 10).max(10)
+        } else {
+            case.ticks
+        };
+        let warmup = if quick {
+            (case.warmup / 4).max(5)
+        } else {
+            case.warmup
+        };
         result.ticks = ticks;
         let run = match case.render {
             None => run_sim(agent, &path, input.seed, ticks, warmup, repeats, &mut result),
-            Some(spec) => run_render(agent, &path, input.seed, ticks, warmup, repeats, spec, &mut result),
+            Some(spec) => run_render(
+                agent,
+                &path,
+                input.seed,
+                ticks,
+                warmup,
+                repeats,
+                spec,
+                &mut result,
+            ),
         };
         if let Err(e) = run {
-            let msg = e.0.first().map_or("unknown error".into(), |d| format!("{}: {}", d.code, d.message));
+            let msg =
+                e.0.first()
+                    .map_or("unknown error".into(), |d| format!("{}: {}", d.code, d.message));
             // A scene that needs a feature this build left out is not an engine error.
-            if msg.contains("unknown component") || msg.contains("unknown resource") || msg.contains("not_enabled") {
+            if msg.contains("unknown component")
+                || msg.contains("unknown resource")
+                || msg.contains("not_enabled")
+            {
                 result.skipped = Some(format!("needs an engine part this build leaves out ({msg})"));
             } else {
                 result.error = Some(msg);
@@ -569,6 +886,7 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         results.push(result);
     }
 
+    conditions.cpu_busy_between_max_pct = between_max.map(r2);
     let report = Report {
         format: FORMAT.into(),
         suite: SUITE.into(),
@@ -579,6 +897,7 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         machine: machine.clone(),
         started_unix_s,
         seconds: r2(started.elapsed().as_secs_f64()),
+        conditions,
         cases: results,
     };
     let text = serde_json::to_string_pretty(&report).expect("report serializes") + "\n";
@@ -605,6 +924,18 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
             build.target_features.join(",")
         ),
         seconds: report.seconds,
+        conditions: format!(
+            "lock {}, others' CPU busy before {}%, between cases max {}%",
+            report.conditions.lock.as_deref().unwrap_or("none"),
+            report
+                .conditions
+                .cpu_busy_before_pct
+                .map_or("?".into(), |b| b.to_string()),
+            report
+                .conditions
+                .cpu_busy_between_max_pct
+                .map_or("-".into(), |b| b.to_string()),
+        ),
         errors: report.cases.iter().filter(|c| c.error.is_some()).count(),
         skipped: report.cases.iter().filter(|c| c.skipped.is_some()).count(),
         cases: report.cases.iter().map(summary_line).collect(),
@@ -676,9 +1007,7 @@ fn startup_process(root: &Path, repeats: u32) -> CaseResult {
 
 fn load(agent: &Agent, path: &Path, seed: u64) -> Result<(Sim, f64), Errors> {
     let t = Instant::now();
-    let sim = agent
-        .engine()
-        .load_file(path, &path.to_string_lossy(), seed)?;
+    let sim = agent.engine().load_file(path, &path.to_string_lossy(), seed)?;
     Ok((sim, ms(t.elapsed())))
 }
 
@@ -882,14 +1211,20 @@ fn read_report(agent: &Agent, path: &str) -> Result<Report, Errors> {
     let text = read_text(&agent.resolve(path)?, path)?;
     let report: Report = serde_json::from_str(&text).map_err(|e| {
         Errors::from(
-            Diagnostic::error(crate::codes::BAD_INPUT, format!("{path} is not a perf_suite report: {e}"))
-                .file(path),
+            Diagnostic::error(
+                crate::codes::BAD_INPUT,
+                format!("{path} is not a perf_suite report: {e}"),
+            )
+            .file(path),
         )
     })?;
     if report.format != FORMAT {
         return Err(Diagnostic::error(
             crate::codes::BAD_INPUT,
-            format!("{path} has format `{}`, this engine reads `{FORMAT}`", report.format),
+            format!(
+                "{path} has format `{}`, this engine reads `{FORMAT}`",
+                report.format
+            ),
         )
         .file(path)
         .fix("rerun perf_suite with this engine for both reports")
@@ -947,9 +1282,19 @@ pub fn compare_reports(base: &Report, new: &Report, threshold_pct: f64) -> Compa
     if !same_machine {
         warnings.push("different machines: timings are not comparable".into());
     }
+    for (which, r) in [("base", base), ("new", new)] {
+        if let Some(b) = r.conditions.cpu_busy_between_max_pct.filter(|b| *b > 10.0) {
+            warnings.push(format!(
+                "{which}: other processes used up to {b}% of the CPU during the run"
+            ));
+        }
+    }
     let same_gpu = base.machine.gpu.is_some() && base.machine.gpu == new.machine.gpu;
     if base.build.profile != new.build.profile {
-        warnings.push(format!("different profiles: {} vs {}", base.build.profile, new.build.profile));
+        warnings.push(format!(
+            "different profiles: {} vs {}",
+            base.build.profile, new.build.profile
+        ));
     }
     let (mut mismatches, mut changes, mut within, mut unmatched) = (Vec::new(), Vec::new(), 0, Vec::new());
     for b in &base.cases {
