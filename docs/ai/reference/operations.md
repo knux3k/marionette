@@ -85,12 +85,14 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
-| `save_write` | yes | Save a live session into a slot (crash-safe; the previous save becomes the slot's backup). |
-| `save_load` | yes | Load a slot into a live session, migrating an older save to the game's version. |
-| `save_list` | no | List save slots with their headers (game, version, tick, label); reads no save bodies. |
-| `save_check` | no | Check a slot without loading it: checksum, game, version, migration and validation against a session's game. |
-| `save_delete` | yes | Delete a save slot and its backup. |
+| `save_write` | yes | Save a live session to a slot (crash-safe, keeps a backup). |
+| `save_load` | yes | Load a slot into a live session, migrating old saves. |
+| `save_list` | no | List save slots (headers only). |
+| `save_check` | no | Check that a slot would load into a session. |
+| `save_delete` | yes | Delete a slot and its backup. |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
+| `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
 | `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
 | `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
@@ -2019,7 +2021,7 @@ Output:
 
 ## `save_write`
 
-Save a live session into a slot (crash-safe; the previous save becomes the slot's backup).
+Save a live session to a slot (crash-safe, keeps a backup).
 
 Mutating: yes.
 
@@ -2047,7 +2049,7 @@ Output:
 
 ## `save_load`
 
-Load a slot into a live session, migrating an older save to the game's version.
+Load a slot into a live session, migrating old saves.
 
 Mutating: yes.
 
@@ -2074,7 +2076,7 @@ Output:
 
 ## `save_list`
 
-List save slots with their headers (game, version, tick, label); reads no save bodies.
+List save slots (headers only).
 
 Mutating: no.
 
@@ -2093,7 +2095,7 @@ Output:
 
 ## `save_check`
 
-Check a slot without loading it: checksum, game, version, migration and validation against a session's game.
+Check that a slot would load into a session.
 
 Mutating: no.
 
@@ -2118,7 +2120,7 @@ Output:
 
 ## `save_delete`
 
-Delete a save slot and its backup.
+Delete a slot and its backup.
 
 Mutating: yes.
 
@@ -2164,6 +2166,62 @@ Output:
 | `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
+
+## `net_simulate`
+
+Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array \| null |  | Actions that travel. Default: the scene's action map. |
+| `drop_at` | integer \| null |  |  |
+| `drop_slot` | integer \| null |  | A client slot whose game vanishes at `drop_at`. |
+| `hash_interval` | integer \| null |  | Compare state hashes every this many ticks (0 = never). Default 60. |
+| `input_change` | number \| null |  | Chance per tick per action that a player changes it. Default 0.05. |
+| `late_join_at` | integer \| null |  | A player who joins at this host tick (gets a snapshot). |
+| `link` | LinkConditions \| null |  | Simulated link, each direction. Default 40 ms, 10 ms jitter, 2% loss. |
+| `players` | integer \| null |  | Players at the start, including the host (1 to 8). Default 2. |
+| `scene` | string | yes | Scene file, relative to the project root. |
+| `seed` | integer \| null |  | Seed of the sims, the inputs and the network. Default 1. |
+| `ticks` | integer \| null |  | Ticks the host runs. Default 600. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string | yes |  |
+| `all_equal` | boolean | yes | Every peer still playing ended in the host's state. |
+| `desyncs` | array of array of any | yes | (slot, tick) of each hash mismatch the session itself reported. |
+| `final_tick` | integer | yes |  |
+| `hash_checks` | integer | yes | Hash comparisons made by the session protocol. |
+| `host_bytes_per_tick` | number | yes | Host bytes sent per tick, average. |
+| `host_hash` | string | yes |  |
+| `peers` | array of PeerReport | yes |  |
+| `seconds` | number | yes | Virtual seconds of play. |
+
+## `achievements_check`
+
+Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes | Definitions file, relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `achievements` | array of string | yes |  |
+| `stat_driven` | integer | yes | Achievements unlocked by a stat threshold. |
+| `stats` | array of string | yes |  |
 
 ## `batch_run`
 

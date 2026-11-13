@@ -14,29 +14,24 @@ pub(crate) fn ops() -> Vec<Op> {
     vec![
         op(
             "save_write",
-            "Save a live session into a slot (crash-safe; the previous save becomes the slot's backup).",
+            "Save a live session to a slot (crash-safe, keeps a backup).",
             true,
             write,
         ),
         op(
             "save_load",
-            "Load a slot into a live session, migrating an older save to the game's version.",
+            "Load a slot into a live session, migrating old saves.",
             true,
             load,
         ),
-        op(
-            "save_list",
-            "List save slots with their headers (game, version, tick, label); reads no save bodies.",
-            false,
-            list,
-        ),
+        op("save_list", "List save slots (headers only).", false, list),
         op(
             "save_check",
-            "Check a slot without loading it: checksum, game, version, migration and validation against a session's game.",
+            "Check that a slot would load into a session.",
             false,
             check,
         ),
-        op("save_delete", "Delete a save slot and its backup.", true, delete),
+        op("save_delete", "Delete a slot and its backup.", true, delete),
     ]
 }
 
