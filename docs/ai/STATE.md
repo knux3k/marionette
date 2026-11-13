@@ -11,7 +11,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. CI runs on Linux and Windows (`.github/workflows/ci.yml`). |
 | 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080). |
+| 3 | Renderer | Done. Opt-in looks (decisions 0063 to 0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090 to 0093). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
 | 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
@@ -43,6 +43,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not on AMD or Intel GPUs.
 - Render cost controls (0080 to 0082): one desktop GPU offscreen only; not in a headset or
   on AMD/Intel. Scale plus foveation resolve not re-timed.
+- Ray tracing (0093): lavapipe and one desktop GPU only; skinned models are not traced.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the

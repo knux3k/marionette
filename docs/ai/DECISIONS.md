@@ -63,6 +63,10 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
 | 0083 | No DLSS (license forbids open source use; owner chose not to use it); vendor-neutral upscaling only | accepted |
+| 0090 | Sun shadow cascades (`ShadowCascades`), sphere-fitted and texel-snapped | accepted |
+| 0091 | HDR environment files: Radiance `.hdr` (own decoder), OpenEXR `.exr` (feature `exr`) | accepted |
+| 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
+| 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |

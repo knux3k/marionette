@@ -457,7 +457,7 @@ type Emissive = {
   intensity: number;
 };
 
-/** Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1, relative to the scene file); empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. */
+/** Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1, relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for models. An image with a bright sun also lights surfaces through it: with a `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`. */
 type Environment = {
   /** Draw the environment behind everything instead of the camera's clear color. */
   background: boolean;
@@ -926,6 +926,30 @@ type RandomImpulse = {
   strength: number;
 };
 
+/** Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`, `Environment`), so add those as the fallback. Skinned models are not in the ray-traced scene yet. */
+type RayTracing = {
+  /** Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a good default. */
+  max_roughness: number;
+  /** Ray-traced reflections of other objects on surfaces smoother than `max_roughness`. */
+  reflections: boolean;
+  /** Ray-traced shadows for every directional, point and spot light, replacing shadow maps. */
+  shadows: boolean;
+  /** Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5). */
+  sun_size_degrees: number;
+};
+
+/** A box where shiny surfaces reflect a picture of the scene taken from the entity's position instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is taken when the probe first appears and again when it moves or changes; objects that move later are not in it (`RayTracing` reflections show those). Up to four probes; a point inside several uses the one with the lowest entity id. */
+type ReflectionProbe = {
+  /** Half size of the box in meters along x, y and z, centered on the entity. Reflections are corrected for the box's walls, so match it to the room. */
+  extent: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Size of each of the six captured faces in texels (32 to 512; 128 is a good default). */
+  resolution: number;
+};
+
 /** Draws the 3D world at `scale` times the output size and resizes it to the output (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed: edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost. Range 0.5 to 2.0. */
 type RenderScale = {
   scale: number;
@@ -960,6 +984,13 @@ type ScriptState = {
 /** Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore. */
 type ScriptTimers = {
   data: string;
+};
+
+/** Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map). */
+type ShadowCascades = {
+  count: number;
+  /** Distance from the camera where shadows end, in meters (capped at the camera's far plane). */
+  far: number;
 };
 
 /** Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover a square `distance` meters on each side of the camera; farther objects are unshadowed. */
@@ -1288,6 +1319,7 @@ interface Components {
   PointLight: PointLight;
   Position: Position;
   RandomImpulse: RandomImpulse;
+  ReflectionProbe: ReflectionProbe;
   RigidBody: RigidBody;
   Script: Script;
   ScriptInbox: ScriptInbox;
@@ -1329,7 +1361,9 @@ interface Resources {
   NavSettings: NavSettings;
   NetPlayers: NetPlayers;
   PhysicsSettings: PhysicsSettings;
+  RayTracing: RayTracing;
   RenderScale: RenderScale;
+  ShadowCascades: ShadowCascades;
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
