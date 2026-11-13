@@ -102,13 +102,10 @@ jobs:
           sudo apt-get install -y gdb vulkan-tools > /dev/null
           vulkaninfo --summary 2>/dev/null | grep -E "deviceName|driverInfo|apiVersion" | head
           cargo build --locked -q -p marionette-cli
-          for n in 1 2 3 4 5 6; do MARIONETTE_RAY_TRACING=0 ./target/debug/marionette --json stability --mode render-3d --out target/stab > /dev/null; echo "no-rt run $n exit=$?"; done
-          for n in 1 2 3 4 5 6; do ./target/debug/marionette --json stability --mode render-3d --out target/stab > /dev/null; echo "rt run $n exit=$?"; done
-          for n in 1 2 3 4 5 6 7 8; do
-            gdb -q -batch -ex run -ex "bt 40" --args ./target/debug/marionette --json stability --mode render-3d --out target/stab > target/gdb.txt 2>&1
-            if grep -q "received signal" target/gdb.txt; then grep -vE "^\[(New|Thread) |^\{" target/gdb.txt | tail -60; break; fi
-            echo "gdb run $n clean"
-          done
+          MARIONETTE_RAY_TRACING=0 ./target/debug/marionette --json stability --out target/stab > /dev/null; echo "full suite no-rt exit=$?"
+          ./target/debug/marionette --json stability --out target/stab > /dev/null; echo "full suite rt exit=$?"
+          gdb -q -batch -ex run -ex "bt 50" -ex "info sharedlibrary" --args ./target/debug/marionette --json stability --out target/stab > target/gdb.txt 2>&1
+          grep -vE "^\[(New|Thread) |^\{" target/gdb.txt | grep -vE "^0x[0-9a-f]+ +0x[0-9a-f]+ +Yes" | tail -80
       - name: Test (GPU tests on lavapipe, one thread)
         run: cargo test --locked -- --test-threads=1
         env:
