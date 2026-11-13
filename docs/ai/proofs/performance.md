@@ -36,6 +36,12 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 - `serde_generation_writes_once_and_reports` (marionette-cli `port_e2e`): the operation returns
   code on a dry run, writes once, refuses to overwrite, and reports skipped fields.
 - Not checked against files written by a real Unity build.
+- Decision 0241 (`serde_generator_handles_consts_properties_and_external_types`): const and
+  static initializers, `float.MinValue`, qualified `new`, expression-bodied properties,
+  external types (including a replaced vector type) and unknown element types. On a real
+  project's save classes (private) the generator now leaves no unresolved or untranslated
+  entries.
+
 ## Shared performance suite (decision 0100) and the `dist` profile (decision 0101)
 
 - `cargo test -p marionette-cli --test perf_suite`: a quick run repeats state hashes, two runs

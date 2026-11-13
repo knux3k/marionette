@@ -1,6 +1,6 @@
 ---
 name: marionette-add-rust-code
-description: Add a game's own Rust module (components, resources, systems) and its own operations to Marionette without forking or editing the engine, building the game as its own binary. Use when gameplay or simulation needs native speed, when porting Burst jobs, when a game needs a custom operation or MCP tool, or when trimming unused engine parts from a build.
+description: Add a game's own Rust module (components, resources, systems, operations) without forking the engine, built as the game's own binary. Use when gameplay or simulation needs native speed, when porting Burst jobs, when a game needs a custom operation or MCP tool, or when trimming unused engine parts from a build.
 ---
 
 # Add a game's own Rust code

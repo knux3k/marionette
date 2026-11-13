@@ -90,6 +90,35 @@ impl Default for Base {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct Extras {
+    pub version: i32,
+    #[serde(rename = "where")]
+    pub where_: String,
+    pub lowest: f32,
+    pub nested: Inner,
+    pub foreign: Vec<crate::Foreign>,
+    pub more: Vec<crate::Foreign>,
+    pub things: Vec<serde_json::Value>,
+    pub dir: Vector3,
+}
+
+impl Default for Extras {
+    fn default() -> Self {
+        Self {
+            version: 7,
+            where_: "home".to_string(),
+            lowest: f32::MIN,
+            nested: Inner::default(),
+            foreign: Vec::new(),
+            more: Default::default(),
+            things: Default::default(),
+            dir: Vector3 { x: 0.0, y: 0.0, z: 0.0 },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Inner {
     #[serde(rename = "_underscore")]
     pub underscore: i32,
