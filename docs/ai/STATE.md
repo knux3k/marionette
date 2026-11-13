@@ -10,7 +10,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | Line | Topic | Status |
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. CI runs on Linux and Windows (`.github/workflows/ci.yml`). |
-| 2 | Core | Done. |
+| 2 | Core | Done. Save games (decision 0076). |
 | 3 | Renderer | Done. Opt-in looks (decisions 0063 to 0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090 to 0093). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |

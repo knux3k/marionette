@@ -15,13 +15,14 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav", "gamepad", "starter"]
+default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "xr", "nav", "gamepad", "starter", "save"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
 generate = ["marionette-agent/generate", "dep:marionette-generate"]
 port = ["marionette-agent/port"]
 jobs-ts = ["marionette-agent/jobs-ts"]
+save = ["marionette-agent/save", "dep:marionette-save"]
 # Headsets through OpenXR (`marionette xr`; decision 0190). The OpenXR loader is opened at
 # run time, so this adds no system dependency.
 xr = ["dep:marionette-openxr"]
@@ -42,6 +43,7 @@ marionette-host.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-agent = { path = "../marionette-agent", default-features = false }
 marionette-generate = { path = "../marionette-generate", optional = true }
+marionette-save = { workspace = true, optional = true }
 marionette-openxr = { path = "../marionette-openxr", optional = true }
 marionette-gamepad = { path = "../marionette-gamepad", optional = true }
 clap.workspace = true

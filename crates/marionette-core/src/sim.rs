@@ -15,6 +15,27 @@ use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// A copy of a simulation's whole state taken by [`Sim::capture_state`]. `Send`: turn it
+/// into a [`SimSnapshot`] on any thread.
+pub struct StateCapture {
+    pub capture: scene::Capture,
+    pub tick: u64,
+    pub rng: u64,
+    pub modules: std::collections::BTreeMap<&'static str, Vec<u8>>,
+}
+
+impl StateCapture {
+    /// The same snapshot [`Sim::save_state`] would have given at capture time.
+    pub fn into_snapshot(self, registry: &Registry) -> SimSnapshot {
+        SimSnapshot {
+            scene: self.capture.into_scene(registry).to_text(),
+            tick: self.tick,
+            rng: self.rng,
+            modules: self.modules,
+        }
+    }
+}
+
 pub struct Sim {
     pub world: World,
     schedule: Schedule,
@@ -191,6 +212,23 @@ impl Sim {
     /// a shared [`Registry`]. Gives the same scene as [`Sim::snapshot`].
     pub fn capture(&mut self) -> scene::Capture {
         scene::capture(&mut self.world, &self.registry)
+    }
+
+    /// Everything [`Sim::save_state`] keeps, copied cheaply on the main thread (component
+    /// and resource copies, tick, RNG, module bytes) so the slow part, scene text, can be
+    /// built elsewhere with [`StateCapture::into_snapshot`]. Used by saves (decision 0076).
+    pub fn capture_state(&mut self) -> StateCapture {
+        let modules = self
+            .modules
+            .iter()
+            .filter_map(|m| m.save(&self.world).map(|b| (m.name(), b)))
+            .collect();
+        StateCapture {
+            capture: self.capture(),
+            tick: self.tick(),
+            rng: self.world.resource::<SimRng>().state(),
+            modules,
+        }
     }
 
     /// SHA-256 (hex) of all simulation state: the canonical scene text plus the tick
