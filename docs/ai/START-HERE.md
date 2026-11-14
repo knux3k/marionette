@@ -13,6 +13,8 @@ when the task calls for it, and then only the section that matters.
 2. [FOCUSES.md](FOCUSES.md): the four standing focuses and the open gaps.
 3. [STATE.md](STATE.md): status per plan line and the UNVERIFIED list.
 
+Before building on a feature, look up its level (slice, usable, proven) in [STATUS.md](STATUS.md).
+
 ## Skills first
 
 For a task with a procedure, load its skill instead of a doc: `.claude/skills/<name>/SKILL.md`
