@@ -21,10 +21,9 @@ fn load(path: &Path, shown: &str, seed: u64) -> Result<Sim, marionette_core::Err
 /// A change here changes simulation results: say so in the commit and in docs/ai/PROOFS.md.
 const HASH_FACTORY_1: &str = "13f72b12e6a829c27f4f4834d1255b7fd3bbd50ddc71bb0161d56f9edca22e69";
 
-fn temp_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("marionette-perf-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A folder of its own for each test: tests run in parallel and write the same file names.
+fn temp_dir() -> marionette_host::TempDir {
+    marionette_host::temp_dir("perf-proofs").unwrap()
 }
 
 fn call(agent: &mut Agent, op: &str, input: Value) -> Value {
@@ -47,7 +46,8 @@ fn factory_scene(agent: &mut Agent, dir: &Path, scale: u32) -> PathBuf {
 
 #[test]
 fn factory_benchmark_hash_is_recorded_and_independent_of_threads() {
-    let dir = temp_dir();
+    let tmp = temp_dir();
+    let dir = tmp.path().to_path_buf();
     let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let scene = factory_scene(&mut agent, &dir, 1);
     let mut hashes = Vec::new();
@@ -78,7 +78,8 @@ fn gpu() -> Option<Gpu> {
 #[test]
 fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
     let Some(gpu) = gpu() else { return };
-    let dir = temp_dir();
+    let tmp = temp_dir();
+    let dir = tmp.path().to_path_buf();
     let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let mut seen = Vec::new();
     for scale in [1, 4] {
@@ -110,7 +111,8 @@ fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
 #[test]
 fn capture_saved_on_another_thread_equals_snapshot() {
     fn is_send<T: Send>(_: &T) {}
-    let dir = temp_dir();
+    let tmp = temp_dir();
+    let dir = tmp.path().to_path_buf();
     let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let factory = factory_scene(&mut agent, &dir, 1);
     let swarm = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/swarm.scene.json");
