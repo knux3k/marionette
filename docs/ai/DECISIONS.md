@@ -97,3 +97,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |
 | 0241 | `port_serde` on a real project: const and static initializers, expression-bodied properties, `external` types (also Unity value types) | accepted |
 | 0260 | Merge queue: pull requests run a fast Linux check, the queue and main run the full suite, `CI gate` is the required check | accepted |
+| 0270 | Scene edits cost the change: `SceneIndex`, indexed file and session edits with the whole-scene path as fallback, one write or world load per batch, lazy JSON positions | accepted |

@@ -81,6 +81,9 @@ pub struct Session {
     /// Entries ever logged; the next entry's `seq`.
     pub logged: usize,
     pub stats: Stats,
+    /// The world's scene kept indexed between edits (decision 0270). Dropped whenever anything
+    /// but an edit reaches the session, since the world may then change.
+    pub(crate) edits: Option<crate::edit::SessionEdits>,
 }
 
 /// Log entries a session keeps after trimming.
@@ -117,6 +120,13 @@ impl Session {
 
 pub(crate) fn get_mut<'a>(agent: &'a mut Agent, id: &str) -> Result<&'a mut Session, Errors> {
     let known: Vec<String> = agent.sessions.keys().cloned().collect();
+    if let Some(s) = agent.sessions.get_mut(id) {
+        debug_assert!(
+            s.edits.as_ref().is_none_or(|e| !e.pending()),
+            "pending session edits are loaded before anything else uses the session"
+        );
+        s.edits = None;
+    }
     agent.sessions.get_mut(id).ok_or_else(|| {
         Errors::from(
             Diagnostic::error(codes::NO_SESSION, format!("no live session `{id}`")).fix(
@@ -163,6 +173,7 @@ fn start(agent: &mut Agent, input: StartInput) -> Result<StepOutput, Errors> {
         logs: Default::default(),
         logged: 0,
         stats: Stats::default(),
+        edits: None,
     };
     session.log(
         "start",

@@ -189,7 +189,7 @@ fn parse_entity(item: &Value) -> std::result::Result<SceneEntity, String> {
 }
 
 /// One typed value ready to insert.
-type Typed<'r> = (&'r TypeEntry, Box<dyn Reflect>);
+pub(crate) type Typed<'r> = (&'r TypeEntry, Box<dyn Reflect>);
 
 /// A scene whose values have all been checked against the registry.
 pub struct ValidScene<'r> {
@@ -306,7 +306,7 @@ fn ids_hint(ids: &BTreeSet<u64>) -> String {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn typed<'r>(
+pub(crate) fn typed<'r>(
     registry: &'r Registry,
     kind: Kind,
     name: &str,
@@ -404,7 +404,7 @@ fn typed<'r>(
 }
 
 /// Finds every [`SceneRef`] inside a reflected value.
-fn collect_refs(value: &dyn PartialReflect, out: &mut Vec<u64>) {
+pub(crate) fn collect_refs(value: &dyn PartialReflect, out: &mut Vec<u64>) {
     if let Some(r) = value.try_downcast_ref::<SceneRef>() {
         out.push(r.0);
         return;
