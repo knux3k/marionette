@@ -38,6 +38,14 @@ Read p99 and max, not only the average: one stalled frame is a visible hitch.
 
 Change one thing, measure again with the same seed and ticks, keep the number.
 
+## Before and after over many scenes
+
+`perf_suite` with `label` (and `extra_scenes` for a game's scenes) writes a report;
+`perf_compare` with `base` and `new` checks state and image hashes first, then timings.
+`outputs_identical` false means the change altered results. For small gains run each
+build three times, alternating, and pass lists. On a shared machine pass `lock`,
+`min_idle_s` and `wait_s`; read `warnings` before trusting a number.
+
 ## Memory and long runs
 
 `marionette stability --mode <name> --long` checks memory growth after warm-up, hangs and

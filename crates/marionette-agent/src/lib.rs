@@ -11,6 +11,8 @@ pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
+#[cfg(feature = "editor")]
+pub mod editor;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
@@ -25,7 +27,10 @@ pub mod nav;
 #[cfg(feature = "netplay")]
 pub mod netplay;
 pub mod observe;
+#[cfg(feature = "package")]
+pub mod package;
 pub mod perf;
+pub mod perf_suite;
 #[cfg(feature = "pool")]
 pub mod pool;
 #[cfg(feature = "port")]
@@ -158,6 +163,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "package")]
+    "package",
     #[cfg(feature = "save")]
     "save",
     #[cfg(feature = "starter")]
@@ -168,6 +175,8 @@ pub const FEATURES: &[&str] = &[
     "nav",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "editor")]
+    "editor",
     #[cfg(feature = "netplay")]
     "netplay",
 ];
@@ -179,10 +188,13 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         edit::ops(),
         session::ops(),
         observe::ops(),
+        #[cfg(feature = "editor")]
+        editor::ops(),
         scenario::ops(),
         #[cfg(feature = "import")]
         library::ops(),
         perf::ops(),
+        perf_suite::ops(),
         #[cfg(feature = "jobs-ts")]
         jobs_ts::ops(),
         #[cfg(feature = "generate")]
@@ -207,6 +219,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "package")]
+        package::ops(),
         #[cfg(feature = "starter")]
         starter::ops(),
         #[cfg(feature = "netplay")]

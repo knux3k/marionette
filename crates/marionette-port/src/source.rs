@@ -533,7 +533,7 @@ fn members(
             j = next;
         } else {
             // Fields (possibly several declarators) or a C# property.
-            let is_property = !cpp && tokens[term].is("{");
+            let is_property = !cpp && (tokens[term].is("{") || tokens[term].is("=>"));
             let decl_end = if tokens[term].is("{") {
                 let c = matching(tokens, term).unwrap_or(close);
                 if !cpp {

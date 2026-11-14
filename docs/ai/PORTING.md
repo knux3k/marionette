@@ -180,7 +180,9 @@ instead (decision 0070); it has no structs and no 64-bit integers.
 `marionette op port_serde '{"source": "<Assets>", "out": "crates/<game>/src/serial.rs"}'`
 (decision 0240) writes serde types for every `[Serializable]` class and struct: the module
 reads and writes the JSON `JsonUtility` makes. Pass `roots: ["Name"]` for one type and what it
-reaches, `derives: ["Reflect"]` for extra derives, `dry_run: true` to get the code back.
+reaches, `derives: ["Reflect"]` for extra derives, `external: {"Vector3": "crate::Vec3"}` for types
+the project already has (hand-written, or its own vector types; never generated, decision 0241),
+`dry_run: true` to get the code back.
 Read `notes` before using it: `skipped` fields are not saved by Unity either (dictionaries,
 nested arrays, non-[Serializable] classes), `unresolved` fields are kept as raw JSON (type not
 in the scanned source), `initializer` means a default needed a method call and is zero.

@@ -14,6 +14,8 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Providers, import, pool and generation (plan lines 7 and 8) | [proofs/assets.md](proofs/assets.md) |
 | Proof scenes (plan line 9) | [proofs/games.md](proofs/games.md) |
 | Performance, porting and saving | [proofs/performance.md](proofs/performance.md) |
+| Game packages (Windows, Linux, Steam Deck, Steam Frame) | [proofs/packaging.md](proofs/packaging.md) |
+| Scene editor view (plan line 10, decision 0130) | [proofs/editor.md](proofs/editor.md) |
 | Save games (decision 0076) | [proofs/save-games.md](proofs/save-games.md) |
 | Headsets through OpenXR (decision 0190) | [proofs/xr.md](proofs/xr.md) |
 | Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |

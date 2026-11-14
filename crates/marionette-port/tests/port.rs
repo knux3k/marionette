@@ -397,9 +397,60 @@ fn unity_jobs_partials_and_tuples() {
 // ---------------------------------------------------------------------------------------
 // Serializable types to serde (decision 0240)
 
-fn serial() -> marionette_port::serde_gen::Generated {
+/// A type the project already has, named in `external`.
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct Foreign {
+    pub id: i32,
+}
+
+fn serial_with(external: &[(&str, &str)]) -> marionette_port::serde_gen::Generated {
     let a = scan(&fixture("serial")).expect("fixture scans");
-    marionette_port::serde_gen::generate(&a, &Default::default())
+    marionette_port::serde_gen::generate(
+        &a,
+        &marionette_port::serde_gen::Options {
+            external: external
+                .iter()
+                .map(|(a, b)| (a.to_string(), b.to_string()))
+                .collect(),
+            ..Default::default()
+        },
+    )
+}
+
+fn serial() -> marionette_port::serde_gen::Generated {
+    serial_with(&[("Foreign", "crate::Foreign")])
+}
+
+#[test]
+fn serde_generator_handles_consts_properties_and_external_types() {
+    let g = serial();
+    let r = &g.rust;
+    // Const and static initializers, numeric limits, qualified `new`.
+    assert!(r.contains("version: 7,"));
+    assert!(
+        r.contains("where_: \"home\".to_string(),") || r.contains("r#where"),
+        "{r}"
+    );
+    assert!(r.contains("lowest: f32::MIN,"));
+    assert!(r.contains("nested: Inner::default(),"));
+    // An expression-bodied property is not a field.
+    assert!(!r.contains("pub ranked"));
+    // External and unknown element types.
+    assert!(r.contains("pub foreign: Vec<crate::Foreign>,"));
+    assert!(r.contains("pub more: Vec<crate::Foreign>,"));
+    assert!(r.contains("pub things: Vec<serde_json::Value>,"));
+    assert!(!r.contains("pub struct Foreign"));
+    let kinds: Vec<(&str, &str)> = g.notes.iter().map(|n| (n.kind.as_str(), n.at.as_str())).collect();
+    assert!(kinds.contains(&("unresolved", "Extras.things")), "{kinds:?}");
+    // An external vector type replaces the generated one.
+    let v = serial_with(&[("Foreign", "crate::Foreign"), ("Vector3", "glam_like::Vec3")]);
+    assert!(v.rust.contains("pub dir: glam_like::Vec3,"));
+    assert!(!v.rust.contains("pub struct Vector3"));
+    assert!(
+        v.rust
+            .contains("dir: glam_like::Vec3 { x: 0.0, y: 0.0, z: 0.0 },")
+    );
 }
 
 #[test]
