@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "floor",
+  "notes": "Starter slot `floor` of \"Knight And The Coins\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "worn dungeon flagstones, spooky moonlit cartoon, chunky fantasy cartoon, torchlight, seamless tileable game texture seen from directly above, even flat light, no text",
+  "texture": {
+    "resize": [
+      256,
+      256
+    ],
+    "tileable": true
+  }
+}

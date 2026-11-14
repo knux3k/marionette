@@ -59,15 +59,34 @@ fn run_to(sim: &mut Sim, tick: u64) {
 /// Head at standing height looking ahead; the right hand starts on block 3 (id 12), grabs
 /// it, swings forward and up at about 6 m/s for a quarter second, and lets go.
 fn throw_inputs() -> Vec<InputEvent> {
+    throw_with(&[(5, "xr:right/squeeze", 1.0), (25, "xr:right/squeeze", 0.0)])
+}
+
+/// The same throw done with a tracked hand and no controller: the palm is the grip and the
+/// pinch ramps in and out the way a real thumb and finger do (see `hand_from_joints`).
+fn pinch_throw_inputs() -> Vec<InputEvent> {
+    throw_with(&[
+        (3, "xr:right/pinch", 0.2),
+        (4, "xr:right/pinch", 0.45),
+        (5, "xr:right/pinch", 0.8),
+        (6, "xr:right/pinch", 1.0),
+        (24, "xr:right/pinch", 0.6),
+        (25, "xr:right/pinch", 0.3),
+        (26, "xr:right/pinch", 0.0),
+    ])
+}
+
+fn throw_with(grab: &[(u64, &str, f32)]) -> Vec<InputEvent> {
     let mut ev = pose_at(0, XrSource::Head, [0.0, 1.6, 0.0], Quat::default());
     let start = [0.3, 0.86, -0.5];
     ev.extend(pose_at(0, XrSource::RightGrip, start, Quat::default()));
-    ev.push(input(5, "xr:right/squeeze", 1.0));
+    for (tick, name, v) in grab {
+        ev.push(input(*tick, name, *v));
+    }
     for k in 1..=15u64 {
         let p = [start[0], start[1] + 0.03 * k as f32, start[2] - 0.1 * k as f32];
         ev.extend(pose_at(10 + k, XrSource::RightGrip, p, Quat::default()));
     }
-    ev.push(input(25, "xr:right/squeeze", 0.0));
     ev
 }
 
@@ -90,6 +109,25 @@ fn grab_and_throw_a_block() {
         (untouched.translation.z + 0.5).abs() < 0.05,
         "other blocks stay: {untouched:?}"
     );
+}
+
+#[test]
+fn a_pinching_hand_grabs_and_throws_without_a_controller() {
+    let mut sim = load();
+    feed(&mut sim, pinch_throw_inputs());
+    run_to(&mut sim, 4);
+    let before = transform(&mut sim, 12);
+    assert!(
+        (before.translation.z + 0.5).abs() < 0.05,
+        "a light pinch (below half) does not grab: {before:?}"
+    );
+    run_to(&mut sim, 20);
+    let held = transform(&mut sim, 12);
+    assert!(held.translation.z < -0.9, "block follows the hand: {held:?}");
+    run_to(&mut sim, 240);
+    let thrown = transform(&mut sim, 12);
+    assert!(thrown.translation.z < -2.5, "block flew forward: {thrown:?}");
+    assert!(thrown.translation.y < 0.3, "and landed: {thrown:?}");
 }
 
 #[test]

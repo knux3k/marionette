@@ -1,0 +1,12 @@
+{
+  "format": "marionette.recipe/1",
+  "from": "player_ref",
+  "model": {
+    "height_m": 0.9,
+    "max_texture_px": 512,
+    "max_triangles": 8000
+  },
+  "name": "player",
+  "notes": "Starter slot `player` of \"Gearbug Garden\" (game_make, decision 0150).",
+  "output": "model"
+}

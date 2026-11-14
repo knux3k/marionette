@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "enemy",
+  "notes": "Starter slot `enemy` of \"Comet Hopper\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "a one-eyed purple slime alien, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+  "texture": {
+    "remove_background": true,
+    "resize": [
+      256,
+      256
+    ]
+  }
+}

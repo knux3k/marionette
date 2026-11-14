@@ -1,0 +1,70 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "wall",
+  "output": "model",
+  "file": "wall.glb",
+  "sha256": "67ec08b1c54ad94b4fec2415c4271809314d74b40a6edeb1799e7b25b8b9b5be",
+  "recipe": "wall.recipe.json",
+  "recipe_sha256": "237182cbeb1c75f4c955f34fb7670de5bf833134946373834c62fe0c0c48b3c6",
+  "source": {
+    "provider": "tripo",
+    "model": "default",
+    "provider_verified": false,
+    "kind": "model3d",
+    "from": {
+      "name": "wall_ref",
+      "file": "wall_ref.png",
+      "sha256": "ba0b3c04c2fe9b1744603051d9e1e0e9b4950c7d8e9a8c08925014a00adc1adb",
+      "approved": false,
+      "approval_waived": true
+    },
+    "cache_key": "5f0d13b8d848148aa5b2ec9b5951318078a2ea885d03d3c0fca076516a1883a4",
+    "raw_sha256": "d737c2d29746efbb17902445537b696d2b03bc5c58768e0c3dc7c8771e7b87d6",
+    "cost_usd": 0.4
+  },
+  "postprocess": {
+    "animations": 0,
+    "bounds": [
+      [
+        -0.628272,
+        0.0,
+        -0.624414
+      ],
+      [
+        0.628272,
+        1.0,
+        0.624414
+      ]
+    ],
+    "materials": 1,
+    "meshes": 1,
+    "notes": [
+      "decimated from 501844 to 1888 triangles (budget 2000)",
+      "image 0 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 1 resized from 2048x2048 to 512x512 (image/jpeg)",
+      "image 2 resized from 2048x2048 to 512x512 (image/jpeg)"
+    ],
+    "scale": 1.305448,
+    "skins": 0,
+    "source_bounds": [
+      [
+        -0.480212,
+        -0.385221,
+        -0.4768
+      ],
+      [
+        0.482328,
+        0.3808,
+        0.479828
+      ]
+    ],
+    "textures": 3,
+    "triangles": 1888
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `tripo` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

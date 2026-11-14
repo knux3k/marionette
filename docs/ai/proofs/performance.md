@@ -36,3 +36,39 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 - `serde_generation_writes_once_and_reports` (marionette-cli `port_e2e`): the operation returns
   code on a dry run, writes once, refuses to overwrite, and reports skipped fields.
 - Not checked against files written by a real Unity build.
+- Decision 0241 (`serde_generator_handles_consts_properties_and_external_types`): const and
+  static initializers, `float.MinValue`, qualified `new`, expression-bodied properties,
+  external types (including a replaced vector type) and unknown element types. On a real
+  project's save classes (private) the generator now leaves no unresolved or untranslated
+  entries.
+
+## Shared performance suite (decision 0100) and the `dist` profile (decision 0101)
+
+- `cargo test -p marionette-cli --test perf_suite`: a quick run repeats state hashes, two runs
+  compare as identical, a changed hash is reported, several runs per side compare without
+  changes, a held bench lock refuses the run and the run removes its own lock.
+- Build settings, same source, suite `core/1`: `release`, thin LTO, fat LTO + 1 codegen unit,
+  1 codegen unit, fat LTO + `x86-64-v3`. Every state hash and every image hash (same GPU)
+  equal to `release`, in the cloud (lavapipe) and on a Ryzen 7 2700X with an RTX 2080.
+  Timing results: decision 0101.
+
+Baseline, `release`, one run (p50 / p99 ms per tick; allocations per tick):
+
+| Case | Cloud 4-core VM | Ryzen 7 2700X | Allocs/tick |
+| --- | --- | --- | --- |
+| startup/engine (build engine) | 2.97 / 5.35 | 2.78 / 3.29 | |
+| startup/process (new process to first tick) | 13.7 | 79.6 (Windows) | |
+| sim/factory-32x (load 0.8 s cloud, 1.2 s PC) | 0.157 / 0.340 | 0.131 / 0.287 | 81 |
+| sim/game-ember-run | 0.61 / 1.20 | 0.78 | 2,168 |
+| sim/game-signal-yard | 0.58 / 1.28 | 0.86 | 1,750 |
+| sim/game-cloudstep | 0.45 / 0.80 | 0.68 | 1,803 |
+| sim/scripts | 0.092 / 0.199 | | 359 |
+| render/looks-1080p frame | software GPU | 1.00 / 1.45 | |
+| render/game-crystal-ward-1080p frame | software GPU | 0.96 / 1.48 | |
+| render/factory-4x-headset frame | software GPU | 0.89 / 1.36 | |
+| render/factory-32x-headset frame | software GPU | 4.03 / 7.99 | |
+
+UNVERIFIED: GPU time by timestamp queries (only submit-to-idle), PGO, ARM CPUs, AMD or
+Intel GPUs. The alternated desktop run of `release` against `dist` is pending (single runs
+agree with the cloud). Large allocation counts per tick in script-driven games are the first
+target of the optimization pass.

@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "ground",
+  "output": "texture",
+  "file": "ground.png",
+  "sha256": "5546da4135574cc3f5bc44c198889034345f5d31b954b60663e07ee1eb9a6155",
+  "recipe": "ground.recipe.json",
+  "recipe_sha256": "3056b2ff98bd10e68aab92197d8ffe5aae729943fe9adf12e355439ce784bc81",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "purple moon rock with small craters, bright sci-fi cartoon, clean bold shapes, thick outlines, seamless tileable game texture seen from the front, even flat light, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "808448abf706869bd1467b711898b181875f3d71d770b09effa5db9a4f01ec2c",
+    "raw_sha256": "bb616f5034607218c42c42c06ee9c10b8afc8324a168b81b85c91be7c710d5bf",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": true
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

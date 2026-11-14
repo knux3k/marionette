@@ -1,0 +1,43 @@
+{
+  "format": "marionette.brief/1",
+  "title": "Comet Hopper",
+  "pitch": "Hop across a purple moon, bounce on slime aliens and grab the stars before your rocket leaves.",
+  "template": "platformer",
+  "view": "2d",
+  "style": "bright sci-fi cartoon, clean bold shapes, thick outlines",
+  "difficulty": "normal",
+  "size": "medium",
+  "seed": 3,
+  "words": {
+    "pickups": "stars",
+    "win": "LIFT OFF!",
+    "lose": "LOST IN SPACE"
+  },
+  "colors": {
+    "background": "#0b0d1f",
+    "accent": "#7ee8ff"
+  },
+  "assets": {
+    "background": {
+      "describe": "a colorful nebula above a cratered purple moon"
+    },
+    "enemy": {
+      "describe": "a one-eyed purple slime alien"
+    },
+    "goal": {
+      "describe": "a little red and white rocket ship standing upright"
+    },
+    "ground": {
+      "describe": "purple moon rock with small craters"
+    },
+    "pickup": {
+      "describe": "a glowing yellow five-pointed star"
+    },
+    "player": {
+      "describe": "a small round astronaut with a big glass helmet"
+    },
+    "spikes": {
+      "describe": "a row of jagged blue crystal spikes"
+    }
+  }
+}

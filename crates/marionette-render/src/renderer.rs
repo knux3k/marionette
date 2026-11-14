@@ -334,6 +334,8 @@ pub(crate) struct GpuModel {
     pub rest: Vec<Mat4>,
     /// Default morph target weights per node (used when an entity has no pose).
     pub rest_morph: Vec<Vec<f32>>,
+    /// Model-space bounding box of the rest pose (min, max); `None` for an empty model.
+    pub bounds: Option<(glam::Vec3, glam::Vec3)>,
 }
 
 /// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
@@ -1310,7 +1312,14 @@ impl Renderer {
             skins,
             rest,
             rest_morph: model.rig.morph_weights.clone(),
+            bounds: model_bounds(model),
         }
+    }
+
+    /// Model-space bounding box (min, max) of a model this renderer has loaded, for picking
+    /// and framing. `None` while the model is not loaded (or still streaming) or failed.
+    pub fn model_bounds(&self, asset: &str) -> Option<(glam::Vec3, glam::Vec3)> {
+        self.models.get(asset)?.as_ref().ok()?.bounds
     }
 
     /// Records one view of the frame into `encoder`. Call [`Renderer::prepare`] first.
@@ -2661,6 +2670,18 @@ pub(crate) fn write_growable<T: Pod>(
 }
 
 /// Uploads an RGBA8 image (no mipmaps) and returns a view of it.
+/// Rest-pose bounding box of a model: every part's positions through its node transform.
+fn model_bounds(model: &ModelData) -> Option<(glam::Vec3, glam::Vec3)> {
+    let mut b: Option<(glam::Vec3, glam::Vec3)> = None;
+    for part in &model.parts {
+        for p in &part.mesh.positions {
+            let v = part.transform.transform_point3(glam::Vec3::from_array(*p));
+            b = Some(b.map_or((v, v), |(lo, hi)| (lo.min(v), hi.max(v))));
+        }
+    }
+    b
+}
+
 pub fn create_texture_view(device: &wgpu::Device, queue: &wgpu::Queue, img: &Image) -> wgpu::TextureView {
     let size = wgpu::Extent3d {
         width: img.width,

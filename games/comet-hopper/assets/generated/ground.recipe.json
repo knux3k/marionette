@@ -1,0 +1,14 @@
+{
+  "format": "marionette.recipe/1",
+  "name": "ground",
+  "notes": "Starter slot `ground` of \"Comet Hopper\" (game_make, decision 0150).",
+  "output": "texture",
+  "prompt": "purple moon rock with small craters, bright sci-fi cartoon, clean bold shapes, thick outlines, seamless tileable game texture seen from the front, even flat light, no text",
+  "texture": {
+    "resize": [
+      256,
+      256
+    ],
+    "tileable": true
+  }
+}
