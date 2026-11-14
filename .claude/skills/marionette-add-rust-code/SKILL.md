@@ -1,6 +1,6 @@
 ---
 name: marionette-add-rust-code
-description: Add a game's own Rust module (components, resources, systems, operations) without forking the engine. Use when gameplay or simulation needs native speed, when porting Burst jobs, for a custom operation or MCP tool, meshes built in code or own WGSL shaders, or to trim unused engine parts from a build.
+description: Add a game's own Rust module (components, resources, systems, operations) without forking the engine. Use when gameplay needs native speed, porting Burst jobs, or for custom operations, meshes built in code, own WGSL shaders or trimming engine parts.
 ---
 
 # Add a game's own Rust code

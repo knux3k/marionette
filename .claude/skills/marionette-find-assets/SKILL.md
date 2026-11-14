@@ -1,6 +1,6 @@
 ---
 name: marionette-find-assets
-description: Find a model, texture, sound or prefab for a Marionette game in the required order (project, owned library, CC0 pool, online CC0, generation last) with its license intact. Use when a scene needs art or audio, when importing a Unity package or prefab the user owns, or when adding an asset to the CC0 pool.
+description: Find a model, texture, sound or prefab in the required order (project, owned library, CC0 pool, online CC0, generation last), license intact. Use when a scene needs art or audio, importing a Unity package or prefab the user owns, or adding to the CC0 pool.
 ---
 
 # Find and import an asset
