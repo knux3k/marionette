@@ -10,7 +10,7 @@
 
 use marionette_agent::Agent;
 use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 fn dir() -> PathBuf {
@@ -139,7 +139,7 @@ const SCRIPT_MOVER_1K_MS: f64 = 18.0;
 
 /// A scene of `n` cubes that each run `script` (written beside the scene), and its tick cost.
 #[cfg(feature = "script")]
-fn scripted(agent: &mut Agent, d: &Path, tag: &str, n: u32, script: &str) -> f64 {
+fn scripted(agent: &mut Agent, d: &std::path::Path, tag: &str, n: u32, script: &str) -> f64 {
     let scene = format!("scenes/{tag}.scene.json");
     std::fs::create_dir_all(d.join("scenes")).unwrap();
     std::fs::write(d.join(format!("scenes/{tag}.ts")), script).unwrap();
