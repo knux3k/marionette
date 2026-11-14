@@ -68,6 +68,8 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0091 | HDR environment files: Radiance `.hdr` (own decoder), OpenEXR `.exr` (feature `exr`) | accepted |
 | 0092 | Reflection probes (`ReflectionProbe`): captured on change, box-corrected | accepted |
 | 0093 | Ray-traced shadows and reflections through ray queries (`RayTracing`), opt-in with fallback | accepted |
+| 0100 | One shared performance suite with output checks (`perf_suite`, `perf_compare`), shared-machine lock and idle checks | accepted |
+| 0101 | Shipping builds use fat LTO with one codegen unit (`--profile dist`); `release` stays | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |

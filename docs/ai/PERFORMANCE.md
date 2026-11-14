@@ -52,6 +52,36 @@ before/after comparison. Set `MARIONETTE_JOB_THREADS` to compare thread counts.
 
 GPU time on a real desktop GPU and headset is UNVERIFIED (`docs/ai/STATE.md`).
 
+## The shared suite (decision 0100)
+
+Every session that changes speed runs the same suite before and after, on the same machine,
+and compares the two reports. Outputs are checked before timings.
+
+```bash
+cargo build --release -p marionette-cli
+target/release/marionette op perf_suite '{"label":"before"}'     # writes .marionette/perf/before.json
+# ... change code, rebuild ...
+target/release/marionette op perf_suite '{"label":"after"}'
+target/release/marionette op perf_compare '{"base":".marionette/perf/before.json","new":".marionette/perf/after.json"}'
+```
+
+- Cases (suite `core/1`, `crates/marionette-agent/src/perf_suite.rs`): `startup/*` (engine
+  build, a new process to its first tick), `sim/*` (examples, factory 4x and 32x, the six proof
+  games), `render/*` (1920x1080 mono and 2x2160x2160 headset, MSAA 4). Each case: load time,
+  tick or frame percentiles (frame split into sim, extract, record, GPU wait), allocations per
+  tick, counted heap, run-to-run noise, state hash, and SHA-256 of a fixed final image.
+- `perf_compare` says `outputs_identical: false` when any state hash differs, or any image hash
+  differs on the same GPU. A speed change that changes output must be opt-in and labelled.
+- Builds for players and numbers quoted against other engines: `cargo build --profile dist`
+  (fat LTO, one codegen unit; same outputs, decision 0101).
+- `length: "quick"` is a smoke test (a tenth of the ticks, one repeat). `only: ["sim/"]`
+  picks cases; `extra_scenes` adds a game's own scenes. `no_gpu` skips render cases.
+- Shared PC: build first (never while the bench lock exists), then pass `"lock"` (the PC's
+  `pc-bench.lock`), `"lock_owner"`, `"min_idle_s": 300`, `"wait_s": 3600`. The suite takes
+  and removes the lock and refuses while the CPU is busy or the desktop is in use.
+- Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.
+- Results and the machine they came from go in [proofs/performance.md](proofs/performance.md), section "Shared performance suite (decision 0100)".
+
 ## Saving
 
 `Sim::snapshot` builds the canonical scene text: tens of milliseconds for a large factory
