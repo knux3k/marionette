@@ -29,7 +29,7 @@ quarters of that in text conversion. No budget test covered scripts.
 - A turn does only what it needs: contacts, timers and the inbox are passed only when present,
   the timer table is made on first use, and a turn that changed neither state nor timers
   returns nothing to save.
-- Budgets in `perf_budgets` (`script_budgets`): 1,000 empty scripts 5 ms, 1,000 moving scripts
+- Budgets in `engine_budgets` (`script_budgets`): 1,000 empty scripts 5 ms, 1,000 moving scripts
   18 ms per tick.
 
 ## Result

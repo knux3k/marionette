@@ -103,7 +103,7 @@ path in `docs/ai/` exists, generated reference is current).
   steps, more than ten of them refusals, through the indexed path and the whole-scene path give the same
   answers and bytes, for files and for live sessions (hash, tree and log), one call at a time
   and in batches, including a refusal only a module can give in the middle of a batch.
-  Timing: `scene_edit_budgets` in `perf_budgets` (release, Linux container, 2026-11-14): 10,000
+  Timing: `scene_edit_budgets` in `engine_budgets` (release, Linux container, 2026-11-14): 10,000
   creates in one batch 525 to 912 ms (budget 2,000), one file edit at 10,000 entities 4.5 ms
   (budget 20), 10,000 creates into a live session in one batch 614 to 1,003 ms (budget 2,500),
   one live edit at 10,000 entities 130 ms (budget 500).

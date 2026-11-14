@@ -53,7 +53,7 @@ little text loaded as possible.
 
 ## Gaps (2026-11-12 audit)
 
-Each line is one session of work; mark it done when it lands.
+Each line is one session of work; mark it done on landing.
 
 | Focus | Gap | Status |
 | --- | --- | --- |

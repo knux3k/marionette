@@ -66,6 +66,6 @@ Values without text (decision 0271):
 - `crates/marionette-script/tests/convert.rs`: `reading_a_component_matches_the_text_path`,
   `numbers_match_the_text_path_both_ways`, `writing_a_value_matches_the_text_path_or_declines`,
   `patching_a_component_matches_the_text_path_or_declines`, `plans_read_what_the_text_path_reads`.
-- `cargo test --release -p marionette-cli --test perf_budgets -- --ignored script_budgets`:
+- `cargo test --release -p marionette-cli --test engine_budgets -- --ignored script_budgets`:
   1,000 empty scripts 2.6 ms per tick (was 6.7), 1,000 moving scripts 10.8 ms (was 34.6),
   release, 4-core container.
