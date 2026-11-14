@@ -29,3 +29,6 @@
   reported it worn (session stayed synchronized; 1 frame drawn, 3.3 ms CPU at 2016x2240 per
   eye). 90 Hz needs a real or spoofed worn headset. SteamVR could not save bindings while the
   app name held a `/`; names now pass through `safe_app_name`.
+
+Grab reach (decision 0273): `a_hand_grabs_only_within_its_grab_radius` in
+`crates/marionette-cli/tests/xr.rs` (inside 0.15 m lifted, outside left on the table).

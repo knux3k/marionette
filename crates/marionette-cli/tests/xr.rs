@@ -130,6 +130,47 @@ fn a_pinching_hand_grabs_and_throws_without_a_controller() {
     assert!(thrown.translation.y < 0.3, "and landed: {thrown:?}");
 }
 
+/// The right hand squeezes `above` meters over block 3 (id 12), then rises half a meter.
+/// Returns how far the block rose with it.
+fn lift_from(above: f32) -> f32 {
+    let mut sim = load();
+    let start = [0.3, 0.86 + above, -0.5];
+    let mut ev = pose_at(0, XrSource::Head, [0.0, 1.6, 0.0], Quat::default());
+    ev.extend(pose_at(0, XrSource::RightGrip, start, Quat::default()));
+    ev.push(input(5, "xr:right/squeeze", 1.0));
+    for k in 1..=10u64 {
+        let p = [start[0], start[1] + 0.05 * k as f32, start[2]];
+        ev.extend(pose_at(10 + k, XrSource::RightGrip, p, Quat::default()));
+    }
+    feed(&mut sim, ev);
+    run_to(&mut sim, 4);
+    let rest = transform(&mut sim, 12).translation.y;
+    run_to(&mut sim, 30);
+    transform(&mut sim, 12).translation.y - rest
+}
+
+#[test]
+fn a_hand_grabs_only_within_its_grab_radius() {
+    // The example's hands reach 0.15 m.
+    let inside = lift_from(0.12);
+    assert!(
+        (inside - 0.5).abs() < 0.02,
+        "a block 0.12 m away is lifted with the hand: {inside}"
+    );
+    let edge = lift_from(0.145);
+    assert!(
+        (edge - 0.5).abs() < 0.02,
+        "so is one just inside the radius: {edge}"
+    );
+    for above in [0.16, 0.2, 0.29] {
+        let outside = lift_from(above);
+        assert!(
+            outside.abs() < 0.02,
+            "a block {above} m away stays on the table: {outside}"
+        );
+    }
+}
+
 #[test]
 fn throws_replay_bit_for_bit() {
     let hash = || {

@@ -91,8 +91,9 @@ closures and arrow functions, classes and `this`, `switch`, `for...of`/`for...in
 - `i32 % 0` stops the job (`jobts.trap`); `number % 0` is `NaN` as in JavaScript.
 - Storing into a `Float32Array` rounds to 32-bit float; into an `Int32Array` applies ToInt32.
   Reading widens. This matches every JavaScript engine, so a job file run by the script
-  interpreter gives bit-identical arrays (test `compiled_and_interpreted_runs_are_bit_identical`
-  in `crates/marionette-jobs-ts/tests/jobs.rs`).
+  interpreter gives bit-identical arrays (tests `compiled_and_interpreted_runs_are_bit_identical`
+  and, operator by operator, `every_operator_matches_the_interpreter` in
+  `crates/marionette-jobs-ts/tests/jobs.rs`).
 
 ## From a scene (no code)
 

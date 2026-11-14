@@ -30,3 +30,4 @@ compress = ["marionette-assets/compress"]
 
 [dev-dependencies]
 marionette-host.workspace = true
+png = "0.18.1"

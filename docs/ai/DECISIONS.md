@@ -107,3 +107,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0290 | Physics, audio, animation and XR are cargo features of `marionette-agent`; the factory module moves to `examples/factory` with its benchmark, budgets and stability modes | accepted |
 | 0271 | Scripts pass component values directly instead of JSON text (`convert`: read plans, `patch`, text path as fallback and reference); turns skip unused work; script budgets | accepted |
 | 0272 | Parent and child transforms: `ChildOf` (local placement, `Transform` stays world), placed at load and before and after physics, cycles refused, `entity_attach` | accepted |
+| 0273 | Tests that pin what a value means (job operators against the interpreter, normal and metallic-roughness textures on pixels, grab reach, physics behaviour); normal maps were inverted and are fixed | accepted |
