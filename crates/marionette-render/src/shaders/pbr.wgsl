@@ -266,7 +266,10 @@ fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, sample: vec3<f32>, 
     if (len2 <= 1e-20) {
         return n;
     }
-    let inv = inverseSqrt(len2);
+    // The two cross products assume the screen derivatives and the normal form a right-handed
+    // set. They do not here (framebuffer y points down), and a back face turns it round again,
+    // so the sign of the determinant puts t and b the right way in every case.
+    let inv = inverseSqrt(len2) * sign(dot(dp1, dp2perp));
     var m = sample * 2.0 - 1.0;
     m = vec3<f32>(m.xy * scale, m.z);
     return normalize(t * inv * m.x - b * inv * m.y + n * m.z);

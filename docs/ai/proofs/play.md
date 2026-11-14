@@ -88,3 +88,8 @@ Line 6 (input, physics, audio, UI):
   callback size and worst callback load (`buffer_frames`, `max_load_permille`) to tell compute
   from scheduling jitter; the 128 and 256 figures above are not yet explained.
 
+Physics behaviour (decision 0273): `cargo test -p marionette-physics --test behaviour`
+(`free_fall_follows_gravity_and_its_scale`, `restitution_sets_how_high_a_ball_bounces`,
+`friction_holds_a_box_on_a_slope_or_lets_it_slide`,
+`a_sensor_reports_and_does_not_block_and_a_solid_does_both`,
+`a_kinematic_body_goes_where_it_is_put_and_pushes`, `locked_rotation_keeps_a_body_from_turning`).

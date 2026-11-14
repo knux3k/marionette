@@ -113,7 +113,7 @@ Textured materials (decisions 0280, 0281):
   `run examples/materials.scene.json --headless --ticks 60 --seed 1` prints
   `b4f94a1508b9c75ec12836421ad4724bdff332c4a0acee731105720cc9ca9cad`.
 - Reference image `examples/reference/materials.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
-  lavapipe): `b693cceaa5ced5bf7441b4f6f47575d0acda48f670be0ca1f718170801427359`. `showcase.png` was
+  lavapipe): `886ea4c161f8f7620dc956f89046ddc6bea3cbe72fbe9184ab7eadc749396704`. `showcase.png` was
   rewritten (2026-11-14, decision 0280): its textured gem is now mipmapped (0.7% of pixels had
   moved past the threshold); the other reference images were not rewritten.
 - Tests in `crates/marionette-render/tests/materials.rs`:
@@ -142,3 +142,8 @@ BC7 texture compression (decision 0283):
   maps; BC7 against uncompressed mean 0.05, max 25, 0.0017% of pixels over threshold.
 - Unit tests in `crates/marionette-assets/src/compress.rs`: block counts per level, odd sizes
   refused, cache returns identical blocks and stays under its limit.
+
+Material textures (decision 0273): `cargo test -p marionette-render --test material_textures`
+(`a_normal_map_tilts_the_surface_the_way_its_colors_say`,
+`roughness_is_read_from_green_and_metallic_from_blue`): a model and textures written by the
+test, brightness of four quarters compared under lights from above and from the right.
