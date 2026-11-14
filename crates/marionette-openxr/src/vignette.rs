@@ -116,11 +116,7 @@ impl Vignette {
         if strength <= 0.0 {
             return;
         }
-        queue.write_buffer(
-            &self.buffer,
-            0,
-            bytemuck_f32(&[strength.min(1.0), aspect, 0.0, 0.0]),
-        );
+        queue.write_buffer(&self.buffer, 0, &f32_bytes([strength.min(1.0), aspect, 0.0, 0.0]));
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("xr vignette"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -140,7 +136,12 @@ impl Vignette {
     }
 }
 
-fn bytemuck_f32(v: &[f32; 4]) -> &[u8] {
-    // SAFETY: f32 has no padding or invalid bit patterns; the slice covers exactly 16 bytes.
-    unsafe { std::slice::from_raw_parts(v.as_ptr().cast::<u8>(), 16) }
+/// The four floats as the GPU reads them: native byte order, the same bytes as the array in
+/// memory, copied into a plain 16-byte array instead of reinterpreting the floats in place.
+fn f32_bytes(v: [f32; 4]) -> [u8; 16] {
+    let mut out = [0u8; 16];
+    for (chunk, x) in out.chunks_exact_mut(4).zip(v) {
+        chunk.copy_from_slice(&x.to_ne_bytes());
+    }
+    out
 }
