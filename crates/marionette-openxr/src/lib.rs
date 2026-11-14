@@ -13,6 +13,7 @@
 //! The OpenXR loader and the Vulkan loader are opened at run time, so nothing here is needed
 //! to build or to run without a headset.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::*;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};

@@ -56,7 +56,7 @@ impl GameShaders {
 
     /// A cheap copy of every source for one frame.
     pub fn snapshot(&self) -> Arc<BTreeMap<String, Arc<str>>> {
-        self.map.clone()
+        Arc::clone(&self.map)
     }
 
     /// Convenience for modules: stores into the world's resource, creating it.

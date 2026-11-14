@@ -21,7 +21,7 @@ fn dir() -> PathBuf {
 
 fn call(agent: &mut Agent, op: &str, input: Value) -> Value {
     agent
-        .call(op, input.clone())
+        .call(op, input)
         .unwrap_or_else(|e| panic!("{op} failed: {e}"))
 }
 

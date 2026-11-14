@@ -204,7 +204,7 @@ pub fn create(rate: u32, voices: usize) -> (Synth, SynthHandle) {
         frame: 0,
         rx,
         trash: trash_tx,
-        stats: stats.clone(),
+        stats: Arc::clone(&stats),
         voices: vec![Voice::idle(); voices.max(1)].into_boxed_slice(),
         pending: Vec::with_capacity(PENDING),
         generators: (0..GENERATOR_SLOTS).map(|_| None).collect(),

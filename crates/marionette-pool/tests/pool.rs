@@ -166,7 +166,7 @@ fn made_assets_need_a_method_and_cc0_license_files() {
     .unwrap();
     assert_eq!(again.status, "already_in_pool");
     let mut other = made("Orange", vec![("texture.png", png([0, 0, 0, 255]))]);
-    other.id = Some(ok.id.clone());
+    other.id = Some(ok.id);
     assert_eq!(code(add(&pool, other, None, false)), codes::EXISTS);
 
     let mut no_method = made("A", vec![("texture.png", png([1, 2, 3, 255]))]);
@@ -288,7 +288,7 @@ fn owned_assets_and_copies_of_them_are_refused() {
     let pool = new_pool(&base);
 
     // A renamed copy of an owned file.
-    let copy = made("Copy", vec![("texture.png", owned_png.clone())]);
+    let copy = made("Copy", vec![("texture.png", owned_png)]);
     assert_eq!(
         code(add(&pool, copy, Some(&lib), false)),
         marionette_import::codes::POOL_OWNED_CONTENT

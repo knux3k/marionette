@@ -5,6 +5,7 @@
 
 // Application code returns errors instead of panicking (decision 0104, docs/ai/CODE-RULES.md).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod actions;
 pub mod builtin;

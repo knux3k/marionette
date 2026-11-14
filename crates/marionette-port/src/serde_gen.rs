@@ -644,7 +644,7 @@ pub fn generate(a: &Analysis, opts: &Options) -> Generated {
         };
         // Base chain, base class first.
         let mut chain: Vec<RawClass> = vec![class.clone()];
-        let mut cur = class.base.clone();
+        let mut cur = class.base;
         let mut guard = 0;
         while let Some(b) = cur {
             guard += 1;

@@ -11,6 +11,7 @@
 //! Add it to an engine with `Engine::builder().module(Ui3dModule)` (or the `ui3d` cargo
 //! feature of `marionette-agent`). Games that do not use it pay nothing.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod components;
 pub mod font;

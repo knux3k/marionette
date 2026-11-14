@@ -272,7 +272,7 @@ mod tests {
             read_entries(&a[..], small, |_, _, _| Ok(())),
             Err(TarError::TooLarge(_))
         ));
-        let mut bad = a.clone();
+        let mut bad = a;
         bad[0] ^= 0xff;
         assert!(matches!(
             read_entries(&bad[..], Limits::default(), |_, _, _| Ok(())),

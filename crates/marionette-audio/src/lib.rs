@@ -15,6 +15,7 @@
 //! - The player keeps a voice per playing sound and stops looping sounds whose entity or
 //!   `AudioSource` is gone.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

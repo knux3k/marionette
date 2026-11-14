@@ -22,6 +22,7 @@
 //! Hot reload: [`JobLibrary`] keeps compiled files by path and recompiles the ones whose
 //! text changed; a file that no longer compiles keeps its last good version.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 // Errors are `Diagnostic`s returned by value, as elsewhere in the engine; they are rare and
 // carry the data an agent needs, so their size does not matter.
 #![allow(clippy::result_large_err)]
@@ -90,7 +91,7 @@ impl JobLibrary {
     /// The program for `path`, compiling it on first use.
     pub fn get(&mut self, path: &str) -> Result<Arc<JobProgram>, Vec<Diagnostic>> {
         if let Some(e) = self.entries.get(path) {
-            return Ok(e.program.clone());
+            return Ok(Arc::clone(&e.program));
         }
         let source = self.read(path)?;
         let program = Arc::new(JobProgram::compile(&source, path)?);
@@ -98,7 +99,7 @@ impl JobLibrary {
             path.to_string(),
             Entry {
                 source,
-                program: program.clone(),
+                program: Arc::clone(&program),
                 pending: Vec::new(),
             },
         );

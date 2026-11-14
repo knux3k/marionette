@@ -172,7 +172,7 @@ impl EngineBuilder {
                     Part::Script => {
                         // A weak handle: the module list owns the script module, so a strong
                         // one would be a reference cycle that never frees.
-                        let weak = _weak.clone();
+                        let weak = std::sync::Weak::clone(_weak);
                         Box::new(marionette_script::ScriptModule::new(move || {
                             // The engine outlives its simulations, so the list is there; an
                             // empty registry is the harmless answer if it ever is not.
@@ -208,7 +208,7 @@ impl Engine {
 
     /// The modules every simulation of this engine runs with, in a fixed order.
     pub fn modules(&self) -> Modules {
-        self.0.modules.clone()
+        Arc::clone(&self.0.modules)
     }
 
     /// Every component and resource type a scene may contain.
@@ -217,7 +217,7 @@ impl Engine {
     }
 
     pub(crate) fn ops(&self) -> Arc<Vec<Op>> {
-        self.0.ops.clone()
+        Arc::clone(&self.0.ops)
     }
 
     /// Loads scene text. Relative asset paths resolve against `dir`.

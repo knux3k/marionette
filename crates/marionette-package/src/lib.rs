@@ -20,6 +20,7 @@
 //! Every Linux binary is checked afterwards: the newest `GLIBC_` symbol version it asks for
 //! must not pass the floor.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;

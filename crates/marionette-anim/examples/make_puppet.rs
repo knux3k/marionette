@@ -544,7 +544,7 @@ fn main() {
             (
                 bone("lower_arm.R"),
                 "rotation",
-                t3.clone(),
+                t3,
                 rot(x, &[-10.0, -16.0, -10.0]),
             ),
         ],
@@ -649,7 +649,7 @@ fn main() {
             (
                 BONES.len(),
                 "weights",
-                t5.clone(),
+                t5,
                 [0.0, 0.6, 0.0, 0.6, 0.0].iter().map(|&w| vec![w]).collect(),
             ),
         ],

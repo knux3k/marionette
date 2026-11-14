@@ -558,7 +558,7 @@ struct FetchOutput {
 fn fetch(agent: &mut Agent, input: FetchInput) -> Result<FetchOutput, Errors> {
     let p = pool(agent, input.pool.as_deref())?;
     let rec = p.get(&input.id)?;
-    let dir = input.dir.clone().unwrap_or_else(|| "assets/pool".into());
+    let dir = input.dir.unwrap_or_else(|| "assets/pool".into());
     if dir.is_empty()
         || !Path::new(&dir)
             .components()

@@ -7,6 +7,7 @@
 //! Only [`window`] needs a screen; [`view`] renders the same picture offscreen, and every
 //! command lives in [`state::Editor`] so it can be tested without a window.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod camera;
 pub mod edit;

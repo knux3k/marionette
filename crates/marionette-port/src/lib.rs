@@ -14,6 +14,7 @@
 //!
 //! The guide for agents is `docs/ai/PORTING.md`.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod convert;
 pub mod lex;

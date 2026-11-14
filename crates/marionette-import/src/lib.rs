@@ -16,6 +16,7 @@
 //!
 //! The rules are normative in `docs/ai/ASSETS-AND-LICENSES.md`; the design is decision 0018.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod fbx;
 pub mod import;

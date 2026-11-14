@@ -44,7 +44,7 @@ fn walk(dir: &Path, prefix: &str, out: &mut Vec<String>) {
     for e in entries.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
         let rel = if prefix.is_empty() {
-            name.clone()
+            name
         } else {
             format!("{prefix}/{name}")
         };

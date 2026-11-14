@@ -15,6 +15,7 @@
 //! During development put `steam_appid.txt` (the game's app id) next to the executable, or
 //! launch through Steam.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 mod ffi;
 

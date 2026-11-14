@@ -76,6 +76,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0103 | Benchmark frames in flight (`--in-flight`, CPU and GPU overlap) and GPU time per pass (`--gpu-passes`, timestamp queries) | accepted |
 | 0104 | Safe Rust outside C calls (`unsafe` only in listed FFI files, denied elsewhere by workspace lints); the owner's code rules in CODE-RULES.md | accepted |
 | 0105 | No `unwrap`, `expect` or `panic!` outside tests (crate-root `deny`, hygiene test); impossible states become named errors or fallbacks | accepted |
+| 0106 | Reference counts cloned with `Arc::clone` (crate-root `deny(clippy::clone_on_ref_ptr)`); redundant clones removed; every `Box<dyn>` kept as a real plug-in point | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |

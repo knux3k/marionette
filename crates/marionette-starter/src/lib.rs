@@ -15,6 +15,7 @@
 //!    asset lookup order, writes the files, builds the scene, and proves the level is winnable
 //!    by letting the autopilot play it.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod level;
 pub mod prompt;

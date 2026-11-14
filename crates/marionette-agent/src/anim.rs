@@ -14,6 +14,7 @@ use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub(crate) fn ops() -> Vec<Op> {
     vec![
@@ -591,7 +592,7 @@ fn pose(agent: &mut Agent, input: PoseInput) -> Result<PoseOutput, Errors> {
             .get_resource::<marionette_anim::Rigs>()
             .and_then(|r| r.0.get(&model.asset))
         {
-            Some(r) => r.clone(),
+            Some(r) => Arc::clone(r),
             None => {
                 let dir = world
                     .get_resource::<marionette_core::module::SceneDir>()

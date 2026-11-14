@@ -524,7 +524,7 @@ fn variants_remove_components_and_override_materials() {
 fn broken_recursive_and_unlicensed_prefabs_are_reported() {
     let (base, lib, p, decl) = setup("broken");
     let mut o = ImportOptions::new(&p);
-    o.declarations = vec![decl.clone()];
+    o.declarations = vec![decl];
     let r = import(&lib, &o).unwrap();
     let skipped: Vec<(&str, &str)> = r
         .skipped

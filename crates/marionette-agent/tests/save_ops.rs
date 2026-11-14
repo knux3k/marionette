@@ -32,7 +32,7 @@ fn saved_sessions_with_physics_input_and_scripts_continue_exactly_after_loading(
         ("scripted.scene.json", None),
     ] {
         let start = json!({ "scene": scene, "seed": 3, "input": input, "ticks": 60 });
-        let a = call(&mut agent, "session_start", start.clone())["session"]
+        let a = call(&mut agent, "session_start", start)["session"]
             .as_str()
             .unwrap()
             .to_string();

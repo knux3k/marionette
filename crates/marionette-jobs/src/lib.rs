@@ -15,6 +15,7 @@
 //! With one thread every call runs inline on the caller's thread (no pool), which is also
 //! what headless tests and the state hash use by default; see [`Jobs::from_env`].
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::Resource;
 use rayon::prelude::*;

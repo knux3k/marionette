@@ -12,6 +12,7 @@ use marionette_core::spatial::{
     SpriteRegion, TextureCompression, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
+use std::sync::Arc;
 
 /// Everything the renderer needs for one frame, independent of the GPU.
 #[derive(Debug, Clone, Default)]
@@ -405,10 +406,11 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
             } else {
                 None
             };
-            let asset = names
-                .entry(model.asset.as_str())
-                .or_insert_with(|| model.asset.as_str().into())
-                .clone();
+            let asset = Arc::clone(
+                names
+                    .entry(model.asset.as_str())
+                    .or_insert_with(|| model.asset.as_str().into()),
+            );
             let placement = if placements {
                 world.get::<ModelPlacement>(e)
             } else {

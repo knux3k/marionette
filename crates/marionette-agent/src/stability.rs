@@ -591,7 +591,7 @@ fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
                     });
                     r
                 }
-                None => supervise(job.clone()),
+                None => supervise(job),
             };
             result.passed = result.failures.is_empty();
             result.reproduce = reproduce(&suite_path, &mode.name, seed, ticks);
@@ -679,7 +679,8 @@ fn supervise(job: Job) -> ModeResult {
     let (tx, rx) = mpsc::channel();
     let hang = Duration::from_secs_f64(job.mode.hang_s.unwrap_or(20.0));
     let worker = {
-        let (job, progress, partial) = (job.clone(), progress.clone(), partial.clone());
+        // The worker thread owns its copy of the job (a few strings and numbers).
+        let (job, progress, partial) = (job.clone(), Arc::clone(&progress), Arc::clone(&partial));
         std::thread::Builder::new()
             .name(name.clone())
             .stack_size(64 << 20)

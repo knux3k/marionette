@@ -6,6 +6,7 @@
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 #[cfg(feature = "anim")]
 pub mod anim;

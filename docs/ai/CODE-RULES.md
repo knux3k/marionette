@@ -24,7 +24,8 @@ STATE.md.
    and a comment.
 3. **Borrow before cloning.** Pass `&T`, `&mut T`, `&[T]`, `&str`. A `.clone()` that stays
    needs a short comment saying why (ownership crosses a thread, a cheap `Arc` count, a value
-   kept past the borrow). Write `Arc::clone(&x)` for reference counts so it reads as cheap.
+   kept past the borrow). Write `Arc::clone(&x)` for reference counts so it reads as cheap
+   (`#![deny(clippy::clone_on_ref_ptr)]` at every crate root).
 4. **Flat and concrete.** Plain `struct`s and `enum`s and contiguous `Vec`s first. Generics,
    lifetimes and `Box<dyn Trait>` only where several real types must share one path (module
    and operation registries, provider plug-ins, audio generators).

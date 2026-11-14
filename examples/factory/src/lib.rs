@@ -25,6 +25,7 @@
 //! (`examples/factory/stability.json`); the `factory-bench` binary is the engine CLI with all
 //! of it added, so `perf_suite` there runs the `sim/factory-*` and `render/factory-*` cases.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
