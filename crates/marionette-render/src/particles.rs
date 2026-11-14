@@ -62,8 +62,9 @@ type Make = Box<dyn Fn(usize, usize) -> wgpu::RenderPipeline + Send + Sync>;
 pub struct Particles {
     layout: wgpu::BindGroupLayout,
     buffer: Option<(wgpu::Buffer, wgpu::BindGroup)>,
-    /// Per blend (additive, alpha) and target (final, floating-point): built on first use.
-    pipelines: [[OnceLock<wgpu::RenderPipeline>; 2]; 2],
+    /// Per blend (additive, alpha) and target (final, floating-point, both eyes at once):
+    /// built on first use.
+    pipelines: [[OnceLock<wgpu::RenderPipeline>; 3]; 2],
     make: Make,
     /// This frame's draws: uniform offset, particle slots, image, blend.
     draws: Vec<(u32, u32, String, ParticleBlend)>,
@@ -101,7 +102,11 @@ impl Particles {
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/particles.wgsl").into()),
         });
         let dev = device.clone();
-        let formats = [color_format, crate::post::HDR_FORMAT];
+        let formats = [color_format, crate::post::HDR_FORMAT, color_format];
+        let stereo = crate::renderer::multiview::LazyModule::new(
+            include_str!("shaders/particles.wgsl"),
+            "particles (stereo)",
+        );
         let make: Make = Box::new(move |blend, target| {
             let add = wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::One,
@@ -129,11 +134,16 @@ impl Particles {
                     alpha: over,
                 }
             };
+            let shader = if target == crate::renderer::variants::STEREO {
+                stereo.get(&dev)
+            } else {
+                &shader
+            };
             dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("particles"),
                 layout: Some(&pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: &shader,
+                    module: shader,
                     entry_point: Some("vs_main"),
                     compilation_options: Default::default(),
                     buffers: &[],
@@ -148,8 +158,12 @@ impl Particles {
                 }),
                 multisample,
                 fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some(if target == 0 { "fs_main" } else { "fs_hdr" }),
+                    module: shader,
+                    entry_point: Some(if target == crate::renderer::variants::HDR {
+                        "fs_hdr"
+                    } else {
+                        "fs_main"
+                    }),
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: formats[target],
@@ -157,7 +171,7 @@ impl Particles {
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
-                multiview_mask: None,
+                multiview_mask: crate::renderer::multiview::mask(target),
                 cache: None,
             })
         });
@@ -256,7 +270,7 @@ impl Particles {
         pass: &mut wgpu::RenderPass,
         view_group: &wgpu::BindGroup,
         view_offset: u32,
-        hdr: bool,
+        target: usize,
         texture: impl Fn(&str) -> Option<&'t wgpu::BindGroup>,
     ) -> u32 {
         let Some((_, group)) = &self.buffer else {
@@ -269,7 +283,7 @@ impl Particles {
                 continue;
             };
             let b = usize::from(*blend == ParticleBlend::Alpha);
-            let t = usize::from(hdr);
+            let t = target.min(2);
             let pipeline = self.pipelines[b][t].get_or_init(|| (self.make)(b, t));
             if !std::ptr::eq(current, pipeline) {
                 pass.set_pipeline(pipeline);

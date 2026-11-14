@@ -21,6 +21,7 @@ use wgpu::util::DeviceExt;
 
 mod game_mesh;
 mod game_shader;
+pub(crate) mod multiview;
 pub(crate) mod variants;
 
 /// Anisotropic filtering of model textures (decision 0280).
@@ -49,8 +50,11 @@ pub const MAX_LOCAL_SHADOW_LAYERS: usize = 24;
 const VIEW_STRIDE: u64 = 256;
 /// Most sun shadow cascades (decision 0090).
 pub const MAX_CASCADES: usize = 4;
-/// View buffer slots: world and UI per view, the sun's cascades, local shadow layers.
-const VIEW_SLOTS: u64 = 2 * MAX_VIEWS as u64 + MAX_CASCADES as u64 + MAX_LOCAL_SHADOW_LAYERS as u64;
+/// View buffer slots: world and UI per view, the sun's cascades, local shadow layers, and
+/// both eyes' world views packed together for single-pass stereo (two slots).
+const VIEW_SLOTS: u64 = 2 * MAX_VIEWS as u64 + MAX_CASCADES as u64 + MAX_LOCAL_SHADOW_LAYERS as u64 + 2;
+/// First view buffer slot of the packed stereo views (decision 0285).
+const STEREO_SLOT: u64 = LOCAL_SHADOW_SLOT + MAX_LOCAL_SHADOW_LAYERS as u64;
 /// First view buffer slot of the sun's shadow cascades.
 const SUN_SHADOW_SLOT: u64 = 2 * MAX_VIEWS as u64;
 /// First view buffer slot of the local light shadow layers.
@@ -171,11 +175,11 @@ enum Pipes<'a> {
         Option<&'a wgpu::RenderPipeline>,
         &'a wgpu::RenderPipeline,
     ),
-    /// Lit, per material variant: static, skinned; and whether the target is the HDR one.
+    /// Lit, per material variant: static, skinned; and the target (`variants::FINAL`, ...).
     Lit(
         &'a variants::VariantPipelines,
         &'a variants::VariantPipelines,
-        bool,
+        usize,
     ),
 }
 
@@ -241,8 +245,8 @@ impl MeshCalls<'_> {
         );
     }
 
-    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material); `hdr` picks pipelines
-    /// for the bloom target.
+    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material); `target` picks the
+    /// pipelines ([`variants::FINAL`], [`variants::HDR`] or [`variants::STEREO`]).
     #[allow(clippy::too_many_arguments)]
     fn draw_lit(
         &self,
@@ -251,12 +255,12 @@ impl MeshCalls<'_> {
         view_group: &wgpu::BindGroup,
         offset: u32,
         lights: &wgpu::BindGroup,
-        (hdr, phase): (bool, Phase),
+        (target, phase): (usize, Phase),
         stats: &mut RenderStats,
     ) {
         self.draw(
             pass,
-            Pipes::Lit(pipelines.0, pipelines.1, hdr),
+            Pipes::Lit(pipelines.0, pipelines.1, target),
             (view_group, offset),
             (Some(lights), false, true, phase),
             stats,
@@ -277,7 +281,7 @@ impl MeshCalls<'_> {
             Phase::Opaque => &self.calls[..self.first_blended.min(self.calls.len())],
             Phase::Blended => &self.calls[self.first_blended.min(self.calls.len())..],
         };
-        let hdr = matches!(pipes, Pipes::Lit(_, _, true));
+        let hdr = matches!(pipes, Pipes::Lit(_, _, variants::HDR));
         if let (Some(ib), false) = (self.instances, calls.is_empty()) {
             let mut current: *const wgpu::RenderPipeline = std::ptr::null();
             pass.set_bind_group(0, view_group, &[offset]);
@@ -299,7 +303,7 @@ impl MeshCalls<'_> {
                 }
                 // The standard pipeline for this call's material, or none (left out).
                 let standard = match pipes {
-                    Pipes::Lit(pbr, _, hdr) => Some(pbr.get(call.look.variant as usize, hdr)),
+                    Pipes::Lit(pbr, _, target) => Some(pbr.get(call.look.variant as usize, target)),
                     Pipes::Depth(_, masked, _) if call.look.masked && call.game.is_none() => masked,
                     Pipes::Depth(plain, _, _) => Some(plain),
                 };
@@ -374,7 +378,7 @@ impl MeshCalls<'_> {
                     continue;
                 };
                 let pipeline = match pipes {
-                    Pipes::Lit(_, skinned, hdr) => skinned.get(call.look.variant as usize, hdr),
+                    Pipes::Lit(_, skinned, target) => skinned.get(call.look.variant as usize, target),
                     Pipes::Depth(_, _, skinned) => skinned,
                 };
                 if !started {
@@ -581,6 +585,10 @@ pub struct Renderer {
     base_dir: PathBuf,
     view_buffer: wgpu::Buffer,
     view_group: wgpu::BindGroup,
+    /// Both eyes' world views as one array, for single-pass stereo (decision 0285).
+    stereo_group: wgpu::BindGroup,
+    /// The device draws both eyes in one pass (`MULTIVIEW`).
+    multiview: bool,
     lights_buffer: wgpu::Buffer,
     lights_layout: wgpu::BindGroupLayout,
     /// Game shaders and their materials (decision 0181); built when first used.
@@ -881,7 +889,9 @@ impl Renderer {
                 entries,
             })
         };
-        let view_layout = layout("view", &[uniform_entry(0, vf, true, view_size)]);
+        // No minimum size: the stereo group (decision 0285) binds both eyes' views to the
+        // same layout, and wgpu checks the bound size against each pipeline when drawing.
+        let view_layout = layout("view", &[uniform_entry(0, vf, true, 0)]);
         let lights_layout = layout("lights", &lights_layout_entries());
         let material_layout = layout(
             "material",
@@ -924,6 +934,12 @@ impl Renderer {
             })
         };
         let view_group = group("view", &view_layout, buffer_resource(&view_buffer, view_size));
+        // Both eyes' views as one array (decision 0285), at the stereo slot's offset.
+        let stereo_group = group(
+            "view (stereo)",
+            &view_layout,
+            buffer_resource(&view_buffer, 2 * view_size),
+        );
         let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("shadow"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -984,7 +1000,7 @@ impl Renderer {
         });
         let lit = lit_pipelines(
             device,
-            &pbr_shader,
+            (&pbr_shader, include_str!("shaders/pbr.wgsl")),
             [&view_layout, &lights_layout, &material_layout],
             color_format,
             multisample,
@@ -1141,6 +1157,11 @@ impl Renderer {
             base_dir,
             view_buffer,
             view_group,
+            stereo_group,
+            // Multisampled two-layer targets need MULTISAMPLE_ARRAY (Vulkan, Metal; not DX12).
+            multiview: device.features().contains(wgpu::Features::MULTIVIEW)
+                && device.limits().max_multiview_view_count >= 2
+                && (sample_count == 1 || device.features().contains(wgpu::Features::MULTISAMPLE_ARRAY)),
             lights_buffer,
             lights_layout,
             game: None,
@@ -1725,6 +1746,39 @@ impl Renderer {
         views: &[(View, &Target)],
         encoder: &mut wgpu::CommandEncoder,
     ) -> RenderStats {
+        self.record(frame, views, None, encoder)
+    }
+
+    /// True when this device can draw both eyes in one pass (decision 0285).
+    pub fn single_pass_stereo(&self) -> bool {
+        self.multiview
+    }
+
+    /// Records two eyes (decision 0285). `both` has two-layer array views (layer 0 the first
+    /// eye) and `eyes` single-layer views of the same layers. When the device has multiview
+    /// and the frame uses only models, the sky and particles (no bloom, render scale,
+    /// foveation, ray tracing, sprites, screen UI, world panels or game shaders), both eyes
+    /// are drawn by one render pass: every draw is recorded once. Otherwise each eye gets its
+    /// own pass, as [`Renderer::render_views`] does. `RenderStats::views` is 1 for one pass.
+    pub fn render_stereo(
+        &mut self,
+        frame: &FrameData,
+        views: [View; 2],
+        both: &Target,
+        eyes: [&Target; 2],
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> RenderStats {
+        let pairs = [(views[0], eyes[0]), (views[1], eyes[1])];
+        self.record(frame, &pairs, Some(both), encoder)
+    }
+
+    fn record(
+        &mut self,
+        frame: &FrameData,
+        views: &[(View, &Target)],
+        both: Option<&Target>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> RenderStats {
         assert!(views.len() <= MAX_VIEWS, "at most {MAX_VIEWS} views per frame");
         let mut stats = RenderStats {
             views: views.len() as u32,
@@ -1755,6 +1809,16 @@ impl Renderer {
         }
         if !view_bytes.is_empty() {
             self.queue.write_buffer(&self.view_buffer, 0, &view_bytes);
+        }
+        if both.is_some() && views.len() == 2 {
+            // The eyes' world views back to back: the stereo shaders read them as an array.
+            let size = size_of::<ViewUniform>();
+            let stride = VIEW_STRIDE as usize;
+            let mut packed = vec![0u8; 2 * size];
+            packed[..size].copy_from_slice(&view_bytes[..size]);
+            packed[size..].copy_from_slice(&view_bytes[2 * stride..2 * stride + size]);
+            self.queue
+                .write_buffer(&self.view_buffer, STEREO_SLOT * VIEW_STRIDE, &packed);
         }
 
         // Ray tracing (decision 0093): only on devices with ray queries; elsewhere the scene's
@@ -2556,6 +2620,83 @@ impl Renderer {
                 }
             }
         };
+        // Single-pass stereo (decision 0285) when the frame has nothing it does not cover.
+        let single = both.filter(|_| {
+            views.len() == 2
+                && self.multiview
+                && !capture
+                && bloom.is_none()
+                && scaled.is_none()
+                && rt_cfg.is_none()
+                && batches.is_empty()
+                && ui_batches.iter().all(Vec::is_empty)
+                && frame.quads.is_empty()
+                && calls.iter().all(|c| c.game.is_none())
+        });
+        if let Some(target) = single {
+            stats.views = 1;
+            let c = views[0].0.clear;
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("main (stereo)"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target.color,
+                    depth_slice: None,
+                    resolve_target: target.resolve,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: c[0] as f64,
+                            g: c[1] as f64,
+                            b: c[2] as f64,
+                            a: c[3] as f64,
+                        }),
+                        store: if target.resolve.is_some() {
+                            wgpu::StoreOp::Discard
+                        } else {
+                            wgpu::StoreOp::Store
+                        },
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: target.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: multiview::MASK,
+            });
+            let offset = (STEREO_SLOT * VIEW_STRIDE) as u32;
+            for phase in [Phase::Opaque, Phase::Blended] {
+                if phase == Phase::Blended && env {
+                    pass.set_pipeline(lit.sky_stereo());
+                    pass.set_bind_group(0, &self.stereo_group, &[offset]);
+                    pass.set_bind_group(1, lights_group, &[]);
+                    pass.draw(0..3, 0..1);
+                    stats.draw_calls += 1;
+                }
+                meshes.draw_lit(
+                    &mut pass,
+                    (&lit.pbr, skinned_lit),
+                    &self.stereo_group,
+                    offset,
+                    lights_group,
+                    (variants::STEREO, phase),
+                    &mut stats,
+                );
+            }
+            stats.draw_calls +=
+                self.particles
+                    .draw(&mut pass, &self.stereo_group, offset, variants::STEREO, |img| {
+                        self.sprite_textures
+                            .get(img)
+                            .and_then(|t| t.as_ref().ok())
+                            .map(|t| &t.bind_group)
+                    });
+        }
+        let views = if single.is_some() { &views[..0] } else { views };
         for (i, (view, output)) in views.iter().enumerate() {
             let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
             let ui_offset = world_offset + VIEW_STRIDE as u32;
@@ -2631,13 +2772,13 @@ impl Renderer {
                         &self.view_group,
                         world_offset,
                         lights_group,
-                        (true, phase),
+                        (variants::HDR, phase),
                         &mut stats,
                     );
                 }
                 stats.draw_calls +=
                     self.particles
-                        .draw(&mut pass, &self.view_group, world_offset, true, |img| {
+                        .draw(&mut pass, &self.view_group, world_offset, variants::HDR, |img| {
                             self.sprite_textures
                                 .get(img)
                                 .and_then(|t| t.as_ref().ok())
@@ -2710,19 +2851,23 @@ impl Renderer {
                             &self.view_group,
                             world_offset,
                             lights_group,
-                            (fi == 1, phase),
+                            (fi, phase),
                             &mut stats,
                         );
                     }
                     if !capture {
-                        stats.draw_calls +=
-                            self.particles
-                                .draw(&mut pass, &self.view_group, world_offset, false, |img| {
-                                    self.sprite_textures
-                                        .get(img)
-                                        .and_then(|t| t.as_ref().ok())
-                                        .map(|t| &t.bind_group)
-                                });
+                        stats.draw_calls += self.particles.draw(
+                            &mut pass,
+                            &self.view_group,
+                            world_offset,
+                            variants::FINAL,
+                            |img| {
+                                self.sprite_textures
+                                    .get(img)
+                                    .and_then(|t| t.as_ref().ok())
+                                    .map(|t| &t.bind_group)
+                            },
+                        );
                     }
                 }
             }
@@ -3279,11 +3424,21 @@ pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_
     7 => Float32x4, 8 => Float32x4, 12 => Float32x4
 ];
 
-/// Lit model pipelines (final format, HDR) and sky pipelines (final format, HDR).
+/// Lit model pipelines (final format, HDR, stereo) and sky pipelines (final format, HDR;
+/// stereo on first use).
 pub(crate) struct LitPipelines {
     /// Per material variant (decision 0280) and target.
     pub pbr: variants::VariantPipelines,
     pub sky: [wgpu::RenderPipeline; 2],
+    sky_stereo: std::sync::OnceLock<wgpu::RenderPipeline>,
+    make_sky_stereo: Box<dyn Fn() -> wgpu::RenderPipeline + Send + Sync>,
+}
+
+impl LitPipelines {
+    /// The sky drawn into both eyes in one pass (decision 0285).
+    pub fn sky_stereo(&self) -> &wgpu::RenderPipeline {
+        self.sky_stereo.get_or_init(|| (self.make_sky_stereo)())
+    }
 }
 
 /// A depth-only pipeline for static meshes (view group only) from vertex entry `entry`:
@@ -3462,7 +3617,7 @@ fn masked_shadow_pipeline(
 /// variant) and groups view, lights, material.
 pub(crate) fn lit_pipelines(
     device: &wgpu::Device,
-    shader: &wgpu::ShaderModule,
+    (shader, source): (&wgpu::ShaderModule, &str),
     [view_layout, lights_layout, material_layout]: [&wgpu::BindGroupLayout; 3],
     color_format: wgpu::TextureFormat,
     multisample: wgpu::MultisampleState,
@@ -3479,16 +3634,22 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(view_layout), Some(lights_layout), Some(material_layout)],
         immediate_size: 0,
     });
-    let (dev, module, opaque_depth) = (device.clone(), shader.clone(), depth_stencil(true));
-    let formats = [color_format, crate::post::HDR_FORMAT];
+    let (dev, plain, opaque_depth) = (device.clone(), shader.clone(), depth_stencil(true));
+    let formats = [color_format, crate::post::HDR_FORMAT, color_format];
+    let stereo = multiview::LazyModule::new(source, "pbr (stereo)");
     let pbr = variants::VariantPipelines::new(Box::new(move |variant, target| {
         let (cull_mode, blend, depth) = variants::state(variant, &opaque_depth);
+        let module = if target == variants::STEREO {
+            stereo.get(&dev)
+        } else {
+            &plain
+        };
         let mesh_attrs = crate::renderer::MESH_ATTRS;
         dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr"),
             layout: Some(&pbr_layout),
             vertex: wgpu::VertexState {
-                module: &module,
+                module,
                 entry_point: Some("vs_main"),
                 compilation_options: Default::default(),
                 buffers: &[
@@ -3511,7 +3672,7 @@ pub(crate) fn lit_pipelines(
             depth_stencil: Some(depth),
             multisample,
             fragment: Some(wgpu::FragmentState {
-                module: &module,
+                module,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
@@ -3520,7 +3681,7 @@ pub(crate) fn lit_pipelines(
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview_mask: None,
+            multiview_mask: multiview::mask(target),
             cache: None,
         })
     }));
@@ -3530,7 +3691,10 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(view_layout), Some(lights_layout)],
         immediate_size: 0,
     });
-    let sky_for = |format: wgpu::TextureFormat| {
+    let sky_for = move |device: &wgpu::Device,
+                        shader: &wgpu::ShaderModule,
+                        format: wgpu::TextureFormat,
+                        multiview_mask: Option<std::num::NonZeroU32>| {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("sky"),
             layout: Some(&sky_layout),
@@ -3553,13 +3717,23 @@ pub(crate) fn lit_pipelines(
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview_mask: None,
+            multiview_mask,
             cache: None,
         })
     };
     let hdr = crate::post::HDR_FORMAT;
+    let sky = [
+        sky_for(device, shader, color_format, None),
+        sky_for(device, shader, hdr, None),
+    ];
+    let (dev, sky_stereo_module) = (device.clone(), multiview::LazyModule::new(source, "sky (stereo)"));
+    let sky_for = sky_for.clone();
+    let make_sky_stereo =
+        Box::new(move || sky_for(&dev, sky_stereo_module.get(&dev), color_format, multiview::MASK));
     LitPipelines {
         pbr,
-        sky: [sky_for(color_format), sky_for(hdr)],
+        sky,
+        sky_stereo: std::sync::OnceLock::new(),
+        make_sky_stereo,
     }
 }

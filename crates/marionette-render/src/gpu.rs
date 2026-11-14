@@ -64,12 +64,20 @@ impl Gpu {
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("marionette"),
             // BC7 model textures under `TextureCompression` (decision 0283) where supported.
-            required_features: (adapter.features() & wgpu::Features::TEXTURE_COMPRESSION_BC)
+            // Both eyes in one pass (decision 0285) where supported; MSAA two-layer targets
+            // need multisampled arrays.
+            required_features: (adapter.features()
+                & (wgpu::Features::TEXTURE_COMPRESSION_BC
+                    | wgpu::Features::MULTIVIEW
+                    | wgpu::Features::MULTISAMPLE_ARRAY))
                 | if rt { ray_query } else { wgpu::Features::empty() },
-            required_limits: if rt {
-                wgpu::Limits::default().using_acceleration_structure_values(adapter.limits())
-            } else {
-                wgpu::Limits::default()
+            required_limits: wgpu::Limits {
+                max_multiview_view_count: adapter.limits().max_multiview_view_count.min(2),
+                ..if rt {
+                    wgpu::Limits::default().using_acceleration_structure_values(adapter.limits())
+                } else {
+                    wgpu::Limits::default()
+                }
             },
             // SAFETY: wgpu marks ray queries experimental: its API may change and may have
             // bugs. Only ray query use is enabled; it runs only when a scene asks for
@@ -172,6 +180,79 @@ pub struct Offscreen {
     depth: wgpu::TextureView,
     readback: wgpu::Buffer,
     padded_row: u32,
+    sample_count: u32,
+    /// Two-layer targets for single-pass stereo (decision 0285), made when turned on.
+    stereo: Option<StereoTargets>,
+}
+
+/// Color, resolve and depth with two layers: each as one array view and per layer.
+struct StereoTargets {
+    color: wgpu::Texture,
+    msaa: Option<[wgpu::TextureView; 3]>,
+    resolve: [wgpu::TextureView; 3],
+    depth: [wgpu::TextureView; 3],
+}
+
+impl StereoTargets {
+    fn new(device: &wgpu::Device, (width, height): (u32, u32), samples: u32) -> Self {
+        let texture = |label, format, samples| {
+            device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 2,
+                },
+                mip_level_count: 1,
+                sample_count: samples,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            })
+        };
+        // [both layers, layer 0, layer 1]
+        let views = |t: &wgpu::Texture| {
+            let view = |base: u32, count: u32| {
+                t.create_view(&wgpu::TextureViewDescriptor {
+                    dimension: Some(wgpu::TextureViewDimension::D2Array),
+                    base_array_layer: base,
+                    array_layer_count: Some(count),
+                    ..Default::default()
+                })
+            };
+            let layer = |base: u32| {
+                t.create_view(&wgpu::TextureViewDescriptor {
+                    dimension: Some(wgpu::TextureViewDimension::D2),
+                    base_array_layer: base,
+                    array_layer_count: Some(1),
+                    ..Default::default()
+                })
+            };
+            [view(0, 2), layer(0), layer(1)]
+        };
+        let color = texture("color (stereo)", OFFSCREEN_FORMAT, 1);
+        let msaa = (samples > 1).then(|| views(&texture("color msaa (stereo)", OFFSCREEN_FORMAT, samples)));
+        let resolve = views(&color);
+        let depth = views(&texture("depth (stereo)", DEPTH_FORMAT, samples));
+        Self {
+            color,
+            msaa,
+            resolve,
+            depth,
+        }
+    }
+
+    /// Target `k`: 0 both layers, 1 and 2 one eye each.
+    fn target(&self, k: usize, (width, height): (u32, u32)) -> Target<'_> {
+        Target {
+            color: self.msaa.as_ref().map_or(&self.resolve[k], |m| &m[k]),
+            resolve: self.msaa.as_ref().map(|_| &self.resolve[k]),
+            depth: &self.depth[k],
+            width,
+            height,
+        }
+    }
 }
 
 impl Offscreen {
@@ -199,7 +280,8 @@ impl Offscreen {
             "color",
             OFFSCREEN_FORMAT,
             1,
-            attach | wgpu::TextureUsages::COPY_SRC,
+            // COPY_DST: single-pass stereo copies the right eye in.
+            attach | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
         );
         let msaa = (sample_count > 1).then(|| {
             texture("color msaa", OFFSCREEN_FORMAT, sample_count, attach).create_view(&Default::default())
@@ -225,7 +307,19 @@ impl Offscreen {
             depth,
             readback,
             padded_row,
+            sample_count,
+            stereo: None,
         }
+    }
+
+    /// Draws two-eye renders ([`Offscreen::render_eyes`] with 2 eyes) into two-layer targets
+    /// with [`Renderer::render_stereo`] (decision 0285): one pass for both eyes where the
+    /// device and frame allow it. Returns whether the device has multiview.
+    pub fn set_single_pass_stereo(&mut self, gpu: &Gpu, on: bool) -> bool {
+        let can = self.renderer.single_pass_stereo();
+        self.stereo = (on && can)
+            .then(|| StereoTargets::new(&gpu.device, (self.width, self.height), self.sample_count));
+        can
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -338,7 +432,35 @@ impl Offscreen {
             })
             .collect();
         let mut encoder = gpu.device.create_command_encoder(&Default::default());
-        let stats = self.renderer.render_views(frame, &views, &mut encoder);
+        let stats = match (&self.stereo, views.as_slice()) {
+            (Some(st), [(a, _), (b, _)]) => {
+                let size = (self.width, self.height);
+                let stats = self.renderer.render_stereo(
+                    frame,
+                    [*a, *b],
+                    &st.target(0, size),
+                    [&st.target(1, size), &st.target(2, size)],
+                    &mut encoder,
+                );
+                // The last eye stays in the image, as with separate passes.
+                encoder.copy_texture_to_texture(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: &st.color,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d { x: 0, y: 0, z: 1 },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    self.resolve.as_image_copy(),
+                    wgpu::Extent3d {
+                        width: self.width,
+                        height: self.height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+                stats
+            }
+            _ => self.renderer.render_views(frame, &views, &mut encoder),
+        };
         gpu.queue.submit([encoder.finish()]);
         let submitted = std::time::Instant::now();
         gpu.device

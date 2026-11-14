@@ -20,6 +20,7 @@ Every control below except culling is off by default and set per scene with `res
 | `RenderScale` below 1 | softer | GPU wait dominates and shading per pixel is heavy |
 | `RenderScale` above 1 | cleaner edges | spare GPU time and shimmering edges |
 | `Foveation` | edges of the view, headsets only | heavy shading in a headset |
+| Single-pass stereo | identical | automatic for two-eye renders where the device has multiview; compare with `MARIONETTE_SINGLE_PASS_STEREO=0`; bloom, render scale, UI and game shaders fall back to a pass per eye |
 | `--msaa 4` | anti-aliased edges | default; keep it |
 
 ## Steps

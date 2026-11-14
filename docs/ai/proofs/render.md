@@ -142,3 +142,9 @@ BC7 texture compression (decision 0283):
   maps; BC7 against uncompressed mean 0.05, max 25, 0.0017% of pixels over threshold.
 - Unit tests in `crates/marionette-assets/src/compress.rs`: block counts per level, odd sizes
   refused, cache returns identical blocks and stays under its limit.
+
+Single-pass stereo (decision 0285):
+- `crates/marionette-render/tests/stereo.rs` (lavapipe): both eyes in one multiview pass give
+  the same right eye as a pass per eye (largest difference 0) for the material ball (draw calls
+  13 to 8) and skinned models (8 to 4); the bloom scene falls back to a pass per eye, identical.
+- Unit test `entry_points_pick_their_eye` (`renderer/multiview.rs`) checks the shader conversion.

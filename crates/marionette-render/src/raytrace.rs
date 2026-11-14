@@ -222,7 +222,7 @@ impl RayTracer {
         });
         let lit = crate::renderer::lit_pipelines(
             device,
-            &shader,
+            (&shader, &pbr),
             [setup.view_layout, &layout, setup.material_layout],
             setup.color_format,
             setup.multisample,
@@ -231,9 +231,10 @@ impl RayTracer {
             label: Some("pbr skinned (ray tracing)"),
             source: wgpu::ShaderSource::Wgsl(crate::skinning::skinned_source(&pbr).into()),
         });
+        let skinned_src = crate::skinning::skinned_source(&pbr);
         let skinned = crate::skinning::lit_pipelines(
             device,
-            &skinned_shader,
+            (&skinned_shader, &skinned_src),
             [
                 setup.view_layout,
                 &layout,
