@@ -15,7 +15,6 @@
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
 | `crates/marionette-nav` | Navigation on round, changing worlds: cube-sphere grids (`NavSurface`), obstacles, shared route searches and crowd steering on `Jobs` (decisions 0231, 0232) | core, jobs, postcard | render, input, physics, audio |
 | `crates/marionette-jobs` | Deterministic data-parallel jobs (`Jobs` resource over rayon) | bevy_ecs, rayon | any other marionette crate |
-| `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend caps and ledger, keys files, network transport behind feature `net` | core, assets, sha2, schemars, ureq (optional) | render, input, physics, audio (decisions 0019, 0045) |
 | `crates/marionette-generate` | Asset generation: recipes, request-keyed cache, provenance, image approval, PNG and GLB post-processing (decision 0045) | core, assets, providers, glam, gltf | render, input, physics, audio, script |
 | `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028); blend spaces and masked or additive overlays (decision 0074) | core, assets | render, input, physics, audio, script |
@@ -31,8 +30,11 @@
 | `crates/marionette-net` | Co-op networking (decisions 0210, 0211): `Transport`/`Datagram` interfaces, reliability layer (`Endpoint`), loopback network with simulated latency and loss, UDP, host-stamped lockstep `Host`/`Client` with hash checks and late join, `NetModule` (`NetPlayers`), `Lobbies`, `simulate` | core, input, bevy_ecs, serde, schemars | render, physics, audio, agent, any store SDK |
 | `crates/marionette-platform` | Achievements and stats from a definitions file (`Tracker`), cloud files, three-way save-folder sync, `OfflinePlatform` (decision 0213) | serde, sha2, schemars | any marionette crate, any store SDK |
 | `crates/marionette-steam` | Optional Steam backend: `Transport`, `Lobbies`, `Achievements`, `CloudFiles` over the game's own steam_api library loaded at run time; no SDK files (decision 0212). Used by a game's binary only | net, platform, libloading | agent, cli (never in the `marionette` tool) |
-| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts, netplay, nav, save, editor behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
+| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | core, host, input, render, jobs, assets; physics, audio, anim, xr, script, import, pool, generate, port, jobs-ts, netplay, nav, save, editor, ui3d behind cargo features (decisions 0062, 0290), rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary and `main_with(engine)` for a game's binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
+
+Examples are games, not engine crates: `examples/rust-module` (template) and
+`examples/factory` (factory simulation, its benchmark scene and budgets, decision 0290).
 
 Planned crates (not created yet): marionette-ai-runtime (line 10).
 `marionette-assets` will grow the asset pipeline (line 8).

@@ -37,13 +37,15 @@ scripted file. The generator is separate from the simulation RNG.
 
 `views: 2` renders both eyes of an emulated headset every frame (`Offscreen::render_eyes`, 64 mm
 apart, decision 0025). A mode with `setup` runs operations first, for example
-`perf_factory_scene` to generate a factory scene under `target/stability/`.
+`perf_factory_scene` to generate a factory scene under `target/stability/`. A game or example
+keeps modes that need its own module in its own suite file, run with its own binary: the factory
+example's `examples/factory/stability.json` runs as
+`factory-bench stability --suite examples/factory/stability.json` (decision 0290).
 
 ## Current suite (`stability/suite.json`)
 
 core-headless, physics-3d, physics-2d, scripted, scripted-spawning, render-3d, render-3d-play,
-render-3d-looks (stereo), render-2d, render-2d-play, render-ui, animation (skinning), vr-headset (stereo), factory-sim (4x stress factory on the
-job system), factory-vr (factory in stereo), job-swarm and job-swarm-render (job TypeScript from scene
+render-3d-looks (stereo), render-2d, render-2d-play, render-ui, animation (skinning), vr-headset (stereo), job-swarm and job-swarm-render (job TypeScript from scene
 data and scripts, decision 0070), a headless and a rendered mode per proof game
 (lantern-keeper, cloudstep, ember-run), agent-session. Fast length: 120 to 1,000 ticks
 each, a few seconds in a debug build for all of them. Long length: 1 hour of game time per sim

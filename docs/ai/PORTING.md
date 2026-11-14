@@ -167,7 +167,7 @@ Rust struct per job and per struct its fields use, the original code as comments
 | a 20 Hz job inside a 90 Hz frame | the scene's fixed step (`FixedStep`) set to the job's rate |
 | `math.min/max/clamp`, integer math | the same; exact everywhere |
 | `math.sin/cos/pow` | hazard: precompute |
-| instanced draws of job output | a `BulkDrawHooks` render hook (as `marionette-factory`) or `JobDraw` |
+| instanced draws of job output | a `BulkDrawHooks` render hook (as `examples/factory`) or `JobDraw` |
 
 Derive `Clone` and `Reflect` on the resource (registration requires `Clone`, decision 0073).
 Prove it with `perf_sim` on 1 and several threads (same state hash). Save with `Sim::capture`

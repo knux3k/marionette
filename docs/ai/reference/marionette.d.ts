@@ -466,105 +466,6 @@ type Environment = {
   intensity: number;
 };
 
-/** A belt from one machine's output to another machine's input. */
-type FactoryBelt = {
-  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
-  from: number;
-  /** Number of item slots (one item each); at least 1. */
-  slots: number;
-  /** Thousandths of a tick an item waits in a slot before it may hop to the next (1000 = one slot per tick, the fastest a belt can run). */
-  step_milliticks: number;
-  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
-  to: number;
-};
-
-/** A machine running one recipe. Its position (for belts and drawing) is its `Transform`. */
-type FactoryMachine = {
-  /** Most items held per input, and in the output. */
-  buffer: number;
-  /** Recipe id from `FactoryRecipes`. */
-  recipe: string;
-};
-
-/** Every recipe and item look of the scene. */
-type FactoryRecipes = {
-  /** Optional looks; items without one are small grey cubes. */
-  looks: Array<{
-    /** Linear RGBA color, each channel 0..1. */
-    color: {
-      a: number;
-      b: number;
-      g: number;
-      r: number;
-    };
-    item: string;
-    /** Model asset (default `primitive:cube`). */
-    model: string;
-    /** Uniform scale of the model. */
-    scale: number;
-  }>;
-  recipes: Array<{
-    id: string;
-    /** Up to four inputs, consumed when a cycle starts. */
-    inputs: Array<{
-      count: number;
-      item: string;
-    }>;
-    /** Produced when a cycle ends. A count of 0 makes a consumer (a lab, a sink): it uses its inputs and produces nothing, so its line never backs up. */
-    output: {
-      count: number;
-      item: string;
-    };
-    /** Length of one cycle in ticks (at least 1). */
-    ticks: number;
-  }>;
-};
-
-/** The compiled factory: flat arrays stepped every tick. Saved in the scene and hashed. */
-type FactoryState = {
-  /** Belts in scene-id order; their slots are consecutive in `slots`. */
-  belts: Array<{
-    entity: number;
-    /** First slot in `FactoryState::slots`. */
-    first: number;
-    /** Machine indices (into `FactoryState::machines`). */
-    from: number;
-    len: number;
-    step: number;
-    to: number;
-  }>;
-  /** Items delivered from belts into machines, ever. */
-  delivered: number;
-  /** Fingerprint of the authoring data these arrays were built from. A scene whose machines, belts or recipes changed gets fresh arrays at load. */
-  layout: number;
-  /** Machines in scene-id order. */
-  machines: Array<{
-    buffer: number;
-    /** Stable scene id of the machine entity. */
-    entity: number;
-    /** Items held per recipe input. */
-    have: Array<number>;
-    /** Finished items waiting to leave. */
-    output: number;
-    /** Ticks into the current cycle. */
-    progress: number;
-    /** Index into the recipe table. */
-    recipe: number;
-    /** 1 while a cycle runs. */
-    running: number;
-  }>;
-  /** Items finished by machines, ever. */
-  made: number;
-  /** Ticks the factory has run. */
-  now: number;
-  slots: Array<{
-    /** When the item arrived, in thousandths of a tick. */
-    arrived: number;
-    /** Item index, -1 when empty. */
-    item: number;
-  }>;
-};
-
 /** Length of one simulation tick in seconds. */
 type FixedStep = {
   dt: number;
@@ -1319,8 +1220,6 @@ interface Components {
   DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;
   Emissive: Emissive;
-  FactoryBelt: FactoryBelt;
-  FactoryMachine: FactoryMachine;
   Follow: Follow;
   Grabbable: Grabbable;
   GravityWell: GravityWell;
@@ -1376,8 +1275,6 @@ interface Resources {
   AmbientLight: AmbientLight;
   Bloom: Bloom;
   Environment: Environment;
-  FactoryRecipes: FactoryRecipes;
-  FactoryState: FactoryState;
   FixedStep: FixedStep;
   Fog: Fog;
   Foveation: Foveation;

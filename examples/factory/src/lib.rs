@@ -18,6 +18,12 @@
 //! [`FactoryState`] is a registered resource: it is saved in the scene, restored by
 //! snapshots and part of the state hash. Items on belts are drawn in bulk by a render hook
 //! (no entity per item).
+//!
+//! This is an example game module, not part of the engine (decision 0290): a game adds it
+//! with `Engine::builder().module(FactoryModule)`, as [`engine`] does. It also carries the
+//! factory benchmark scene ([`bench`]), its timing budgets and its stability modes
+//! (`examples/factory/stability.json`); the `factory-bench` binary is the engine CLI with all
+//! of it added, so `perf_suite` there runs the `sim/factory-*` and `render/factory-*` cases.
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -28,6 +34,16 @@ use marionette_core::spatial::{BulkDraw, BulkDrawContext, BulkDrawHooks, Color, 
 use marionette_core::{Diagnostic, Module, Registry, Result};
 use marionette_jobs::Jobs;
 use std::collections::BTreeMap;
+
+pub mod bench;
+
+/// The standard engine plus the factory module and its benchmark operation.
+pub fn engine() -> std::result::Result<marionette_agent::Engine, marionette_core::Errors> {
+    marionette_agent::Engine::builder()
+        .module(FactoryModule)
+        .ops(bench::ops())
+        .build()
+}
 
 /// Inputs a recipe can have.
 pub const MAX_INPUTS: usize = 4;

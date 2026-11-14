@@ -1,8 +1,8 @@
 //! Times the factory step alone (no other systems) for 1..N worker threads.
-//! `cargo run --release -p marionette-factory --example factory_step_cost -- <scene> [ticks]`
+//! `cargo run --release -p marionette-example-factory --example factory_step_cost -- <scene> [ticks]`
 
 use marionette_core::Sim;
-use marionette_factory::{FactoryModule, FactoryState, FactoryTables, step};
+use marionette_example_factory::{FactoryModule, FactoryState, FactoryTables, step};
 use marionette_jobs::Jobs;
 use std::sync::Arc;
 use std::time::Instant;

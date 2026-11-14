@@ -15,7 +15,11 @@ path = "src/lib.rs"
 
 [features]
 # Optional engine parts, passed to marionette-agent (decision 0062).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "xr", "nav", "gamepad", "starter", "save", "editor"]
+default = ["physics", "audio", "anim", "script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "xr", "nav", "gamepad", "starter", "save", "editor"]
+# Physics, sound and the synth, skeletal animation (decision 0290).
+physics = ["marionette-agent/physics"]
+audio = ["marionette-agent/audio"]
+anim = ["marionette-agent/anim"]
 script = ["marionette-agent/script"]
 import = ["marionette-agent/import"]
 pool = ["marionette-agent/pool"]
@@ -26,7 +30,7 @@ package = ["marionette-agent/package", "dep:marionette-package"]
 save = ["marionette-agent/save", "dep:marionette-save"]
 # Headsets through OpenXR (`marionette xr`; decision 0190). The OpenXR loader is opened at
 # run time, so this adds no system dependency.
-xr = ["dep:marionette-openxr"]
+xr = ["marionette-agent/xr", "dep:marionette-openxr"]
 # Controllers in windowed play (decision 0172; Linux builds need libudev).
 gamepad = ["dep:marionette-gamepad"]
 netplay = ["marionette-agent/netplay"]
