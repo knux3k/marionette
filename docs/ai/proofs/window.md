@@ -60,9 +60,16 @@ others). All six windows exited with code 0.
   windows (40 events each; input latency mean 8.0 ms mailbox, 9.2 ms immediate, 9.4 ms capped,
   16.5 ms fullscreen vsync), but not the first two windows (vsync, queue depth 1) in either of
   two tries. The script's `foreground` flag did not match delivery, so it now also records
-  `recorded_events`. The held-key release and the minimize check stay unverified: CPU while
-  minimized was 62 and 172 ms per 2 s on two tries (219 ms before the fix), not the near zero
-  a sleeping loop should show. Next step: trace the minimized loop on Windows.
+  `recorded_events`. CPU while minimized read 62 and 172 ms per 2 s on two tries.
+- Minimized-CPU trace at `a72d4c4` (per-thread CPU over 10 s, starting 2 s after minimizing,
+  three runs each of the standard build and a build without `gamepad`): runs 2 and 3 of each
+  build used 0 ms, with no thread above 1 ms; the first 2 s straight after minimizing also used
+  0 ms. The loop sleeps when minimized; gamepad polling costs nothing there. The first run of each
+  freshly built exe kept drawing on the main thread (765 and 125 ms; frame counts show it was
+  never minimized): the script's 5 s wait for the window handle ran out while the new exe was
+  still starting, so it minimized and focused handle 0. That also explains the first windows
+  that missed synthetic input. The script now waits up to 30 s, stops if there is no window,
+  and records `minimized` (`IsIconic`) before it measures CPU.
 - `resizes` is 2 on a plain windowed run with no resize: Windows sends start-up size
   changes after the first frame. Not yet explained.
 

@@ -81,9 +81,25 @@ impl Sim {
     }
 
     fn new_world(&self, text: &str, file: Option<&str>, rng: SimRng, clock: SimClock) -> Result<World> {
+        self.world_from(file, rng, clock, |world| {
+            scene::load(text, file, &self.registry, world)
+        })
+    }
+
+    fn world_from(
+        &self,
+        file: Option<&str>,
+        rng: SimRng,
+        clock: SimClock,
+        load: impl FnOnce(&mut World) -> Result<()>,
+    ) -> Result<World> {
         let mut world = World::new();
         self.registry.init_world(&mut world);
-        scene::load(text, file, &self.registry, &mut world)?;
+        load(&mut world)?;
+        crate::hierarchy::place_loaded(&mut world).map_err(|e| match file {
+            Some(f) => e.with_file(f),
+            None => e,
+        })?;
         world.insert_resource(rng);
         world.insert_resource(clock);
         world.insert_resource(SceneDir(self.scene_dir.clone()));
@@ -125,9 +141,22 @@ impl Sim {
     /// RNG state and the event log, so a live session can be edited and keep running
     /// deterministically. On error the current world is left unchanged.
     pub fn reload(&mut self, text: &str) -> Result<()> {
+        self.reload_with(|world, registry| scene::load(text, None, registry, world))
+    }
+
+    /// [`Sim::reload`] from a scene already in memory: the same world as reloading its text,
+    /// without writing and reading that text. Problems carry no line numbers.
+    pub fn reload_scene(&mut self, scene: &scene::Scene) -> Result<()> {
+        self.reload_with(|world, registry| {
+            scene::instantiate(scene::validate(scene, registry, None)?, world);
+            Ok(())
+        })
+    }
+
+    fn reload_with(&mut self, load: impl FnOnce(&mut World, &Registry) -> Result<()>) -> Result<()> {
         let rng = *self.world.resource::<SimRng>();
         let clock = *self.world.resource::<SimClock>();
-        let mut world = self.new_world(text, None, rng, clock)?;
+        let mut world = self.world_from(None, rng, clock, |world| load(world, &self.registry))?;
         world.insert_resource(self.world.resource::<EventLog>().clone());
         self.world = world;
         // Systems cache state per world, so a new world needs a fresh schedule.

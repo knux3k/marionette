@@ -80,3 +80,41 @@ fn start_here_names_every_always_read_doc() {
         assert!(text.contains(&format!("]({f})")), "START-HERE.md must link {f}");
     }
 }
+
+/// Decision 0274: every feature row of STATUS.md has one of the three levels and names its
+/// evidence; a row below "proven" says what the next level needs.
+#[test]
+fn status_rows_have_a_level_and_evidence() {
+    let text = std::fs::read_to_string(repo().join("docs/ai/STATUS.md")).unwrap();
+    let mut rows = 0;
+    let mut in_features = false;
+    for line in text.lines() {
+        if line.starts_with("| Feature |") {
+            in_features = true;
+            continue;
+        }
+        if !line.starts_with('|') {
+            in_features = false;
+            continue;
+        }
+        if !in_features || line.starts_with("| ---") {
+            continue;
+        }
+        let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+        assert_eq!(cells.len(), 4, "feature, level, evidence, next: {line}");
+        let (feature, level, evidence, next) = (cells[0], cells[1], cells[2], cells[3]);
+        assert!(
+            ["slice", "usable", "proven"].contains(&level),
+            "`{feature}` has level `{level}`"
+        );
+        assert!(evidence.len() > 10, "`{feature}` names no evidence");
+        if level != "proven" {
+            assert!(
+                next.len() > 3,
+                "`{feature}` does not say what the next level needs"
+            );
+        }
+        rows += 1;
+    }
+    assert!(rows >= 30, "only {rows} feature rows found");
+}

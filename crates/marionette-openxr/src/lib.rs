@@ -39,6 +39,9 @@ pub mod codes {
     pub const NO_RUNTIME: &str = "xr.no_runtime";
     /// A runtime exists but no headset is connected (or it is asleep).
     pub const NO_HEADSET: &str = "xr.no_headset";
+    /// A runtime is installed but would not start an app, usually because no headset is
+    /// connected (SteamVR does this instead of reporting no headset).
+    pub const RUNTIME_REFUSED: &str = "xr.runtime_refused";
     /// The runtime cannot give us a usable Vulkan GPU.
     pub const VULKAN: &str = "xr.vulkan";
     /// Session, swapchain or frame loop failure.
@@ -125,14 +128,65 @@ pub trait XrHooks {
 pub struct NoHooks;
 impl XrHooks for NoHooks {}
 
+/// Environment variable naming an OpenXR loader library to use instead of the search below.
+pub const LOADER_ENV: &str = "MARIONETTE_OPENXR_LOADER";
+
+/// Where the OpenXR loader is looked for, in order: `MARIONETTE_OPENXR_LOADER`, beside the
+/// executable, the system library search, then (Windows) the loader SteamVR ships in its
+/// default install folder. Shipped games put the loader beside the executable (the packager
+/// warns when it is missing); the SteamVR fallback only helps development builds.
+fn loader_candidates() -> Vec<std::path::PathBuf> {
+    let name = if cfg!(windows) {
+        "openxr_loader.dll"
+    } else {
+        "libopenxr_loader.so.1"
+    };
+    let mut out = Vec::new();
+    if let Some(p) = std::env::var_os(LOADER_ENV) {
+        out.push(p.into());
+    }
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|d| d.to_path_buf()))
+    {
+        out.push(dir.join(name));
+    }
+    out.push(name.into());
+    if cfg!(windows) {
+        for root in ["ProgramFiles(x86)", "ProgramFiles"] {
+            if let Some(r) = std::env::var_os(root) {
+                out.push(
+                    std::path::PathBuf::from(r)
+                        .join(r"Steam\steamapps\common\SteamVR\bin\win64")
+                        .join(name),
+                );
+            }
+        }
+    }
+    out
+}
+
 fn entry() -> Result<xr::Entry, XrError> {
-    // SAFETY: loads the system OpenXR loader library.
-    unsafe { xr::Entry::load(&()) }.map_err(|e| {
-        XrError::new(codes::NO_RUNTIME, format!("no OpenXR loader: {e}")).fix(
-            "install an OpenXR runtime (SteamVR, or Monado on Linux) and ship the OpenXR loader \
-             (openxr_loader.dll / libopenxr_loader.so.1) next to the game",
-        )
-    })
+    let mut tried = Vec::new();
+    for path in loader_candidates() {
+        // A bare name goes through the system library search; a full path must exist.
+        if path.components().count() > 1 && !path.exists() {
+            continue;
+        }
+        // SAFETY: loads an OpenXR loader library, which only registers its own functions.
+        match unsafe { xr::Entry::load_from(&path, &()) } {
+            Ok(e) => return Ok(e),
+            Err(e) => tried.push(format!("{}: {e}", path.display())),
+        }
+    }
+    Err(XrError::new(
+        codes::NO_RUNTIME,
+        format!("no OpenXR loader found (tried {})", tried.join("; ")),
+    )
+    .fix(&format!(
+        "put openxr_loader.dll (Windows) or libopenxr_loader.so.1 (Linux) beside the executable, \
+         or set {LOADER_ENV} to its path; SteamVR ships one in SteamVR\\bin\\win64"
+    )))
 }
 
 struct Base {
@@ -141,7 +195,27 @@ struct Base {
     hand_tracking: bool,
 }
 
+/// The application name as runtimes may use it: SteamVR builds file names from it (saved
+/// controller bindings), so path separators and other unsafe characters become `_`, and it is
+/// cut to OpenXR's 127-byte limit.
+pub fn safe_app_name(name: &str) -> String {
+    let mut out: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    out.truncate(127);
+    let out = out.trim().to_string();
+    if out.is_empty() { "Marionette".into() } else { out }
+}
+
 fn instance(app_name: &str) -> Result<Base, XrError> {
+    let app_name = &safe_app_name(app_name);
     let entry = entry()?;
     let available = entry.enumerate_extensions().map_err(|e| {
         XrError::new(codes::NO_RUNTIME, format!("no active OpenXR runtime: {e}"))
@@ -169,13 +243,7 @@ fn instance(app_name: &str) -> Result<Base, XrError> {
             &[],
             &(),
         )
-        .map_err(|e| {
-            XrError::new(
-                codes::NO_RUNTIME,
-                format!("the OpenXR runtime refused to start: {e}"),
-            )
-            .fix("start SteamVR (or monado-service) and set it as the OpenXR runtime")
-        })?;
+        .map_err(refused)?;
     let system = instance
         .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
         .map_err(|e| {
@@ -189,6 +257,27 @@ fn instance(app_name: &str) -> Result<Base, XrError> {
         system,
         hand_tracking,
     })
+}
+
+/// Explains a failed `xrCreateInstance`. A runtime that is installed but has no headset
+/// (SteamVR with the headset off or not linked) refuses apps with a runtime failure, which
+/// reads as "no runtime" unless said plainly.
+fn refused(e: xr::sys::Result) -> XrError {
+    if e == xr::sys::Result::ERROR_RUNTIME_UNAVAILABLE {
+        return XrError::new(codes::NO_RUNTIME, format!("no active OpenXR runtime: {e}"))
+            .fix("install SteamVR (or monado-service) and set it as the OpenXR runtime");
+    }
+    XrError::new(
+        codes::RUNTIME_REFUSED,
+        format!(
+            "the OpenXR runtime refused to start an app ({e}); with SteamVR this usually means \
+             no headset is connected, with Monado that monado-service is not running"
+        ),
+    )
+    .fix(
+        "connect and wake the headset (for a wireless or Steam Link headset, link it first), \
+         then try again; the runtime's own log names the reason",
+    )
 }
 
 /// Checks for an OpenXR runtime and headset without opening a session. The result names
@@ -706,4 +795,40 @@ fn render_eyes(
         head = glam::Mat4::from_rotation_translation(r, mid);
     }
     Ok((views, head))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_names_are_safe_as_file_names() {
+        assert_eq!(
+            safe_app_name("Marionette - examples/xr.scene.json"),
+            "Marionette - examples_xr.scene.json"
+        );
+        assert_eq!(safe_app_name(r"a\b:c"), "a_b_c");
+        assert_eq!(safe_app_name("  "), "Marionette");
+        assert_eq!(safe_app_name(&"x".repeat(300)).len(), 127);
+    }
+
+    #[test]
+    fn a_refusing_runtime_is_not_reported_as_missing() {
+        assert_eq!(
+            refused(xr::sys::Result::ERROR_RUNTIME_UNAVAILABLE).code,
+            codes::NO_RUNTIME
+        );
+        let e = refused(xr::sys::Result::ERROR_RUNTIME_FAILURE);
+        assert_eq!(e.code, codes::RUNTIME_REFUSED);
+        assert!(e.message.contains("no headset is connected"), "{}", e.message);
+        assert!(e.fix.unwrap().contains("headset"));
+    }
+
+    #[test]
+    fn the_loader_beside_the_executable_comes_before_the_system_search() {
+        let c = loader_candidates();
+        let beside = c.iter().position(|p| p.components().count() > 1).unwrap();
+        let system = c.iter().position(|p| p.components().count() == 1).unwrap();
+        assert!(beside < system, "{c:?}");
+    }
 }

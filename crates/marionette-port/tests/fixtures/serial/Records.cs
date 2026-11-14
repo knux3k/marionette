@@ -68,6 +68,22 @@ namespace Sample
     }
 
     [Serializable]
+    public class Extras
+    {
+        public const int Current = 7;
+        public static readonly string Home = "home";
+        public int version = Current;
+        public string where = Home;
+        public float lowest = float.MinValue;
+        public Inner nested = new Sample.Inner();
+        public bool Ranked => version > 0 && lowest < 0;
+        public List<Foreign> foreign = new List<Foreign>();
+        public Foreign[] more;
+        public Mystery[] things;
+        public Vector3 dir = Vector3.zero;
+    }
+
+    [Serializable]
     public partial class Split { public int a; }
     public partial class Split { public int b = 2; }
 }

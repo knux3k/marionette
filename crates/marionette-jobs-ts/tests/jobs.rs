@@ -268,6 +268,125 @@ fn compiled_and_interpreted_runs_are_bit_identical() {
     }
 }
 
+/// Every operator, on integers and on numbers, over values that include the limits: the
+/// compiled result must equal what a JavaScript engine computes, element by element. The
+/// position of an element picks its operator, so every pair of values meets every operator.
+#[test]
+fn every_operator_matches_the_interpreter() {
+    const OPS: &str = include_str!("jobs/operators.job.ts");
+    let program = JobProgram::compile(OPS, "operators.job.ts").unwrap();
+    let ints: [i32; 14] = [
+        0,
+        1,
+        -1,
+        2,
+        -2,
+        3,
+        7,
+        -13,
+        31,
+        32,
+        1000,
+        -65_536,
+        i32::MAX,
+        i32::MIN,
+    ];
+    let nums: [f64; 12] = [
+        0.0,
+        1.0,
+        -1.0,
+        0.5,
+        -0.5,
+        2.5,
+        -3.75,
+        1e-3,
+        1234.5678,
+        -98765.4321,
+        1e300,
+        -1e-300,
+    ];
+    // Each pair of values 20 times in a row, once per operator.
+    let pairs = |n: usize| (0..n * n * 20).map(move |i| ((i / 20) / n, (i / 20) % n));
+    let (ia, ib): (Vec<i32>, Vec<i32>) = pairs(ints.len()).map(|(x, y)| (ints[x], ints[y])).unzip();
+    let (fa, fb): (Vec<f64>, Vec<f64>) = pairs(nums.len()).map(|(x, y)| (nums[x], nums[y])).unzip();
+    let mut iout = vec![0i32; ia.len()];
+    let mut fout = vec![0f64; fa.len()];
+    let jobs = Jobs::with_threads(2);
+    // A chunk length that is a multiple of 20 keeps positions and operators in step.
+    program
+        .run(
+            &jobs,
+            "ints",
+            iout.len(),
+            400,
+            &mut [
+                Arg::I32(&mut iout),
+                Arg::I32In(&ia),
+                Arg::I32In(&ib),
+                Arg::ChunkStart,
+            ],
+        )
+        .unwrap();
+    program
+        .run(
+            &jobs,
+            "nums",
+            fout.len(),
+            400,
+            &mut [
+                Arg::F64(&mut fout),
+                Arg::F64In(&fa),
+                Arg::F64In(&fb),
+                Arg::ChunkStart,
+            ],
+        )
+        .unwrap();
+    let driver = "function driver(inp) {
+        const io = new Int32Array(inp[0].length), fo = new Float64Array(inp[2].length);
+        ints(io, Int32Array.from(inp[0]), Int32Array.from(inp[1]), 0);
+        nums(fo, Float64Array.from(inp[2]), Float64Array.from(inp[3]), 0);
+        return [Array.from(io), Array.from(fo)];
+    }";
+    let as_f64 = |v: &[i32]| v.iter().map(|&x| x as f64).collect::<Vec<_>>();
+    let out = interpret(
+        OPS,
+        driver,
+        vec![as_f64(&ia), as_f64(&ib), fa.clone(), fb.clone()],
+    );
+    for (i, (got, want)) in iout.iter().zip(&out[0]).enumerate() {
+        assert_eq!(
+            *got as f64,
+            *want,
+            "integer operator {} on {} and {}",
+            i % 20,
+            ia[i],
+            ib[i]
+        );
+    }
+    for (i, (got, want)) in fout.iter().zip(&out[1]).enumerate() {
+        assert_eq!(
+            got.to_bits(),
+            want.to_bits(),
+            "number operator {} on {} and {}: {got} and {want}",
+            i % 20,
+            fa[i],
+            fb[i]
+        );
+    }
+    // The table really was walked: every operator gave more than one distinct result.
+    for k in 0..20 {
+        let distinct = |v: Vec<u64>| v.into_iter().collect::<std::collections::BTreeSet<_>>().len();
+        assert!(
+            distinct(iout.iter().skip(k).step_by(20).map(|&x| x as u64).collect()) > 1,
+            "int {k}"
+        );
+        assert!(
+            distinct(fout.iter().skip(k).step_by(20).map(|x| x.to_bits()).collect()) > 1,
+            "num {k}"
+        );
+    }
+}
+
 #[test]
 fn whole_arrays_and_chunk_start() {
     let program = JobProgram::compile(

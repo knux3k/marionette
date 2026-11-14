@@ -6,11 +6,15 @@
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
 
+#[cfg(feature = "anim")]
 pub mod anim;
+#[cfg(feature = "audio")]
 pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
+#[cfg(feature = "editor")]
+pub mod editor;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
@@ -25,7 +29,11 @@ pub mod nav;
 #[cfg(feature = "netplay")]
 pub mod netplay;
 pub mod observe;
+#[cfg(feature = "package")]
+pub mod package;
 pub mod perf;
+pub mod perf_realistic;
+pub mod perf_suite;
 #[cfg(feature = "pool")]
 pub mod pool;
 #[cfg(feature = "port")]
@@ -45,6 +53,7 @@ pub mod skills;
 pub mod stability;
 #[cfg(feature = "starter")]
 pub mod starter;
+#[cfg(feature = "audio")]
 pub mod synth;
 #[cfg(feature = "ui3d")]
 mod ui3d;
@@ -146,6 +155,14 @@ where
 
 /// The optional engine parts (cargo features) compiled into this build (decision 0062).
 pub const FEATURES: &[&str] = &[
+    #[cfg(feature = "physics")]
+    "physics",
+    #[cfg(feature = "audio")]
+    "audio",
+    #[cfg(feature = "anim")]
+    "anim",
+    #[cfg(feature = "xr")]
+    "xr",
     #[cfg(feature = "script")]
     "script",
     #[cfg(feature = "import")]
@@ -158,6 +175,8 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "package")]
+    "package",
     #[cfg(feature = "save")]
     "save",
     #[cfg(feature = "starter")]
@@ -168,6 +187,8 @@ pub const FEATURES: &[&str] = &[
     "nav",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "editor")]
+    "editor",
     #[cfg(feature = "netplay")]
     "netplay",
 ];
@@ -179,20 +200,27 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         edit::ops(),
         session::ops(),
         observe::ops(),
+        #[cfg(feature = "editor")]
+        editor::ops(),
         scenario::ops(),
         #[cfg(feature = "import")]
         library::ops(),
         perf::ops(),
+        perf_realistic::ops(),
+        perf_suite::ops(),
         #[cfg(feature = "jobs-ts")]
         jobs_ts::ops(),
         #[cfg(feature = "generate")]
         providers::ops(),
+        #[cfg(feature = "anim")]
         anim::ops(),
         #[cfg(feature = "ui3d")]
         ui3d::ops(),
+        #[cfg(feature = "audio")]
         audio::ops(),
         #[cfg(feature = "nav")]
         nav::ops(),
+        #[cfg(feature = "audio")]
         synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
@@ -207,6 +235,8 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "package")]
+        package::ops(),
         #[cfg(feature = "starter")]
         starter::ops(),
         #[cfg(feature = "netplay")]
@@ -226,6 +256,7 @@ pub struct Agent {
     ops: std::sync::Arc<Vec<Op>>,
     pub(crate) sessions: BTreeMap<String, Session>,
     pub(crate) next_session: u64,
+    pub(crate) scenes: edit::SceneCache,
     gpu: Option<Gpu>,
 }
 
@@ -244,6 +275,7 @@ impl Agent {
             engine,
             sessions: BTreeMap::new(),
             next_session: 1,
+            scenes: edit::SceneCache::default(),
             gpu: None,
         }
     }
@@ -258,6 +290,12 @@ impl Agent {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Makes every edit take the whole-scene path (tests hold the indexed path against it).
+    #[doc(hidden)]
+    pub fn whole_scene_edits(&mut self) {
+        self.scenes.off = true;
     }
 
     pub fn registry(&self) -> &Registry {
@@ -309,6 +347,17 @@ impl Agent {
             )
             .fix("use observe_*, scene_validate, scene_run or test_run, or restart without --read-only")
             .into());
+        }
+        // Scene text left pending by a batch's edits is written before anything else looks at
+        // the file (decision 0270).
+        if name != "batch_run" && !edit::CACHED_EDITS.contains(&name) {
+            self.scenes.flush()?;
+            debug_assert!(
+                self.sessions
+                    .values()
+                    .all(|s| s.edits.as_ref().is_none_or(|e| !e.pending())),
+                "a batch loads pending session edits before a step that is not an edit"
+            );
         }
         // A shared handle to the table lets the handler borrow the agent mutably (and lets
         // `batch_run` call other operations).

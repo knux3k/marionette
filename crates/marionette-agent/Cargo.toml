@@ -11,18 +11,17 @@ marionette-core.workspace = true
 marionette-host.workspace = true
 marionette-render = { path = "../marionette-render" }
 marionette-input = { path = "../marionette-input" }
-marionette-physics = { path = "../marionette-physics" }
-marionette-audio = { path = "../marionette-audio" }
-marionette-synth = { path = "../marionette-synth" }
+marionette-physics = { path = "../marionette-physics", optional = true }
+marionette-audio = { path = "../marionette-audio", optional = true }
+marionette-synth = { path = "../marionette-synth", optional = true }
 marionette-import = { path = "../marionette-import", optional = true }
-marionette-anim = { path = "../marionette-anim" }
-marionette-xr = { path = "../marionette-xr" }
+marionette-anim = { path = "../marionette-anim", optional = true }
+marionette-xr = { path = "../marionette-xr", optional = true }
 marionette-ui3d = { path = "../marionette-ui3d", optional = true }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 marionette-assets = { path = "../marionette-assets" }
 marionette-pool = { path = "../marionette-pool", optional = true }
-marionette-factory = { path = "../marionette-factory" }
 marionette-jobs.workspace = true
 marionette-jobs-ts = { path = "../marionette-jobs-ts", optional = true }
 marionette-save = { workspace = true, optional = true }
@@ -31,6 +30,9 @@ marionette-providers = { path = "../marionette-providers", optional = true }
 marionette-generate = { path = "../marionette-generate", optional = true }
 marionette-script = { path = "../marionette-script", optional = true }
 marionette-port = { path = "../marionette-port", optional = true }
+marionette-package = { path = "../marionette-package", optional = true }
+marionette-editor = { path = "../marionette-editor", optional = true }
+glam = { version = "0.34", optional = true }
 marionette-starter = { path = "../marionette-starter", optional = true }
 marionette-net = { path = "../marionette-net", optional = true }
 marionette-platform = { path = "../marionette-platform", optional = true }
@@ -45,9 +47,17 @@ tokio = { version = "1", features = ["rt"] }
 # Optional engine parts (decision 0062). A game that does not use one builds without it:
 # `default-features = false, features = ["script"]`. Each feature adds its operations (and
 # for `script`, the script module).
-default = ["script", "import", "pool", "generate", "port", "jobs-ts", "netplay", "nav", "starter", "save"]
-# TypeScript game scripts (QuickJS and the oxc TypeScript stripper).
-script = ["dep:marionette-script"]
+default = ["physics", "audio", "anim", "xr", "script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "nav", "starter", "save", "editor"]
+# Rigid bodies, colliders, character controllers and raycasts (Rapier; decision 0290).
+physics = ["dep:marionette-physics"]
+# Sound playback, spatial audio and the synth (kira; audio_*, synth_* operations).
+audio = ["dep:marionette-audio", "dep:marionette-synth"]
+# Skeletal animation: clips, cross-fades, blend spaces (anim_* operations).
+anim = ["dep:marionette-anim"]
+# XR gameplay: poses as recorded input, hands, grab and throw (needs physics).
+xr = ["physics", "dep:marionette-xr"]
+# TypeScript game scripts (QuickJS and the oxc TypeScript stripper; scripts can play clips).
+script = ["anim", "dep:marionette-script"]
 # Owned-asset library and prefab import (library_*, prefab_* operations).
 import = ["dep:marionette-import"]
 # The CC0 asset pool (pool_* operations).
@@ -58,6 +68,8 @@ generate = ["dep:marionette-generate", "dep:marionette-providers"]
 port = ["dep:marionette-port"]
 # Job TypeScript compiled to WebAssembly (wasmtime, jobs_ts_* operations).
 jobs-ts = ["dep:marionette-jobs-ts"]
+# Game packaging for Windows, Linux, Steam Deck and Steam Frame (package_* operations).
+package = ["dep:marionette-package"]
 # Save games: slots, crash-safe files, migrations, autosave (save_* operations; decision 0076).
 save = ["dep:marionette-save"]
 # Co-op networking (lockstep, transports, lobbies), achievements and cloud files: the
@@ -69,7 +81,9 @@ starter = ["script", "pool", "generate", "dep:marionette-starter"]
 # World-space UI: panels and text placed in the 3D world (ui3d_* operations; decision 0200).
 # Off by default: a game that wants it adds the feature or `Ui3dModule` itself.
 ui3d = ["dep:marionette-ui3d"]
+# Scene editor view: the `editor_view` operation (decision 0130).
+editor = ["dep:marionette-editor", "dep:glam"]
 # Navigation on round, changing worlds (NavSurface, NavAgent; decision 0231).
-nav = ["dep:marionette-nav"]
+nav = ["physics", "dep:marionette-nav"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-providers/net"]

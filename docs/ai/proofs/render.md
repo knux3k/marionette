@@ -2,7 +2,7 @@
 
 Line 3 (renderer):
 - Reference images (320x180, 60 ticks, seed 1, MSAA 4), SHA-256 of the committed files:
-  - `examples/reference/showcase.png`: `9563bd7152cc2ac32f2aff9119ad9ce8475e07cd96a085fc6c22651e6adab996`
+  - `examples/reference/showcase.png`: `d08640e0420a03ba5aa45c563f042bfc1da3d1f295c779ccfab6ac8e0a51a8f3`
   - `examples/reference/sprites.png`: `4b07882d40928aca85f67d169868b3e1a4bde97de84186c86d2e16c64e97e97d`
   - `examples/reference/ui.png`: `4c7417beb5c10b9bba89ad7ab9721a1a49aa8c566ca2bd4c7e9c36f4fa56df06`
 - Tests: `crates/marionette-render/tests/render.rs` (`same_inputs_give_identical_images`,
@@ -105,3 +105,51 @@ Remaining lighting (decisions 0090 to 0093):
   `render-3d-raytracing` frame p99 1.81 ms, `render-3d-looks` 1.02 ms (budget 11.1 ms).
   Before the depth prepass and adaptive sun rays the same scene measured about 2.4 ms
   (noisy run).
+
+Textured materials (decisions 0280, 0281):
+- Example `examples/materials.scene.json`, built by `examples/materials.ops.json`; models
+  `examples/assets/{material-ball,fence,glass}.glb` made by
+  `cargo run -p marionette-render --example make_materials`.
+  `run examples/materials.scene.json --headless --ticks 60 --seed 1` prints
+  `b4f94a1508b9c75ec12836421ad4724bdff332c4a0acee731105720cc9ca9cad`.
+- Reference image `examples/reference/materials.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
+  lavapipe): `886ea4c161f8f7620dc956f89046ddc6bea3cbe72fbe9184ab7eadc749396704`. `showcase.png` was
+  rewritten (2026-11-14, decision 0280): its textured gem is now mipmapped (0.7% of pixels had
+  moved past the threshold); the other reference images were not rewritten.
+- Tests in `crates/marionette-render/tests/materials.rs`:
+  `reference_catches_swapped_metal_rough_and_flipped_normals` (swapped channels: 5.2% of pixels
+  over threshold, flipped normal green: 3.4%, limit 1%), `cut_outs_show_through_both_sides_and_in_shadows`,
+  `blended_surfaces_mix_and_draw_back_to_front`, `mipmaps_average_far_textures` (far floor
+  spread 0 with mipmaps, 18 without), `glb_alpha_modes_and_sides_are_read`,
+  `committed_models_match_their_generator`; unit tests in `crates/marionette-assets/src/mips.rs`.
+  Each GPU test was checked to fail with its feature switched off.
+- Stability mode `render-3d-materials` (120 ticks, lavapipe: passed).
+
+Particles (decision 0282):
+- Example `examples/particles.scene.json` (fire, sparks, smoke, bloom), built by
+  `examples/particles.ops.json`. `run examples/particles.scene.json --headless --ticks 60 --seed 1`
+  prints `7153f063848be52350afcef6018f578b32067323184eb22ded326d26f814621f`.
+- Reference image `examples/reference/particles.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
+  lavapipe): `efe57e57be33f807d5f733d08f19fee23ab76ca277745e539d401ad38e21b250`.
+- Tests: `crates/marionette-render/tests/particles.rs` (`particles_are_a_pure_function_of_game_time`,
+  `one_draw_per_emitter_whatever_the_rate`, `particles_draw_along_the_emitter`); unit tests of
+  `particles::span` (exact after 10 hours of game time, capped at 100,000).
+- Stability mode `render-3d-particles` (120 ticks, lavapipe: passed).
+
+BC7 texture compression (decision 0283):
+- `compressed_textures_take_a_quarter_and_look_the_same` (`crates/marionette-render/tests/materials.rs`,
+  lavapipe): material ball texture bytes 283,984 plain, 71,104 BC7, 136,612 with exact normal
+  maps; BC7 against uncompressed mean 0.05, max 25, 0.0017% of pixels over threshold.
+- Unit tests in `crates/marionette-assets/src/compress.rs`: block counts per level, odd sizes
+  refused, cache returns identical blocks and stays under its limit.
+
+Material textures (decision 0273): `cargo test -p marionette-render --test material_textures`
+(`a_normal_map_tilts_the_surface_the_way_its_colors_say`,
+`roughness_is_read_from_green_and_metallic_from_blue`): a model and textures written by the
+test, brightness of four quarters compared under lights from above and from the right.
+
+Single-pass stereo (decision 0285):
+- `crates/marionette-render/tests/stereo.rs` (lavapipe): both eyes in one multiview pass give
+  the same right eye as a pass per eye (largest difference 0) for the material ball (draw calls
+  13 to 8) and skinned models (8 to 4); the bloom scene falls back to a pass per eye, identical.
+- Unit test `entry_points_pick_their_eye` (`renderer/multiview.rs`) checks the shader conversion.

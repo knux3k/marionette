@@ -1,0 +1,45 @@
+{
+  "format": "marionette.stability-suite",
+  "version": 1,
+  "seed": 1,
+  "modes": [
+    {
+      "name": "factory-sim",
+      "description": "Factory simulation at 4x stress (952 machines, belts and items) on the job system, headless.",
+      "kind": "sim",
+      "scene": "target/stability/factory4.scene.json",
+      "setup": [
+        {
+          "op": "perf_factory_scene",
+          "input": {
+            "out": "target/stability/factory4.scene.json",
+            "scale": 4
+          }
+        }
+      ],
+      "fast_ticks": 300,
+      "long_ticks": 216000,
+      "tick_budget_ms": 2.0
+    },
+    {
+      "name": "factory-vr",
+      "description": "Factory at 1x rendered to both eyes of an emulated headset (instanced items, stereo).",
+      "kind": "render",
+      "scene": "target/stability/factory1.scene.json",
+      "setup": [
+        {
+          "op": "perf_factory_scene",
+          "input": {
+            "out": "target/stability/factory1.scene.json",
+            "scale": 1
+          }
+        }
+      ],
+      "views": 2,
+      "size": "256x256",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    }
+  ]
+}

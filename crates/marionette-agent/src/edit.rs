@@ -7,12 +7,17 @@
 //! `session_save`. See docs/decisions/0009-live-sessions-and-files.md.
 
 use crate::{Agent, Op, codes, op, read_text, write_atomic};
+use marionette_core::builtin::SceneRef;
+use marionette_core::hierarchy::{self, ChildOf};
 use marionette_core::scene::{self, Scene, SceneEntity};
-use marionette_core::{Diagnostic, Errors};
+use marionette_core::scene_index::{Changed, SceneIndex};
+use marionette_core::spatial::{Quat, Transform, Vec3};
+use marionette_core::{Diagnostic, Errors, Registry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn ops() -> Vec<Op> {
     vec![
@@ -34,6 +39,14 @@ pub(crate) fn ops() -> Vec<Op> {
             "Remove an entity. Fails if other entities still refer to it.",
             true,
             entity_delete,
+        ),
+        op(
+            "entity_attach",
+            "Make an entity a child of another without moving it: adds `ChildOf` with the local \
+             placement that keeps it where it is. It then follows the parent. To detach, remove \
+             `ChildOf` (`component_remove`); to move a child, set its `ChildOf`.",
+            true,
+            entity_attach,
         ),
         op(
             "component_set",
@@ -61,6 +74,312 @@ pub(crate) fn ops() -> Vec<Op> {
             resource_remove,
         ),
     ]
+}
+
+/// Operations that edit a scene file through the [`SceneCache`]. Any other operation first
+/// has pending scene text written (see [`Agent::call`]).
+pub(crate) const CACHED_EDITS: [&str; 7] = [
+    "entity_create",
+    "entity_update",
+    "entity_delete",
+    "component_set",
+    "component_remove",
+    "resource_set",
+    "resource_remove",
+];
+
+/// Scene files kept indexed between edits (decision 0270), so an edit checks and rewrites
+/// only what it touches instead of the whole scene. An entry is used only while the file on
+/// disk still holds exactly the text this process last wrote; anything else (a hand edit,
+/// another process, another operation) drops it and the whole-scene path runs.
+///
+/// Inside `batch_run` the text is written once, when the batch ends or before the next
+/// operation that is not an edit, instead of after every step.
+#[derive(Default)]
+pub(crate) struct SceneCache {
+    entries: Vec<CachedScene>,
+    /// True while a batch runs: edits mark the entry dirty instead of writing, and edits of
+    /// a live session are loaded into its world together (see [`SessionEdits`]).
+    pub(crate) deferred: bool,
+    /// Set when loading a session's pending edits failed: the batch then runs those steps
+    /// again one at a time, to stop at the step at fault with its own message.
+    pub(crate) load_failed: bool,
+    /// Test switch: every edit takes the whole-scene path.
+    pub(crate) off: bool,
+}
+
+/// A live session's scene kept indexed between edits. Outside a batch each edit still
+/// reloads the world (so a refused edit is refused at once), but skips the two snapshots and
+/// the comparison. Inside `batch_run`, edits in a row are loaded into the world once.
+pub(crate) struct SessionEdits {
+    index: SceneIndex,
+    /// Log lines of edits not yet loaded into the world (empty: the world is current).
+    pending: Vec<String>,
+}
+
+impl SessionEdits {
+    pub(crate) fn pending(&self) -> bool {
+        !self.pending.is_empty()
+    }
+}
+
+/// Loads a session's pending edits into its world. On failure the world is as it was before
+/// those edits and `load_failed` is set.
+pub(crate) fn load_pending(agent: &mut Agent, id: &str) -> Result<(), Errors> {
+    let Some(session) = agent.sessions.get_mut(id) else {
+        return Ok(());
+    };
+    let Some(mut edits) = session.edits.take() else {
+        return Ok(());
+    };
+    if !edits.pending() {
+        session.edits = Some(edits);
+        return Ok(());
+    }
+    match session.sim.reload_scene(&edits.index.to_scene()) {
+        Ok(()) => {
+            for line in edits.pending.drain(..) {
+                session.log("edit", line);
+            }
+            session.edits = Some(edits);
+            Ok(())
+        }
+        Err(e) => {
+            agent.scenes.load_failed = true;
+            Err(without_positions(e, None))
+        }
+    }
+}
+
+/// True when session `id` has edits not yet loaded into its world.
+pub(crate) fn has_pending(agent: &Agent, id: &str) -> bool {
+    agent
+        .sessions
+        .get(id)
+        .is_some_and(|s| s.edits.as_ref().is_some_and(SessionEdits::pending))
+}
+
+/// The indexed path for a live session. `Ok(None)`: not taken, nothing changed.
+fn indexed_session<T>(
+    agent: &mut Agent,
+    id: &str,
+    edit: impl FnOnce(&mut SceneIndex, &Registry) -> Option<T>,
+    line: impl FnOnce(&T) -> String,
+) -> Result<Option<(String, T)>, Errors> {
+    let deferred = agent.scenes.deferred;
+    let registry = agent.engine.registry();
+    let Some(session) = agent.sessions.get_mut(id) else {
+        return Ok(None);
+    };
+    let mut edits = match session.edits.take() {
+        Some(e) => Some(e),
+        None => {
+            let scene = session.sim.snapshot();
+            SceneIndex::new(&scene, registry).map(|index| SessionEdits {
+                index,
+                pending: Vec::new(),
+            })
+        }
+    };
+    let mut out = None;
+    if let Some(e) = &mut edits
+        && let Some(t) = edit(&mut e.index, registry)
+    {
+        let line = line(&t);
+        if deferred {
+            e.pending.push(line);
+            out = Some(t);
+        } else if session.sim.reload_scene(&e.index.to_scene()).is_ok() {
+            session.log("edit", line);
+            out = Some(t);
+        } else {
+            // Refused by the world (a module's own check): the whole-scene path reports it.
+            edits = None;
+        }
+    }
+    session.edits = edits;
+    Ok(out.map(|t| (format!("session {id}"), t)))
+}
+
+struct CachedScene {
+    path: PathBuf,
+    shown: String,
+    index: SceneIndex,
+    /// The file's text as last written or read by this process (stale while `dirty`).
+    disk: String,
+    /// The index is ahead of the file.
+    dirty: bool,
+}
+
+/// Most scenes kept indexed at once (memory rule: every cache bounded).
+const CACHE_KEEP: usize = 4;
+
+impl SceneCache {
+    fn take(&mut self, path: &Path) -> Option<CachedScene> {
+        let at = self.entries.iter().position(|e| e.path == path)?;
+        Some(self.entries.remove(at))
+    }
+
+    /// Writes every scene whose text is pending.
+    pub(crate) fn flush(&mut self) -> Result<(), Errors> {
+        let mut result = Ok(());
+        for e in &mut self.entries {
+            if e.dirty {
+                e.disk = e.index.to_text();
+                e.dirty = false;
+                if let Err(err) = write_atomic(&e.path, &e.shown, e.disk.as_bytes()) {
+                    result = Err(err);
+                }
+            }
+        }
+        if result.is_err() {
+            // What is on disk is no longer known.
+            self.entries.clear();
+        }
+        result
+    }
+
+    fn keep(&mut self, entry: CachedScene) -> Result<(), Errors> {
+        let mut result = Ok(());
+        while self.entries.len() >= CACHE_KEEP {
+            let old = self.entries.remove(0);
+            if old.dirty {
+                result = write_atomic(&old.path, &old.shown, old.index.to_text().as_bytes());
+            }
+        }
+        self.entries.push(entry);
+        result
+    }
+
+    /// Remembers a scene the whole-scene path just wrote (`text` is canonical, `index` is
+    /// made from it).
+    fn remember(&mut self, path: &Path, shown: &str, text: String, index: Option<SceneIndex>) {
+        self.take(path);
+        if let Some(index) = index {
+            // Evicted entries are never dirty here: this runs outside a batch's edits or
+            // right after `flush`.
+            let _ = self.keep(CachedScene {
+                path: path.to_path_buf(),
+                shown: shown.to_string(),
+                index,
+                disk: text,
+                dirty: false,
+            });
+        }
+    }
+}
+
+fn change_of(c: &Changed) -> Diff {
+    let mut d = Diff::default();
+    match (&c.before, &c.after) {
+        (None, Some(n)) => d.added.push(n.id),
+        (Some(o), None) => d.removed.push(o.id),
+        (Some(o), Some(n)) => {
+            let ok: BTreeSet<&String> = o.components.keys().collect();
+            let nk: BTreeSet<&String> = n.components.keys().collect();
+            let change = EntityChange {
+                id: n.id,
+                renamed: o.name != n.name,
+                added: nk.difference(&ok).map(|s| s.to_string()).collect(),
+                removed: ok.difference(&nk).map(|s| s.to_string()).collect(),
+                modified: ok
+                    .intersection(&nk)
+                    .filter(|k| o.components[**k] != n.components[**k])
+                    .map(|s| s.to_string())
+                    .collect(),
+            };
+            if change.renamed
+                || !change.added.is_empty()
+                || !change.removed.is_empty()
+                || !change.modified.is_empty()
+            {
+                d.changed.push(change);
+            }
+        }
+        (None, None) => {}
+    }
+    d
+}
+
+/// Runs `edit` on the indexed copy of a scene file, when there is a current one, and writes
+/// the result (or leaves it pending inside a batch). `Ok(None)` means the indexed path does
+/// not apply (no entry, the file changed underneath, a session target, or the edit is not
+/// plainly valid): nothing changed and the caller runs [`apply`], which reports problems.
+fn indexed<T>(
+    agent: &mut Agent,
+    target: &EditTarget,
+    edit: impl FnOnce(&mut SceneIndex, &Registry) -> Option<T>,
+    line: impl FnOnce(&T) -> String,
+) -> Result<Option<(String, T)>, Errors> {
+    if agent.scenes.off {
+        return Ok(None);
+    }
+    if let (None, Some(id)) = (&target.scene, &target.session) {
+        return indexed_session(agent, id, edit, line);
+    }
+    let (Some(file), None) = (&target.scene, &target.session) else {
+        return Ok(None);
+    };
+    let Ok(path) = agent.resolve(file) else {
+        return Ok(None);
+    };
+    let Some(mut entry) = agent.scenes.take(&path) else {
+        return Ok(None);
+    };
+    if !entry.dirty && !std::fs::read(&path).is_ok_and(|bytes| bytes == entry.disk.as_bytes()) {
+        return Ok(None); // changed underneath: the entry is dropped
+    }
+    let Some(out) = edit(&mut entry.index, agent.registry()) else {
+        // Unchanged; keep it for the whole-scene path's flush and for later edits.
+        agent.scenes.keep(entry)?;
+        return Ok(None);
+    };
+    if agent.scenes.deferred {
+        entry.dirty = true;
+    } else {
+        entry.disk = entry.index.to_text();
+        write_atomic(&path, file, entry.disk.as_bytes())?;
+    }
+    entry.shown = file.clone();
+    agent.scenes.keep(entry)?;
+    Ok(Some((file.clone(), out)))
+}
+
+/// An entity edit on the indexed path, falling back to `change` on the whole scene.
+fn entity_edit(
+    agent: &mut Agent,
+    target: &EditTarget,
+    fast: impl FnOnce(&mut SceneIndex, &Registry) -> Option<Changed>,
+    change: impl FnOnce(&mut Scene, &str) -> Result<(), Errors>,
+) -> Result<(String, Diff, Option<u64>), Errors> {
+    if let Some((shown, c)) = indexed(agent, target, fast, |c| format!("{:?}", change_of(c)))? {
+        let id = c.after.as_ref().or(c.before.as_ref()).map(|e| e.id);
+        return Ok((shown, change_of(&c), id));
+    }
+    let (shown, diff) = apply(agent, target, change)?;
+    Ok((shown, diff, None))
+}
+
+/// The entity `id` with `set` added or replaced and `remove` taken away, as the indexed
+/// path's form of an update. `None` when the entity or a component to remove is missing.
+fn updated(
+    index: &SceneIndex,
+    id: u64,
+    name: Option<&String>,
+    set: &Map<String, Value>,
+    remove: &[String],
+) -> Option<SceneEntity> {
+    let mut e = index.entity(id)?.clone();
+    if let Some(name) = name {
+        e.name = (!name.is_empty()).then(|| name.clone());
+    }
+    for (k, v) in set {
+        e.components.insert(k.clone(), v.clone());
+    }
+    for k in remove {
+        e.components.remove(k)?;
+    }
+    Some(e)
 }
 
 /// Where an edit goes. Exactly one of `scene` and `session` must be set.
@@ -171,6 +490,7 @@ pub(crate) fn apply(
     match (&target.scene, &target.session) {
         (Some(file), None) => {
             let path = agent.resolve(file)?;
+            agent.scenes.flush()?;
             let text = read_text(&path, file)?;
             let old = scene::parse(&text).map_err(|e| e.with_file(file))?;
             // The file must already be valid; otherwise report its own problems first.
@@ -183,9 +503,12 @@ pub(crate) fn apply(
             let written = scene::parse(&canonical).expect("canonical text parses");
             let d = diff(&old, &written);
             write_atomic(&path, file, canonical.as_bytes())?;
+            let index = SceneIndex::new(&written, agent.registry());
+            agent.scenes.remember(&path, file, canonical, index);
             Ok((file.clone(), d))
         }
         (None, Some(id)) => {
+            load_pending(agent, id)?;
             let session = crate::session::get_mut(agent, id)?;
             let old = session.sim.snapshot();
             let mut new = old.clone();
@@ -221,7 +544,17 @@ pub struct EntityCreateInput {
 
 fn entity_create(agent: &mut Agent, input: EntityCreateInput) -> Result<EditOutput, Errors> {
     let mut new_id = 0;
-    let (target, diff) = apply(agent, &input.target, |s, t| {
+    let fast = |index: &mut SceneIndex, registry: &Registry| {
+        index.create(
+            &SceneEntity {
+                id: input.id.unwrap_or_else(|| index.next_id()),
+                name: input.name.clone(),
+                components: input.components.clone().into_iter().collect(),
+            },
+            registry,
+        )
+    };
+    let (target, diff, fast_id) = entity_edit(agent, &input.target, fast, |s, t| {
         let id = input
             .id
             .unwrap_or_else(|| s.entities.iter().map(|e| e.id).max().unwrap_or(0) + 1);
@@ -243,7 +576,7 @@ fn entity_create(agent: &mut Agent, input: EntityCreateInput) -> Result<EditOutp
     })?;
     Ok(EditOutput {
         target,
-        id: new_id,
+        id: fast_id.unwrap_or(new_id),
         diff,
     })
 }
@@ -265,7 +598,11 @@ pub struct EntityUpdateInput {
 
 fn entity_update(agent: &mut Agent, input: EntityUpdateInput) -> Result<EditOutput, Errors> {
     let id = input.id;
-    let (target, diff) = apply(agent, &input.target, |s, t| {
+    let fast = |index: &mut SceneIndex, registry: &Registry| {
+        let e = updated(index, id, input.name.as_ref(), &input.set, &input.remove)?;
+        index.replace(&e, registry)
+    };
+    let (target, diff, _) = entity_edit(agent, &input.target, fast, |s, t| {
         let e = entity_mut(s, id, t)?;
         if let Some(name) = &input.name {
             e.name = (!name.is_empty()).then(|| name.clone());
@@ -297,9 +634,112 @@ pub struct EntityDeleteInput {
 
 fn entity_delete(agent: &mut Agent, input: EntityDeleteInput) -> Result<EditOutput, Errors> {
     let id = input.id;
-    let (target, diff) = apply(agent, &input.target, |s, t| {
+    let fast = |index: &mut SceneIndex, _: &Registry| index.delete(id);
+    let (target, diff, _) = entity_edit(agent, &input.target, fast, |s, t| {
         entity_mut(s, id, t)?;
         s.entities.retain(|e| e.id != id);
+        Ok(())
+    })?;
+    Ok(EditOutput { target, id, diff })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct EntityAttachInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    /// The entity that becomes the child.
+    pub id: u64,
+    /// The entity it follows from now on.
+    pub parent: u64,
+}
+
+fn vec3(v: Option<&Value>, default: f32) -> Vec3 {
+    let f = |k: &str| {
+        v.and_then(|v| v.get(k))
+            .and_then(Value::as_f64)
+            .map_or(default, |n| n as f32)
+    };
+    Vec3::new(f("x"), f("y"), f("z"))
+}
+
+/// A `Transform` or the placement part of a `ChildOf`, read from scene data.
+fn placement(v: Option<&Value>) -> Transform {
+    let r = v.and_then(|v| v.get("rotation"));
+    let f = |k: &str, d: f32| {
+        r.and_then(|r| r.get(k))
+            .and_then(Value::as_f64)
+            .map_or(d, |n| n as f32)
+    };
+    Transform {
+        translation: vec3(v.and_then(|v| v.get("translation")), 0.0),
+        rotation: Quat {
+            x: f("x", 0.0),
+            y: f("y", 0.0),
+            z: f("z", 0.0),
+            w: f("w", 1.0),
+        },
+        scale: vec3(v.and_then(|v| v.get("scale")), 1.0),
+    }
+}
+
+/// Where an entity is in the world, from scene data alone: through its `ChildOf` chain if it
+/// has one (a file may hold an older `Transform` for a child), else its `Transform` with
+/// `Position` as the translation.
+fn world_placement(s: &Scene, id: u64, depth: usize) -> Transform {
+    let Some(e) = s.entities.iter().find(|e| e.id == id) else {
+        return Transform::default();
+    };
+    let link = e.components.get("ChildOf");
+    let parent = link.and_then(|c| c.get("parent")).and_then(Value::as_u64);
+    if let (Some(link), Some(parent)) = (link, parent)
+        && depth < s.entities.len()
+    {
+        let local = placement(Some(link));
+        return hierarchy::compose(
+            &world_placement(s, parent, depth + 1),
+            &ChildOf {
+                parent: SceneRef(parent),
+                translation: local.translation,
+                rotation: local.rotation,
+                scale: local.scale,
+            },
+        );
+    }
+    let mut t = placement(e.components.get("Transform"));
+    if let Some(p) = e.components.get("Position") {
+        t.translation = vec3(Some(p), 0.0);
+    }
+    t
+}
+
+fn entity_attach(agent: &mut Agent, input: EntityAttachInput) -> Result<EditOutput, Errors> {
+    let (id, parent) = (input.id, input.parent);
+    let (target, diff) = apply(agent, &input.target, |s, t| {
+        entity_mut(s, parent, t)?;
+        entity_mut(s, id, t)?;
+        let mut old = s.clone();
+        // Where the child is now, with any earlier parent still in place.
+        let at = world_placement(&old, id, 0);
+        if let Some(e) = old.entities.iter_mut().find(|e| e.id == id) {
+            e.components.remove("ChildOf");
+        }
+        let c = hierarchy::local(&world_placement(&old, parent, 0), &at, SceneRef(parent)).ok_or_else(|| {
+            Errors::from(
+                Diagnostic::error(codes::BAD_INPUT, format!("entity {parent} has a scale of 0 on an axis"))
+                    .entity(parent)
+                    .fix("give the parent a scale that is not 0, or set `ChildOf` yourself with `component_set`"),
+            )
+        })?;
+        let xyz = |v: Vec3| serde_json::json!({ "x": v.x, "y": v.y, "z": v.z });
+        entity_mut(s, id, t)?.components.insert(
+            "ChildOf".into(),
+            serde_json::json!({
+                "parent": parent,
+                "translation": xyz(c.translation),
+                "rotation": { "x": c.rotation.x, "y": c.rotation.y, "z": c.rotation.z, "w": c.rotation.w },
+                "scale": xyz(c.scale),
+            }),
+        );
         Ok(())
     })?;
     Ok(EditOutput { target, id, diff })
@@ -318,7 +758,11 @@ pub struct ComponentSetInput {
 
 fn component_set(agent: &mut Agent, input: ComponentSetInput) -> Result<EditOutput, Errors> {
     let id = input.id;
-    let (target, diff) = apply(agent, &input.target, |s, t| {
+    let fast = |index: &mut SceneIndex, registry: &Registry| {
+        let set = Map::from_iter([(input.component.clone(), input.value.clone())]);
+        index.replace(&updated(index, id, None, &set, &[])?, registry)
+    };
+    let (target, diff, _) = entity_edit(agent, &input.target, fast, |s, t| {
         entity_mut(s, id, t)?
             .components
             .insert(input.component.clone(), input.value.clone());
@@ -337,7 +781,11 @@ pub struct ComponentRemoveInput {
 
 fn component_remove(agent: &mut Agent, input: ComponentRemoveInput) -> Result<EditOutput, Errors> {
     let id = input.id;
-    let (target, diff) = apply(agent, &input.target, |s, t| {
+    let fast = |index: &mut SceneIndex, registry: &Registry| {
+        let gone = [input.component.clone()];
+        index.replace(&updated(index, id, None, &Map::new(), &gone)?, registry)
+    };
+    let (target, diff, _) = entity_edit(agent, &input.target, fast, |s, t| {
         let e = entity_mut(s, id, t)?;
         if e.components.remove(&input.component).is_none() {
             return Err(Diagnostic::error(
@@ -373,6 +821,18 @@ pub struct ResourceEditOutput {
 }
 
 fn resource_set(agent: &mut Agent, input: ResourceSetInput) -> Result<ResourceEditOutput, Errors> {
+    let fast = |index: &mut SceneIndex, registry: &Registry| {
+        index.set_resource(&input.resource, &input.value, registry)
+    };
+    if let Some((target, replaced)) =
+        indexed(agent, &input.target, fast, |_| format!("{:?}", Diff::default()))?
+    {
+        return Ok(ResourceEditOutput {
+            target,
+            resource: input.resource,
+            replaced,
+        });
+    }
     let mut replaced = false;
     let (target, _) = apply(agent, &input.target, |s, _| {
         replaced = s
@@ -396,6 +856,14 @@ pub struct ResourceRemoveInput {
 }
 
 fn resource_remove(agent: &mut Agent, input: ResourceRemoveInput) -> Result<ResourceEditOutput, Errors> {
+    let fast = |index: &mut SceneIndex, _: &Registry| index.remove_resource(&input.resource);
+    if let Some((target, ())) = indexed(agent, &input.target, fast, |_| format!("{:?}", Diff::default()))? {
+        return Ok(ResourceEditOutput {
+            target,
+            resource: input.resource,
+            replaced: true,
+        });
+    }
     let (target, _) = apply(agent, &input.target, |s, t| {
         if s.resources.remove(&input.resource).is_none() {
             return Err(Diagnostic::error(

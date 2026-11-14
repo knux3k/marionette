@@ -7,25 +7,33 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 ## Status per plan line
 
+"Landed" means in main with tests, not that a game can lean on it. How far each feature goes
+(slice, usable, proven, with the evidence) is in [STATUS.md](STATUS.md) (decision 0274):
+check a feature there before building on it, and update its row when your work moves it.
+
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Done. CI runs on Linux and Windows (`.github/workflows/ci.yml`). |
-| 2 | Core | Done. Save games (decision 0076). |
-| 3 | Renderer | Done. Opt-in looks (decisions 0063 to 0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090 to 0093). |
-| 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
-| 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
-| 6 | Input, physics, audio, UI | Done; windowed mode checked on a real screen (decisions 0170 to 0173). 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
-| 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
-| 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
-| 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | OpenXR (0190), co-op networking, achievements, cloud saves, optional Steam backend (0210-0213) done; rest not started. |
+| 1 | Workspace, CI | Landed: fast check on pull requests, full suite on main, no merge queue on a personal repository (0260). |
+| 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
+| 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285). |
+| 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
+| 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
+| 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0173), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
+| 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
+| 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
+| 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |
+| 10 | Later | OpenXR (0190), inspector (0130), co-op networking, achievements, cloud saves, Steam (0210 to 0213) landed; rest not started. |
+| - | Game packages | Landed (0140): Windows, Linux, Steam Deck, Steam Frame (ARM64). |
 
 ## UNVERIFIED
 
+- Indexed edits, script speed, children (0270 to 0272): timed in a cloud container only.
+- Game packages (decision 0140): never run on a Deck, a Frame, a headset or a screen; Frame binaries
+  ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
 - Starter (0150): made games not played by a person.
 - Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
-- Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
+- Synth and streamed audio (0220): rendered and checked as numbers only; played through a real
   device once (64 voices clean; 128 and 256 had a few slow callbacks, cause unknown, see
   proofs/play.md); no one has listened. OGG streaming untested (WAV is).
 - World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
@@ -37,13 +45,14 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
+- Game meshes, shaders, 0280-0285 renderer work (0180-0181): lavapipe only.
+- Opt-in looks (0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
-- Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
+- Bloom, local light shadows, environment, glTF emissive (0064-0067): checked
   on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not on AMD or Intel GPUs.
-- Render cost controls (0080 to 0082): one desktop GPU offscreen only; not in a headset or
+- Render cost controls (0080-0082): one desktop GPU offscreen only; not in a headset or
   on AMD/Intel. Scale plus foveation resolve not re-timed.
-- Ray tracing (0093): lavapipe and one desktop GPU only; skinned models are not traced.
+- Ray tracing (0093): lavapipe and one desktop GPU; skinned models are not traced.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
@@ -54,19 +63,11 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
 
-- Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
-  passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
-  the seed-2 hash, the playground hashes (`line6_proofs.rs`) and the scripted example hash
-  match; GPU tests skipped there.
-- `marionette-script` (rquickjs/QuickJS-ng and oxc) on Windows MSVC: see the CI run of the
-  scripting merge; not built on the owner's desktop yet.
-- `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
-  Linux are expected from CI on the job TypeScript branch; not yet observed.
 - Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
-  container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
+  container measured; the full test suite passes on ARM64 in CI, decision 0140). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
-- Window (proofs/window.md): gamepads on hardware, high-refresh screens, clicks, speakers,
-  minimize CPU on Windows (62-172 ms per 2 s), Linux and macOS screens.
+- Window (proofs/window.md; editor too): gamepads on hardware, high-refresh screens, clicks, speakers,
+  Linux and macOS screens.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.

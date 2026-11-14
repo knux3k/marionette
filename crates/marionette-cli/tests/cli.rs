@@ -82,7 +82,17 @@ fn gpu_required() -> bool {
 
 #[test]
 fn every_example_is_valid_and_canonical() {
-    for name in ["drift", "showcase", "sprites", "scripted", "lighting", "looks"] {
+    for name in [
+        "drift",
+        "showcase",
+        "sprites",
+        "scripted",
+        "lighting",
+        "looks",
+        "game-shader",
+        "materials",
+        "particles",
+    ] {
         let path = format!("{EXAMPLES}/{name}.scene.json");
         let (ok, v) = marionette(&["scene", "fmt", "--check", &path, "--json"]);
         assert!(ok && v["changed"] == false, "{name}: {v}");

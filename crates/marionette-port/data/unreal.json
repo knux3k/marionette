@@ -997,9 +997,9 @@
     },
     {
       "pattern": "SetupAttachment",
-      "marionette": "",
-      "status": "gap",
-      "note": "No attachment hierarchy yet; use separate entities, Follow, or copy positions in update."
+      "marionette": "ChildOf",
+      "status": "rewrite",
+      "note": "Scene data: give the child a ChildOf component (operation entity_attach keeps its world placement)."
     },
     {
       "pattern": "AttachToComponent",

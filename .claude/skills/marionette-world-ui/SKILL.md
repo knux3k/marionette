@@ -1,6 +1,6 @@
 ---
 name: marionette-world-ui
-description: Put panels, buttons, sliders, lists and crisp text into the 3D world (VR menus, wrist panels, in-world consoles) with `UiPanel` and `UiContent`, and drive them from pointers or touch. Use when UI must live in the scene instead of on the screen, or when a controller laser or finger should press it.
+description: Put panels, buttons, sliders, lists and text into the 3D world (VR menus, wrist panels) with `UiPanel` and `UiContent`, and drive them from pointers or touch. Use when UI must live in the scene instead of on the screen, or when a controller laser or finger should press it.
 ---
 
 # World-space UI

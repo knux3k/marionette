@@ -41,7 +41,8 @@ Template: `examples/rust-module` (decision 0062).
 
 1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
    `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
-   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`).
+   `physics`, `audio`, `anim`, `xr`, `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`,
+   `save`, `nav`; decision 0290).
 2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
    with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
    `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.
@@ -89,6 +90,24 @@ Decisions 0210 to 0213; skill `marionette-multiplayer`.
    at start and after saving, or Steam Auto-Cloud.
 4. Steam needs the game's own `steam_api` library next to the executable (never in the engine
    repository) and `steam_appid.txt` during development.
+
+## Build a mesh in game code (terrain, generated props)
+
+Decision 0180. In a module (or any code with `&mut World`):
+
+1. Make a `marionette_core::mesh::GameMesh` (positions and counter-clockwise indices; normals,
+   UVs, vertex colors and up to two reduced index lists optional), or start from
+   `GameMesh::grid(cells_x, cells_z, size_x, size_z, height)`.
+2. `GameMeshes::set_in(world, "name", mesh)?` (or `set` on the resource); errors are text.
+3. Draw it with `Model { asset: "mesh:name" }` on entities, or `BulkDraw { asset: "mesh:name" }`.
+4. Change it by calling `set` again with the same name (same sizes: written in place);
+   `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
+
+## Give a model a game shader
+
+Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` in WGSL (a
+`.wgsl` file next to the scene, or `GameShaders::set_in` from Rust) and add
+`ShaderMaterial { shader, params, textures }` to the entity.
 
 ## Add a game mode, example or proof scene
 
