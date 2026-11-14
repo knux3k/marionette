@@ -82,6 +82,17 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
 - Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.
 - Results and the machine they came from go in [proofs/performance.md](proofs/performance.md), section "Shared performance suite (decision 0100)".
 
+## Realistic scene against Unity (decision 0284)
+
+```bash
+target/dist/marionette op perf_realistic_scene '{"out":"bench/realistic.scene.json"}'
+target/dist/marionette bench bench/realistic.scene.json --frames 1000   # second run: textures cached
+```
+
+17.9 million triangles, 257 materials, 99 2K textures (BC7), 3,200 moving models, 4 shadow
+cascades. `tools/unity-bench/README.md` builds the same scene in Unity and times it.
+Results go in [proofs/performance.md](proofs/performance.md).
+
 ## Saving
 
 `Sim::snapshot` builds the canonical scene text: tens of milliseconds for a large factory
