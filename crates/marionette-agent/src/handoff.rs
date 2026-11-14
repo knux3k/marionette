@@ -130,7 +130,7 @@ fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
     // project's and is left alone.
     if fresh && (input.title.is_some() || input.summary.is_some() || !input.notes.is_empty()) {
         let template = TEMPLATES[0].1;
-        let head = template.split(THIS_GAME).next().expect("split yields one part");
+        let head = template.split(THIS_GAME).next().unwrap_or_default();
         let mut text = format!("{head}{THIS_GAME}\n");
         match (&input.title, &input.summary) {
             (Some(t), Some(s)) => text.push_str(&format!("\n{}: {}\n", t.trim(), s.trim())),
@@ -440,10 +440,7 @@ fn claim(agent: &mut Agent, input: ClaimInput) -> Result<Claim, Errors> {
         branch: input.branch,
         decisions,
     };
-    let text = format!(
-        "{}\n",
-        serde_json::to_string_pretty(&claim).expect("claims serialize")
-    );
+    let text = crate::json_text(&claim)?;
     agent.write_file(&path, text.as_bytes())?;
     Ok(claim)
 }

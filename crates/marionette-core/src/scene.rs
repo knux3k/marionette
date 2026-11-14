@@ -73,7 +73,8 @@ impl Scene {
             "entities": entities,
         });
         // serde_json::Map is a BTreeMap (no `preserve_order` feature), so keys are sorted.
-        let mut text = serde_json::to_string_pretty(&doc).expect("JSON values always serialize");
+        // A `Value` always serializes (its map keys are strings), so the fallback is unused.
+        let mut text = serde_json::to_string_pretty(&doc).unwrap_or_default();
         text.push('\n');
         text
     }
@@ -335,7 +336,8 @@ pub(crate) fn parent_cycles(parents: &BTreeMap<u64, u64>) -> BTreeSet<u64> {
                 break;
             }
             if !in_path.insert(at) {
-                let from = path.iter().position(|id| *id == at).expect("in the path");
+                // `at` was inserted into `in_path` when pushed onto `path`, so it is there.
+                let from = path.iter().position(|id| *id == at).unwrap_or(0);
                 on.extend(path[from..].iter().copied());
                 break;
             }
@@ -505,9 +507,14 @@ fn closest<'a>(name: &str, candidates: &[&'a str]) -> Option<&'a str> {
 }
 
 /// Spawns a validated scene into `world`.
-pub fn instantiate(scene: ValidScene<'_>, world: &mut World) {
+pub fn instantiate(scene: ValidScene<'_>, world: &mut World) -> Result<()> {
+    let failed = |name: &str, e: String| -> Errors {
+        Diagnostic::error(codes::SCENE_INSERT, format!("cannot insert `{name}`: {e}")).into()
+    };
     for (entry, value) in scene.resources {
-        entry.insert(world, None, value);
+        entry
+            .insert(world, None, value)
+            .map_err(|e| failed(entry.name, e))?;
     }
     for (id, name, comps) in scene.entities {
         let mut e = world.spawn(SceneId(id));
@@ -516,19 +523,22 @@ pub fn instantiate(scene: ValidScene<'_>, world: &mut World) {
         }
         let entity = e.id();
         for (entry, value) in comps {
-            entry.insert(world, Some(entity), value);
+            entry
+                .insert(world, Some(entity), value)
+                .map_err(|e| failed(entry.name, e))?;
         }
     }
+    Ok(())
 }
 
 /// Parses, validates and spawns scene text into `world`. `file` is used in errors.
 pub fn load(text: &str, file: Option<&str>, registry: &Registry, world: &mut World) -> Result<()> {
     let result = parse(text).and_then(|scene| validate(&scene, registry, Some(text)));
     match result {
-        Ok(valid) => {
-            instantiate(valid, world);
-            Ok(())
-        }
+        Ok(valid) => instantiate(valid, world).map_err(|e| match file {
+            Some(f) => e.with_file(f),
+            None => e,
+        }),
         Err(e) => Err(match file {
             Some(f) => e.with_file(f),
             None => e,

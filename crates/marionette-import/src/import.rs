@@ -238,7 +238,7 @@ impl Ctx<'_> {
             uses: p.uses.clone(),
         };
         if !self.dry_run {
-            let text = serde_json::to_string_pretty(&record).expect("record serializes");
+            let text = serde_json::to_string_pretty(&record).unwrap_or_default();
             self.library.write(&dir.join("record.json"), text.as_bytes())?;
         }
         self.report.imported.push(ImportedAsset {
@@ -457,7 +457,7 @@ fn model(
                     item["uri"] = Value::String(name);
                 }
             }
-            let text = serde_json::to_vec_pretty(&doc).expect("json");
+            let text = serde_json::to_vec_pretty(&doc).unwrap_or_default();
             p.files.push(("model.gltf".into(), text));
             p.files.extend(deps);
             p.main = Some("model.gltf".into());
@@ -1002,7 +1002,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
                     files: vec![
                         (
                             "prefab.json".to_string(),
-                            serde_json::to_vec_pretty(&c.doc).expect("json"),
+                            serde_json::to_vec_pretty(&c.doc).unwrap_or_default(),
                         ),
                         ("source.prefab".to_string(), bytes),
                     ],
@@ -1287,7 +1287,7 @@ fn material_from(ctx: &Ctx, e: &SourceEntry, bytes: &[u8], spec: MaterialSpec) -
         0,
         (
             "material.json".to_string(),
-            serde_json::to_vec_pretty(&doc).expect("json"),
+            serde_json::to_vec_pretty(&doc).unwrap_or_default(),
         ),
     );
     Pending {

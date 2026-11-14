@@ -410,12 +410,10 @@ fn input(tick: u64, name: String, value: f32) -> InputEvent {
 
 /// Queues `ev` unless its input or action already has this value.
 fn put(last: &mut BTreeMap<String, f32>, events: &mut Vec<InputEvent>, ev: InputEvent) {
-    let name = ev
-        .input
-        .as_ref()
-        .or(ev.action.as_ref())
-        .expect("one of the two")
-        .clone();
+    // Every event names an input or an action; one with neither is dropped.
+    let Some(name) = ev.input.as_ref().or(ev.action.as_ref()).cloned() else {
+        return;
+    };
     if last.get(&name) != Some(&ev.value) {
         last.insert(name, ev.value);
         events.push(ev);

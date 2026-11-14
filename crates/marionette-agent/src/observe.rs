@@ -108,8 +108,7 @@ pub(crate) fn with_world<T>(
 }
 
 fn take_session(agent: &mut Agent, id: &str) -> Result<Session, Errors> {
-    crate::session::get_mut(agent, id)?;
-    Ok(agent.sessions.remove(id).expect("checked"))
+    crate::session::take(agent, id)
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -242,14 +241,17 @@ pub fn matching(scene: &Scene, with: &[String], predicates: &[Predicate]) -> Vec
     scene
         .entities
         .iter()
-        .filter(|e| with.iter().all(|c| e.components.contains_key(c)))
-        .filter(|e| {
-            predicates
-                .iter()
-                .all(|p| holds(lookup(&e.components, &p.path).as_ref(), p.op, &p.value))
-        })
+        .filter(|e| matches(e, with, predicates))
         .map(|e| e.id)
         .collect()
+}
+
+/// Whether `e` has every component in `with` and passes every predicate.
+fn matches(e: &marionette_core::scene::SceneEntity, with: &[String], predicates: &[Predicate]) -> bool {
+    with.iter().all(|c| e.components.contains_key(c))
+        && predicates
+            .iter()
+            .all(|p| holds(lookup(&e.components, &p.path).as_ref(), p.op, &p.value))
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -300,11 +302,11 @@ fn query(agent: &mut Agent, input: QueryInput) -> Result<QueryOutput, Errors> {
     }
     with_world(agent, &input.target, |_, sim, _| {
         let scene = sim.snapshot();
-        let ids = matching(&scene, &input.with, &input.predicates);
-        let all: Vec<QueryItem> = ids
+        let all: Vec<QueryItem> = scene
+            .entities
             .iter()
-            .map(|id| {
-                let e = scene.entities.iter().find(|e| e.id == *id).expect("matched");
+            .filter(|e| matches(e, &input.with, &input.predicates))
+            .map(|e| {
                 let values = input
                     .select
                     .iter()

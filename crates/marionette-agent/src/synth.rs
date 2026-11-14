@@ -125,10 +125,9 @@ pub struct PatchesOutput {
 fn patches(_: &mut Agent, _: PatchesInput) -> Result<PatchesOutput, Errors> {
     let mut map = serde_json::Map::new();
     for n in PRESETS {
-        map.insert(
-            n.into(),
-            serde_json::to_value(Patch::preset(n).expect("preset exists")).unwrap_or_default(),
-        );
+        if let Some(patch) = Patch::preset(n) {
+            map.insert(n.into(), serde_json::to_value(patch).unwrap_or_default());
+        }
     }
     Ok(PatchesOutput {
         presets: PRESETS.iter().map(|s| (*s).into()).collect(),

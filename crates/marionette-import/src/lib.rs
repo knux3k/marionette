@@ -15,6 +15,7 @@
 //! - [`pool`]: the admission gate the CC0 pool must call; it refuses owned assets.
 //!
 //! The rules are normative in `docs/ai/ASSETS-AND-LICENSES.md`; the design is decision 0018.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod fbx;
 pub mod import;

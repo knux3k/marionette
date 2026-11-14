@@ -63,8 +63,11 @@ pub(crate) fn read_glb(bytes: &[u8]) -> Result<Glb, Errors> {
     let mut json = None;
     let mut bin = None;
     while off + 8 <= total {
-        let len = u32_at(off).unwrap() as usize;
-        let ty = u32_at(off + 4).unwrap();
+        // In range: the loop runs while 8 header bytes remain.
+        let (Some(len), Some(ty)) = (u32_at(off), u32_at(off + 4)) else {
+            break;
+        };
+        let len = len as usize;
         let start = off + 8;
         let end = start
             .checked_add(len)
@@ -87,7 +90,7 @@ pub(crate) fn read_glb(bytes: &[u8]) -> Result<Glb, Errors> {
 }
 
 pub(crate) fn write_glb(json: &Value, bin: Option<&[u8]>) -> Vec<u8> {
-    let mut j = serde_json::to_vec(json).expect("JSON values serialize");
+    let mut j = serde_json::to_vec(json).unwrap_or_default();
     while !j.len().is_multiple_of(4) {
         j.push(b' ');
     }

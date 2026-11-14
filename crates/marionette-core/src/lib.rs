@@ -3,6 +3,9 @@
 //!
 //! The ECS is [`bevy_ecs`] used standalone; type descriptions come from [`bevy_reflect`].
 
+// Application code returns errors instead of panicking (decision 0104, docs/ai/CODE-RULES.md).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 pub mod actions;
 pub mod builtin;
 pub mod error;

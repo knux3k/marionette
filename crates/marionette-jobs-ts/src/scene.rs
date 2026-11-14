@@ -144,7 +144,9 @@ fn scheduled(world: &mut World) -> Vec<(u64, Entity)> {
 fn check_schedules(world: &mut World) -> marionette_core::Result<()> {
     let mut problems = Vec::new();
     for (id, e) in scheduled(world) {
-        let steps = world.get::<JobSchedule>(e).expect("queried").steps.clone();
+        let Some(steps) = world.get::<JobSchedule>(e).map(|s| s.steps.clone()) else {
+            continue;
+        };
         for (i, step) in steps.iter().enumerate() {
             let at = |d: Diagnostic| d.entity(id).component("JobSchedule").field(format!("steps[{i}]"));
             let program = match world.resource_mut::<JobLibrary>().get(&step.path) {

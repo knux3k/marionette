@@ -183,7 +183,19 @@ pub fn table(engine: Engine) -> &'static Table {
         Engine::Unity => (&UNITY, include_str!("../data/unity.json")),
         Engine::Unreal => (&UNREAL, include_str!("../data/unreal.json")),
     };
-    cell.get_or_init(|| serde_json::from_str(text).expect("built-in porting table is valid (tested)"))
+    // The built-in tables parse (tested); an empty table maps nothing if one ever does not.
+    cell.get_or_init(|| {
+        serde_json::from_str(text).unwrap_or_else(|_| Table {
+            engine,
+            language: String::new(),
+            bases: Vec::new(),
+            hooks: Vec::new(),
+            components: Vec::new(),
+            types: Vec::new(),
+            api: Vec::new(),
+            roots: Vec::new(),
+        })
+    })
 }
 
 /// The tables as Markdown (`docs/ai/reference/porting-map.md`).

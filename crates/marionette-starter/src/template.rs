@@ -250,7 +250,7 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
             },
             other => other,
         };
-        let mut v = serde_json::to_value(&a).expect("art serializes");
+        let mut v = serde_json::to_value(&a).unwrap_or_default();
         if k != 1.0 && !matches!(a, Art::Model { .. }) {
             v["scale"] = json!(round3(k));
         }
@@ -268,7 +268,9 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
         "colors": {"background": rgb(bg), "accent": rgb(accent)},
         "art": Value::Object(arts),
     });
-    let mut out = common.as_object().cloned().expect("object");
+    let Value::Object(mut out) = common else {
+        return common;
+    };
     let extra = match brief.template {
         Template::Maze => {
             let (lives, enemy_step) = match brief.difficulty {
@@ -294,14 +296,16 @@ pub fn config(brief: &Brief, art: &ArtMap, map: &[String]) -> Value {
             })
         }
     };
-    out.extend(extra.as_object().cloned().expect("object"));
+    if let Value::Object(extra) = extra {
+        out.extend(extra);
+    }
     Value::Object(out)
 }
 
 /// The script's config block (between the markers, inclusive).
 pub fn config_block(config: &Value) -> String {
     // One map row per line keeps the level readable and diffs small.
-    let mut text = serde_json::to_string_pretty(config).expect("config serializes");
+    let mut text = serde_json::to_string_pretty(config).unwrap_or_default();
     text = compact_arrays(&text);
     format!("{CONFIG_BEGIN}\nconst CONFIG: any = {text};\n{CONFIG_END}")
 }
@@ -352,7 +356,8 @@ pub fn script(brief: &Brief, config: &Value) -> String {
         Template::Maze => MAZE_SCRIPT,
         Template::Platformer => PLATFORMER_SCRIPT,
     };
-    replace_config(source, &config_block(config)).expect("templates carry the config markers")
+    // The templates carry the config markers (tested); without them the script is unchanged.
+    replace_config(source, &config_block(config)).unwrap_or_else(|| source.to_string())
 }
 
 /// Replaces the config block of a script, keeping everything else. `None` when the markers

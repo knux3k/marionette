@@ -1,7 +1,8 @@
 # Rust code rules
 
-The owner's rules for engine code (decision 0104), written for an agent changing it. They
-apply to new and touched code; the cleanup of older code is tracked in STATE.md.
+The owner's rules for engine code (decision 0104), written for an agent changing it. Rules 1
+and 2 are enforced everywhere; the clone and `Box<dyn>` cleanup of older code is tracked in
+STATE.md.
 
 ## Rules
 
@@ -11,9 +12,16 @@ apply to new and touched code; the cleanup of older code is tracked in STATE.md.
    `[workspace.lints]` (`[lints] workspace = true` in its `Cargo.toml`). If a change seems to
    need `unsafe`, stop and bring the owner the exact code, why safe code cannot do it, the
    measured gain and the invariants.
-2. **No `.unwrap()` or `.expect()` outside `#[cfg(test)]` and tests.** Return
-   `Result<T, Errors>` (or the crate's error type) and use `?`. A value that truly cannot be
-   missing still gets a fallback or an error, not a panic.
+2. **No `.unwrap()`, `.expect()` or `panic!` outside tests.** Every crate root carries
+   `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]` (a hygiene test checks
+   it; `clippy.toml` allows them in `#[test]` code). Return `Result<T, Errors>` (or the
+   crate's error type) and use `?`. A value that truly cannot be missing still gets a
+   fallback or an error, not a panic: `let Some(x) = .. else { continue }`,
+   `get_or_insert_with` instead of insert-then-expect, `Option::next_if` instead of
+   peek-then-expect. Serializing a `serde_json::Value` or a struct of plain fields cannot
+   fail, so `.unwrap_or_default()` is fine there; anything else that serializes returns an
+   error. A deliberate panic (a test harness injecting one) takes `#[allow(clippy::panic)]`
+   and a comment.
 3. **Borrow before cloning.** Pass `&T`, `&mut T`, `&[T]`, `&str`. A `.clone()` that stays
    needs a short comment saying why (ownership crosses a thread, a cheap `Arc` count, a value
    kept past the borrow). Write `Arc::clone(&x)` for reference counts so it reads as cheap.

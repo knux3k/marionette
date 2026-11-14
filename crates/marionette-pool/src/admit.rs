@@ -507,7 +507,7 @@ pub fn add(
     for (p, b) in &files {
         write_file(&dir.join(p), b)?;
     }
-    let text = serde_json::to_string_pretty(&record).expect("record serializes") + "\n";
+    let text = serde_json::to_string_pretty(&record).unwrap_or_default() + "\n";
     write_file(&dir.join("asset.json"), text.as_bytes())?;
     Ok(report("added"))
 }

@@ -21,7 +21,7 @@
 //!
 //! Hot reload: [`JobLibrary`] keeps compiled files by path and recompiles the ones whose
 //! text changed; a file that no longer compiles keeps its last good version.
-
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 // Errors are `Diagnostic`s returned by value, as elsewhere in the engine; they are rare and
 // carry the data an agent needs, so their size does not matter.
 #![allow(clippy::result_large_err)]
@@ -118,7 +118,9 @@ impl JobLibrary {
                 let program = JobProgram::compile(&source, &path)?;
                 Ok(Some((source, program)))
             });
-            let entry = self.entries.get_mut(&path).expect("loaded");
+            let Some(entry) = self.entries.get_mut(&path) else {
+                continue;
+            };
             let (status, errors) = match result {
                 Ok(None) => ("unchanged", Vec::new()),
                 Ok(Some((source, program))) => {

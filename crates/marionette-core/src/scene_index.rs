@@ -64,12 +64,13 @@ fn entity_text(e: &SceneEntity) -> String {
         obj.insert("name".into(), json!(name));
     }
     obj.insert("components".into(), json!(e.components));
-    let text = serde_json::to_string_pretty(&Value::Object(obj)).expect("JSON values always serialize");
+    // A `Value` always serializes (its map keys are strings), so the fallback is unused.
+    let text = serde_json::to_string_pretty(&Value::Object(obj)).unwrap_or_default();
     indent(&text, "    ", true)
 }
 
 fn resources_text(resources: &BTreeMap<String, Value>) -> String {
-    let text = serde_json::to_string_pretty(&json!(resources)).expect("JSON values always serialize");
+    let text = serde_json::to_string_pretty(&json!(resources)).unwrap_or_default();
     indent(&text, "  ", false)
 }
 

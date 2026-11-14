@@ -156,3 +156,27 @@ fn engine_calls_outside_a_tick_are_errors_not_crashes() {
     s.run(2);
     assert!(events(&s, "script_error").is_empty());
 }
+
+#[test]
+fn engine_calls_at_load_name_the_missing_world() {
+    // Module top-level code runs when no world is lent: a read and a spawn both fail the load
+    // with `script.no_world` (once a panic caught by the guard; now a plain thrown error).
+    for (tag, src) in [
+        (
+            "read",
+            "const t = engine.find(\"target\");\nexport function update(self: Entity): void {}",
+        ),
+        (
+            "spawn",
+            "engine.spawn({ Position: { x: 1, y: 0, z: 0 } });\nexport function update(self: Entity): void {}",
+        ),
+    ] {
+        let d = dir(&format!("toplevel-{tag}"), &[("w.ts", src)]);
+        let e = load(&d, "w.ts", 1).err().expect("load fails");
+        let text = serde_json::to_string(&e).unwrap();
+        assert!(
+            text.contains(codes::LOAD) && text.contains("script.no_world"),
+            "{text}"
+        );
+    }
+}

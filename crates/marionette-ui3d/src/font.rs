@@ -41,13 +41,20 @@ pub struct FontData {
     pub atlas: Arc<Image>,
 }
 
+/// Drawn for a character the font lacks when it has no `?` or space either: nothing.
+static NO_GLYPH: Glyph = Glyph {
+    rect: [0.0; 4],
+    uv: [0.0; 4],
+    advance: 0.0,
+};
+
 impl FontData {
     pub fn glyph(&self, c: char) -> &Glyph {
         self.glyphs
             .get(&c)
             .or_else(|| self.glyphs.get(&'?'))
             .or_else(|| self.glyphs.get(&' '))
-            .expect("every font has a space")
+            .unwrap_or(&NO_GLYPH)
     }
 
     /// The built-in font, drawn from the 2D UI's bitmap font.

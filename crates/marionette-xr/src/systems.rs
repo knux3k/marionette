@@ -70,7 +70,9 @@ fn turn_about_head(t: &mut Transform, head: Vec3, q: Quat) {
 
 /// Returns (vignette wanted, teleported).
 fn locomotion(world: &mut World, e: Entity, a: &ActionState, dt: f32) -> (f32, bool) {
-    let loc = world.get::<XrLocomotion>(e).cloned().expect("checked");
+    let Some(loc) = world.get::<XrLocomotion>(e).cloned() else {
+        return (0.0, false);
+    };
     let rig = world.get::<XrRig>(e).copied().unwrap_or_default();
     let mut state = world
         .get::<XrLocomotionState>(e)
@@ -198,7 +200,9 @@ fn teleport_point(
 
 fn track(world: &mut World, rigs: &BTreeMap<u64, Entity>, a: &ActionState) {
     for (_, e) in ids_of::<XrTracked>(world) {
-        let tracked = *world.get::<XrTracked>(e).expect("queried");
+        let Some(&tracked) = world.get::<XrTracked>(e) else {
+            continue;
+        };
         let Some(&rig_e) = rigs.get(&tracked.rig.0) else {
             continue;
         };
@@ -264,7 +268,9 @@ fn grab(world: &mut World, a: &ActionState, dt: f32) {
     }
     let grabbables = ids_of::<Grabbable>(world);
     for (hand_id, he) in hands {
-        let hand = world.get::<XrHand>(he).cloned().expect("queried");
+        let Some(hand) = world.get::<XrHand>(he).cloned() else {
+            continue;
+        };
         let Some(ht) = world.get::<Transform>(he).copied() else {
             continue;
         };
@@ -292,9 +298,9 @@ fn grab(world: &mut World, a: &ActionState, dt: f32) {
                         best = Some((d, ge));
                     }
                 }
-                if let Some((_, ge)) = best {
-                    let g = *world.get::<Grabbable>(ge).expect("queried");
-                    let gt = *world.get::<Transform>(ge).expect("checked");
+                if let Some((_, ge)) = best
+                    && let (Some(&g), Some(&gt)) = (world.get::<Grabbable>(ge), world.get::<Transform>(ge))
+                {
                     let (ot, or) = if g.snap {
                         (Vec3::default(), Quat::default())
                     } else {
@@ -338,7 +344,9 @@ fn grab(world: &mut World, a: &ActionState, dt: f32) {
                 }
             }
             Some((_, ge)) => {
-                let h = *world.get::<Held>(ge).expect("found");
+                let Some(&h) = world.get::<Held>(ge) else {
+                    continue;
+                };
                 let (pos, rot) = compose(&ht, h.offset_translation, h.offset_rotation);
                 if is_dynamic(world, ge) {
                     let cur = world.get::<Transform>(ge).copied().unwrap_or_default();

@@ -24,6 +24,8 @@ pub mod codes {
     pub const SCENE_PARENT_CYCLE: &str = "scene.parent_cycle";
     pub const SCENE_NOT_CANONICAL: &str = "scene.not_canonical";
     pub const REGISTRY_DUPLICATE: &str = "registry.duplicate";
+    /// A validated value could not be put into the world (an engine bug, never bad input).
+    pub const SCENE_INSERT: &str = "scene.insert";
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

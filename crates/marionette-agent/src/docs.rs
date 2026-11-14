@@ -29,8 +29,7 @@ fn ty(s: &Value) -> String {
         }
         Some(Value::String(t)) if t == "object" => {
             if let Some(props) = s.get("properties").and_then(Value::as_object) {
-                if props.len() == 1 && s.get("required").is_some() {
-                    let (k, v) = props.iter().next().expect("one");
+                if let (1, Some((k, v)), Some(_)) = (props.len(), props.iter().next(), s.get("required")) {
                     return format!("{{{k}: {}}}", ty(v));
                 }
                 let fields: Vec<String> = props.keys().cloned().collect();

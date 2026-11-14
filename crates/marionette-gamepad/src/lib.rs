@@ -8,6 +8,7 @@
 //!
 //! This crate knows nothing about the simulation: the caller queues the inputs for the next
 //! tick, exactly like keys, so recordings replay without a controller.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use gilrs::{EventType, Gilrs};
 use std::collections::BTreeMap;

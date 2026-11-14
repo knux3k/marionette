@@ -19,6 +19,7 @@
 //! newer, or the target is another architecture, the build goes through `cargo zigbuild`.
 //! Every Linux binary is checked afterwards: the newest `GLIBC_` symbol version it asks for
 //! must not pass the floor.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;

@@ -90,7 +90,7 @@ impl Achievements for OfflinePlatform {
         Ok(self.state.stats.get(id).copied())
     }
     fn store(&mut self) -> Result<()> {
-        let text = serde_json::to_vec_pretty(&self.state).expect("state serializes");
+        let text = serde_json::to_vec_pretty(&self.state).unwrap_or_default();
         write_atomic(&self.dir.join("achievements.json"), &text)
     }
 }

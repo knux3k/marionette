@@ -13,6 +13,7 @@
 //!   operation.
 //!
 //! Nothing here reads the clock: callers pass `now` in microseconds.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod lobby;
 pub mod lockstep;

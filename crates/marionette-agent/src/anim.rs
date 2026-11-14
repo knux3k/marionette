@@ -191,6 +191,13 @@ fn parent(path: &Path) -> PathBuf {
 }
 
 /// The `Model` asset of entity `id` in `scene`.
+/// Entity `id` of `scene`, or `NO_ENTITY`.
+fn entity_mut<'a>(scene: &'a mut Scene, id: u64, shown: &str) -> Result<&'a mut SceneEntity, Errors> {
+    scene.entities.iter_mut().find(|e| e.id == id).ok_or_else(|| {
+        Errors::from(Diagnostic::error(codes::NO_ENTITY, format!("{shown} has no entity {id}")).entity(id))
+    })
+}
+
 fn model_of(scene: &Scene, id: u64, shown: &str) -> Result<String, Errors> {
     let e = scene.entities.iter().find(|e| e.id == id).ok_or_else(|| {
         Errors::from(Diagnostic::error(codes::NO_ENTITY, format!("{shown} has no entity {id}")).entity(id))
@@ -267,7 +274,7 @@ pub struct StopInput {
 }
 
 /// Entity `id`'s component `name` as `T` (default when absent).
-fn read_component<T: bevy_reflect::Reflect + Default>(
+fn read_component<T: bevy_reflect::Reflect + bevy_reflect::TypePath + Default>(
     registry: &Registry,
     e: &SceneEntity,
     name: &str,
@@ -276,10 +283,7 @@ fn read_component<T: bevy_reflect::Reflect + Default>(
     let Some(v) = e.components.get(name) else {
         return Ok(T::default());
     };
-    let entry = registry
-        .get(name)
-        .expect("the anim module registers its components");
-    let value = registry.from_json(entry, v).map_err(|m| {
+    registry.value_from_json::<T>(name, v).map_err(|m| {
         Errors::from(
             Diagnostic::error(
                 codes::BAD_INPUT,
@@ -287,11 +291,7 @@ fn read_component<T: bevy_reflect::Reflect + Default>(
             )
             .entity(id),
         )
-    })?;
-    Ok(*value
-        .into_any()
-        .downcast::<T>()
-        .expect("registered under this name"))
+    })
 }
 
 /// Fails with `anim.unknown_clip` unless the model (or a blend space) provides `clip`.
@@ -319,44 +319,16 @@ fn edit_animator(
     let dir = target_dir(agent, target)?;
     let engine = agent.engine().clone();
     let registry = engine.registry();
-    let entry = registry
-        .get("Animator")
-        .expect("the anim module registers Animator");
     let (target_name, diff) = apply(agent, target, |scene, shown| {
         let asset = model_of(scene, id, shown)?;
         if let Some(clip) = clip {
             let rig: Rig = load_rig(&asset, &dir).map_err(|m| rig_error(&asset, m))?;
-            let e = scene
-                .entities
-                .iter()
-                .find(|e| e.id == id)
-                .expect("model_of found it");
+            let e = entity_mut(scene, id, shown)?;
             let spaces: BlendSpaces = read_component(registry, e, "BlendSpaces")?;
             check_clip(&rig, &spaces, &asset, id, clip)?;
         }
-        let e = scene
-            .entities
-            .iter_mut()
-            .find(|e| e.id == id)
-            .expect("model_of found it");
-        let mut animator = match e.components.get("Animator") {
-            Some(v) => {
-                let value = registry.from_json(entry, v).map_err(|m| {
-                    Errors::from(
-                        Diagnostic::error(
-                            codes::BAD_INPUT,
-                            format!("entity {id} has an invalid Animator: {m}"),
-                        )
-                        .entity(id),
-                    )
-                })?;
-                *value
-                    .into_any()
-                    .downcast::<Animator>()
-                    .expect("registered as Animator")
-            }
-            None => Animator::default(),
-        };
+        let e = entity_mut(scene, id, shown)?;
+        let mut animator: Animator = read_component(registry, e, "Animator")?;
         change(&mut animator);
         e.components
             .insert("Animator".into(), registry.to_json(&animator));
@@ -449,7 +421,7 @@ pub struct OverlayInput {
 }
 
 /// Edits entity `id`'s components `name` (as `T`) and Animator (added if missing).
-fn edit_with<T: bevy_reflect::Reflect + bevy_reflect::PartialReflect + Default>(
+fn edit_with<T: bevy_reflect::Reflect + bevy_reflect::PartialReflect + bevy_reflect::TypePath + Default>(
     agent: &mut Agent,
     target: &EditTarget,
     id: u64,
@@ -462,11 +434,7 @@ fn edit_with<T: bevy_reflect::Reflect + bevy_reflect::PartialReflect + Default>(
     let registry = engine.registry();
     let (target_name, diff) = apply(agent, target, |scene, shown| {
         let asset = model_of(scene, id, shown)?;
-        let e = scene
-            .entities
-            .iter_mut()
-            .find(|e| e.id == id)
-            .expect("model_of found it");
+        let e = entity_mut(scene, id, shown)?;
         let mut value: T = read_component(registry, e, name)?;
         let spaces: BlendSpaces = read_component(registry, e, "BlendSpaces")?;
         change(&mut value, &spaces)?;
@@ -536,8 +504,10 @@ fn space(agent: &mut Agent, input: SpaceInput) -> Result<EditOutput, Errors> {
                 }
             }
         }
-        let sp = s.get(&name).expect("defined above");
-        let (x, y) = (input.x.unwrap_or(sp.target_x), input.y.unwrap_or(sp.target_y));
+        // Present: found or created by the match above.
+        let (x, y) = s.get(&name).map_or((0.0, 0.0), |sp| {
+            (input.x.unwrap_or(sp.target_x), input.y.unwrap_or(sp.target_y))
+        });
         s.set_param(&name, x, y, input.rate);
         Ok(())
     })

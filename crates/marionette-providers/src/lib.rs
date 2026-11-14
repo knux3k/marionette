@@ -13,6 +13,7 @@
 //! - Every paid call is checked against a spend cap that only a person sets ([`spend`]).
 //!
 //! Providers run outside the simulation; nothing here is called during a tick.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod claude;
 pub mod config;
@@ -126,6 +127,27 @@ pub enum Request {
 }
 
 /// Size limits for image requests, in pixels per side.
+/// The key `generate` checked for, or `KEY_MISSING` if a caller skipped that check.
+pub(crate) fn key_of<'a>(ctx: &Ctx<'a>, provider: &str) -> Result<&'a str, Errors> {
+    ctx.key.ok_or_else(|| {
+        Diagnostic::error(
+            codes::KEY_MISSING,
+            format!("no API key was given to `{provider}`"),
+        )
+        .into()
+    })
+}
+
+/// `KIND_UNSUPPORTED` for a request of a kind `provider` does not make (`generate` checks
+/// the kind first, so only a caller that skipped that check sees this).
+pub(crate) fn wrong_kind(provider: &str) -> Errors {
+    Diagnostic::error(
+        codes::KIND_UNSUPPORTED,
+        format!("provider `{provider}` was given a request of a kind it does not make"),
+    )
+    .into()
+}
+
 pub const MIN_IMAGE_SIDE: u32 = 16;
 pub const MAX_IMAGE_SIDE: u32 = 4096;
 /// Upper bound on `max_tokens`.
@@ -308,12 +330,21 @@ pub fn resolve(config: &ProvidersConfig, kind: Kind) -> Result<(Box<dyn Provider
         .fix(format!("{} providers: {}", kind.as_str(), names.join(", ")))
         .into());
     }
-    let model = match &choice.model {
-        Some(m) => m.clone(),
-        None => info
-            .default_model(kind)
-            .expect("every offered kind has a default model")
-            .to_string(),
+    let model = match (&choice.model, info.default_model(kind)) {
+        (Some(m), _) => m.clone(),
+        (None, Some(m)) => m.to_string(),
+        (None, None) => {
+            return Err(Diagnostic::error(
+                codes::KIND_UNSUPPORTED,
+                format!(
+                    "provider `{}` has no default model for {}",
+                    info.name,
+                    kind.as_str()
+                ),
+            )
+            .fix("name a model in the recipe")
+            .into());
+        }
     };
     Ok((provider, model))
 }

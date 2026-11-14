@@ -100,10 +100,12 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
         .filter(|&(x, y)| g[y][x] == b'.' && dist[y][x] != usize::MAX)
         .collect();
     // Goal: the farthest cell from the start.
-    let goal = *open
+    // A maze always has floor: the start cell at least.
+    let goal = open
         .iter()
-        .max_by_key(|&&(x, y)| (dist[y][x], x, y))
-        .expect("a maze has floor");
+        .copied()
+        .max_by_key(|&(x, y)| (dist[y][x], x, y))
+        .unwrap_or(start);
     g[goal.1][goal.0] = b'E';
 
     let pickups = match size {
@@ -150,7 +152,7 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
         pick(&mut g, b'G', 8, &mut rng);
     }
     g.into_iter()
-        .map(|r| String::from_utf8(r).expect("ascii"))
+        .map(|r| String::from_utf8_lossy(&r).into_owned())
         .collect()
 }
 
@@ -258,7 +260,7 @@ pub fn platformer(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> 
     g.into_iter()
         .map(|mut r| {
             r.truncate(width);
-            String::from_utf8(r).expect("ascii")
+            String::from_utf8_lossy(&r).into_owned()
         })
         .collect()
 }

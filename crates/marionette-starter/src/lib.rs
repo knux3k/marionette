@@ -14,6 +14,7 @@
 //!    operation layer (`game_make` in `marionette-agent`) resolves each asset slot through the
 //!    asset lookup order, writes the files, builds the scene, and proves the level is winnable
 //!    by letting the autopilot play it.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod level;
 pub mod prompt;

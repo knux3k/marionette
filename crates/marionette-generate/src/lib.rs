@@ -14,6 +14,7 @@
 //!   [`provenance`] record. Generated assets are blocked from the CC0 pool.
 //!
 //! Nothing here runs during a simulation tick.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod approval;
 pub mod cache;
@@ -374,11 +375,11 @@ fn postprocess(r: &Recipe, raw: &[u8]) -> Result<(Vec<u8>, serde_json::Value), E
     Ok(match r.output {
         OutputKind::Image | OutputKind::Texture => {
             let (b, rep) = texture::process(raw, r.output, r.texture.as_ref())?;
-            (b, serde_json::to_value(rep).expect("serializes"))
+            (b, serde_json::to_value(rep).unwrap_or_default())
         }
         OutputKind::Model => {
             let (b, rep) = model::process(raw, r.model.as_ref())?;
-            (b, serde_json::to_value(rep).expect("serializes"))
+            (b, serde_json::to_value(rep).unwrap_or_default())
         }
     })
 }

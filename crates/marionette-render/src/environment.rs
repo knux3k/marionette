@@ -235,7 +235,7 @@ fn blur(img: &EnvImage, sigma: f32) -> EnvImage {
 pub(crate) fn prefilter(base: EnvImage) -> Prefiltered {
     let mut levels = vec![base];
     for k in 1..LEVELS {
-        let prev = levels.last().expect("base level");
+        let Some(prev) = levels.last() else { break };
         let r0 = (k - 1) as f32 / (LEVELS - 1) as f32;
         let r1 = k as f32 / (LEVELS - 1) as f32;
         // Each level adds only the blur the previous one lacks (variances add).

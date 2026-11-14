@@ -18,6 +18,7 @@
 //!
 //! Outputs for the presentation side (not simulation state, not hashed): [`XrHaptics`]
 //! (vibration requests) and [`XrComfort`] (vignette strength this tick).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

@@ -21,6 +21,7 @@
 //! Errors are data: a script that fails to load fails the scene load with a `script.*`
 //! diagnostic (file, line, column); an exception during a tick becomes a `script_error`
 //! event and the tick goes on.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod convert;
 pub mod strip;
@@ -457,12 +458,30 @@ pub fn heap_bytes(world: &World) -> Option<u64> {
     world.get_resource::<ScriptHost>().map(ScriptHost::heap_bytes)
 }
 
-/// Runs `f` with the world of the current script call.
-fn with_world<R>(bridge: &Shared, f: impl FnOnce(&mut World, &mut Bridge) -> R) -> R {
+/// Runs `f` with the world of the current script call. Outside a hook (module top-level
+/// code, a callback kept past its turn) no world is lent and the call throws
+/// `script.no_world` (decision 0032: a load error at top level, a script error later).
+fn in_world<R>(
+    ctx: &Ctx<'_>,
+    bridge: &Shared,
+    f: impl FnOnce(&mut World, &mut Bridge) -> R,
+) -> rquickjs::Result<R> {
+    try_world(ctx, bridge, |world, br| Ok(f(world, br)))
+}
+
+/// [`in_world`] for calls that can throw themselves.
+fn try_world<R>(
+    ctx: &Ctx<'_>,
+    bridge: &Shared,
+    f: impl FnOnce(&mut World, &mut Bridge) -> rquickjs::Result<R>,
+) -> rquickjs::Result<R> {
     let mut guard = bridge_lock(bridge);
-    let Lent { world, bridge } = guard
-        .as_mut()
-        .expect("engine functions are only callable during update()");
+    let Some(Lent { world, bridge }) = guard.as_mut() else {
+        return Err(throw(
+            ctx,
+            "script.no_world: engine calls work only inside hooks".into(),
+        ));
+    };
     f(world, bridge)
 }
 
@@ -611,7 +630,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, name: String| -> rquickjs::Result<Option<String>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = component(&ctx, &br.registry, &name)?;
                     let Some(&e) = br.ids.get(&(id as u64)) else {
                         return Ok(None);
@@ -634,7 +653,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'js>, name: String| -> rquickjs::Result<Value<'js>> {
-                with_world(&b, |_, br| {
+                try_world(&ctx, &b, |_, br| {
                     // Null: not a component (not remembered by the caller). False: no plan.
                     let Some(entry) = br.registry.get(&name).filter(|e| e.kind == Kind::Component) else {
                         return Ok(Value::new_null(ctx.clone()));
@@ -665,8 +684,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         "read",
         Function::new(
             ctx.clone(),
-            move |id: f64, index: f64, buf: TypedArray<'js, f64>| -> i32 {
-                with_world(&b, |world, br| {
+            move |ctx: Ctx<'_>, id: f64, index: f64, buf: TypedArray<'js, f64>| -> rquickjs::Result<i32> {
+                in_world(&ctx, &b, |world, br| {
                     let Some((name, plan)) = planned(&table, index) else {
                         return -1;
                     };
@@ -696,7 +715,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'js>, id: f64, name: String| -> rquickjs::Result<Value<'js>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = component(&ctx, &br.registry, &name)?;
                     let value = br.ids.get(&(id as u64)).and_then(|&e| entry.get(world, Some(e)));
                     let Some(value) = value else {
@@ -718,8 +737,13 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         "set_value",
         Function::new(
             ctx.clone(),
-            move |id: f64, name: String, value: Value<'js>, plain: Object<'js>| -> bool {
-                with_world(&b, |world, br| {
+            move |ctx: Ctx<'_>,
+                  id: f64,
+                  name: String,
+                  value: Value<'js>,
+                  plain: Object<'js>|
+                  -> rquickjs::Result<bool> {
+                in_world(&ctx, &b, |world, br| {
                     let Some(entry) = br.registry.get(&name).filter(|e| e.kind == Kind::Component) else {
                         return false;
                     };
@@ -734,8 +758,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
                         && convert::patch(copy.as_partial_reflect_mut(), &value, &plain, &br.registry)
                             .is_some()
                     {
-                        entry.insert(world, Some(e), copy);
-                        return true;
+                        // False on a failed insert: the text path then words the refusal.
+                        return entry.insert(world, Some(e), copy).is_ok();
                     }
                     let Some(json) = convert::from_js(&value, &plain) else {
                         return false;
@@ -743,8 +767,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
                     let Ok(boxed) = br.registry.from_json(entry, &json) else {
                         return false;
                     };
-                    entry.insert(world, Some(e), boxed);
-                    true
+                    entry.insert(world, Some(e), boxed).is_ok()
                 })
             },
         )?,
@@ -755,7 +778,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, name: String, json: String| -> rquickjs::Result<()> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = component(&ctx, &br.registry, &name)?;
                     let Some(&e) = br.ids.get(&(id as u64)) else {
                         return Err(throw(
@@ -771,8 +794,9 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
                             format!("script.bad_value: `{name}` does not accept {value}: {err}"),
                         )
                     })?;
-                    entry.insert(world, Some(e), boxed);
-                    Ok(())
+                    entry
+                        .insert(world, Some(e), boxed)
+                        .map_err(|err| throw(&ctx, format!("script.bad_value: {err}")))
                 })
             },
         )?,
@@ -781,12 +805,15 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "inbox",
-        Function::new(ctx.clone(), move |id: f64| -> Option<String> {
-            with_world(&b, |world, br| {
-                let e = *br.ids.get(&(id as u64))?;
-                world.get::<ScriptInbox>(e).map(|i| i.data.clone())
-            })
-        })?,
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, id: f64| -> rquickjs::Result<Option<String>> {
+                in_world(&ctx, &b, |world, br| {
+                    let e = *br.ids.get(&(id as u64))?;
+                    world.get::<ScriptInbox>(e).map(|i| i.data.clone())
+                })
+            },
+        )?,
     )?;
     let b = bridge.clone();
     h.set(
@@ -794,7 +821,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, name: String| -> rquickjs::Result<bool> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = component(&ctx, &br.registry, &name)?;
                     Ok(br
                         .ids
@@ -810,7 +837,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, json: String| -> rquickjs::Result<()> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let Some(&e) = br.ids.get(&(id as u64)) else {
                         return Err(throw(
                             &ctx,
@@ -825,15 +852,15 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "exists",
-        Function::new(ctx.clone(), move |id: f64| {
-            with_world(&b, |_, br| br.ids.contains_key(&(id as u64)))
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, id: f64| {
+            in_world(&ctx, &b, |_, br| br.ids.contains_key(&(id as u64)))
         })?,
     )?;
     let b = bridge.clone();
     h.set(
         "name",
-        Function::new(ctx.clone(), move |id: f64| {
-            with_world(&b, |world, br| {
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, id: f64| {
+            in_world(&ctx, &b, |world, br| {
                 let e = *br.ids.get(&(id as u64))?;
                 world.get::<SceneName>(e).map(|n| n.0.clone())
             })
@@ -842,8 +869,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "find",
-        Function::new(ctx.clone(), move |name: String| {
-            with_world(&b, |_, br| br.names.get(&name).map(|id| *id as f64))
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
+            in_world(&ctx, &b, |_, br| br.names.get(&name).map(|id| *id as f64))
         })?,
     )?;
     let b = bridge.clone();
@@ -852,7 +879,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, name: String| -> rquickjs::Result<Vec<f64>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = component(&ctx, &br.registry, &name)?;
                     Ok(br
                         .ids
@@ -870,7 +897,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, name: String| -> rquickjs::Result<Option<String>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let entry = br
                         .registry
                         .get(&name)
@@ -891,8 +918,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "tick",
-        Function::new(ctx.clone(), move || {
-            with_world(&b, |w, _| {
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
+            in_world(&ctx, &b, |w, _| {
                 w.get_resource::<SimClock>().map_or(0, |c| c.tick) as f64
             })
         })?,
@@ -900,8 +927,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "dt",
-        Function::new(ctx.clone(), move || {
-            with_world(&b, |w, _| {
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
+            in_world(&ctx, &b, |w, _| {
                 w.get_resource::<FixedStep>().map_or(DEFAULT_DT, |s| s.dt) as f64
             })
         })?,
@@ -909,8 +936,8 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "rand",
-        Function::new(ctx.clone(), move || {
-            with_world(&b, |w, _| {
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
+            in_world(&ctx, &b, |w, _| {
                 w.get_resource_mut::<SimRng>()
                     .map_or(0.0, |mut r| r.next_f32() as f64)
             })
@@ -919,43 +946,47 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let b = bridge.clone();
     h.set(
         "action",
-        Function::new(ctx.clone(), move |name: String| {
-            action(&b, &name, |a, n| a.value(n) as f64)
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
+            action(&ctx, &b, &name, |a, n| a.value(n) as f64)
         })?,
     )?;
     let b = bridge.clone();
     h.set(
         "pressed",
-        Function::new(ctx.clone(), move |name: String| {
-            action(&b, &name, |a, n| a.pressed(n))
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
+            action(&ctx, &b, &name, |a, n| a.pressed(n))
         })?,
     )?;
     let b = bridge.clone();
     h.set(
         "just_pressed",
-        Function::new(ctx.clone(), move |name: String| {
-            action(&b, &name, |a, n| a.just_pressed(n))
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
+            action(&ctx, &b, &name, |a, n| a.just_pressed(n))
         })?,
     )?;
     let b = bridge.clone();
     h.set(
         "emit",
-        Function::new(ctx.clone(), move |kind: String, detail: Opt<String>| {
-            event(
-                &b,
-                &kind,
-                detail
-                    .0
-                    .and_then(|d| serde_json::from_str(&d).ok())
-                    .unwrap_or_default(),
-            )
-        })?,
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'_>, kind: String, detail: Opt<String>| {
+                event(
+                    &ctx,
+                    &b,
+                    &kind,
+                    detail
+                        .0
+                        .and_then(|d| serde_json::from_str(&d).ok())
+                        .unwrap_or_default(),
+                )
+            },
+        )?,
     )?;
     let b = bridge.clone();
     h.set(
         "log",
-        Function::new(ctx.clone(), move |message: String| {
-            event(&b, "script_log", serde_json::json!({ "message": message }))
+        Function::new(ctx.clone(), move |ctx: Ctx<'_>, message: String| {
+            event(&ctx, &b, "script_log", serde_json::json!({ "message": message }))
         })?,
     )?;
     let b = bridge.clone();
@@ -964,7 +995,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, json: String, name: Option<String>| -> rquickjs::Result<f64> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let comps: serde_json::Value = serde_json::from_str(&json)
                         .map_err(|err| throw(&ctx, format!("script.bad_value: {err}")))?;
                     let serde_json::Value::Object(comps) = comps else {
@@ -984,7 +1015,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, source: f64, json: String, name: Option<String>| -> rquickjs::Result<f64> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let Some(&e) = br.ids.get(&(source as u64)) else {
                         return Err(throw(
                             &ctx,
@@ -1025,7 +1056,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, after_ticks: f64| -> rquickjs::Result<()> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let Some(&e) = br.ids.get(&(id as u64)) else {
                         return Err(throw(
                             &ctx,
@@ -1047,8 +1078,13 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         "raycast",
         Function::new(
             ctx.clone(),
-            move |o: Vec<f64>, d: Vec<f64>, max: f64, exclude: Option<f64>| -> Option<String> {
-                with_world(&b, |world, _| {
+            move |ctx: Ctx<'_>,
+                  o: Vec<f64>,
+                  d: Vec<f64>,
+                  max: f64,
+                  exclude: Option<f64>|
+                  -> rquickjs::Result<Option<String>> {
+                in_world(&ctx, &b, |world, _| {
                     let caster = world.get_resource::<RayCaster>().copied()?;
                     let v = |a: &[f64]| [0, 1, 2].map(|i| a.get(i).copied().unwrap_or(0.0) as f32);
                     let filter = RayFilter {
@@ -1203,7 +1239,7 @@ fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquick
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'js>, path: String, function: String, args: Vec<Value<'js>>, chunk: f64| -> rquickjs::Result<Vec<f64>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let Some(runner) = world.get_resource::<JobRunner>().copied() else {
                         return Err(throw(
                             &ctx,
@@ -1264,7 +1300,7 @@ fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquick
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'js>, id: f64, name: String| -> rquickjs::Result<Value<'js>> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let e = job_entity(&ctx, br, id)?;
                     let Some(values) = world.get::<JobData>(e).and_then(|d| d.get(&name)) else {
                         return Ok(Value::new_null(ctx.clone()));
@@ -1284,7 +1320,7 @@ fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquick
         Function::new(
             ctx.clone(),
             move |ctx: Ctx<'_>, id: f64, name: String, values: Value<'_>| -> rquickjs::Result<()> {
-                with_world(&b, |world, br| {
+                try_world(&ctx, &b, |world, br| {
                     let e = job_entity(&ctx, br, id)?;
                     let o = values.as_object();
                     let values = if let Some(t) = o.and_then(|o| o.as_typed_array::<f32>()) {
@@ -1352,7 +1388,9 @@ fn spawn(
     }
     let e = ent.id();
     for (entry, boxed) in values {
-        entry.insert(world, Some(e), boxed);
+        entry
+            .insert(world, Some(e), boxed)
+            .map_err(|err| throw(ctx, format!("script.bad_value: {err}")))?;
     }
     br.ids.insert(id, e);
     if let Some(n) = name {
@@ -1361,16 +1399,21 @@ fn spawn(
     Ok(id)
 }
 
-fn action<R: Default>(bridge: &Shared, name: &str, f: impl FnOnce(&ActionState, &str) -> R) -> R {
-    with_world(bridge, |w, _| {
+fn action<R: Default>(
+    ctx: &Ctx<'_>,
+    bridge: &Shared,
+    name: &str,
+    f: impl FnOnce(&ActionState, &str) -> R,
+) -> rquickjs::Result<R> {
+    in_world(ctx, bridge, |w, _| {
         w.get_resource::<ActionState>()
             .map(|a| f(a, name))
             .unwrap_or_default()
     })
 }
 
-fn event(bridge: &Shared, kind: &str, detail: serde_json::Value) {
-    with_world(bridge, |w, br| {
+fn event(ctx: &Ctx<'_>, bridge: &Shared, kind: &str, detail: serde_json::Value) -> rquickjs::Result<()> {
+    in_world(ctx, bridge, |w, br| {
         let tick = w.get_resource::<SimClock>().map_or(0, |c| c.tick);
         if let Some(mut log) = w.get_resource_mut::<EventLog>() {
             log.push(tick, kind, Some(br.current), None, detail);

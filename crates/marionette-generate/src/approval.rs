@@ -84,7 +84,7 @@ pub fn approve_by_person(
         file: image_file.into(),
         sha256: image_sha256.into(),
     };
-    let mut text = serde_json::to_string_pretty(&a).expect("serializes");
+    let mut text = serde_json::to_string_pretty(&a).unwrap_or_default();
     text.push('\n');
     let path = dir.join(format!("{name}{SUFFIX}"));
     std::fs::write(&path, text).map_err(|e| {

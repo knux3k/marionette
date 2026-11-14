@@ -1,0 +1,5 @@
+# Tests may unwrap and expect (decision 0104); application code may not, in the crates that
+# deny `clippy::unwrap_used` and `clippy::expect_used` (see docs/ai/CODE-RULES.md).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

@@ -4,7 +4,7 @@
 //! clock. Systems run on one thread in a fixed order of [`Stage`]s.
 
 use crate::builtin::{SimClock, add_builtin_systems};
-use crate::error::Result;
+use crate::error::{Errors, Result};
 use crate::module::{EventLog, Modules, SceneDir, SimSnapshot, Stage, registry_with};
 use crate::registry::Registry;
 use crate::rng::SimRng;
@@ -68,10 +68,14 @@ impl Sim {
         modules: Modules,
         scene_dir: PathBuf,
     ) -> Result<Self> {
+        let registry = registry_with(&modules);
+        if !registry.problems().is_empty() {
+            return Err(Errors(registry.problems().to_vec()));
+        }
         let mut sim = Self {
             world: World::new(),
             schedule: Schedule::default(),
-            registry: registry_with(&modules),
+            registry,
             modules,
             scene_dir,
         };
@@ -147,10 +151,7 @@ impl Sim {
     /// [`Sim::reload`] from a scene already in memory: the same world as reloading its text,
     /// without writing and reading that text. Problems carry no line numbers.
     pub fn reload_scene(&mut self, scene: &scene::Scene) -> Result<()> {
-        self.reload_with(|world, registry| {
-            scene::instantiate(scene::validate(scene, registry, None)?, world);
-            Ok(())
-        })
+        self.reload_with(|world, registry| scene::instantiate(scene::validate(scene, registry, None)?, world))
     }
 
     fn reload_with(&mut self, load: impl FnOnce(&mut World, &Registry) -> Result<()>) -> Result<()> {

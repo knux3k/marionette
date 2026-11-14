@@ -93,7 +93,7 @@ pub fn box_glb(half: [f32; 3], color: [f32; 4], name: &str) -> Vec<u8> {
             { "bufferView": 2, "componentType": 5123, "count": 36, "type": "SCALAR" }
         ]
     });
-    let mut json_chunk = serde_json::to_vec(&doc).expect("glTF JSON serializes");
+    let mut json_chunk = serde_json::to_vec(&doc).unwrap_or_default();
     while !json_chunk.len().is_multiple_of(4) {
         json_chunk.push(b' ');
     }

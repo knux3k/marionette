@@ -14,6 +14,7 @@
 //!
 //! During development put `steam_appid.txt` (the game's app id) next to the executable, or
 //! launch through Steam.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod ffi;
 
@@ -265,7 +266,8 @@ unsafe fn init(lib: &Library) -> Result<(), SteamError> {
 }
 
 fn cstr(s: &str) -> CString {
-    CString::new(s.replace('\0', "")).expect("no NUL left")
+    // No NUL is left after the replace, so `new` cannot fail.
+    CString::new(s.replace('\0', "")).unwrap_or_default()
 }
 
 impl Inner {
@@ -320,8 +322,16 @@ impl Inner {
     }
 
     fn call_done(&mut self, call: Call, expected: i32, ok: bool, buf: &[u8]) {
-        let read_u64 = |at: usize| u64::from_le_bytes(buf[at..at + 8].try_into().expect("8 bytes"));
-        let read_u32 = |at: usize| u32::from_le_bytes(buf[at..at + 4].try_into().expect("4 bytes"));
+        let read_u64 = |at: usize| {
+            buf.get(at..at + 8)
+                .and_then(|b| b.try_into().ok())
+                .map_or(0, u64::from_le_bytes)
+        };
+        let read_u32 = |at: usize| {
+            buf.get(at..at + 4)
+                .and_then(|b| b.try_into().ok())
+                .map_or(0, u32::from_le_bytes)
+        };
         match (call, expected) {
             (Call::Create, id::LOBBY_CREATED) => {
                 let result = read_u32(0) as i32;

@@ -300,7 +300,9 @@ fn ui_tick(world: &mut World) {
     let mut pointers = world.get_resource::<UiPointers>().cloned().unwrap_or_default().0;
     pointers.sort_by_key(|p| p.id);
 
-    let mut rt = world.remove_resource::<UiRuntime>().expect("checked above");
+    let Some(mut rt) = world.remove_resource::<UiRuntime>() else {
+        return;
+    };
     rt.retain(&live);
     let mut states: BTreeMap<u64, layout::PanelState> = BTreeMap::new();
     let mut clicks: Vec<String> = Vec::new();

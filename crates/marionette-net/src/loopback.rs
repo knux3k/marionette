@@ -118,7 +118,7 @@ impl LoopbackNet {
         let now = h.now;
         let due: Vec<(Micros, u64)> = h.flight.range(..(now + 1, 0)).map(|(k, _)| *k).collect();
         for k in due {
-            let p = h.flight.remove(&k).expect("key listed");
+            let Some(p) = h.flight.remove(&k) else { continue };
             if h.down.contains(&p.to) {
                 continue;
             }

@@ -925,7 +925,7 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         conditions,
         cases: results,
     };
-    let text = serde_json::to_string_pretty(&report).expect("report serializes") + "\n";
+    let text = crate::json_text(&report)?;
     write_atomic(&out_path, &out, text.as_bytes())?;
     Ok(SuiteOutput {
         report: out,
