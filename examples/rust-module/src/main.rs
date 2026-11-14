@@ -1,5 +1,6 @@
 //! `spring-game`: every `marionette` command (run, op, ops, mcp, ...) with this game's module
 //! and operation added.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::process::ExitCode;
 

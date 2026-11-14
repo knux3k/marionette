@@ -119,25 +119,34 @@ impl Session {
 }
 
 pub(crate) fn get_mut<'a>(agent: &'a mut Agent, id: &str) -> Result<&'a mut Session, Errors> {
-    let known: Vec<String> = agent.sessions.keys().cloned().collect();
-    if let Some(s) = agent.sessions.get_mut(id) {
-        debug_assert!(
-            s.edits.as_ref().is_none_or(|e| !e.pending()),
-            "pending session edits are loaded before anything else uses the session"
-        );
-        s.edits = None;
+    if !agent.sessions.contains_key(id) {
+        return Err(no_session(agent, id));
     }
-    agent.sessions.get_mut(id).ok_or_else(|| {
-        Errors::from(
-            Diagnostic::error(codes::NO_SESSION, format!("no live session `{id}`")).fix(
-                if known.is_empty() {
-                    "start one with session_start".to_string()
-                } else {
-                    format!("live sessions: {}", known.join(", "))
-                },
-            ),
-        )
-    })
+    let s = agent.sessions.get_mut(id).ok_or_else(Errors::default)?;
+    debug_assert!(
+        s.edits.as_ref().is_none_or(|e| !e.pending()),
+        "pending session edits are loaded before anything else uses the session"
+    );
+    s.edits = None;
+    Ok(s)
+}
+
+/// Removes session `id` and hands it over (the caller owns it from now on).
+pub(crate) fn take(agent: &mut Agent, id: &str) -> Result<Session, Errors> {
+    get_mut(agent, id)?;
+    agent.sessions.remove(id).ok_or_else(|| no_session(agent, id))
+}
+
+/// `NO_SESSION` for `id`, listing the live sessions.
+fn no_session(agent: &Agent, id: &str) -> Errors {
+    let known: Vec<&str> = agent.sessions.keys().map(String::as_str).collect();
+    Errors::from(
+        Diagnostic::error(codes::NO_SESSION, format!("no live session `{id}`")).fix(if known.is_empty() {
+            "start one with session_start".to_string()
+        } else {
+            format!("live sessions: {}", known.join(", "))
+        }),
+    )
 }
 
 #[derive(Deserialize, JsonSchema)]

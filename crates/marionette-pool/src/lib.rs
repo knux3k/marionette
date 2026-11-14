@@ -12,6 +12,7 @@
 //! - [`sources`]: Poly Haven and ambientCG (search and ingest through their APIs), Kenney and
 //!   Quaternius (ingest from a downloaded archive that carries their CC0 license text).
 //! - [`net`]: moving bytes; tests use a scripted transport, the CLI uses the system `curl`.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod admit;
 pub mod net;
@@ -306,7 +307,7 @@ impl Pool {
         });
         write_file(
             &self.root.join("pool.json"),
-            (serde_json::to_string_pretty(&marker).expect("json") + "\n").as_bytes(),
+            (serde_json::to_string_pretty(&marker).unwrap_or_default() + "\n").as_bytes(),
         )
     }
 
@@ -379,7 +380,7 @@ impl Pool {
 
     /// `index.json` as `pool_index` writes it: pretty JSON and a final newline.
     pub fn index_text(&self) -> String {
-        serde_json::to_string_pretty(&self.index()).expect("json") + "\n"
+        serde_json::to_string_pretty(&self.index()).unwrap_or_default() + "\n"
     }
 }
 

@@ -38,7 +38,7 @@ pub struct TypeEntry {
     /// Builds the concrete value from (possibly dynamic) reflected data.
     from_reflect: fn(&dyn PartialReflect) -> Option<Box<dyn Reflect>>,
     /// Inserts a concrete value (as returned by `from_reflect`). `entity` is `None` for resources.
-    insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
+    insert: InsertFn,
     /// Reads the value. `entity` is `None` for resources.
     get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
     /// Copies the value with the type's own `Clone` (fast; used to save off the tick).
@@ -52,7 +52,14 @@ impl TypeEntry {
     pub fn from_reflect(&self, value: &dyn PartialReflect) -> Option<Box<dyn Reflect>> {
         (self.from_reflect)(value)
     }
-    pub fn insert(&self, world: &mut World, entity: Option<Entity>, value: Box<dyn Reflect>) {
+    /// Inserts `value` (from [`Self::from_reflect`] of this entry). Fails when `entity` is
+    /// missing for a component, no longer exists, or the value is another type's.
+    pub fn insert(
+        &self,
+        world: &mut World,
+        entity: Option<Entity>,
+        value: Box<dyn Reflect>,
+    ) -> Result<(), String> {
         (self.insert)(world, entity, value)
     }
     pub fn get<'w>(&self, world: &'w World, entity: Option<Entity>) -> Option<&'w dyn Reflect> {
@@ -69,17 +76,24 @@ impl TypeEntry {
 pub struct Registry {
     types: TypeRegistry,
     entries: BTreeMap<&'static str, TypeEntry>,
+    /// Registration mistakes (a short name used twice), reported when a simulation is built
+    /// from this registry (see [`Self::problems`]).
+    problems: Vec<Diagnostic>,
 }
 
 fn boxed_from_reflect<T: FromReflect>(v: &dyn PartialReflect) -> Option<Box<dyn Reflect>> {
     T::from_reflect(v).map(|t| Box::new(t) as Box<dyn Reflect>)
 }
 
-fn downcast<T: Reflect>(value: Box<dyn Reflect>) -> T {
-    *value
+/// Inserts a concrete value; `entity` is `None` for resources.
+type InsertFn = fn(&mut World, Option<Entity>, Box<dyn Reflect>) -> Result<(), String>;
+
+fn downcast<T: Reflect + TypePath>(value: Box<dyn Reflect>) -> Result<T, String> {
+    value
         .into_any()
         .downcast::<T>()
-        .expect("TypeEntry::insert called with a value from another type's from_reflect")
+        .map(|b| *b)
+        .map_err(|_| format!("a value of another type was given for `{}`", T::short_type_path()))
 }
 
 impl Registry {
@@ -88,6 +102,7 @@ impl Registry {
         Self {
             types: TypeRegistry::new(),
             entries: BTreeMap::new(),
+            problems: Vec::new(),
         }
     }
 
@@ -101,8 +116,11 @@ impl Registry {
                 world.register_component::<T>();
             },
             |world, entity, value| {
-                let entity = entity.expect("component insert needs an entity");
-                world.entity_mut(entity).insert(downcast::<T>(value));
+                let entity = entity.ok_or("a component needs an entity")?;
+                let value = downcast::<T>(value)?;
+                let mut e = world.get_entity_mut(entity).map_err(|e| e.to_string())?;
+                e.insert(value);
+                Ok(())
             },
             |world, entity| {
                 let entity = entity?;
@@ -124,7 +142,10 @@ impl Registry {
         self.add::<T>(
             Kind::Resource,
             |_| {},
-            |world, _, value| world.insert_resource(downcast::<T>(value)),
+            |world, _, value| {
+                world.insert_resource(downcast::<T>(value)?);
+                Ok(())
+            },
             |world, _| world.get_resource::<T>().map(|r| r as &dyn Reflect),
             |world, _| {
                 world
@@ -138,7 +159,7 @@ impl Registry {
         &mut self,
         kind: Kind,
         init: fn(&mut World),
-        insert: fn(&mut World, Option<Entity>, Box<dyn Reflect>),
+        insert: InsertFn,
         get: for<'w> fn(&'w World, Option<Entity>) -> Option<&'w dyn Reflect>,
         copy: CopyFn,
     ) where
@@ -146,19 +167,20 @@ impl Registry {
     {
         let name = T::short_type_path();
         if let Some(existing) = self.entries.get(name) {
-            // Programmer error at startup, not a data error: fail loudly.
-            panic!(
-                "{}",
+            // A programmer mistake at startup: the first registration stays, and building a
+            // simulation from this registry fails with this diagnostic.
+            self.problems.push(
                 Diagnostic::error(
                     codes::REGISTRY_DUPLICATE,
                     format!(
                         "type name `{name}` is registered twice ({} and {})",
                         existing.type_path,
                         T::type_path()
-                    )
+                    ),
                 )
-                .fix("rename one of the types; scene files refer to types by short name")
+                .fix("rename one of the types; scene files refer to types by short name"),
             );
+            return;
         }
         self.types.register::<T>();
         self.entries.insert(
@@ -205,6 +227,11 @@ impl Registry {
         &self.types
     }
 
+    /// Registration mistakes found so far (empty when every type registered cleanly).
+    pub fn problems(&self) -> &[Diagnostic] {
+        &self.problems
+    }
+
     /// Serializes a reflected value of a registered type to JSON.
     ///
     /// The value is written with `serde_json` (which prints `f32` in shortest round-trip
@@ -212,8 +239,12 @@ impl Registry {
     /// `0.10000000149011612`.
     pub fn to_json(&self, value: &dyn PartialReflect) -> Value {
         let ser = TypedReflectSerializer::new(value, &self.types);
-        let text = serde_json::to_string(&ser).expect("registered types serialize to JSON");
-        serde_json::from_str(&text).expect("serde_json output parses")
+        // Every registered type serializes (registration reflects all of its fields). If one
+        // ever did not, `null` makes scene validation report it instead of crashing here.
+        serde_json::to_string(&ser)
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or(Value::Null)
     }
 
     /// Deserializes JSON into the concrete value of the registered type `entry`.
@@ -221,12 +252,21 @@ impl Registry {
         let registration = self
             .types
             .get(entry.type_id)
-            .expect("entries are registered in the type registry");
+            .ok_or_else(|| format!("`{}` is not in the type registry", entry.name))?;
         let dynamic = TypedReflectDeserializer::new(registration, &self.types)
             .deserialize(value)
             .map_err(|e| e.to_string())?;
         entry
             .from_reflect(dynamic.as_ref())
             .ok_or_else(|| format!("value does not form a complete `{}`", entry.name))
+    }
+
+    /// Deserializes JSON into `T`, registered under `name`. Errors name what is wrong: an
+    /// unregistered name, a bad value, or `T` not being the type registered there.
+    pub fn value_from_json<T: Reflect + TypePath>(&self, name: &str, value: &Value) -> Result<T, String> {
+        let entry = self
+            .get(name)
+            .ok_or_else(|| format!("`{name}` is not registered"))?;
+        downcast(self.from_json(entry, value)?)
     }
 }

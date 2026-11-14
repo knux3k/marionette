@@ -3363,14 +3363,17 @@ pub(crate) fn write_growable<T: Pod>(
     let bytes: &[u8] = bytemuck::cast_slice(data);
     let needed = (bytes.len() as u64).next_power_of_two().max(1024);
     if slot.as_ref().is_none_or(|b| b.size() < bytes.len() as u64) {
-        *slot = Some(device.create_buffer(&wgpu::BufferDescriptor {
+        *slot = None;
+    }
+    let buffer = slot.get_or_insert_with(|| {
+        device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("sprite batch"),
             size: needed,
             usage: usage | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
-        }));
-    }
-    queue.write_buffer(slot.as_ref().expect("just created"), 0, bytes);
+        })
+    });
+    queue.write_buffer(buffer, 0, bytes);
 }
 
 /// Rest-pose bounding box of a model: every part's positions through its node transform.

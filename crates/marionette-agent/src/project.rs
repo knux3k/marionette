@@ -120,8 +120,8 @@ pub(crate) fn basic_scene() -> Value {
     })
 }
 
-fn canonical(agent: &Agent, doc: &Value) -> String {
-    scene::format_text(&doc.to_string(), agent.registry()).expect("built-in templates are valid")
+fn canonical(agent: &Agent, doc: &Value) -> Result<String, Errors> {
+    scene::format_text(&doc.to_string(), agent.registry())
 }
 
 fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
@@ -143,7 +143,7 @@ fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
             .unwrap_or_else(|| "game".into())
     });
     let mut main = basic_scene();
-    main["entities"].as_array_mut().expect("array").push(json!({
+    let ball = json!({
         "id": 4, "name": "ball", "components": {
             "Transform": transform(0.0, 0.5, 0.0, 1.0),
             "Model": { "asset": "primitive:sphere" },
@@ -151,7 +151,10 @@ fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
             "Position": { "x": -2.0, "y": 0.5, "z": 0.0 },
             "Velocity": { "x": 1.0, "y": 0.0, "z": 0.0 }
         }
-    }));
+    });
+    if let Some(list) = main["entities"].as_array_mut() {
+        list.push(ball);
+    }
     let test = json!({
         "scene": "scenes/main.scene.json",
         "seed": 1,
@@ -163,18 +166,12 @@ fn init(agent: &mut Agent, input: InitInput) -> Result<InitOutput, Errors> {
     });
     let manifest = json!({ "format": "marionette.project", "version": 1, "name": name });
     let files: Vec<(&str, String)> = vec![
-        (
-            MANIFEST,
-            format!("{}\n", serde_json::to_string_pretty(&manifest).expect("json")),
-        ),
+        (MANIFEST, crate::json_text(&manifest)?),
         ("PROTOCOL.md", PROTOCOL_TEMPLATE.to_string()),
         ("AGENTS.md", AGENTS_TEMPLATE.to_string()),
         ("CLAUDE.md", AGENTS_TEMPLATE.to_string()),
-        ("scenes/main.scene.json", canonical(agent, &main)),
-        (
-            "tests/main.test.json",
-            format!("{}\n", serde_json::to_string_pretty(&test).expect("json")),
-        ),
+        ("scenes/main.scene.json", canonical(agent, &main)?),
+        ("tests/main.test.json", crate::json_text(&test)?),
     ];
     for (rel, text) in &files {
         let shown = format!("{}/{rel}", input.path);
@@ -378,7 +375,7 @@ fn create(agent: &mut Agent, input: CreateInput) -> Result<CreateOutput, Errors>
             );
         }
     };
-    let text = canonical(agent, &doc);
+    let text = canonical(agent, &doc)?;
     let entities = doc["entities"].as_array().map_or(0, Vec::len);
     write_atomic(&path, &input.scene, text.as_bytes())?;
     Ok(CreateOutput {

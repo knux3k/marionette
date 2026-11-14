@@ -175,9 +175,15 @@ impl GameShading {
 
 /// The game source with the engine's shader around it; also the line where the game's
 /// source starts (for error messages).
-pub(crate) fn compose(source: &str, o: &ShaderOptions) -> (String, usize) {
-    let begin = PBR.find(HOOKS_BEGIN).expect("pbr.wgsl hook block");
-    let end = PBR.find(HOOKS_END).expect("pbr.wgsl hook block") + HOOKS_END.len();
+/// Game shader state is made when the renderer first sees a game shader, before any of
+/// these run; this is only the answer if that order ever breaks.
+const NOT_SET_UP: &str = "game shaders are not set up";
+
+pub(crate) fn compose(source: &str, o: &ShaderOptions) -> Result<(String, usize), String> {
+    let (Some(begin), Some(end)) = (PBR.find(HOOKS_BEGIN), PBR.find(HOOKS_END)) else {
+        return Err("the engine's PBR shader lost its hook markers (an engine bug)".into());
+    };
+    let end = end + HOOKS_END.len();
     let hooks = format!(
         "fn vertex_hook(v: ptr<function, Vertex>) {{ {} }}\nfn surface_hook(s: ptr<function, Surface>, i: SurfaceIn) {{ {} }}",
         if o.has_vertex { "vertex(v);" } else { "" },
@@ -185,7 +191,7 @@ pub(crate) fn compose(source: &str, o: &ShaderOptions) -> (String, usize) {
     );
     let head = format!("{}{hooks}{}{PRELUDE}", &PBR[..begin], &PBR[end..]);
     let line = head.lines().count() + 1;
-    (format!("{head}{source}\n"), line)
+    Ok((format!("{head}{source}\n"), line))
 }
 
 fn material_key(m: &ShaderMaterial) -> String {
@@ -292,8 +298,9 @@ impl Renderer {
         };
         if let Some(source) = source {
             let built = self.build_game_shader(&source);
-            let game = self.game.as_mut().expect("created before shaders");
-            game.shaders.insert(name.to_string(), (source, built));
+            if let Some(game) = self.game.as_mut() {
+                game.shaders.insert(name.to_string(), (source, built));
+            }
         }
         match self.game.as_ref().and_then(|g| g.shaders.get(name)) {
             Some((_, Ok(_))) => Ok(()),
@@ -304,8 +311,8 @@ impl Renderer {
 
     fn build_game_shader(&self, source: &str) -> Result<GameShaderGpu, String> {
         let options = ShaderOptions::parse(source)?;
-        let (wgsl, line) = compose(source, &options);
-        let game = self.game.as_ref().expect("created before building");
+        let (wgsl, line) = compose(source, &options)?;
+        let game = self.game.as_ref().ok_or(NOT_SET_UP)?;
         let device = &self.device;
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -424,7 +431,7 @@ impl Renderer {
                 }
             }
         }
-        let game = self.game.as_mut().expect("created before groups");
+        let game = self.game.as_mut().ok_or(NOT_SET_UP)?;
         let mut views = Vec::with_capacity(MAX_SHADER_TEXTURES);
         for i in 0..MAX_SHADER_TEXTURES {
             match m.textures.get(i) {

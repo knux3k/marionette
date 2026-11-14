@@ -112,7 +112,7 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
         // Keep notes scheduled 150 ms ahead, sample accurate, at `voices` per second.
         while next_note < t + 0.15 {
             let at = stats.now() + host.handle.frames((next_note - t).max(0.0) + 0.05);
-            let p = synth::Patch::preset(presets[id as usize % presets.len()]).expect("preset");
+            let p = synth::Patch::preset(presets[id as usize % presets.len()]).unwrap_or_default();
             let freq = synth::dsp::midi_hz(36.0 + (id * 7 % 48) as f32);
             if host.handle.note_on(at, id, freq, velocity, p) {
                 host.handle.note_off(at + host.handle.frames(1.0), id);

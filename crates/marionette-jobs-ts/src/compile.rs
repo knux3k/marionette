@@ -407,6 +407,15 @@ fn number_literal(n: &NumericLiteral) -> Const {
     }
 }
 
+/// A call of the imported math function `name`; `jobts.internal` if it is not one (a
+/// compiler bug: every caller names a function from `MATH1` or `MATH2`).
+fn math_call(name: &str, span: Span) -> R<I<'static>> {
+    match math_index(name) {
+        Some(i) => Ok(I::Call(i)),
+        None => err(codes::INTERNAL, span, format!("no math import `{name}`"), ""),
+    }
+}
+
 fn math_const(name: &str) -> Option<f64> {
     Some(match name {
         "PI" => std::f64::consts::PI,
@@ -486,7 +495,10 @@ fn top_level<'a>(
         | Statement::ClassDeclaration(_)
         | Statement::TSEnumDeclaration(_)
         | Statement::TSGlobalDeclaration(_)
-        | Statement::TSImportEqualsDeclaration(_) => stmt.as_declaration().expect("declaration"),
+        | Statement::TSImportEqualsDeclaration(_) => match stmt.as_declaration() {
+            Some(d) => d,
+            None => return err(codes::TOP_LEVEL, stmt.span(), "not a declaration", TOP_FIX),
+        },
         other => {
             return err(
                 codes::TOP_LEVEL,
@@ -807,8 +819,8 @@ impl<'m, 'w> FnCtx<'m, 'w> {
             cx.scopes[0].insert(name.clone(), var);
         }
         cx.n_params = next;
-        let body = f.body.as_ref().expect("checked in signature");
-        for s in &body.statements {
+        // `signature` refuses a function without a body; nothing to emit if one got here.
+        for s in f.body.iter().flat_map(|b| &b.statements) {
             cx.stmt(s)?;
         }
         if cx.ret != Ty::Void {
@@ -1127,15 +1139,18 @@ impl<'m, 'w> FnCtx<'m, 'w> {
                 }),
             }
             self.push(I::LocalSet(local));
-            self.scopes.last_mut().expect("scope").insert(
-                name,
-                Var::Scalar {
-                    local,
-                    ty,
-                    mutable,
-                    inferred,
-                },
-            );
+            // There is always a scope: the function's own, opened before its body.
+            if let Some(scope) = self.scopes.last_mut() {
+                scope.insert(
+                    name,
+                    Var::Scalar {
+                        local,
+                        ty,
+                        mutable,
+                        inferred,
+                    },
+                );
+            }
         }
         Ok(())
     }
@@ -1518,7 +1533,7 @@ impl<'m, 'w> FnCtx<'m, 'w> {
             Expression::BooleanLiteral(_) => Ty::Bool,
             Expression::ParenthesizedExpression(p) => self.infer(&p.expression)?,
             Expression::Identifier(id) => match id.name.as_str() {
-                n if self.lookup(n).is_some() => match self.lookup(n).expect("found") {
+                n if let Some(var) = self.lookup(n) => match var {
                     Var::Scalar { ty, .. } => ty,
                     Var::Array { elem, .. } => Ty::Arr(elem),
                 },
@@ -1831,7 +1846,7 @@ impl<'m, 'w> FnCtx<'m, 'w> {
             (B::Multiplication, true) => I::F64Mul,
             (B::Multiplication, false) => I::I32Mul,
             (B::Division, _) => I::F64Div,
-            (B::Remainder, true) => I::Call(math_index("fmod").expect("fmod")),
+            (B::Remainder, true) => math_call("fmod", span)?,
             (B::Remainder, false) => {
                 // JavaScript gives NaN for `x % 0`; an i32 cannot hold NaN, so stop with an error.
                 let b = self.new_local(ValType::I32);
@@ -1844,7 +1859,7 @@ impl<'m, 'w> FnCtx<'m, 'w> {
                 self.push(I::LocalGet(b));
                 I::I32RemS
             }
-            (B::Exponential, _) => I::Call(math_index("pow").expect("pow")),
+            (B::Exponential, _) => math_call("pow", span)?,
             (B::LessThan, true) => I::F64Lt,
             (B::LessThan, false) => I::I32LtS,
             (B::LessEqualThan, true) => I::F64Le,
@@ -2067,7 +2082,8 @@ impl<'m, 'w> FnCtx<'m, 'w> {
                     && o.name.as_str() == "Math"
                     && self.lookup("Math").is_none()
                 {
-                    let v = math_const(m.property.name.as_str()).expect("checked");
+                    // `static_member_type` checked that the constant exists.
+                    let v = math_const(m.property.name.as_str()).unwrap_or(f64::NAN);
                     self.push(I::F64Const(v.into()));
                     return Ok(Ty::F64);
                 }
@@ -2298,11 +2314,12 @@ impl<'m, 'w> FnCtx<'m, 'w> {
                 }
                 for a in &args[1..] {
                     self.expr_as(a, Ty::F64)?;
-                    self.push(match name {
+                    let op = match name {
                         "min" => I::F64Min,
                         "max" => I::F64Max,
-                        _ => I::Call(math_index("hypot").expect("hypot")),
-                    });
+                        _ => math_call("hypot", span)?,
+                    };
+                    self.push(op);
                 }
             }
             "imul" => {
@@ -2323,12 +2340,14 @@ impl<'m, 'w> FnCtx<'m, 'w> {
             n if MATH1.contains(&n) => {
                 arity(1)?;
                 num_args(self)?;
-                self.push(I::Call(math_index(n).expect("math")));
+                let call = math_call(n, span)?;
+                self.push(call);
             }
             n if MATH2.contains(&n) && n != "fmod" => {
                 arity(2)?;
                 num_args(self)?;
-                self.push(I::Call(math_index(n).expect("math")));
+                let call = math_call(n, span)?;
+                self.push(call);
             }
             n => {
                 return err(

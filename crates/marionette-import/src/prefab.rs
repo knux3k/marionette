@@ -300,7 +300,7 @@ fn set_path(body: &mut Value, path: &str, value: Value) {
             if !cur.is_array() {
                 *cur = Value::Array(Vec::new());
             }
-            let a = cur.as_array_mut().expect("array");
+            let Some(a) = cur.as_array_mut() else { return };
             a.resize(n.min(1 << 16), Value::String(String::new()));
             return;
         }
@@ -312,7 +312,7 @@ fn set_path(body: &mut Value, path: &str, value: Value) {
             if !cur.is_array() {
                 *cur = Value::Array(Vec::new());
             }
-            let a = cur.as_array_mut().expect("array");
+            let Some(a) = cur.as_array_mut() else { return };
             if idx >= a.len() && idx < 1 << 16 {
                 a.resize(idx + 1, Value::String(String::new()));
             }
@@ -328,7 +328,7 @@ fn set_path(body: &mut Value, path: &str, value: Value) {
         if !cur.is_object() {
             *cur = Value::Object(Map::new());
         }
-        let m = cur.as_object_mut().expect("object");
+        let Some(m) = cur.as_object_mut() else { return };
         if last {
             m.insert(p.to_string(), value);
             return;
@@ -1129,7 +1129,7 @@ fn name_of(n: &Node) -> String {
     if s.is_empty() { "GameObject".into() } else { s }
 }
 
-fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Out {
+fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Result<Out, String> {
     let mut out = Out {
         entities: Vec::new(),
         notes: Vec::new(),
@@ -1146,7 +1146,7 @@ fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Out {
     for c in &mut children {
         c.sort_by_key(|&i| (tree.nodes[i].order.unwrap_or(usize::MAX), i));
     }
-    let root = tree.root.expect("checked in build");
+    let root = tree.root.ok_or("the prefab has no root object")?;
     let mut sheared = false;
     // (node, parent key, parent world, path, active, under a body)
     let mut stack: Vec<(usize, Option<u64>, Trs, String, bool, bool)> =
@@ -1252,7 +1252,7 @@ fn flatten(tree: &Tree, env: &dyn PrefabEnv) -> Out {
                 .into(),
         );
     }
-    out
+    Ok(out)
 }
 
 /// Converts the text of a Unity prefab at `rel` (path inside its source) and its nested
@@ -1261,7 +1261,7 @@ pub fn convert(rel: &str, text: &str, env: &dyn PrefabEnv) -> Result<Converted, 
     let b = Builder { env };
     let mut stack = Vec::new();
     let tree = b.build(rel, text, &mut stack)?;
-    let flat = flatten(&tree, env);
+    let flat = flatten(&tree, env)?;
     let mut notes = tree.notes.clone();
     notes.extend(flat.notes);
     notes.push(

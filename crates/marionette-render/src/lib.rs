@@ -3,6 +3,7 @@
 //!
 //! Rendering reads the ECS world through [`extract::extract`], which takes `&World`, so it
 //! cannot change simulation state.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub use marionette_assets as assets;
 pub mod compare;

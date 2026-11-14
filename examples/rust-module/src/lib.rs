@@ -5,6 +5,7 @@
 //! - [`ops`] adds the `spring_set` operation (CLI `op` and MCP tool alike).
 //! - [`engine`] puts both on top of the built-in engine; `src/main.rs` runs it as a
 //!   `marionette`-style binary.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

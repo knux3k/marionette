@@ -24,6 +24,7 @@
 //! factory benchmark scene ([`bench`]), its timing budgets and its stability modes
 //! (`examples/factory/stability.json`); the `factory-bench` binary is the engine CLI with all
 //! of it added, so `perf_suite` there runs the `sim/factory-*` and `render/factory-*` cases.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -313,15 +314,25 @@ fn compile(world: &mut World) -> Result<(FactoryTables, FactoryState)> {
             .component("FactoryRecipes")
             .into());
         }
+        // Every item a recipe names was collected into `names` above.
+        let unknown = |item: &str| {
+            marionette_core::Errors::from(
+                Diagnostic::error(
+                    codes::BAD_RECIPE,
+                    format!("recipe `{}` names unknown item `{item}`", r.id),
+                )
+                .component("FactoryRecipes"),
+            )
+        };
         let mut c = CRecipe {
             n_inputs: r.inputs.len(),
-            output: item_id(&r.output.item).expect("collected above"),
+            output: item_id(&r.output.item).ok_or_else(|| unknown(&r.output.item))?,
             out_count: r.output.count,
             ticks: r.ticks,
             ..Default::default()
         };
         for (k, a) in r.inputs.iter().enumerate() {
-            c.inputs[k] = (item_id(&a.item).expect("collected above"), a.count.max(1));
+            c.inputs[k] = (item_id(&a.item).ok_or_else(|| unknown(&a.item))?, a.count.max(1));
         }
         fp.str(&r.id);
         fp.u64(r.ticks as u64);
@@ -412,7 +423,7 @@ fn compile(world: &mut World) -> Result<(FactoryTables, FactoryState)> {
     let mut segment_ends = Vec::new();
     let mut segment_belts = Vec::new();
     for (k, group) in belt_rows.chunks(BELTS_PER_SEGMENT).enumerate() {
-        let last = group.last().expect("chunks are non-empty");
+        let Some(last) = group.last() else { continue };
         segment_ends.push((last.first + last.len) as usize);
         segment_belts.push((k * BELTS_PER_SEGMENT, k * BELTS_PER_SEGMENT + group.len()));
     }
@@ -497,11 +508,11 @@ pub fn step(jobs: &Jobs, tables: &FactoryTables, state: &mut FactoryState) {
         for m in chunk {
             n += craft(m, &recipes[m.recipe as usize]);
         }
-        finished.lock().expect("no panics while held")[c] = n;
+        finished.lock().unwrap_or_else(|p| p.into_inner())[c] = n;
     });
     *made += finished
         .into_inner()
-        .expect("no panics while held")
+        .unwrap_or_else(|p| p.into_inner())
         .iter()
         .sum::<u64>();
 

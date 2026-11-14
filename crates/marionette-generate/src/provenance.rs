@@ -82,7 +82,7 @@ pub struct Provenance {
 
 impl Provenance {
     pub fn to_text(&self) -> String {
-        let mut s = serde_json::to_string_pretty(self).expect("serializes");
+        let mut s = serde_json::to_string_pretty(self).unwrap_or_default();
         s.push('\n');
         s
     }

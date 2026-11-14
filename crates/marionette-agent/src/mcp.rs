@@ -98,20 +98,25 @@ fn object(v: Value) -> JsonObject {
 impl McpServer {
     /// Every operation as a tool, with output schemas.
     pub fn new(agent: Agent) -> Self {
-        Self::with_options(agent, &McpOptions::default()).expect("the default options are valid")
+        let all = agent.operations().map(|o| o.name).collect();
+        Self::with_tools(agent, all, false)
     }
 
     /// Only the tools `options` select. Errors name an unknown group or operation.
     pub fn with_options(agent: Agent, options: &McpOptions) -> Result<Self, String> {
+        let enabled = select_operations(&agent, &options.tools)?.into_iter().collect();
+        Ok(Self::with_tools(agent, enabled, options.lean))
+    }
+
+    /// The tools named in `enabled`; `lean` leaves out output schemas.
+    fn with_tools(agent: Agent, enabled: BTreeSet<&'static str>, lean: bool) -> Self {
         let read_only = agent.read_only();
-        let enabled: BTreeSet<&'static str> =
-            select_operations(&agent, &options.tools)?.into_iter().collect();
         let tools = agent
             .operations()
             .filter(|o| !(read_only && o.mutating) && enabled.contains(o.name))
             .map(|o| {
                 let tool = Tool::new(o.name, o.description, Arc::new(object(o.input_schema.clone())));
-                let tool = if options.lean {
+                let tool = if lean {
                     tool
                 } else {
                     tool.with_raw_output_schema(Arc::new(object(o.output_schema.clone())))
@@ -123,11 +128,11 @@ impl McpServer {
                 )
             })
             .collect();
-        Ok(Self {
+        Self {
             agent: Arc::new(Mutex::new(agent)),
             tools: Arc::new(tools),
             enabled: Arc::new(enabled),
-        })
+        }
     }
 
     /// The listed tools (what `tools/list` returns).

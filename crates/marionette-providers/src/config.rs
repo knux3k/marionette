@@ -110,7 +110,7 @@ impl ProvidersConfig {
 
     /// Canonical text: fixed field order, two-space indent, LF, trailing newline.
     pub fn to_text(&self) -> String {
-        let mut s = serde_json::to_string_pretty(self).expect("config serializes");
+        let mut s = serde_json::to_string_pretty(self).unwrap_or_default();
         s.push('\n');
         s
     }

@@ -421,8 +421,12 @@ pub struct EditOutput {
     pub diff: Diff,
 }
 
+/// Entity `id` of `s`, borrowed.
+fn find(s: &Scene, id: u64) -> Option<&SceneEntity> {
+    s.entities.iter().find(|e| e.id == id)
+}
+
 pub fn diff(old: &Scene, new: &Scene) -> Diff {
-    let find = |s: &Scene, id| s.entities.iter().find(|e| e.id == id).cloned();
     let ids = |s: &Scene| s.entities.iter().map(|e| e.id).collect::<BTreeSet<u64>>();
     let (a, b) = (ids(old), ids(new));
     let mut d = Diff {
@@ -431,8 +435,10 @@ pub fn diff(old: &Scene, new: &Scene) -> Diff {
         changed: Vec::new(),
     };
     for id in a.intersection(&b) {
-        let (o, n): (SceneEntity, SceneEntity) =
-            (find(old, *id).expect("in old"), find(new, *id).expect("in new"));
+        // Both are there: `id` is in both id sets.
+        let (Some(o), Some(n)) = (find(old, *id), find(new, *id)) else {
+            continue;
+        };
         let ok: BTreeSet<&String> = o.components.keys().collect();
         let nk: BTreeSet<&String> = n.components.keys().collect();
         let change = EntityChange {
@@ -500,7 +506,7 @@ pub(crate) fn apply(
             let candidate = new.to_text();
             let canonical = scene::format_text(&candidate, agent.registry())
                 .map_err(|e| without_positions(e, Some(file)))?;
-            let written = scene::parse(&canonical).expect("canonical text parses");
+            let written = scene::parse(&canonical).map_err(|e| without_positions(e, Some(file)))?;
             let d = diff(&old, &written);
             write_atomic(&path, file, canonical.as_bytes())?;
             let index = SceneIndex::new(&written, agent.registry());

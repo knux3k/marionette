@@ -178,11 +178,18 @@ impl Bin<'_> {
     fn u8(&mut self) -> Result<u8, String> {
         Ok(self.take(1)?[0])
     }
+    /// The next `N` bytes as an array.
+    fn bytes<const N: usize>(&mut self) -> Result<[u8; N], String> {
+        let at = self.pos;
+        self.take(N)?
+            .try_into()
+            .map_err(|_| format!("binary FBX ends early at byte {at}"))
+    }
     fn u32(&mut self) -> Result<u32, String> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
+        Ok(u32::from_le_bytes(self.bytes()?))
     }
     fn u64(&mut self) -> Result<u64, String> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().unwrap()))
+        Ok(u64::from_le_bytes(self.bytes()?))
     }
 
     fn array<T, const N: usize>(&mut self, conv: fn([u8; N]) -> T) -> Result<Vec<T>, String> {
@@ -218,12 +225,12 @@ impl Bin<'_> {
     fn prop(&mut self) -> Result<Prop, String> {
         let t = self.u8()?;
         Ok(match t {
-            b'Y' => Prop::I16(i16::from_le_bytes(self.take(2)?.try_into().unwrap())),
+            b'Y' => Prop::I16(i16::from_le_bytes(self.bytes()?)),
             b'C' => Prop::Bool(self.u8()? != 0),
-            b'I' => Prop::I32(i32::from_le_bytes(self.take(4)?.try_into().unwrap())),
-            b'F' => Prop::F32(f32::from_le_bytes(self.take(4)?.try_into().unwrap())),
-            b'D' => Prop::F64(f64::from_le_bytes(self.take(8)?.try_into().unwrap())),
-            b'L' => Prop::I64(i64::from_le_bytes(self.take(8)?.try_into().unwrap())),
+            b'I' => Prop::I32(i32::from_le_bytes(self.bytes()?)),
+            b'F' => Prop::F32(f32::from_le_bytes(self.bytes()?)),
+            b'D' => Prop::F64(f64::from_le_bytes(self.bytes()?)),
+            b'L' => Prop::I64(i64::from_le_bytes(self.bytes()?)),
             b'f' => Prop::F32Arr(self.array(f32::from_le_bytes)?),
             b'd' => Prop::F64Arr(self.array(f64::from_le_bytes)?),
             b'l' => Prop::I64Arr(self.array(i64::from_le_bytes)?),
@@ -307,7 +314,7 @@ fn parse_binary(bytes: &[u8], limits: TreeLimits) -> Result<Document, String> {
     if bytes.len() < 27 {
         return Err("binary FBX header is cut short".into());
     }
-    let version = u32::from_le_bytes(bytes[23..27].try_into().unwrap());
+    let version = u32::from_le_bytes([bytes[23], bytes[24], bytes[25], bytes[26]]);
     let wide = version >= 7500;
     let mut r = Bin {
         b: bytes,
@@ -509,8 +516,12 @@ impl Ascii {
                     } else if self.next() != Some(Tok::Close) {
                         return Err(format!("line {}: bad array", self.line()));
                     }
-                    if vals.iter().all(|v| v.parse::<i64>().is_ok()) {
-                        props.push(Prop::I64Arr(vals.iter().map(|v| v.parse().unwrap()).collect()));
+                    if let Ok(ints) = vals
+                        .iter()
+                        .map(|v| v.parse::<i64>())
+                        .collect::<Result<Vec<_>, _>>()
+                    {
+                        props.push(Prop::I64Arr(ints));
                     } else {
                         props.push(Prop::F64Arr(
                             vals.iter().map(|v| v.parse().unwrap_or(0.0)).collect(),

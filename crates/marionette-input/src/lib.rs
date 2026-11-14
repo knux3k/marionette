@@ -25,6 +25,7 @@
 //! and `pinch` (hand tracking: thumb to index) are 0..1, `thumbstick_x` / `thumbstick_y` are
 //! -1..1 (right and forward are +), the buttons are 0 or 1. Tracked poses are not inputs but
 //! directly set actions (`xr.head.px`, ...; see `marionette-xr`).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -127,7 +128,7 @@ impl EventsFile {
             self.format, self.version
         );
         for (i, e) in self.events.iter().enumerate() {
-            let line = serde_json::to_string(e).expect("events serialize");
+            let line = serde_json::to_string(e).unwrap_or_default();
             out.push_str("    ");
             out.push_str(&line);
             out.push_str(if i + 1 < self.events.len() { ",\n" } else { "\n" });
@@ -347,7 +348,7 @@ impl Module for InputModule {
                 .cloned()
                 .unwrap_or_default(),
         };
-        Some(serde_json::to_vec(&saved).expect("input state serializes"))
+        Some(serde_json::to_vec(&saved).unwrap_or_default())
     }
 
     fn load(&self, world: &mut World, bytes: &[u8]) -> Result<()> {

@@ -1,6 +1,7 @@
 //! CPU-side assets: meshes, materials and images, from glTF files, PNG files, or built in.
 //! Nothing here touches the GPU: the renderer uploads these, and physics builds mesh and
 //! convex colliders from the same meshes.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub use glam;
 
@@ -544,12 +545,18 @@ pub fn decode_png(bytes: &[u8]) -> Result<Image, String> {
 /// Encodes RGBA8 pixels as PNG. Deterministic: same pixels, same bytes.
 pub fn encode_png(width: u32, height: u32, rgba: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
-    {
+    let ok = {
         let mut enc = png::Encoder::new(&mut out, width, height);
         enc.set_color(png::ColorType::Rgba);
         enc.set_depth(png::BitDepth::Eight);
-        let mut writer = enc.write_header().expect("PNG header writes to memory");
-        writer.write_image_data(rgba).expect("PNG data writes to memory");
+        enc.write_header()
+            .and_then(|mut w| w.write_image_data(rgba))
+            .is_ok()
+    };
+    // Writing to memory fails only when `rgba` does not hold width x height pixels; an
+    // empty result is the answer then.
+    if !ok {
+        out.clear();
     }
     out
 }

@@ -160,11 +160,12 @@ fn diff(
 /// succession are never merged away.
 fn stamp(batches: &mut VecDeque<Vec<(u16, f32)>>, slot: u8, out: &mut Vec<(u8, u16, f32)>) {
     let mut used = BTreeSet::new();
-    while let Some(b) = batches.front() {
+    while let Some(b) = batches.pop_front() {
         if b.iter().any(|(a, _)| used.contains(a)) {
+            batches.push_front(b);
             break;
         }
-        for &(a, v) in batches.pop_front().expect("front exists").iter() {
+        for &(a, v) in &b {
             used.insert(a);
             out.push((slot, a, v));
         }
@@ -392,7 +393,9 @@ impl Host {
         let keys: Vec<(u64, u8)> = self.their_hashes.keys().copied().collect();
         for (tick, slot) in keys {
             if let Some(own) = self.own_hashes.get(&tick) {
-                let theirs = self.their_hashes.remove(&(tick, slot)).expect("listed");
+                let Some(theirs) = self.their_hashes.remove(&(tick, slot)) else {
+                    continue;
+                };
                 if &theirs != own {
                     self.events.push_back(SessionEvent::Desync { slot, tick });
                 }
@@ -434,7 +437,9 @@ impl Host {
         for peer in std::mem::take(&mut self.joins) {
             if let Some(slot) = self.free_slot() {
                 self.add_remote(peer, slot, tick + 1);
-                self.remotes.get_mut(&peer).expect("added").last_heard = Some(self.now);
+                if let Some(r) = self.remotes.get_mut(&peer) {
+                    r.last_heard = Some(self.now);
+                }
                 f.roster.push(RosterEvent::Join { slot, peer });
                 self.awaiting_snapshot.push(peer);
             }

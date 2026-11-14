@@ -172,9 +172,9 @@ impl Provider for Qwen {
 
     fn run(&self, ctx: &Ctx, request: &Request) -> Result<Generated, Errors> {
         let Request::Image(i) = request else {
-            unreachable!("generate checks the kind first")
+            return Err(crate::wrong_kind("qwen"));
         };
-        let key = ctx.key.expect("generate checks the key first");
+        let key = crate::key_of(ctx, "qwen")?;
         if let Some(endpoint) = ctx.endpoint {
             let req = build_sync_at(endpoint, ctx.model, key, &i.prompt, i.width, i.height);
             let resp = net::send(ctx.transport, &req, "qwen")?;
@@ -198,7 +198,14 @@ impl Provider for Qwen {
             found = Some((*base, net::send_result(resp, &req, "qwen")?));
             break;
         }
-        let (base, submit) = found.expect("the last region returns or errors");
+        // The last region either returned (`found`) or failed out of the loop with `?`.
+        let Some((base, submit)) = found else {
+            return Err(marionette_core::Diagnostic::error(
+                crate::codes::HTTP,
+                "qwen: no region accepted the key",
+            )
+            .into());
+        };
         let task_id = net::str_at(&net::json(&submit, "qwen")?, "/output/task_id", "qwen")?.to_string();
         let url = net::poll(ctx.max_polls, ctx.wait, "qwen", || {
             let resp = net::send(ctx.transport, &build_status_at(base, key, &task_id), "qwen")?;

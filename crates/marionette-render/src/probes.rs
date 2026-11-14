@@ -168,6 +168,9 @@ impl Probes {
     /// Capture targets for faces of `size` texels.
     pub fn targets(&mut self, device: &wgpu::Device, size: u32, sample_count: u32) -> &CaptureTargets {
         if self.targets.as_ref().is_none_or(|t| t.size != size) {
+            self.targets = None;
+        }
+        self.targets.get_or_insert_with(|| {
             let tex = |label, samples, format, layers| {
                 device.create_texture(&wgpu::TextureDescriptor {
                     label: Some(label),
@@ -206,16 +209,15 @@ impl Probes {
                 usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
-            self.targets = Some(CaptureTargets {
+            CaptureTargets {
                 size,
                 msaa,
                 depth,
                 faces,
                 face_views,
                 readback,
-            });
-        }
-        self.targets.as_ref().expect("made above")
+            }
+        })
     }
 
     /// Reads the six captured faces back (the frame must be recorded into `encoder`), then

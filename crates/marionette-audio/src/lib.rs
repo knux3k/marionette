@@ -14,6 +14,7 @@
 //! - [`music::Music`]: stems that start together and fade in and out by an intensity value.
 //! - The player keeps a voice per playing sound and stops looping sounds whose entity or
 //!   `AudioSource` is gone.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

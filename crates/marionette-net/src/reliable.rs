@@ -115,7 +115,14 @@ impl<D: Datagram> Endpoint<D> {
             while p.unacked.len() < WINDOW {
                 let Some(d) = p.queued.pop_front() else { break };
                 p.queued_bytes -= d.len();
-                let seq = u32::from_le_bytes(d[1..5].try_into().expect("fragment header"));
+                // Every queued datagram was built here with a 5-byte header.
+                let Some(seq) = d
+                    .get(1..5)
+                    .and_then(|b| b.try_into().ok())
+                    .map(u32::from_le_bytes)
+                else {
+                    continue;
+                };
                 sends.push(d.clone());
                 p.unacked.insert(
                     seq,
@@ -282,7 +289,9 @@ impl<D: Datagram> Transport for Endpoint<D> {
         let ids: Vec<PeerId> = self.peers.keys().copied().collect();
         for id in ids {
             let mut out = Vec::new();
-            let p = self.peers.get_mut(&id).expect("listed");
+            let Some(p) = self.peers.get_mut(&id) else {
+                continue;
+            };
             let rto = p.rto();
             for u in p.unacked.values_mut() {
                 if out.len() >= MAX_RESENDS {

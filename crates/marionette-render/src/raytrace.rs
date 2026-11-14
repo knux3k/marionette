@@ -148,9 +148,11 @@ pub(crate) struct RayTracer {
 
 /// The ray tracing variant of a PBR shader source: the stubs between the `RT:BEGIN` and
 /// `RT:END` markers replaced by `raytrace.wgsl`, and the ray query extension enabled.
+/// Without the markers the stubs stay (shadows by maps only); the test below fails then.
 pub(crate) fn shader_source(pbr: &str) -> String {
-    let begin = pbr.find("// RT:BEGIN").expect("pbr.wgsl has RT:BEGIN");
-    let end = pbr.find("// RT:END").expect("pbr.wgsl has RT:END");
+    let (Some(begin), Some(end)) = (pbr.find("// RT:BEGIN"), pbr.find("// RT:END")) else {
+        return format!("enable wgpu_ray_query;\n{pbr}");
+    };
     format!(
         "enable wgpu_ray_query;\n{}{}{}",
         &pbr[..begin],
@@ -446,7 +448,11 @@ impl RayTracer {
             .collect();
         encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
 
-        let tri_base = self.tri_base.as_ref().expect("written above");
+        // Written above by `write_growable`, which always leaves a buffer.
+        let Some(tri_base) = self.tri_base.as_ref() else {
+            self.group = None;
+            return;
+        };
         let mut entries = lights.entries();
         entries.push(wgpu::BindGroupEntry {
             binding: 6,

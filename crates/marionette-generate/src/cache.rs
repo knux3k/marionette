@@ -39,7 +39,7 @@ pub fn key(k: &KeyInput) -> String {
         "size": k.size,
         "image_sha256": k.image_sha256,
     });
-    crate::sha256_hex(serde_json::to_string(&v).expect("serializes").as_bytes())
+    crate::sha256_hex(serde_json::to_string(&v).unwrap_or_default().as_bytes())
 }
 
 /// Metadata stored with each entry.
@@ -100,7 +100,7 @@ pub fn get(root: &Path, key: &str, kind: Kind) -> Result<Option<(Vec<u8>, Meta)>
 pub fn put(root: &Path, meta: &Meta, bytes: &[u8]) -> Result<(), Errors> {
     let (data, rec) = paths(root, &meta.key, meta.kind);
     crate::write_file(&data, &format!("{DIR}/{}.{}", meta.key, ext(meta.kind)), bytes)?;
-    let mut text = serde_json::to_string_pretty(meta).expect("serializes");
+    let mut text = serde_json::to_string_pretty(meta).unwrap_or_default();
     text.push('\n');
     crate::write_file(&rec, &format!("{DIR}/{}.json", meta.key), text.as_bytes())
 }

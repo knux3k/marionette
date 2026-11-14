@@ -290,7 +290,7 @@ impl Recipe {
 
     /// Canonical file text: pretty JSON with a trailing newline.
     pub fn to_text(&self) -> String {
-        let mut s = serde_json::to_string_pretty(self).expect("recipes serialize");
+        let mut s = serde_json::to_string_pretty(self).unwrap_or_default();
         s.push('\n');
         s
     }
@@ -343,7 +343,7 @@ pub fn load_dir(dir: &Path, shown_dir: &str) -> Result<Vec<Loaded>, Errors> {
     let mut out = Vec::new();
     let mut errors = Vec::new();
     for path in paths {
-        let fname = path.file_name().unwrap().to_string_lossy().to_string();
+        let fname = path.file_name().unwrap_or_default().to_string_lossy().to_string();
         let shown = format!("{shown_dir}/{fname}");
         let bytes = match std::fs::read(&path) {
             Ok(b) => b,

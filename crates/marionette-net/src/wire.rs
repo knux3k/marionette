@@ -73,10 +73,14 @@ impl<'a> Reader<'a> {
         self.take(2).map(|s| u16::from_le_bytes([s[0], s[1]]))
     }
     pub fn u32(&mut self) -> Option<u32> {
-        self.take(4).map(|s| u32::from_le_bytes(s.try_into().unwrap()))
+        self.take(4)
+            .and_then(|s| s.try_into().ok())
+            .map(u32::from_le_bytes)
     }
     pub fn u64(&mut self) -> Option<u64> {
-        self.take(8).map(|s| u64::from_le_bytes(s.try_into().unwrap()))
+        self.take(8)
+            .and_then(|s| s.try_into().ok())
+            .map(u64::from_le_bytes)
     }
     pub fn f32(&mut self) -> Option<f32> {
         self.u32().map(f32::from_bits)

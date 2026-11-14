@@ -20,17 +20,18 @@ pub const DEFAULT_TIME_LIMIT_MS: u64 = 5_000;
 /// The process-wide WebAssembly engines, one per [`Safety`] level (the time limit is an
 /// engine setting). Functions are inlined; no threads, no relaxed SIMD. NaNs are made
 /// canonical where they are stored (see the compiler), not after every operation.
-fn engine(safety: Safety) -> &'static Engine {
-    static CHECKED: OnceLock<Engine> = OnceLock::new();
-    static UNCHECKED: OnceLock<Engine> = OnceLock::new();
+/// Made once; a failure is kept and reported by every later call.
+fn engine(safety: Safety) -> wasmtime::Result<&'static Engine> {
+    static CHECKED: OnceLock<Result<Engine, String>> = OnceLock::new();
+    static UNCHECKED: OnceLock<Result<Engine, String>> = OnceLock::new();
     let cell = if safety.checked() { &CHECKED } else { &UNCHECKED };
-    cell.get_or_init(|| {
+    let made = cell.get_or_init(|| {
         let mut config = Config::new();
         config.cranelift_opt_level(OptLevel::Speed);
         config.compiler_inlining(Inlining::Yes);
         config.relaxed_simd_deterministic(true);
         config.epoch_interruption(safety.checked());
-        let engine = Engine::new(&config).expect("the WebAssembly engine configuration is valid");
+        let engine = Engine::new(&config).map_err(|e| e.to_string())?;
         if safety.checked() {
             let ticker = engine.clone();
             std::thread::Builder::new()
@@ -41,10 +42,11 @@ fn engine(safety: Safety) -> &'static Engine {
                         ticker.increment_epoch();
                     }
                 })
-                .expect("the watchdog thread starts");
+                .map_err(|e| format!("the job watchdog thread did not start: {e}"))?;
         }
-        engine
-    })
+        Ok(engine)
+    });
+    made.as_ref().map_err(|e| wasmtime::Error::msg(e.clone()))
 }
 
 /// Why a job stopped (raised by the `trap` import).
@@ -118,7 +120,7 @@ fn math2(name: &str) -> fn(f64, f64) -> f64 {
 }
 
 fn linker(safety: Safety) -> wasmtime::Result<Linker<()>> {
-    let mut l = Linker::new(engine(safety));
+    let mut l = Linker::new(engine(safety)?);
     l.func_wrap(
         "env",
         "trap",
@@ -361,7 +363,9 @@ impl JobProgram {
     fn from_compiled(compiled: Compiled) -> Result<Self, Diagnostic> {
         let file = compiled.file.clone();
         let safety = compiled.safety;
-        let module = Module::new(engine(safety), &compiled.wasm).map_err(|e| internal(&file, e))?;
+        let module = engine(safety)
+            .and_then(|e| Module::new(e, &compiled.wasm))
+            .map_err(|e| internal(&file, e))?;
         let pre = linker(safety)
             .and_then(|l| l.instantiate_pre(&module))
             .map_err(|e| internal(&file, e))?;
@@ -567,10 +571,11 @@ impl JobProgram {
     }
 
     fn take_slot(&self) -> Result<Slot, Diagnostic> {
-        if let Some(s) = self.slots.lock().expect("slot pool").pop() {
+        if let Some(s) = self.slots.lock().unwrap_or_else(|p| p.into_inner()).pop() {
             return Ok(s);
         }
-        let mut store = Store::new(engine(self.compiled.safety), ());
+        let engine = engine(self.compiled.safety).map_err(|e| internal(&self.compiled.file, e))?;
+        let mut store = Store::new(engine, ());
         if self.compiled.safety.checked() {
             store.epoch_deadline_trap();
         }
@@ -607,7 +612,8 @@ impl JobProgram {
         let result = self.call_in(&mut slot, info, plan, run_id, index, range);
         // A slot whose call trapped is dropped (its state is unknown); others go back.
         if result.is_ok() {
-            self.slots.lock().expect("slot pool").push(slot);
+            // A poisoned pool still holds whole slots: only a push or pop was interrupted.
+            self.slots.lock().unwrap_or_else(|p| p.into_inner()).push(slot);
         }
         result
     }

@@ -58,7 +58,7 @@ impl HttpRequest {
                 value: "application/json".into(),
                 secret: false,
             }],
-            body: Some(serde_json::to_vec(body).expect("JSON values serialize")),
+            body: Some(serde_json::to_vec(body).unwrap_or_default()),
         }
     }
 
@@ -103,7 +103,7 @@ impl HttpResponse {
     pub fn json(status: u16, body: &serde_json::Value) -> Self {
         Self {
             status,
-            body: serde_json::to_vec(body).expect("JSON values serialize"),
+            body: serde_json::to_vec(body).unwrap_or_default(),
         }
     }
 }

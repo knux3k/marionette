@@ -148,10 +148,10 @@ pub fn sync_dir(dir: &Path, suffixes: &[&str], cloud: &mut dyn CloudFiles) -> Re
     if manifest_changed {
         cloud.write(
             MANIFEST,
-            &serde_json::to_vec_pretty(&manifest).expect("serializes"),
+            &serde_json::to_vec_pretty(&manifest).unwrap_or_default(),
         )?;
     }
-    let text = serde_json::to_vec_pretty(&Hashes { files: new_base }).expect("serializes");
+    let text = serde_json::to_vec_pretty(&Hashes { files: new_base }).unwrap_or_default();
     write_atomic(&base_path, &text)?;
     Ok(report)
 }

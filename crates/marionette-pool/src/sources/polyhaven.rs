@@ -90,7 +90,7 @@ fn fetch(
     let url = entry["url"]
         .as_str()
         .ok_or_else(|| format!("{what} has no url"))?;
-    if !super::library("polyhaven").expect("known").owns(url) {
+    if !super::library("polyhaven").is_some_and(|l| l.owns(url)) {
         return Err(format!("{what} points outside Poly Haven: {url}"));
     }
     let bytes = net::get(t, url)?;
@@ -195,7 +195,7 @@ pub fn ingest(t: &dyn Transport, id: &str, resolution: &str) -> Result<Candidate
                 }
             }
             let main = format!("{id}.gltf");
-            out.push((main, serde_json::to_vec_pretty(&doc).expect("json")));
+            out.push((main, serde_json::to_vec_pretty(&doc).unwrap_or_default()));
             if notes.is_empty() && out.iter().any(|(n, _)| n.ends_with(".png")) {
                 notes.push("JPEG textures converted to PNG; glTF image paths updated".into());
             }

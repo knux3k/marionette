@@ -288,11 +288,7 @@ pub fn render_score(score: &Score, base: &Path) -> Result<Rendered, String> {
         let n = block.min(total_frames - pos);
         let end = (pos + n) as u64;
         // Hand over every event due before the end of this block, as far as the queue allows.
-        while let Some(e) = queue.peek() {
-            if e.at >= end + (block as u64) * 4 {
-                break;
-            }
-            let e = queue.next().expect("peeked");
+        while let Some(e) = queue.next_if(|e| e.at < end + (block as u64) * 4) {
             if !handle.send(e.cmd) {
                 return Err("too many events scheduled at once".into());
             }

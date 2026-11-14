@@ -8,6 +8,7 @@
 //!
 //! A game with its own Rust modules or operations makes its own binary with the same commands:
 //! `fn main() -> ExitCode { marionette_cli::main_with(engine) }` (decision 0062).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use clap::{Parser, Subcommand};
 use marionette_agent::{Agent, Engine};
@@ -748,7 +749,8 @@ fn json_text(value: &Value) -> String {
     } else {
         serde_json::to_string(value)
     }
-    .expect("serializable")
+    // A `Value` always serializes.
+    .unwrap_or_default()
 }
 
 fn print_result(json_out: bool, result: Result<Value, Errors>) -> ExitCode {
@@ -1019,8 +1021,9 @@ fn make(
     input["path"] = json!(path);
     if (!refresh || ask.get("brief").is_some())
         && let Value::Object(m) = ask
+        && let Some(fields) = input.as_object_mut()
     {
-        input.as_object_mut().expect("object").extend(m);
+        fields.extend(m);
     }
     agent.call("game_make", input).map(|v| merge("make", v))
 }

@@ -183,10 +183,8 @@ struct MakeOutput {
 
 const BRIEF_FILE: &str = "brief.json";
 
-fn pretty(v: &impl Serialize) -> String {
-    let mut s = serde_json::to_string_pretty(v).expect("serializes");
-    s.push('\n');
-    s
+fn pretty(v: &impl Serialize) -> Result<String, Errors> {
+    crate::json_text(v)
 }
 
 fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
@@ -252,7 +250,7 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         write(
             &game,
             "marionette.json",
-            pretty(&json!({"format": "marionette.project", "name": name, "version": 1})),
+            pretty(&json!({"format": "marionette.project", "name": name, "version": 1}))?,
             &mut files,
         )?;
     }
@@ -262,7 +260,7 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
             "providers.json",
             pretty(
                 &json!({"format": "marionette.providers/1", "image": {"provider": "qwen"}, "model3d": {"provider": "tripo"}}),
-            ),
+            )?,
             &mut files,
         )?;
     }
@@ -282,19 +280,19 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     write(
         &game,
         "scenes/main.actions.json",
-        pretty(&template::actions(brief.template)),
+        pretty(&template::actions(brief.template))?,
         &mut files,
     )?;
     write(
         &game,
         "tests/autoplay.inputs.json",
-        pretty(&template::autoplay_inputs()),
+        pretty(&template::autoplay_inputs())?,
         &mut files,
     )?;
 
     // The brief goes in first, so a project whose level could not be won can still be
     // fixed and refreshed.
-    write(&game, BRIEF_FILE, pretty(&brief), &mut files)?;
+    write(&game, BRIEF_FILE, pretty(&brief)?, &mut files)?;
 
     // Level: the brief's seed first; if the autopilot cannot win it, the next seeds.
     let tries = input.tries.unwrap_or(8).clamp(1, 64);
@@ -330,17 +328,17 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     write(
         &game,
         "tests/autoplay.test.json",
-        pretty(&template::autoplay_test(auto_ticks, &auto_hash)),
+        pretty(&template::autoplay_test(auto_ticks, &auto_hash))?,
         &mut files,
     )?;
     let idle_hash = run_hash(&game, template::IDLE_TICKS, None)?;
     write(
         &game,
         "tests/idle.test.json",
-        pretty(&template::idle_test(template::IDLE_TICKS, &idle_hash)),
+        pretty(&template::idle_test(template::IDLE_TICKS, &idle_hash))?,
         &mut files,
     )?;
-    write(&game, BRIEF_FILE, pretty(&brief), &mut files)?;
+    write(&game, BRIEF_FILE, pretty(&brief)?, &mut files)?;
     write(&game, "README.md", template::readme(&brief), &mut files)?;
     files.extend([
         template::SCRIPT.to_string(),
@@ -525,7 +523,7 @@ fn resolve_art(
                 // becomes a new request; outputs already built are never touched.
                 for (name, recipe) in template::recipes(brief, &slot) {
                     let path = format!("assets/generated/{name}.recipe.json");
-                    game.write_file(&path, pretty(&recipe).as_bytes())?;
+                    game.write_file(&path, pretty(&recipe)?.as_bytes())?;
                     files.push(path);
                 }
                 pending.push(slot.name.to_string());
@@ -574,12 +572,13 @@ fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh:
             .map_err(|e| bad(format!("custom.ops.json: {e}"), "check the file"))?;
         let extra: Value = serde_json::from_str(&text)
             .map_err(|e| bad(format!("custom.ops.json: {e}"), "format marionette.ops"))?;
-        let list = ops["ops"].as_array_mut().expect("ops list");
-        let validate = list.pop();
-        list.extend(extra["ops"].as_array().cloned().unwrap_or_default());
-        list.extend(validate);
+        if let Some(list) = ops["ops"].as_array_mut() {
+            let validate = list.pop();
+            list.extend(extra["ops"].as_array().cloned().unwrap_or_default());
+            list.extend(validate);
+        }
     }
-    game.write_file("build.ops.json", pretty(&ops).as_bytes())?;
+    game.write_file("build.ops.json", pretty(&ops)?.as_bytes())?;
     let scene = game.root().join(template::SCENE);
     if scene.exists() {
         std::fs::remove_file(&scene)

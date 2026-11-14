@@ -241,7 +241,9 @@ impl Scale {
                     let t = self.build(device, size);
                     self.targets.insert(size, t);
                 }
-                let t = self.targets.get_mut(&size).expect("just inserted");
+                let Some(t) = self.targets.get_mut(&size) else {
+                    continue;
+                };
                 t.used = true;
                 let ratio = out.0 as f32 / size.0 as f32;
                 let mode = if size == out {

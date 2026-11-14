@@ -6,6 +6,7 @@
 //! `Velocity`, `AngularVelocity` and `CharacterState` back every tick, so the state hash
 //! covers every body. Rapier's internal caches are saved in snapshots so a restored session
 //! continues exactly.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod backend;
 pub mod components;
@@ -97,7 +98,7 @@ impl Module for PhysicsModule {
 
     fn save(&self, world: &World) -> Option<Vec<u8>> {
         let p = world.get_resource::<Physics>()?;
-        Some(postcard::to_allocvec(p).expect("physics state serializes"))
+        postcard::to_allocvec(p).ok()
     }
 
     fn load(&self, world: &mut World, bytes: &[u8]) -> Result<()> {

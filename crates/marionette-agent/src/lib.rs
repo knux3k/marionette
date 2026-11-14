@@ -5,6 +5,7 @@
 //! Every operation takes a JSON object and returns a JSON object or [`Errors`] (diagnostics
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 #[cfg(feature = "anim")]
 pub mod anim;
@@ -90,6 +91,9 @@ pub mod codes {
     pub const BAD_NAME: &str = "agent.bad_name";
     /// The MCP server was started without this operation (`marionette mcp --tools`).
     pub const NOT_ENABLED: &str = "agent.not_enabled";
+    /// Something the engine itself should never produce (an output that does not
+    /// serialize); reported instead of crashing.
+    pub const INTERNAL: &str = "agent.internal";
 }
 
 type Handler = Box<dyn Fn(&mut Agent, Value) -> Result<Value, Errors> + Send + Sync>;
@@ -139,7 +143,12 @@ where
             )
         })?;
         let out = f(agent, parsed)?;
-        Ok(serde_json::to_value(out).expect("operation outputs serialize"))
+        serde_json::to_value(out).map_err(|e| {
+            Errors::from(Diagnostic::error(
+                codes::INTERNAL,
+                format!("the output of `{name}` does not serialize: {e}"),
+            ))
+        })
     });
     Op {
         info: OpInfo {
@@ -411,7 +420,7 @@ impl Agent {
         if self.gpu.is_none() {
             self.gpu = Some(Gpu::headless()?);
         }
-        Ok(self.gpu.as_ref().expect("just set"))
+        self.gpu.as_ref().ok_or_else(Errors::default)
     }
 }
 
@@ -431,6 +440,16 @@ pub(crate) fn read_text(path: &Path, shown: &str) -> Result<String, Errors> {
 
 /// Writes a file atomically (temporary file, then rename) so a crash never leaves half a
 /// scene on disk.
+/// `v` as pretty JSON text with a final newline, as the engine writes its files.
+pub(crate) fn json_text(v: &impl Serialize) -> Result<String, Errors> {
+    serde_json::to_string_pretty(v).map(|t| t + "\n").map_err(|e| {
+        Errors::from(Diagnostic::error(
+            codes::INTERNAL,
+            format!("cannot write JSON: {e}"),
+        ))
+    })
+}
+
 pub(crate) fn write_atomic(path: &Path, shown: &str, bytes: &[u8]) -> Result<(), Errors> {
     let err = |e: std::io::Error| {
         Errors::from(

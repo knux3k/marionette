@@ -238,7 +238,9 @@ impl Library {
         });
         self.write(
             &self.root.join("library.json"),
-            serde_json::to_string_pretty(&marker).expect("json").as_bytes(),
+            serde_json::to_string_pretty(&marker)
+                .unwrap_or_default()
+                .as_bytes(),
         )
     }
 

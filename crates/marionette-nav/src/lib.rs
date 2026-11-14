@@ -16,6 +16,7 @@
 //! The grid and routes are plain integers and `+ - * / sqrt` floats, searched in a fixed
 //! order, so a run is the same on every platform and thread count. Routes live in the module
 //! state (saved in snapshots); [`NavAgentState`] is in the scene and the state hash.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod grid;
 pub mod search;
@@ -287,7 +288,7 @@ impl Module for NavModule {
                 })
                 .collect(),
         };
-        Some(postcard::to_allocvec(&saved).expect("nav state serializes"))
+        postcard::to_allocvec(&saved).ok()
     }
 
     fn load(&self, world: &mut World, bytes: &[u8]) -> Result<()> {
@@ -513,8 +514,9 @@ fn sync_obstacles(world: &mut World, nav: &mut NavWorld) {
         .copied()
         .collect();
     for id in gone {
-        let o = nav.obstacles.remove(&id).expect("listed");
-        unstamp(nav, &o);
+        if let Some(o) = nav.obstacles.remove(&id) {
+            unstamp(nav, &o);
+        }
     }
     for (id, ob, p) in found {
         let key = [
@@ -528,8 +530,9 @@ fn sync_obstacles(world: &mut World, nav: &mut NavWorld) {
             if old.key == key && old.surface == ob.surface.0 {
                 continue;
             }
-            let old = nav.obstacles.remove(&id).expect("present");
-            unstamp(nav, &old);
+            if let Some(old) = nav.obstacles.remove(&id) {
+                unstamp(nav, &old);
+            }
         }
         let Some(s) = nav.surfaces.get_mut(&ob.surface.0) else {
             continue;

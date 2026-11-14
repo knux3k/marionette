@@ -331,7 +331,7 @@ pub fn record(ledger: &Path, entry: &Entry) -> Result<(), Errors> {
         .append(true)
         .open(ledger)
         .map_err(err)?;
-    let mut line = serde_json::to_string(entry).expect("entries serialize");
+    let mut line = serde_json::to_string(entry).unwrap_or_default();
     line.push('\n');
     file.write_all(line.as_bytes()).map_err(err)
 }

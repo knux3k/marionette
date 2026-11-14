@@ -175,7 +175,7 @@ pub fn chains(tokens: &[Token]) -> Vec<Chain> {
                 }
                 break;
             }
-            let last = segs.last_mut().expect("non-empty");
+            let Some(last) = segs.last_mut() else { break };
             if tokens.get(j).is_some_and(|t| t.is("<")) {
                 match matching(tokens, j) {
                     Some(close) if close - j <= 16 => {

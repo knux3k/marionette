@@ -123,9 +123,9 @@ impl Provider for Claude {
 
     fn run(&self, ctx: &Ctx, request: &Request) -> Result<Generated, Errors> {
         let Request::Text(t) = request else {
-            unreachable!("generate checks the kind first")
+            return Err(crate::wrong_kind("claude"));
         };
-        let key = ctx.key.expect("generate checks the key first");
+        let key = crate::key_of(ctx, "claude")?;
         let req = build(ctx.model, key, t.system.as_deref(), &t.prompt, t.max_tokens);
         let resp = net::send(ctx.transport, &req, "claude")?;
         let (text, usage) = parse(&net::json(&resp, "claude")?)?;

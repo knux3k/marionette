@@ -6,6 +6,7 @@
 //!   without a store, and a store that is not running.
 //!
 //! The Steam backend lives in the optional `marionette-steam` crate.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod defs;
 mod offline;

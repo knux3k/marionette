@@ -38,7 +38,7 @@ pub fn write(out: &str, mut v: Value) -> Result<Value, Errors> {
             let file = json!({ "format": "marionette.input-events", "version": 1, "events": events });
             write_file(
                 &dir.join(&name),
-                &(serde_json::to_string_pretty(&file).expect("json") + "\n"),
+                &(serde_json::to_string_pretty(&file).unwrap_or_default() + "\n"),
             )?;
             r["input_file"] = json!(format!("{out}/{name}"));
             files.push(format!("{out}/{name}"));
@@ -46,7 +46,7 @@ pub fn write(out: &str, mut v: Value) -> Result<Value, Errors> {
         let name = format!("{stem}.crash.json");
         write_file(
             &dir.join(&name),
-            &(serde_json::to_string_pretty(r).expect("json") + "\n"),
+            &(serde_json::to_string_pretty(r).unwrap_or_default() + "\n"),
         )?;
         files.push(format!("{out}/{name}"));
     }
@@ -59,7 +59,7 @@ pub fn write(out: &str, mut v: Value) -> Result<Value, Errors> {
     }
     write_file(
         &dir.join("report.json"),
-        &(serde_json::to_string_pretty(&summary).expect("json") + "\n"),
+        &(serde_json::to_string_pretty(&summary).unwrap_or_default() + "\n"),
     )?;
     files.insert(0, format!("{out}/report.json"));
     let mut result = json!({ "ok": true, "command": "stability", "report_dir": out, "files": files });

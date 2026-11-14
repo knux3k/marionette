@@ -620,7 +620,7 @@ fn build(
         }
         // A JSON string is a JavaScript string literal.
         plan.make
-            .push_str(&serde_json::to_string(name).expect("a string is JSON"));
+            .push_str(&serde_json::to_string(name).unwrap_or_default());
         plan.make.push(':');
         path.push(*index);
         if let Some(kind) = kind_of(field.type_id()) {

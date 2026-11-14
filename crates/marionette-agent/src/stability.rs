@@ -287,7 +287,7 @@ impl Percentiles {
             avg_ms: r(s.iter().sum::<f64>() / s.len() as f64),
             p50_ms: r(pct(0.5)),
             p99_ms: r(pct(0.99)),
-            max_ms: r(*s.last().expect("not empty")),
+            max_ms: r(s.last().copied().unwrap_or(0.0)),
         }
     }
 }
@@ -555,7 +555,10 @@ fn run(agent: &mut Agent, input: RunInput) -> Result<RunOutput, Errors> {
         let mut setup_agent = (!mode.setup.is_empty())
             .then(|| Agent::with_engine(agent.root(), agent.read_only(), agent.engine().clone()));
         for s in &mode.setup {
-            let helper = setup_agent.as_mut().expect("created when there is setup");
+            // Made above whenever there is setup.
+            let Some(helper) = setup_agent.as_mut() else {
+                break;
+            };
             if let Err(e) = helper.call(&s.op, s.input.clone()) {
                 setup_error = Some(format!("setup operation `{}` failed: {e}", s.op));
                 break;
@@ -938,6 +941,8 @@ impl Meter {
     }
 }
 
+// The harness's own tests inject a panic on purpose, to prove a crashing mode is caught.
+#[allow(clippy::panic)]
 fn inject_tick(job: &Job, tick: u64, progress: &Progress, meter: &mut Meter) {
     if job.inject.panic_at == Some(tick) {
         panic!("injected panic at tick {tick} (stability harness test)");
@@ -1192,7 +1197,7 @@ fn agent_pass(
     }
     let end = agent.call("session_step", json!({ "session": session, "ticks": 0 }))?;
     if offset == 0 {
-        let s = agent.sessions.get_mut(&session).expect("session exists");
+        let s = crate::session::get_mut(&mut agent, &session)?;
         let ents = entities(&mut s.sim);
         let mut r = out.lock().unwrap_or_else(|e| e.into_inner());
         r.entities_end = ents;

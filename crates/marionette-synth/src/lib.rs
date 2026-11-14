@@ -9,6 +9,7 @@
 //!   [`analyze`] reports level, clipping, clicks, pitch and spectrum as numbers.
 //!
 //! Hosting on a real device (kira) lives in `marionette-audio` (decision 0220).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod analyze;
 pub mod dsp;

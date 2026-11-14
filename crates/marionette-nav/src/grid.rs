@@ -97,7 +97,8 @@ impl Grid {
                     let uc = (g.bounds[i as usize] + g.bounds[i as usize + 1]) * 0.5;
                     let vc = (g.bounds[j as usize] + g.bounds[j as usize + 1]) * 0.5;
                     let d = add(nrm, add(scale(a, uc), scale(b, vc)));
-                    g.centre.push(norm(d).expect("face point is not zero"));
+                    // A face point is never zero (the face normal plus an in-face offset).
+                    g.centre.push(norm(d).unwrap_or(nrm));
                 }
             }
         }

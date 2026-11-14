@@ -97,7 +97,10 @@ impl Scripted {
 
 impl Transport for Scripted {
     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
-        self.asked.lock().expect("lock").push(request.url.clone());
+        self.asked
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(request.url.clone());
         self.answers
             .get(&request.url)
             .cloned()

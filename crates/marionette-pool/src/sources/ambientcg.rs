@@ -115,7 +115,7 @@ pub fn ingest(t: &dyn Transport, id: &str, resolution: &str) -> Result<Candidate
         .or_else(|| pick("JPG"))
         .ok_or_else(|| format!("no {res} PNG or JPG download"))?;
     let link = d["downloadLink"].as_str().ok_or("download has no link")?;
-    if !super::library("ambientcg").expect("known").owns(link) {
+    if !super::library("ambientcg").is_some_and(|l| l.owns(link)) {
         return Err(format!("download points outside ambientCG: {link}"));
     }
     let bytes = net::get(t, link)?;

@@ -142,9 +142,9 @@ impl Provider for Tripo {
 
     fn run(&self, ctx: &Ctx, request: &Request) -> Result<Generated, Errors> {
         let Request::Model(m) = request else {
-            unreachable!("generate checks the kind first")
+            return Err(crate::wrong_kind("tripo"));
         };
-        let key = ctx.key.expect("generate checks the key first");
+        let key = crate::key_of(ctx, "tripo")?;
         let submit_req = match &m.image_png {
             Some(png) => {
                 if png

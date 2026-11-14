@@ -46,7 +46,6 @@ pub struct MusicInput {
 fn music(agent: &mut Agent, input: MusicInput) -> Result<EditOutput, Errors> {
     let engine = agent.engine().clone();
     let registry = engine.registry();
-    let entry = registry.get("Music").expect("the audio module registers Music");
     let id = input.id;
     let (target, diff) = apply(agent, &input.target, |scene, shown| {
         let e = scene.entities.iter_mut().find(|e| e.id == id).ok_or_else(|| {
@@ -61,13 +60,12 @@ fn music(agent: &mut Agent, input: MusicInput) -> Result<EditOutput, Errors> {
                     .fix("add one with component_set (layers: sound, at, mix, level 0)"),
             )
         })?;
-        let value = registry.from_json(entry, v).map_err(|m| {
+        let mut m: Music = registry.value_from_json("Music", v).map_err(|m| {
             Errors::from(
                 Diagnostic::error(codes::BAD_INPUT, format!("entity {id} has an invalid Music: {m}"))
                     .entity(id),
             )
         })?;
-        let mut m = *value.into_any().downcast::<Music>().expect("registered as Music");
         if let Some(x) = input.intensity {
             m.intensity = x;
         }

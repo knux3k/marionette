@@ -109,17 +109,15 @@ impl UiRuntime {
             .get(&id)
             .is_none_or(|c| c.panel != *panel || c.content != *content);
         if fresh {
-            cache.insert(
-                id,
-                Cached {
-                    panel: panel.clone(),
-                    content: content.clone(),
-                    layout: Arc::new(layout::compute(panel, content, &self.font)),
-                    mesh: None,
-                },
-            );
+            cache.remove(&id);
         }
-        f(cache.get_mut(&id).expect("just inserted"), &self.font)
+        let cached = cache.entry(id).or_insert_with(|| Cached {
+            panel: panel.clone(),
+            content: content.clone(),
+            layout: Arc::new(layout::compute(panel, content, &self.font)),
+            mesh: None,
+        });
+        f(cached, &self.font)
     }
 
     /// Layout of a panel, rebuilt only when its components changed.

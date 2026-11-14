@@ -6,6 +6,7 @@
 //! Optional: the CLI and agent include it with the `editor` cargo feature (on by default).
 //! Only [`window`] needs a screen; [`view`] renders the same picture offscreen, and every
 //! command lives in [`state::Editor`] so it can be tested without a window.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod camera;
 pub mod edit;

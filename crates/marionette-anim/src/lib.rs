@@ -10,6 +10,7 @@
 //! hashed and restored with the scene. The pose is recomputed from them with plain
 //! arithmetic (no `sin`/`cos`/`slerp`), on one thread, in scene-id order. Model files are
 //! read only in [`Module::init`], never during a tick.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod blend;
 pub mod sample;

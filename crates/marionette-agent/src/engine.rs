@@ -113,6 +113,15 @@ impl EngineBuilder {
     /// Checks names (module names and operation names must be unique; operation names are
     /// `lower_snake_case`, and the part before the first `_` is the group) and builds.
     pub fn build(self) -> Result<Engine, Errors> {
+        let problems = self.problems();
+        if !problems.is_empty() {
+            return Err(Errors(problems));
+        }
+        Ok(self.finish())
+    }
+
+    /// What [`EngineBuilder::build`] refuses: repeated or badly formed names.
+    fn problems(&self) -> Vec<Diagnostic> {
         let mut problems = Vec::new();
         let mut seen = BTreeSet::new();
         for part in &self.parts {
@@ -148,9 +157,11 @@ impl EngineBuilder {
                 );
             }
         }
-        if !problems.is_empty() {
-            return Err(Errors(problems));
-        }
+        problems
+    }
+
+    /// Builds without checking names; [`EngineBuilder::build`] checks first.
+    fn finish(self) -> Engine {
         let parts = self.parts;
         let modules: Modules = Arc::new_cyclic(|_weak: &std::sync::Weak<Vec<Box<dyn Module>>>| {
             parts
@@ -163,18 +174,20 @@ impl EngineBuilder {
                         // one would be a reference cycle that never frees.
                         let weak = _weak.clone();
                         Box::new(marionette_script::ScriptModule::new(move || {
-                            registry_with(&weak.upgrade().expect("the engine outlives its simulations"))
+                            // The engine outlives its simulations, so the list is there; an
+                            // empty registry is the harmless answer if it ever is not.
+                            weak.upgrade().map(|m| registry_with(&m)).unwrap_or_default()
                         })) as Box<dyn Module>
                     }
                 })
                 .collect::<Vec<_>>()
         });
         let registry = registry_with(&modules);
-        Ok(Engine(Arc::new(Inner {
+        Engine(Arc::new(Inner {
             modules,
             registry,
             ops: Arc::new(self.ops),
-        })))
+        }))
     }
 }
 
@@ -183,11 +196,8 @@ impl Engine {
     pub fn standard() -> Engine {
         static STANDARD: OnceLock<Engine> = OnceLock::new();
         STANDARD
-            .get_or_init(|| {
-                EngineBuilder::standard()
-                    .build()
-                    .expect("built-in module and operation names are unique")
-            })
+            // The built-in names are unique; the test `built_in_names_are_unique` checks them.
+            .get_or_init(|| EngineBuilder::standard().finish())
             .clone()
     }
 
@@ -314,4 +324,15 @@ pub fn save_recording(sim: &Sim, path: &std::path::Path, shown: &str) -> Result<
     let file = marionette_input::recording(&sim.world);
     write_atomic(path, shown, file.to_text().as_bytes())?;
     Ok(file.events.len())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EngineBuilder;
+
+    #[test]
+    fn built_in_names_are_unique() {
+        let problems = EngineBuilder::standard().problems();
+        assert!(problems.is_empty(), "{problems:?}");
+    }
 }

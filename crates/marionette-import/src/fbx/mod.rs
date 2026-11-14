@@ -779,8 +779,8 @@ impl<'a> Scene<'a> {
                 c.node
                     .array(k)
                     .and_then(Prop::f64s)
-                    .filter(|v| v.len() == 16)
-                    .map(|v| DMat4::from_cols_array(&v.try_into().unwrap()))
+                    .and_then(|v| <[f64; 16]>::try_from(v).ok())
+                    .map(|v| DMat4::from_cols_array(&v))
             };
             // `Transform` maps the mesh node's space into the bone's space at bind time: it is
             // the inverse bind matrix already (`TransformLink` is the bone's bind pose in world).
@@ -1421,7 +1421,7 @@ impl Curve {
         match self.times.binary_search(&t) {
             Ok(i) => self.values[i],
             Err(0) => self.values[0],
-            Err(i) if i >= self.times.len() => *self.values.last().unwrap(),
+            Err(i) if i >= self.times.len() => self.values[i - 1],
             Err(i) => {
                 let (a, b) = (i - 1, i);
                 if self.constant[a] {
@@ -1560,7 +1560,8 @@ impl Gltf {
             root["bufferViews"] = Value::Array(self.views);
             root["accessors"] = Value::Array(self.accessors);
         }
-        let mut js = serde_json::to_vec(&root).expect("json");
+        // A `Value` always serializes.
+        let mut js = serde_json::to_vec(&root).unwrap_or_default();
         while !js.len().is_multiple_of(4) {
             js.push(b' ');
         }
