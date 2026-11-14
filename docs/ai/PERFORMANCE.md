@@ -13,6 +13,8 @@ GPU. Decisions: 0023 (budgets), 0024 (jobs), 0025 (renderer), 0026 (factory modu
 | Load the 32x factory scene | 5 s | `perf_budgets::sim_tick_budgets` |
 | Main-thread part of a save, 4x factory (`Sim::capture`) | 2 ms | `perf_budgets::save_capture_budget` |
 | Render CPU, 32x factory, 2 eyes, p50 | 4 ms | `perf_budgets::render_cpu_budget` |
+| Build a 10,000 entity scene in one batch; one edit of it (file, live session) | 2 s; 20 ms, 500 ms | `engine_budgets::scene_edit_budgets` |
+| Tick of 1,000 scripts: empty `update`; read, change and write `Transform` | 5 ms; 18 ms | `engine_budgets::script_budgets` |
 | Draw calls for a factory frame | fixed per asset and part, independent of scale | `perf_proofs` (every `cargo test`) |
 | Sim result independent of job threads | same state hash with 1 and 3 threads | `perf_proofs` (every `cargo test`) |
 
@@ -23,6 +25,7 @@ CI multiplies timing budgets by `MARIONETTE_BUDGET_SCALE=2` (job `perf` in
 
 ```bash
 # Timing budgets (release, one test at a time)
+cargo test --release -p marionette-cli --test engine_budgets -- --ignored --test-threads=1 --nocapture
 cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
 
 # A factory of a given size, then its tick cost. The factory is an example module, not part

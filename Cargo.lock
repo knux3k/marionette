@@ -2769,6 +2769,7 @@ dependencies = [
  "marionette-core",
  "oxc",
  "rquickjs",
+ "serde",
  "serde_json",
 ]
 

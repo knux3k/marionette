@@ -22,6 +22,7 @@
 //! diagnostic (file, line, column); an exception during a tick becomes a `script_error`
 //! event and the tick goes on.
 
+pub mod convert;
 pub mod strip;
 pub mod typings;
 
@@ -568,7 +569,7 @@ fn animate(world: &mut World, e: Entity, json: &str) -> Result<(), String> {
 }
 
 /// Native functions behind the prelude, the deterministic math, and the removed globals.
-fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
+fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     let g = ctx.globals();
     for name in ["Date", "WeakRef", "FinalizationRegistry", "performance"] {
         g.remove(name)?;
@@ -619,6 +620,132 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
+    // Plans (decision 0271): a component type made of numbers and booleans is read as leaves
+    // in a shared `Float64Array`, and an object literal made for its shape builds the script
+    // value. `plan` gives [index, make body]; `read` writes the leaves.
+    type Plans = Arc<Mutex<Vec<(&'static str, Arc<convert::Plan>)>>>;
+    let plans: Plans = Arc::default();
+    let (b, table) = (bridge.clone(), plans.clone());
+    h.set(
+        "plan",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'js>, name: String| -> rquickjs::Result<Value<'js>> {
+                with_world(&b, |_, br| {
+                    // Null: not a component (not remembered by the caller). False: no plan.
+                    let Some(entry) = br.registry.get(&name).filter(|e| e.kind == Kind::Component) else {
+                        return Ok(Value::new_null(ctx.clone()));
+                    };
+                    let Some(plan) = convert::plan(entry.info, br.registry.type_registry()) else {
+                        return Ok(Value::new_bool(ctx.clone(), false));
+                    };
+                    let out = rquickjs::Array::new(ctx.clone())?;
+                    let mut table = table.lock().unwrap_or_else(|p| p.into_inner());
+                    out.set(0, table.len() as f64)?;
+                    out.set(1, plan.make.as_str())?;
+                    table.push((entry.name, Arc::new(plan)));
+                    Ok(out.into_value())
+                })
+            },
+        )?,
+    )?;
+    let planned = |table: &Mutex<Vec<(&'static str, Arc<convert::Plan>)>>, index: f64| {
+        table
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(index as usize)
+            .cloned()
+    };
+    // 1: leaves written; 0: no such entity or component; -1: take the general path.
+    let (b, table) = (bridge.clone(), plans);
+    h.set(
+        "read",
+        Function::new(
+            ctx.clone(),
+            move |id: f64, index: f64, buf: TypedArray<'js, f64>| -> i32 {
+                with_world(&b, |world, br| {
+                    let Some((name, plan)) = planned(&table, index) else {
+                        return -1;
+                    };
+                    let value = br
+                        .ids
+                        .get(&(id as u64))
+                        .and_then(|&e| br.registry.get(name)?.get(world, Some(e)));
+                    let Some(value) = value else {
+                        return 0;
+                    };
+                    let mut leaves = [0.0; convert::PLAN_LEAVES];
+                    let leaves = &mut leaves[..plan.leaves()];
+                    if plan.read(value.as_partial_reflect(), leaves).is_none() {
+                        return -1;
+                    }
+                    copy_out(&buf, leaves);
+                    1
+                })
+            },
+        )?,
+    )?;
+    // `Entity.get` without JSON text (decision 0271); the text path when the direct one
+    // declines.
+    let b = bridge.clone();
+    h.set(
+        "get_value",
+        Function::new(
+            ctx.clone(),
+            move |ctx: Ctx<'js>, id: f64, name: String| -> rquickjs::Result<Value<'js>> {
+                with_world(&b, |world, br| {
+                    let entry = component(&ctx, &br.registry, &name)?;
+                    let value = br.ids.get(&(id as u64)).and_then(|&e| entry.get(world, Some(e)));
+                    let Some(value) = value else {
+                        return Ok(Value::new_undefined(ctx.clone()));
+                    };
+                    let value = value.as_partial_reflect();
+                    match convert::to_js(&ctx, &br.registry, value) {
+                        Some(v) => Ok(v),
+                        None => ctx.json_parse(br.registry.to_json(value).to_string()),
+                    }
+                })
+            },
+        )?,
+    )?;
+    // `Entity.set` without JSON text. False: nothing was done and the caller takes the text
+    // path (`set`), which also words every refusal.
+    let b = bridge.clone();
+    h.set(
+        "set_value",
+        Function::new(
+            ctx.clone(),
+            move |id: f64, name: String, value: Value<'js>, plain: Object<'js>| -> bool {
+                with_world(&b, |world, br| {
+                    let Some(entry) = br.registry.get(&name).filter(|e| e.kind == Kind::Component) else {
+                        return false;
+                    };
+                    let Some(&e) = br.ids.get(&(id as u64)) else {
+                        return false;
+                    };
+                    // The plain case first: written over a copy, field by field.
+                    let copy = entry
+                        .get(world, Some(e))
+                        .and_then(|now| entry.from_reflect(now.as_partial_reflect()));
+                    if let Some(mut copy) = copy
+                        && convert::patch(copy.as_partial_reflect_mut(), &value, &plain, &br.registry)
+                            .is_some()
+                    {
+                        entry.insert(world, Some(e), copy);
+                        return true;
+                    }
+                    let Some(json) = convert::from_js(&value, &plain) else {
+                        return false;
+                    };
+                    let Ok(boxed) = br.registry.from_json(entry, &json) else {
+                        return false;
+                    };
+                    entry.insert(world, Some(e), boxed);
+                    true
+                })
+            },
+        )?,
+    )?;
     let b = bridge.clone();
     h.set(
         "set",
@@ -646,6 +773,17 @@ fn install(ctx: &Ctx<'_>, bridge: &Shared) -> rquickjs::Result<()> {
                 })
             },
         )?,
+    )?;
+    // The entity's waiting messages as text, read without a type lookup: every turn asks.
+    let b = bridge.clone();
+    h.set(
+        "inbox",
+        Function::new(ctx.clone(), move |id: f64| -> Option<String> {
+            with_world(&b, |world, br| {
+                let e = *br.ids.get(&(id as u64))?;
+                world.get::<ScriptInbox>(e).map(|i| i.data.clone())
+            })
+        })?,
     )?;
     let b = bridge.clone();
     h.set(
@@ -1356,9 +1494,16 @@ struct Outcome {
     error: Option<String>,
 }
 
-fn outcome(r: Result<rquickjs::Array<'_>, String>) -> Outcome {
+/// A turn that changed nothing to save (same state text, no timers, no error) returns
+/// nothing at all, which reads as "no state, no timers, no error" here: nothing is written.
+fn outcome(r: Result<Option<rquickjs::Array<'_>>, String>) -> Outcome {
     match r {
-        Ok(a) => Outcome {
+        Ok(None) => Outcome {
+            state: None,
+            timers: None,
+            error: None,
+        },
+        Ok(Some(a)) => Outcome {
             state: a.get(0).ok().flatten(),
             timers: a.get(1).ok().flatten(),
             error: a.get(2).ok().flatten(),
@@ -1435,16 +1580,17 @@ fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
                 continue;
             };
             let module = module.clone().restore(&ctx).expect("script module");
-            let c = contacts.get(&id).cloned().unwrap_or_default();
+            // No contacts is the usual case: nothing is built for it.
+            let c = contacts.get(&id).cloned();
             if let Some(b) = bridge_lock(&host.bridge).as_mut() {
                 b.current = id;
             }
             // No `ScriptState` yet means `start` has not run for this entity.
             let is_new = state.is_none();
-            let state_in = state.clone().unwrap_or_else(|| "{}".into());
+            let state_in = state.as_deref().unwrap_or("{}");
             host.fuel.store(0, Ordering::Relaxed);
             let out = outcome(guarded(&ctx, &host.fuel, || {
-                let a = run.call((module, id as f64, state_in, is_new, c, timers.clone()))?;
+                let a = run.call((module, id as f64, state_in, is_new, c, timers.as_deref()))?;
                 while ctx.execute_pending_job() {}
                 Ok(a)
             }));

@@ -106,7 +106,9 @@ jobs:
       - name: Software Vulkan, ALSA headers
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev libudev-dev
       - name: Timing budgets (decision 0021; docs/ai/PERFORMANCE.md)
-        run: cargo test --release --locked -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        run: |
+          cargo test --release --locked -p marionette-cli --test engine_budgets -- --ignored --test-threads=1 --nocapture
+          cargo test --release --locked -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
         env:
           MARIONETTE_REQUIRE_GPU: "1"
           MARIONETTE_BUDGET_SCALE: "2"

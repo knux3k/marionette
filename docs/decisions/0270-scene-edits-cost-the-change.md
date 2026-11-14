@@ -35,7 +35,7 @@ this change: `batch_run` with `entity_create` 100 times 1.0 s, 500 times 21.5 s,
 - Positions in JSON text (`json_span`) are found on first use. They are only read when a
   problem is reported, so loading a valid scene no longer scans its text a second and third
   time.
-- Timing budgets with 10,000 entities in `perf_budgets` (`scene_edit_budgets`).
+- Timing budgets with 10,000 entities in `engine_budgets` (`scene_edit_budgets`).
 
 ## Why
 
