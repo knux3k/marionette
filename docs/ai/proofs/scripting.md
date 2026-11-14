@@ -61,3 +61,11 @@ keeps the last good one; `JobDraw` gives one batch of 4,096 copies and matches
 `examples/reference/swarm.png` (lavapipe). Stability modes `job-swarm` (debug: 0.28 ms per
 tick average) and `job-swarm-render`. Speed (release, 4-core container, `perf_sim`): 4,096
 particles 0.09 ms per tick; 131,072 particles 2.5 ms on one thread, 0.8 ms on four.
+
+Values without text (decision 0271):
+- `crates/marionette-script/tests/convert.rs`: `reading_a_component_matches_the_text_path`,
+  `numbers_match_the_text_path_both_ways`, `writing_a_value_matches_the_text_path_or_declines`,
+  `patching_a_component_matches_the_text_path_or_declines`, `plans_read_what_the_text_path_reads`.
+- `cargo test --release -p marionette-cli --test perf_budgets -- --ignored script_budgets`:
+  1,000 empty scripts 2.6 ms per tick (was 6.7), 1,000 moving scripts 10.8 ms (was 34.6),
+  release, 4-core container.

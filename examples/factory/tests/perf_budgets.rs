@@ -274,3 +274,67 @@ fn scene_edit_budgets() {
     );
     let _ = std::fs::remove_dir_all(&d);
 }
+
+/// Decision 0271: a tick of 1,000 scripts whose `update` does nothing (measured 2.6 ms; 6.7 ms
+/// before).
+#[cfg(feature = "script")]
+const SCRIPT_EMPTY_1K_MS: f64 = 5.0;
+/// Decision 0271: a tick of 1,000 scripts that read, change and write their `Transform`
+/// (measured 10.8 ms; 34.6 ms before).
+#[cfg(feature = "script")]
+const SCRIPT_MOVER_1K_MS: f64 = 18.0;
+
+/// A scene of `n` cubes that each run `script` (written beside the scene), and its tick cost.
+#[cfg(feature = "script")]
+fn scripted(agent: &mut Agent, d: &Path, tag: &str, n: u32, script: &str) -> f64 {
+    let scene = format!("scenes/{tag}.scene.json");
+    std::fs::create_dir_all(d.join("scenes")).unwrap();
+    std::fs::write(d.join(format!("scenes/{tag}.ts")), script).unwrap();
+    let mut ops = vec![json!({ "op": "scene_create", "input": { "scene": scene, "template": "basic" } })];
+    ops.extend((0..n).map(|i| {
+        json!({ "op": "entity_create", "input": { "scene": scene, "components": {
+            "Transform": { "translation": { "x": i % 100, "y": 0.5, "z": i / 100 },
+                "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 }, "scale": { "x": 1, "y": 1, "z": 1 } },
+            "Script": { "path": format!("{tag}.ts") } } } })
+    }));
+    call(agent, "batch_run", json!({ "ops": ops }));
+    let r = call(
+        agent,
+        "perf_sim",
+        json!({ "scene": scene, "ticks": 300, "warmup": 60 }),
+    );
+    r["avg_ms"].as_f64().unwrap()
+}
+
+/// The script skill's own example: read a component, change it, write it back.
+#[cfg(feature = "script")]
+const MOVER: &str = r#"export function start(self: Entity): void {
+  self.state.speed = 2;
+}
+export function update(self: Entity): void {
+  const t = self.get("Transform");
+  if (!t) return;
+  t.translation.x += engine.action("move_x") * self.state.speed * engine.dt;
+  self.set("Transform", t);
+}
+"#;
+
+#[test]
+#[cfg(feature = "script")]
+#[ignore = "timing: release builds only, see the file header"]
+fn script_budgets() {
+    let d = dir().join("scripts");
+    std::fs::create_dir_all(&d).unwrap();
+    let mut agent = Agent::new(&d, false);
+    let empty = scripted(
+        &mut agent,
+        &d,
+        "empty",
+        1000,
+        "export function update(self: Entity): void {}\n",
+    );
+    check("1,000 scripts with an empty update", empty, SCRIPT_EMPTY_1K_MS);
+    let mover = scripted(&mut agent, &d, "mover", 1000, MOVER);
+    check("1,000 scripts that move their entity", mover, SCRIPT_MOVER_1K_MS);
+    let _ = std::fs::remove_dir_all(&d);
+}

@@ -5,17 +5,43 @@
   const h = globalThis.__host;
   delete globalThis.__host;
   const parse = (t) => (t === undefined || t === null ? undefined : JSON.parse(t));
+  // What a plain object's prototype is, for the direct path of `Entity.set`.
+  const plain = Object.prototype;
+  // Kept from before any game script runs, so a script cannot replace it.
+  const MakeFunction = Function;
+  const leaves = new Float64Array(64);
+  const plans = new Map();
+  const planOf = (name) => {
+    let p = plans.get(name);
+    if (p === undefined) {
+      const d = typeof name === "string" ? h.plan(name) : null;
+      // Not a component: nothing is remembered, so the map holds component names only.
+      if (d === null) return null;
+      p = d ? { index: d[0], make: new MakeFunction("b", d[1]) } : null;
+      plans.set(name, p);
+    }
+    return p;
+  };
 
   class Entity {
     constructor(id) {
       this.id = id;
       this.state = {};
     }
+    // Reading: the type's plan (numbers through `leaves`, then an object literal), else the
+    // direct conversion. Writing: the direct conversion, else JSON text, which also words
+    // every refusal. All give the same result.
     get(name) {
-      return parse(h.get(this.id, name));
+      const p = planOf(name);
+      if (p) {
+        const r = h.read(this.id, p.index, leaves);
+        if (r === 1) return p.make(leaves);
+        if (r === 0) return undefined;
+      }
+      return h.get_value(this.id, name);
     }
     set(name, value) {
-      h.set(this.id, name, JSON.stringify(value));
+      if (!h.set_value(this.id, name, value, plain)) h.set(this.id, name, JSON.stringify(value));
     }
     has(name) {
       return h.has(this.id, name);
@@ -68,7 +94,7 @@
   };
   const schedule = (delay, every, fn, arg) => {
     const call = timerName(fn);
-    const t = turn.timers;
+    const t = (turn.timers ??= { next: 1, list: [] });
     const id = t.next++;
     t.list.push({ id, at: h.tick() + delay, every, call, arg: arg === undefined ? null : JSON.parse(JSON.stringify(arg)) });
     turn.used = true;
@@ -143,12 +169,13 @@
     },
     cancel: (which) => {
       if (!turn) throw new Error("script.no_turn: timers can only be cancelled while a hook runs");
+      if (!turn.timers) return 0;
       const before = turn.timers.list.length;
       turn.timers.list = turn.timers.list.filter((t) => !matches(t, which));
       if (turn.timers.list.length !== before) turn.used = true;
       return before - turn.timers.list.length;
     },
-    pending: (which) => (turn ? turn.timers.list.filter((t) => matches(t, which)).length : 0),
+    pending: (which) => (turn && turn.timers ? turn.timers.list.filter((t) => matches(t, which)).length : 0),
     send: (target, kind, detail) => {
       if (!turn) throw new Error("script.no_turn: messages can only be sent while a hook runs");
       const id = idOf(target);
@@ -186,26 +213,32 @@
       f(self, t.arg);
     }
   };
-  // Returns [state text | null, timers text | null, error text | null].
+  // Returns [state text | null, timers text | null, error text | null], or nothing when there
+  // is nothing to save: the state text is the same, and no timers and no error. `c` is absent
+  // when the entity had no contacts; timers are made on first use (`turn.timers` stays null
+  // for an entity that never set one).
   define("__run", (mod, id, stateText, isNew, c, timersText) => {
-    turn = { mod, id, used: timersText !== undefined && timersText !== null, timers: timersText ? JSON.parse(timersText) : { next: 1, list: [] } };
+    const hadTimers = timersText !== undefined && timersText !== null;
+    turn = { mod, id, used: hadTimers, timers: hadTimers ? (timersText ? JSON.parse(timersText) : { next: 1, list: [] }) : null };
     let state = null;
     let error = null;
     try {
       const self = new Entity(id);
-      self.state = JSON.parse(stateText);
+      self.state = stateText === "{}" ? {} : JSON.parse(stateText);
       if (isNew && typeof mod.start === "function") mod.start(self);
-      each(mod.onCollisionEnter, self, c.collisionEnter);
-      each(mod.onCollisionExit, self, c.collisionExit);
-      each(mod.onTriggerEnter, self, c.triggerEnter);
-      each(mod.onTriggerExit, self, c.triggerExit);
-      // Messages: taken out of the inbox first, so a throwing handler does not see them again.
-      const inbox = parse(h.get(id, "ScriptInbox"));
-      if (inbox && inbox.data !== "[]") {
-        h.set(id, "ScriptInbox", JSON.stringify({ data: "[]" }));
-        if (typeof mod.onMessage === "function") for (const m of JSON.parse(inbox.data)) mod.onMessage(self, m);
+      if (c) {
+        each(mod.onCollisionEnter, self, c.collisionEnter);
+        each(mod.onCollisionExit, self, c.collisionExit);
+        each(mod.onTriggerEnter, self, c.triggerEnter);
+        each(mod.onTriggerExit, self, c.triggerExit);
       }
-      fire(mod, self);
+      // Messages: taken out of the inbox first, so a throwing handler does not see them again.
+      const mail = h.inbox(id);
+      if (mail !== undefined && mail !== null && mail !== "[]") {
+        h.set(id, "ScriptInbox", JSON.stringify({ data: "[]" }));
+        if (typeof mod.onMessage === "function") for (const m of JSON.parse(mail)) mod.onMessage(self, m);
+      }
+      if (turn.timers && turn.timers.list.length) fire(mod, self);
       mod.update(self);
       state = JSON.stringify(self.state ?? {});
     } catch (e) {
@@ -213,6 +246,7 @@
     }
     const timers = turn.used ? JSON.stringify(turn.timers) : null;
     turn = null;
+    if (error === null && timers === null && !isNew && state === stateText) return undefined;
     return [state, timers, error];
   });
   // `onDestroy` before the entity is removed. Timers set here are dropped with the entity.
