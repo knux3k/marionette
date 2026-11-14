@@ -61,7 +61,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   container measured; the full test suite passes on ARM64 in CI, decision 0140). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
 - Window (proofs/window.md; editor too): gamepads on hardware, high-refresh screens, clicks, speakers,
-  minimize CPU on Windows (62-172 ms per 2 s), Linux and macOS screens.
+  Linux and macOS screens.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.
