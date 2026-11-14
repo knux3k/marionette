@@ -503,9 +503,10 @@ pub(crate) struct GpuModel {
     pub rest_morph: Vec<Vec<f32>>,
     /// Model-space bounding box of the rest pose (min, max); `None` for an empty model.
     pub bounds: Option<(glam::Vec3, glam::Vec3)>,
+    /// Bytes of its textures on the GPU, all mip levels.
+    pub texture_bytes: u64,
 }
 
-/// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
 /// Pipeline variant and cut-out of `part` drawn with its material or an override
 /// (decision 0280).
 pub(crate) fn part_look(
@@ -517,6 +518,7 @@ pub(crate) fn part_look(
     variants::Look::of(md, over)
 }
 
+/// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
 pub(crate) fn instance_material(
     model: &GpuModel,
     part: &GpuPart,
@@ -649,6 +651,11 @@ pub struct Renderer {
     culling: bool,
     /// The last prepared frame asked for `LevelOfDetail`: uploads build reduced levels.
     lod_wanted: bool,
+    /// The last prepared frame asked for `TextureCompression` and the device has BC formats:
+    /// `Some(normal maps too)` (decision 0283).
+    compress_wanted: Option<bool>,
+    /// The device samples BC7 textures.
+    bc_supported: bool,
 }
 
 fn uniform_entry(
@@ -703,21 +710,21 @@ fn buffer_resource(buffer: &wgpu::Buffer, size: u64) -> wgpu::BindingResource<'_
 /// drops its sender; at most one request per distinct asset is in flight, so the queues are
 /// bounded by the scene's asset count.
 struct ModelLoader {
-    /// (asset, base folder, build reduced levels of detail)
-    ask: mpsc::Sender<(String, PathBuf, bool)>,
+    /// (asset, base folder, what to build beside the model)
+    ask: mpsc::Sender<(String, PathBuf, Want)>,
     done: mpsc::Receiver<(String, Result<Decoded, String>)>,
     pending: BTreeSet<String>,
 }
 
 impl ModelLoader {
     fn start() -> Self {
-        let (ask, requests) = mpsc::channel::<(String, PathBuf, bool)>();
+        let (ask, requests) = mpsc::channel::<(String, PathBuf, Want)>();
         let (reply, done) = mpsc::channel();
         let spawned = std::thread::Builder::new()
             .name("marionette-model-loader".into())
             .spawn(move || {
-                for (asset, base, lod) in requests {
-                    let loaded = decode_model(&asset, &base, lod);
+                for (asset, base, want) in requests {
+                    let loaded = decode_model(&asset, &base, want);
                     if reply.send((asset, loaded)).is_err() {
                         break;
                     }
@@ -741,6 +748,43 @@ struct Decoded {
     lods: Vec<Vec<Vec<u32>>>,
     /// Per image, its mipmap levels below the full size (decision 0280).
     mips: Vec<Vec<Vec<u8>>>,
+    /// Per image, its BC7 blocks, level 0 first, when compressed (decision 0283).
+    packed: Vec<Option<Vec<Vec<u8>>>>,
+}
+
+/// What a model decode builds beside the model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Want {
+    /// Reduced levels of detail (decision 0080).
+    lod: bool,
+    /// BC7 textures, `Some(normal maps too)` (decision 0283).
+    compress: Option<bool>,
+}
+
+/// BC7 blocks of the images worth compressing (decision 0283): those with a size in whole
+/// blocks; normal maps only when `normal_maps`. Encoded once, then read from the disk cache.
+#[cfg(feature = "compress")]
+fn pack_images(model: &ModelData, mips: &[Vec<Vec<u8>>], normal_maps: bool) -> Vec<Option<Vec<Vec<u8>>>> {
+    use assets::compress::{CACHE_LIMIT, Codec, cache_dir, compress_cached};
+    let normals: BTreeSet<usize> = model.materials.iter().filter_map(|m| m.normal_texture).collect();
+    let dir = cache_dir();
+    model
+        .images
+        .iter()
+        .enumerate()
+        .map(|(i, img)| {
+            if !normal_maps && normals.contains(&i) {
+                return None;
+            }
+            let m = mips.get(i).map_or(&[][..], Vec::as_slice);
+            compress_cached(img, m, Codec::Bc7, dir.as_deref(), CACHE_LIMIT).map(|b| b.levels)
+        })
+        .collect()
+}
+
+#[cfg(not(feature = "compress"))]
+fn pack_images(_: &ModelData, _: &[Vec<Vec<u8>>], _: bool) -> Vec<Option<Vec<Vec<u8>>>> {
+    Vec::new()
 }
 
 /// Mipmap chains of a model's images, each averaged the way its materials use it: normal
@@ -784,9 +828,9 @@ fn texture_mips(model: &ModelData) -> Vec<Vec<Vec<u8>>> {
         .collect()
 }
 
-fn decode_model(asset: &str, base: &std::path::Path, lod: bool) -> Result<Decoded, String> {
+fn decode_model(asset: &str, base: &std::path::Path, want: Want) -> Result<Decoded, String> {
     let model = assets::load_model(asset, base)?;
-    let lods = if lod {
+    let lods = if want.lod {
         model
             .parts
             .iter()
@@ -802,7 +846,15 @@ fn decode_model(asset: &str, base: &std::path::Path, lod: bool) -> Result<Decode
         Vec::new()
     };
     let mips = texture_mips(&model);
-    Ok(Decoded { model, lods, mips })
+    let packed = want
+        .compress
+        .map_or_else(Vec::new, |normals| pack_images(&model, &mips, normals));
+    Ok(Decoded {
+        model,
+        lods,
+        mips,
+        packed,
+    })
 }
 
 fn mat(m: Mat4) -> [[f32; 4]; 4] {
@@ -1135,6 +1187,8 @@ impl Renderer {
             skinning,
             culling: true,
             lod_wanted: false,
+            compress_wanted: None,
+            bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
         }
     }
@@ -1218,6 +1272,13 @@ impl Renderer {
             self.models.clear();
         }
         self.lod_wanted = frame.lod.is_some();
+        let compress = frame.texture_compression.filter(|_| self.bc_supported);
+        if compress != self.compress_wanted {
+            // Textures are encoded at decode: load models again (once per change).
+            self.finish_loading();
+            self.models.clear();
+            self.compress_wanted = compress;
+        }
         self.sync_game_meshes(frame);
         for (shader, msg) in self.sync_game_shaders(frame) {
             errors.push(
@@ -1409,6 +1470,22 @@ impl Renderer {
         }
     }
 
+    fn want(&self) -> Want {
+        Want {
+            lod: self.lod_wanted,
+            compress: self.compress_wanted,
+        }
+    }
+
+    /// Bytes of model textures on the GPU (all mip levels), for memory checks.
+    pub fn texture_bytes(&self) -> u64 {
+        self.models
+            .values()
+            .filter_map(|m| m.as_ref().ok())
+            .map(|m| m.texture_bytes)
+            .sum()
+    }
+
     /// Loads a model now, or (streaming) asks the background thread for it.
     fn ensure_model(&mut self, asset: &str, stream: bool) {
         // Game meshes are uploaded by `sync_game_meshes`, never loaded from files.
@@ -1418,21 +1495,18 @@ impl Renderer {
         // Built-in shapes are cheap; only files go to the background.
         if stream && !asset.starts_with("primitive:") {
             let base = self.base_dir.clone();
+            let want = self.want();
             let loader = self.loader.get_or_insert_with(ModelLoader::start);
             if loader.pending.contains(asset) {
                 return;
             }
-            if loader
-                .ask
-                .send((asset.to_string(), base, self.lod_wanted))
-                .is_ok()
-            {
+            if loader.ask.send((asset.to_string(), base, want)).is_ok() {
                 loader.pending.insert(asset.to_string());
                 return;
             }
             self.loader = None; // thread gone: load in place below
         }
-        let loaded = decode_model(asset, &self.base_dir, self.lod_wanted).map(|m| self.upload_model(&m));
+        let loaded = decode_model(asset, &self.base_dir, self.want()).map(|m| self.upload_model(&m));
         self.models.insert(asset.to_string(), loaded);
     }
 
@@ -1508,12 +1582,18 @@ impl Renderer {
 
     fn upload_model(&self, decoded: &Decoded) -> GpuModel {
         let (model, lod_indices) = (&decoded.model, &decoded.lods);
+        let mut texture_bytes = 0u64;
         let views: Vec<wgpu::TextureView> = model
             .images
             .iter()
             .enumerate()
             .map(|(i, img)| {
+                if let Some(Some(levels)) = decoded.packed.get(i) {
+                    texture_bytes += levels.iter().map(|l| l.len() as u64).sum::<u64>();
+                    return create_bc7_texture_view(&self.device, &self.queue, img, levels);
+                }
                 let mips = decoded.mips.get(i).map_or(&[][..], Vec::as_slice);
+                texture_bytes += img.rgba.len() as u64 + mips.iter().map(|m| m.len() as u64).sum::<u64>();
                 create_texture_view_mips(&self.device, &self.queue, img, mips)
             })
             .collect();
@@ -1613,6 +1693,7 @@ impl Renderer {
             rest,
             rest_morph: model.rig.morph_weights.clone(),
             bounds: model_bounds(model),
+            texture_bytes,
         }
     }
 
@@ -3064,6 +3145,60 @@ fn model_bounds(model: &ModelData) -> Option<(glam::Vec3, glam::Vec3)> {
         }
     }
     b
+}
+
+/// Uploads BC7 blocks of `img` (`levels`, level 0 first, as
+/// [`assets::compress`] makes them; decision 0283) and returns a view of every level.
+fn create_bc7_texture_view(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    img: &Image,
+    levels: &[Vec<u8>],
+) -> wgpu::TextureView {
+    let format = if img.srgb {
+        wgpu::TextureFormat::Bc7RgbaUnormSrgb
+    } else {
+        wgpu::TextureFormat::Bc7RgbaUnorm
+    };
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("image bc7"),
+        size: wgpu::Extent3d {
+            width: img.width,
+            height: img.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: levels.len() as u32,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    for (level, blocks) in levels.iter().enumerate() {
+        let (w, h) = ((img.width >> level).max(1), (img.height >> level).max(1));
+        // Copies cover whole blocks: the level's size rounded up to 4.
+        let (bw, bh) = (w.div_ceil(4), h.div_ceil(4));
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: level as u32,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            blocks,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(16 * bw),
+                rows_per_image: Some(bh),
+            },
+            wgpu::Extent3d {
+                width: 4 * bw,
+                height: 4 * bh,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    texture.create_view(&wgpu::TextureViewDescriptor::default())
 }
 
 /// Uploads an RGBA8 image (no mipmaps: sprites, UI, fonts) and returns a view of it.

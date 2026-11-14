@@ -356,6 +356,17 @@ pub struct LevelOfDetail {
     pub hide_below: f32,
 }
 
+/// Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the
+/// memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level
+/// in 255 on photos and normal maps). Each texture is encoded once on first load and kept in
+/// a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a
+/// multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct TextureCompression {
+    /// Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces).
+    pub normal_maps: bool,
+}
+
 /// Draws the 3D world at `scale` times the output size and resizes it to the output
 /// (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed:
 /// edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a

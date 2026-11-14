@@ -101,3 +101,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0280 | Model textures get CPU-made mipmaps (linear-light color, vector normals, cut-out coverage kept) and 16x anisotropic filtering | accepted |
 | 0281 | Cut-out and see-through materials from glTF alpha modes, double-sided materials; lazily built pipeline variants; see-through parts sorted back to front | accepted |
 | 0282 | Particles computed on the GPU from game time alone (`ParticleEmitter`): no stored state, one draw per emitter | accepted |
+| 0283 | Opt-in BC7 model textures (`TextureCompression`): ISPC encoder, every mip level, bounded per-user disk cache; RGBA8 where BC is missing | accepted |

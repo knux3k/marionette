@@ -355,3 +355,49 @@ fn mipmaps_average_far_textures() {
     // Without mipmaps this spread is about 18 (moire); with them about 0.
     assert!(spread < 6.0, "far floor sparkles: spread {spread}");
 }
+
+/// `TextureCompression` (decision 0283) stores the material ball's textures as BC7: a
+/// quarter of the bytes (less with normal maps left exact), and the picture stays within the
+/// reference tolerance of the uncompressed one.
+#[test]
+fn compressed_textures_take_a_quarter_and_look_the_same() {
+    let Some(gpu) = gpu() else { return };
+    if !gpu
+        .device
+        .features()
+        .contains(wgpu::Features::TEXTURE_COMPRESSION_BC)
+    {
+        assert!(
+            std::env::var("MARIONETTE_REQUIRE_GPU").as_deref() != Ok("1"),
+            "GPU without BC texture formats: {}",
+            gpu.describe()
+        );
+        eprintln!("skipping: no BC texture formats on {}", gpu.describe());
+        return;
+    }
+    let text = std::fs::read_to_string(repo().join("examples/materials.scene.json")).unwrap();
+    let with = |compression: Option<bool>| {
+        let mut scene: serde_json::Value = serde_json::from_str(&text).unwrap();
+        if let Some(normal_maps) = compression {
+            scene["resources"]["TextureCompression"] = serde_json::json!({ "normal_maps": normal_maps });
+        }
+        let sim = Sim::from_text(&scene.to_string(), None, default_registry(), 1).unwrap();
+        let mut off = Offscreen::new(&gpu, 320, 180, 4, repo().join("examples"));
+        off.render(&gpu, &extract(&sim.world), None).unwrap();
+        (off.read_pixels(&gpu).unwrap(), off.renderer.texture_bytes())
+    };
+    let (plain, plain_bytes) = with(None);
+    let (packed, packed_bytes) = with(Some(true));
+    let (_, exact_normals_bytes) = with(Some(false));
+    eprintln!(
+        "texture bytes: plain {plain_bytes}, BC7 {packed_bytes}, BC7 but normal maps {exact_normals_bytes}"
+    );
+    assert!(plain_bytes > 0);
+    // A quarter, plus the padding of mip levels smaller than a 4x4 block.
+    let share = packed_bytes as f64 / plain_bytes as f64;
+    assert!(share < 0.26, "{packed_bytes} of {plain_bytes}");
+    assert!(packed_bytes < exact_normals_bytes && exact_normals_bytes < plain_bytes);
+    let d = diff(&plain, &packed, REFERENCE_THRESHOLD);
+    eprintln!("BC7 against uncompressed: {d:?}");
+    assert!(within_reference_tolerance(&d), "{d:?}");
+}

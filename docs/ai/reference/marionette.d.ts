@@ -1161,6 +1161,12 @@ type SpriteRegion = {
   y: number;
 };
 
+/** Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed. */
+type TextureCompression = {
+  /** Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). */
+  normal_maps: boolean;
+};
+
 /** Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0. */
 type ToneMapping = {
   exposure: number;
@@ -1433,5 +1439,6 @@ interface Resources {
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
+  TextureCompression: TextureCompression;
   ToneMapping: ToneMapping;
 }

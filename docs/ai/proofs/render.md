@@ -135,3 +135,10 @@ Particles (decision 0282):
   `one_draw_per_emitter_whatever_the_rate`, `particles_draw_along_the_emitter`); unit tests of
   `particles::span` (exact after 10 hours of game time, capped at 100,000).
 - Stability mode `render-3d-particles` (120 ticks, lavapipe: passed).
+
+BC7 texture compression (decision 0283):
+- `compressed_textures_take_a_quarter_and_look_the_same` (`crates/marionette-render/tests/materials.rs`,
+  lavapipe): material ball texture bytes 283,984 plain, 71,104 BC7, 136,612 with exact normal
+  maps; BC7 against uncompressed mean 0.05, max 25, 0.0017% of pixels over threshold.
+- Unit tests in `crates/marionette-assets/src/compress.rs`: block counts per level, odd sizes
+  refused, cache returns identical blocks and stays under its limit.

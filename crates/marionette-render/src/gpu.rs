@@ -63,7 +63,9 @@ impl Gpu {
             && std::env::var("MARIONETTE_RAY_TRACING").map_or(true, |v| v != "0");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("marionette"),
-            required_features: if rt { ray_query } else { wgpu::Features::empty() },
+            // BC7 model textures under `TextureCompression` (decision 0283) where supported.
+            required_features: (adapter.features() & wgpu::Features::TEXTURE_COMPRESSION_BC)
+                | if rt { ray_query } else { wgpu::Features::empty() },
             required_limits: if rt {
                 wgpu::Limits::default().using_acceleration_structure_values(adapter.limits())
             } else {

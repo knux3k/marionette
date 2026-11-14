@@ -4,6 +4,8 @@
 
 pub use glam;
 
+#[cfg(feature = "compress")]
+pub mod compress;
 pub mod font;
 pub mod hdr;
 pub mod mips;

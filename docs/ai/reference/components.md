@@ -1035,6 +1035,16 @@ Rust type: `marionette_script::SpawnIds`.
 | --- | --- | --- | --- |
 | `next` | integer | yes |  |
 
+### `TextureCompression`
+
+Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed.
+
+Rust type: `marionette_core::spatial::TextureCompression`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `normal_maps` | boolean | yes | Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). |
+
 ### `ToneMapping`
 
 Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0.
