@@ -611,7 +611,7 @@ type LookAt = {
   };
 };
 
-/** Overrides the material of a `Model` (all of its parts) with simple PBR values. */
+/** Overrides the material of a `Model` (all of its parts) with simple PBR values. A base color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness. */
 type Material = {
   /** Linear RGBA color, each channel 0..1. */
   base_color: {
@@ -758,6 +758,45 @@ type NavSurface = {
 type NetPlayers = {
   /** Occupied slots, ascending. */
   slots: Array<number>;
+};
+
+/** Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game time alone (decision 0282): no particle state is stored or simulated, so they cost no tick time, never change the state hash, and the same tick always draws the same picture. Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive. */
+type ParticleEmitter = {
+  /** How particles combine with what is behind them. */
+  blend: "Additive" | "Alpha";
+  /** Linear RGBA color, each channel 0..1. */
+  end_color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  end_size: number;
+  /** Acceleration toward world -Y in m/s² (9.8 falls like sparks; negative rises like smoke). */
+  gravity: number;
+  /** Image: a PNG relative to the scene or a built-in (`builtin:circle` is a soft dot). */
+  image: string;
+  /** Seconds each particle lives. */
+  lifetime: number;
+  /** Radius in meters of the ball they start in. */
+  radius: number;
+  /** Particles started per second. */
+  rate: number;
+  /** Changes the random pattern, so emitters side by side do not look alike. */
+  seed: number;
+  /** Start speed in m/s. */
+  speed: number;
+  /** Half-angle of the cone around the entity's +Y they leave in (180 = every direction). */
+  spread_degrees: number;
+  /** Linear color and opacity at birth and at death. Above 1 glows with `Bloom`. */
+  start_color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  /** Size in meters at birth and at death. */
+  start_size: number;
 };
 
 /** Turns physics on for the scene and picks 3D or 2D. */
@@ -1023,6 +1062,12 @@ type SpriteRegion = {
   y: number;
 };
 
+/** Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed. */
+type TextureCompression = {
+  /** Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). */
+  normal_maps: boolean;
+};
+
 /** Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0. */
 type ToneMapping = {
   exposure: number;
@@ -1237,6 +1282,7 @@ interface Components {
   NavAgentState: NavAgentState;
   NavObstacle: NavObstacle;
   NavSurface: NavSurface;
+  ParticleEmitter: ParticleEmitter;
   PlanetCharacter: PlanetCharacter;
   PlanetState: PlanetState;
   PointLight: PointLight;
@@ -1290,5 +1336,6 @@ interface Resources {
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
+  TextureCompression: TextureCompression;
   ToneMapping: ToneMapping;
 }

@@ -12,6 +12,7 @@
 
 use crate::assets::Part;
 use crate::extract::FrameData;
+use crate::renderer::variants::VariantPipelines;
 use crate::renderer::{GpuModel, GpuPart, InstanceData};
 use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
@@ -112,13 +113,15 @@ impl Deform {
 pub(crate) struct SkinnedCall<'a> {
     pub part: &'a GpuPart,
     pub material: &'a wgpu::BindGroup,
+    /// Pipeline variant of the material (decision 0280).
+    pub look: crate::renderer::variants::Look,
     pub instances: std::ops::Range<u32>,
 }
 
 pub(crate) struct Skinning {
-    pub pipeline: wgpu::RenderPipeline,
-    /// The same pipeline writing the floating-point target used for bloom (decision 0064).
-    pub hdr_pipeline: wgpu::RenderPipeline,
+    /// Lit pipelines per material variant (decision 0280), final and floating-point target
+    /// (bloom, decision 0064).
+    pub lit: VariantPipelines,
     /// Depth-only pass from the shadow-casting light (decision 0063).
     pub shadow_pipeline: wgpu::RenderPipeline,
     pub layout: wgpu::BindGroupLayout,
@@ -232,19 +235,22 @@ pub(crate) fn lit_pipelines(
     depth: wgpu::DepthStencilState,
     multisample: wgpu::MultisampleState,
     mesh_stride: u64,
-) -> [wgpu::RenderPipeline; 2] {
+) -> VariantPipelines {
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("pbr skinned"),
         bind_group_layouts: &[Some(groups[0]), Some(groups[1]), Some(groups[2]), Some(groups[3])],
         immediate_size: 0,
     });
-    let mesh_attrs = crate::renderer::MESH_ATTRS;
-    let lit = |format: wgpu::TextureFormat| {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    let (dev, module) = (device.clone(), shader.clone());
+    let formats = [color_format, crate::post::HDR_FORMAT];
+    VariantPipelines::new(Box::new(move |variant, target| {
+        let (cull_mode, blend, depth) = crate::renderer::variants::state(variant, &depth);
+        let mesh_attrs = crate::renderer::MESH_ATTRS;
+        dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr skinned"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: shader,
+                module: &module,
                 entry_point: Some("vs_skinned"),
                 compilation_options: Default::default(),
                 buffers: &[
@@ -266,26 +272,25 @@ pub(crate) fn lit_pipelines(
                 ],
             },
             primitive: wgpu::PrimitiveState {
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode,
                 ..Default::default()
             },
-            depth_stencil: Some(depth.clone()),
+            depth_stencil: Some(depth),
             multisample,
             fragment: Some(wgpu::FragmentState {
-                module: shader,
+                module: &module,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: None,
+                    format: formats[target],
+                    blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
             multiview_mask: None,
             cache: None,
         })
-    };
-    [lit(color_format), lit(crate::post::HDR_FORMAT)]
+    }))
 }
 
 impl Skinning {
@@ -306,7 +311,7 @@ impl Skinning {
             label: Some("pbr skinned"),
             source: wgpu::ShaderSource::Wgsl(skinned_source(include_str!("shaders/pbr.wgsl")).into()),
         });
-        let [pipeline, hdr_pipeline] = lit_pipelines(
+        let lit = lit_pipelines(
             device,
             &shader,
             [groups[0], groups[1], groups[2], &layout],
@@ -329,8 +334,7 @@ impl Skinning {
         let no_deltas = storage_buffer(device, "no morph deltas", 16);
         let plain = Self::bind(device, &layout, &palettes, &weights, &no_deltas);
         Self {
-            pipeline,
-            hdr_pipeline,
+            lit,
             shadow_pipeline,
             layout,
             palettes,
@@ -436,7 +440,8 @@ pub(crate) fn build<'a>(
 ) -> Built<'a> {
     let mut palettes: Vec<[[f32; 4]; 4]> = Vec::new();
     let mut morph_weights: Vec<f32> = Vec::new();
-    let mut groups: BTreeMap<(&str, usize, bool), Vec<SkinnedInstance>> = BTreeMap::new();
+    let mut groups: BTreeMap<(&str, usize, bool, crate::renderer::variants::Look), Vec<SkinnedInstance>> =
+        BTreeMap::new();
     for draw in &frame.meshes {
         let Some(Ok(model)) = models.get(&*draw.asset) else {
             continue;
@@ -491,8 +496,9 @@ pub(crate) fn build<'a>(
                 _ => (0, 0),
             };
             let (base_color, params) = crate::renderer::instance_material(model, part, draw.material);
+            let look = crate::renderer::part_look(model, part, draw.material.as_ref());
             groups
-                .entry((&*draw.asset, p, draw.material.is_some()))
+                .entry((&*draw.asset, p, draw.material.is_some(), look))
                 .or_default()
                 .push(SkinnedInstance {
                     inst: InstanceData {
@@ -507,7 +513,7 @@ pub(crate) fn build<'a>(
     }
     let mut instances = Vec::new();
     let mut calls = Vec::with_capacity(groups.len());
-    for ((asset, p, overridden), list) in groups {
+    for ((asset, p, overridden, look), list) in groups {
         let Some(Ok(model)) = models.get(asset) else {
             continue;
         };
@@ -522,6 +528,7 @@ pub(crate) fn build<'a>(
         calls.push(SkinnedCall {
             part,
             material,
+            look,
             instances: start..instances.len() as u32,
         });
     }

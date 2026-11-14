@@ -110,7 +110,8 @@ pub fn create(instance: &xr::Instance, system: xr::SystemId) -> Result<(Gpu, Vul
         })
         .ok_or_else(|| vk_err("the headset's GPU", "no graphics queue"))? as u32;
 
-    let features = wgpu::Features::empty();
+    // Block-compressed textures (decision 0283) where the GPU has them.
+    let features = exposed.features & wgpu::Features::TEXTURE_COMPRESSION_BC;
     let limits = wgpu::Limits::default();
     let dev_exts = exposed.adapter.required_device_extensions(features);
     let mut phd_features = exposed.adapter.physical_device_features(&dev_exts, features);

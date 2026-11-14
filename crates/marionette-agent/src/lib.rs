@@ -32,6 +32,7 @@ pub mod observe;
 #[cfg(feature = "package")]
 pub mod package;
 pub mod perf;
+pub mod perf_realistic;
 pub mod perf_suite;
 #[cfg(feature = "pool")]
 pub mod pool;
@@ -205,6 +206,7 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         #[cfg(feature = "import")]
         library::ops(),
         perf::ops(),
+        perf_realistic::ops(),
         perf_suite::ops(),
         #[cfg(feature = "jobs-ts")]
         jobs_ts::ops(),

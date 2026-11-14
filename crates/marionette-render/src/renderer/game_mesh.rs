@@ -159,6 +159,7 @@ impl Renderer {
             bounds: mesh
                 .bounds()
                 .map(|(lo, hi)| (glam::Vec3::from(lo), glam::Vec3::from(hi))),
+            texture_bytes: 0,
         }
     }
 }

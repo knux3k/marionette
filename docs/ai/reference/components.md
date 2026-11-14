@@ -270,7 +270,7 @@ Rust type: `marionette_core::spatial::LookAt`.
 
 ### `Material`
 
-Overrides the material of a `Model` (all of its parts) with simple PBR values.
+Overrides the material of a `Model` (all of its parts) with simple PBR values. A base color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness.
 
 Rust type: `marionette_core::spatial::Material`.
 
@@ -382,6 +382,28 @@ Rust type: `marionette_nav::NavSurface`.
 | `radius` | number | yes | Ground radius in metres where there is no terrain to probe. |
 | `resolution` | integer | yes | Cells per cube-face edge (6 × resolution² cells; 128 gives cells of about radius / 80 metres). 4 to 1024. |
 | `sea_level` | number | yes | Ground below this distance from the centre is water and not walkable (0 = none). |
+
+### `ParticleEmitter`
+
+Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game time alone (decision 0282): no particle state is stored or simulated, so they cost no tick time, never change the state hash, and the same tick always draws the same picture. Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive.
+
+Rust type: `marionette_core::spatial::ParticleEmitter`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `blend` | "Additive" \| "Alpha" | yes | How particles combine with what is behind them. |
+| `end_color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `end_size` | number | yes |  |
+| `gravity` | number | yes | Acceleration toward world -Y in m/s² (9.8 falls like sparks; negative rises like smoke). |
+| `image` | string | yes | Image: a PNG relative to the scene or a built-in (`builtin:circle` is a soft dot). |
+| `lifetime` | number | yes | Seconds each particle lives. |
+| `radius` | number | yes | Radius in meters of the ball they start in. |
+| `rate` | number | yes | Particles started per second. |
+| `seed` | integer | yes | Changes the random pattern, so emitters side by side do not look alike. |
+| `speed` | number | yes | Start speed in m/s. |
+| `spread_degrees` | number | yes | Half-angle of the cone around the entity's +Y they leave in (180 = every direction). |
+| `start_color` | object {a, b, g, r} | yes | Linear color and opacity at birth and at death. Above 1 glows with `Bloom`. |
+| `start_size` | number | yes | Size in meters at birth and at death. |
 
 ### `PlanetCharacter`
 
@@ -961,6 +983,16 @@ Rust type: `marionette_script::SpawnIds`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `next` | integer | yes |  |
+
+### `TextureCompression`
+
+Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed.
+
+Rust type: `marionette_core::spatial::TextureCompression`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `normal_maps` | boolean | yes | Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). |
 
 ### `ToneMapping`
 

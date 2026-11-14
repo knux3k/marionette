@@ -38,6 +38,8 @@ edit of a live session builds its world again each time, so batch those too.
 | Need | Components |
 | --- | --- |
 | Something visible in 3D | `Transform`, `Model` (`primitive:cube`, `primitive:sphere`, `primitive:plane` or a glTF path), optional `Material` |
+| Glass, leaves, fences | glTF `alphaMode` `BLEND` (see-through) or `MASK` (cut-out), `doubleSided` for both faces; or a `Material` whose `base_color` alpha is below 1 (see-through) |
+| Fire, sparks, smoke, dust | `ParticleEmitter` (image `builtin:soft`, blend Additive or Alpha); drawn from game time, no state |
 | Something visible in 2D | `Transform`, `Sprite` |
 | A solid object | `Collider`; add `RigidBody` to make it move |
 | A player | `CharacterController` plus the actions it names |

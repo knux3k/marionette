@@ -4,8 +4,11 @@
 
 pub use glam;
 
+#[cfg(feature = "compress")]
+pub mod compress;
 pub mod font;
 pub mod hdr;
+pub mod mips;
 pub mod rig;
 use glam::{Mat4, Vec2, Vec3};
 pub use hdr::{HdrImage, is_hdr_name, load_hdr_image};
@@ -74,6 +77,24 @@ pub struct MaterialData {
     pub emissive: [f32; 3],
     /// sRGB image multiplying `emissive`.
     pub emissive_texture: Option<usize>,
+    /// How alpha is used: ignored, cut out at a threshold, or blended (glTF `alphaMode`,
+    /// decision 0280).
+    pub alpha_mode: AlphaMode,
+    /// Both faces drawn (glTF `doubleSided`); single-sided materials cull back faces.
+    pub double_sided: bool,
+}
+
+/// How a material's alpha is used (glTF `alphaMode`, decision 0280).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum AlphaMode {
+    /// Alpha is ignored; the surface is fully opaque.
+    #[default]
+    Opaque,
+    /// Cut-out: fragments with alpha below `cutoff` are not drawn (leaves, fences, hair).
+    Mask { cutoff: f32 },
+    /// See-through: blended over what is behind it, drawn after opaque surfaces, back to
+    /// front (glass, water, smoke).
+    Blend,
 }
 
 impl Default for MaterialData {
@@ -88,6 +109,8 @@ impl Default for MaterialData {
             normal_scale: 1.0,
             emissive: [0.0; 3],
             emissive_texture: None,
+            alpha_mode: AlphaMode::Opaque,
+            double_sided: false,
         }
     }
 }
@@ -288,6 +311,14 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                 mat.emissive_factor().map(|c| c * strength)
             },
             emissive_texture: mat.emissive_texture().map(|t| t.texture().source().index()),
+            alpha_mode: match mat.alpha_mode() {
+                gltf::material::AlphaMode::Opaque => AlphaMode::Opaque,
+                gltf::material::AlphaMode::Mask => AlphaMode::Mask {
+                    cutoff: mat.alpha_cutoff().unwrap_or(0.5),
+                },
+                gltf::material::AlphaMode::Blend => AlphaMode::Blend,
+            },
+            double_sided: mat.double_sided(),
         });
     }
     let default_material = model.materials.len();
@@ -467,7 +498,9 @@ pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
     }
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {
-            format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas, font")
+            format!(
+                "unknown built-in image `{builtin}`; built-ins are white, circle, soft, checker, atlas, font"
+            )
         });
     }
     let path = base_dir.join(name);
@@ -540,6 +573,12 @@ pub fn builtin_image(name: &str) -> Option<Image> {
     Some(match name {
         "white" => Image::solid([255; 4], true),
         "circle" => make(64, 64, &|x, y| disc(x, y, 32.0, 31.0, [255, 255, 255])),
+        // White dot fading smoothly to clear at its edge (particles, glows).
+        "soft" => make(64, 64, &|x, y| {
+            let (dx, dy) = ((x as f32 + 0.5) / 32.0 - 1.0, (y as f32 + 0.5) / 32.0 - 1.0);
+            let t = (1.0 - (dx * dx + dy * dy).sqrt()).clamp(0.0, 1.0);
+            [255, 255, 255, (t * t * (3.0 - 2.0 * t) * 255.0).round() as u8]
+        }),
         "checker" => make(256, 256, &|x, y| {
             if (x / 32 + y / 32) % 2 == 0 {
                 [235, 235, 235, 255]

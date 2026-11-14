@@ -45,6 +45,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
+| `perf_realistic_scene` | yes | Write the realistic render benchmark: 32 models with 8 materials each and their own 2K texture set, a textured ground, about 380 large static models and 3,200 moving ones (about 18 million triangles at scale 1), sun with cascaded shadows, BC7 textures. Also writes a manifest and plain mesh files so another engine can build the same scene. |
 | `perf_suite` | yes | Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`. |
 | `perf_compare` | no | Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first. |
 | `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
@@ -1038,6 +1039,35 @@ Output:
 | `state_hash` | string | yes |  |
 | `threads` | integer | yes |  |
 | `ticks` | integer | yes |  |
+
+## `perf_realistic_scene`
+
+Write the realistic render benchmark: 32 models with 8 materials each and their own 2K texture set, a textured ground, about 380 large static models and 3,200 moving ones (about 18 million triangles at scale 1), sun with cascaded shadows, BC7 textures. Also writes a manifest and plain mesh files so another engine can build the same scene.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string | yes | Output scene file, `<stem>.scene.json` (relative to the project root). Assets go in the folder `<stem>` beside it. |
+| `scale` | number |  | Multiplies the instance counts (0.01 to 8; default 1). |
+| `texture_size` | integer |  | Texture width and height in texels, a power of two from 16 to 4096 (default 2048). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `entities` | integer | yes |  |
+| `folder` | string | yes | Folder with textures, models, meshes and the manifest. |
+| `materials` | integer | yes |  |
+| `models` | integer | yes |  |
+| `moving_instances` | integer | yes |  |
+| `scene` | string | yes |  |
+| `static_instances` | integer | yes |  |
+| `texture_size` | integer | yes |  |
+| `textures` | integer | yes |  |
+| `triangles` | integer | yes | Triangles of every instance together (before culling). |
 
 ## `perf_suite`
 

@@ -20,7 +20,13 @@ serde_json.workspace = true
 meshopt = { version = "0.7.0", optional = true }
 
 [features]
-default = ["lod"]
+default = ["lod", "compress"]
 # Reduced levels of detail built with meshoptimizer's simplifier (decision 0080). Without it
 # `LevelOfDetail` still hides small far things but every part keeps one level.
 lod = ["dep:meshopt"]
+# BC7 encoding of model textures under `TextureCompression` (decision 0283). Without it the
+# resource is accepted and textures stay uncompressed.
+compress = ["marionette-assets/compress"]
+
+[dev-dependencies]
+marionette-host.workspace = true

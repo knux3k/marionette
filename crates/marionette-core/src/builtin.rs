@@ -103,6 +103,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<spatial::PointLight>();
     registry.register_component::<spatial::SpotLight>();
     registry.register_component::<spatial::Emissive>();
+    registry.register_component::<spatial::ParticleEmitter>();
     registry.register_resource::<spatial::Shadows>();
     registry.register_resource::<spatial::ToneMapping>();
     registry.register_resource::<spatial::Fog>();
@@ -113,6 +114,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<spatial::Environment>();
     // Rendering cost controls (decision 0080).
     registry.register_resource::<spatial::LevelOfDetail>();
+    registry.register_resource::<spatial::TextureCompression>();
     registry.register_resource::<spatial::RenderScale>();
     registry.register_resource::<spatial::Foveation>();
     // Remaining lighting (decisions 0090 to 0093).

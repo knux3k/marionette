@@ -147,7 +147,8 @@ impl Default for ModelPlacement {
     }
 }
 
-/// Overrides the material of a `Model` (all of its parts) with simple PBR values.
+/// Overrides the material of a `Model` (all of its parts) with simple PBR values. A base
+/// color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
 pub struct Material {
     pub base_color: Color,
@@ -229,6 +230,53 @@ pub struct Emissive {
     pub intensity: f32,
 }
 
+/// Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game
+/// time alone (decision 0282): no particle state is stored or simulated, so they cost no tick
+/// time, never change the state hash, and the same tick always draws the same picture.
+/// Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and
+/// stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive.
+#[derive(Component, Reflect, Debug, Clone, PartialEq)]
+pub struct ParticleEmitter {
+    /// Particles started per second.
+    pub rate: f32,
+    /// Seconds each particle lives.
+    pub lifetime: f32,
+    /// Start speed in m/s.
+    pub speed: f32,
+    /// Half-angle of the cone around the entity's +Y they leave in (180 = every direction).
+    pub spread_degrees: f32,
+    /// Radius in meters of the ball they start in.
+    pub radius: f32,
+    /// Acceleration toward world -Y in m/s² (9.8 falls like sparks; negative rises like smoke).
+    pub gravity: f32,
+    /// Size in meters at birth and at death.
+    pub start_size: f32,
+    pub end_size: f32,
+    /// Linear color and opacity at birth and at death. Above 1 glows with `Bloom`.
+    pub start_color: Color,
+    pub end_color: Color,
+    /// Image: a PNG relative to the scene or a built-in (`builtin:circle` is a soft dot).
+    pub image: String,
+    pub blend: ParticleBlend,
+    /// Changes the random pattern, so emitters side by side do not look alike.
+    pub seed: u32,
+}
+
+impl ParticleEmitter {
+    /// Most particles one emitter keeps alive (`rate` times `lifetime` is capped here).
+    pub const MAX: u32 = 100_000;
+}
+
+/// How particles combine with what is behind them.
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ParticleBlend {
+    /// Light added to the scene (fire, sparks, magic): order does not matter.
+    #[default]
+    Additive,
+    /// Covers what is behind by its opacity (smoke, dust).
+    Alpha,
+}
+
 /// Turns on shadows cast by the first `DirectionalLight` (lowest entity id). Shadows cover
 /// a square `distance` meters on each side of the camera; farther objects are unshadowed.
 #[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
@@ -306,6 +354,17 @@ pub struct LevelOfDetail {
     pub low_below: f32,
     /// Below this size, not drawn in views (0 = never).
     pub hide_below: f32,
+}
+
+/// Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the
+/// memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level
+/// in 255 on photos and normal maps). Each texture is encoded once on first load and kept in
+/// a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a
+/// multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct TextureCompression {
+    /// Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces).
+    pub normal_maps: bool,
 }
 
 /// Draws the 3D world at `scale` times the output size and resizes it to the output
