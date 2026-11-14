@@ -1,4 +1,4 @@
-# 0260: Merge queue, fast pull request check, full suite at the queue
+# 0260: Fast pull request check, full suite after merge (merge queue not available)
 
 Date: 2026-11-13. Status: accepted.
 
@@ -13,27 +13,26 @@ kept the older run going.
 
 ## Decision
 
-- Triggers: `pull_request`, `merge_group` and `push` to `main` only. A pushed branch no longer
-  runs a second copy.
-- Concurrency: a newer push to a pull request cancels the older run. Merge queue and main runs
-  are never cancelled.
+- Triggers: `pull_request`, `merge_group` (kept so a queue can be turned on later) and `push` to
+  `main` only. A pushed branch no longer runs a second copy.
+- Concurrency: a newer push to a pull request cancels the older run. Main runs are never
+  cancelled.
 - A pull request runs the fast check: format, build and tests, clippy, network, lean builds and
   the drift hash, on Linux only.
-- The merge queue and main run everything: Windows, stability, timing budgets, valgrind and the
-  simulated headset as well. Nothing reaches main without the full suite; a failure there ejects
-  the pull request from the queue instead of breaking main.
+- Main (and a merge queue, if one is ever on) runs everything: Windows, stability, timing
+  budgets, valgrind and the simulated headset as well.
 - One job, `CI gate`, is the check to require. It fails if any job it needs failed or was
   cancelled, and passes when a job was skipped on purpose.
-- Dropped the separate `cargo build` step (the test step builds the same thing) and made the
-  Rust cache save only on main, so pull requests read it without each uploading a new copy.
-- The queue is a repository ruleset on `main` (require a pull request, require the `CI gate`
-  check, require merge queue; no bypass), turned on 2026-11-14. It is not in the workflow files;
-  repository auto-merge is on so a pull request joins the queue with auto-merge.
+- Dropped the separate `cargo build` step and made the Rust cache save only on main.
+- A ruleset on `main` requires a pull request and the `CI gate` check, not an up-to-date branch,
+  so merging one pull request does not force the others to rebase. Repository auto-merge is on.
+- GitHub merge queue was tried and is not offered here: it needs an organization-owned
+  repository and this one is under a personal account (owner chose to leave it, 2026-11-14).
 
 ## Consequences
 
-- The wait per pull request drops to the Linux job, and the 1-hour rebase loop goes away
-  because the queue tests each pull request on top of main plus those ahead of it.
-- Windows-only breakage is found at the queue, not on the pull request.
-- With the queue on, threads merge by adding a pull request to the queue (auto merge), not by a
-  direct merge.
+- The wait per pull request is the Linux job; the rebase loop is gone.
+- Windows, stability, budget, valgrind and headset failures show on main after the merge. The
+  thread that merged fixes a red main first.
+- Moving the repository to an organization would allow a queue: add the `merge_queue` rule to the
+  ruleset and the full suite then runs before merge.

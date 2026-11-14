@@ -96,7 +96,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |
 | 0241 | `port_serde` on a real project: const and static initializers, expression-bodied properties, `external` types (also Unity value types) | accepted |
-| 0260 | Merge queue: pull requests run a fast Linux check, the queue and main run the full suite, `CI gate` is the required check | accepted |
+| 0260 | Fast Linux check on pull requests, full suite on main, `CI gate` required, no up-to-date rule; merge queue not available on a personal repository | accepted |
 | 0270 | Scene edits cost the change: `SceneIndex`, indexed file and session edits with the whole-scene path as fallback, one write or world load per batch, lazy JSON positions | accepted |
 | 0280 | Model textures get CPU-made mipmaps (linear-light color, vector normals, cut-out coverage kept) and 16x anisotropic filtering | accepted |
 | 0281 | Cut-out and see-through materials from glTF alpha modes, double-sided materials; lazily built pipeline variants; see-through parts sorted back to front | accepted |
