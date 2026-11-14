@@ -29,7 +29,9 @@ Run operations as `marionette op <name> '<json>' --json`, or as MCP tools of the
    the picture is the question). Lists are paged: pass `offset` for more.
 
 Many edits at once: write them as a `*.ops.json` file and run `batch_run`. The file is also
-the recipe that rebuilds the scene, so keep it beside the scene.
+the recipe that rebuilds the scene, so keep it beside the scene. A batch writes a scene file
+once and builds a live session's world once (10,000 creates take about a second); a single
+edit of a live session builds its world again each time, so batch those too.
 
 ## Common pieces
 
