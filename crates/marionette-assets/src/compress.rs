@@ -66,7 +66,7 @@ pub fn compress(image: &Image, mips: &[Vec<u8>], codec: Codec) -> Option<Blocks>
     {
         return None;
     }
-    let alpha = image.rgba.chunks_exact(4).any(|t| t[3] != 255);
+    let alpha = image.rgba.as_chunks::<4>().0.iter().any(|t| t[3] != 255);
     let mut levels = Vec::with_capacity(1 + mips.len());
     levels.push(encode(&image.rgba, image.width, image.height, codec, alpha));
     for (i, texels) in mips.iter().enumerate() {

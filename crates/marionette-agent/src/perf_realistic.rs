@@ -334,7 +334,7 @@ fn lump(seg: u32, rings: u32, size: [f32; 3], at: [f32; 3], bump: f32, seed: u32
 fn smooth_normals(pos: &[[f32; 3]], idx: &[u32]) -> Vec<[f32; 3]> {
     let key = |p: [f32; 3]| (p[0].to_bits(), p[1].to_bits(), p[2].to_bits());
     let mut sums: std::collections::HashMap<(u32, u32, u32), [f32; 3]> = std::collections::HashMap::new();
-    for t in idx.chunks_exact(3) {
+    for t in idx.as_chunks::<3>().0 {
         let [a, b, c] = [pos[t[0] as usize], pos[t[1] as usize], pos[t[2] as usize]];
         let e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
         let e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
@@ -849,7 +849,7 @@ mod tests {
         let b = texture_set(1, 32);
         assert_ne!(a[0], b[0]);
         // Normals point out of the surface.
-        assert!(a[1].chunks_exact(4).all(|t| t[2] >= 128));
+        assert!(a[1].as_chunks::<4>().0.iter().all(|t| t[2] >= 128));
         // Tileable: the noise repeats over one period.
         let l = look(2);
         let (h0, h1) = (height(&l, 0.1, 0.3, 7), height(&l, 1.1, 0.3, 7));
