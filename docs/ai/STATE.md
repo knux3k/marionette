@@ -13,7 +13,7 @@ check a feature there before building on it, and update its row when your work m
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Landed: fast check on pull requests, full suite in the merge queue and on main (0260). |
+| 1 | Workspace, CI | Landed: fast check on pull requests, full suite on main, no merge queue on a personal repository (0260). |
 | 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
