@@ -4,18 +4,25 @@
 //! text once more and record where every value starts. For an object member the position
 //! is that of its key; for an array element, the element itself. Lines and columns are
 //! 1-based; columns count characters.
+//!
+//! Positions are only read when a problem is reported, so the scan runs on the first
+//! [`Spans::get`], not when the text is loaded (decision 0270: a valid scene pays nothing).
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Default, Clone)]
-pub struct Spans {
-    map: BTreeMap<String, (usize, usize)>,
+type Map = BTreeMap<String, (usize, usize)>;
+
+#[derive(Debug, Clone)]
+pub struct Spans<'a> {
+    text: &'a str,
+    map: OnceCell<Map>,
 }
 
-impl Spans {
+impl Spans<'_> {
     /// Position of the value at `pointer` (e.g. `/entities/0/components/Position`).
     pub fn get(&self, pointer: &str) -> Option<(usize, usize)> {
-        self.map.get(pointer).copied()
+        self.map.get_or_init(|| scan(self.text)).get(pointer).copied()
     }
 }
 
@@ -32,14 +39,21 @@ where
     })
 }
 
-/// Scans `text` (which must already be valid JSON) and records value positions.
-pub fn spans(text: &str) -> Spans {
+/// Value positions of `text` (which must already be valid JSON), found on first use.
+pub fn spans(text: &str) -> Spans<'_> {
+    Spans {
+        text,
+        map: OnceCell::new(),
+    }
+}
+
+fn scan(text: &str) -> Map {
     let mut s = Scanner {
         chars: text.chars().collect(),
         i: 0,
         line: 1,
         col: 1,
-        spans: Spans::default(),
+        spans: Map::new(),
     };
     s.ws();
     s.value(String::new(), None);
@@ -51,7 +65,7 @@ struct Scanner {
     i: usize,
     line: usize,
     col: usize,
-    spans: Spans,
+    spans: Map,
 }
 
 impl Scanner {
@@ -81,7 +95,7 @@ impl Scanner {
     /// members); `None` means "where the value starts".
     fn value(&mut self, path: String, at: Option<(usize, usize)>) {
         let here = at.unwrap_or((self.line, self.col));
-        self.spans.map.insert(path.clone(), here);
+        self.spans.insert(path.clone(), here);
         match self.peek() {
             Some('{') => {
                 self.bump();

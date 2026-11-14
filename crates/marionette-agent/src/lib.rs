@@ -254,6 +254,7 @@ pub struct Agent {
     ops: std::sync::Arc<Vec<Op>>,
     pub(crate) sessions: BTreeMap<String, Session>,
     pub(crate) next_session: u64,
+    pub(crate) scenes: edit::SceneCache,
     gpu: Option<Gpu>,
 }
 
@@ -272,6 +273,7 @@ impl Agent {
             engine,
             sessions: BTreeMap::new(),
             next_session: 1,
+            scenes: edit::SceneCache::default(),
             gpu: None,
         }
     }
@@ -286,6 +288,12 @@ impl Agent {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Makes every edit take the whole-scene path (tests hold the indexed path against it).
+    #[doc(hidden)]
+    pub fn whole_scene_edits(&mut self) {
+        self.scenes.off = true;
     }
 
     pub fn registry(&self) -> &Registry {
@@ -337,6 +345,17 @@ impl Agent {
             )
             .fix("use observe_*, scene_validate, scene_run or test_run, or restart without --read-only")
             .into());
+        }
+        // Scene text left pending by a batch's edits is written before anything else looks at
+        // the file (decision 0270).
+        if name != "batch_run" && !edit::CACHED_EDITS.contains(&name) {
+            self.scenes.flush()?;
+            debug_assert!(
+                self.sessions
+                    .values()
+                    .all(|s| s.edits.as_ref().is_none_or(|e| !e.pending())),
+                "a batch loads pending session edits before a step that is not an edit"
+            );
         }
         // A shared handle to the table lets the handler borrow the agent mutably (and lets
         // `batch_run` call other operations).
