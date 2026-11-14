@@ -610,6 +610,7 @@ fn draw_items(world: &World, frame: &BulkDrawContext, out: &mut Vec<BulkDraw>) {
             asset: model.clone(),
             material: Some(*material),
             transforms,
+            shader: None,
         });
     }
 }

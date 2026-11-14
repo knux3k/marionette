@@ -128,6 +128,13 @@ environment (`probes.rs`); `RayTracing` uses a variant of the PBR shader with ra
 its own pipelines and lights group, a BLAS per static part and a TLAS per frame, only on GPUs
 with ray queries.
 
+Meshes built in game code (`GameMeshes`, `mesh:<name>` assets, decision 0180) become
+ordinary one-part GPU models in `renderer/game_mesh.rs`, re-uploaded (in place when sizes
+match) when their version changes. Game shaders (`ShaderMaterial`, decision 0181,
+`renderer/game_shader.rs`) splice a game's WGSL `surface`/`vertex` functions into
+`pbr.wgsl`'s hook block; their material data is bind group 3 and the shader slot is part of
+the instanced group key.
+
 `Renderer::render_views` takes several views (eyes) and prepares instances once for all of
 them; `Offscreen::render_eyes` emulates a headset. `extract(&World)` (`extract.rs`) copies what to draw, so
 rendering cannot change simulation state. Offscreen capture: `gpu.rs`; window: `window.rs`.

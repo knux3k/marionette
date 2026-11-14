@@ -21,6 +21,7 @@ Commands and tests that prove each done part of the engine, one file per area in
 | Co-op networking, Steam, achievements, cloud saves | [proofs/networking.md](proofs/networking.md) |
 | Round worlds and navigation | [proofs/navigation.md](proofs/navigation.md) |
 | Windowed play on real screens, present modes, gamepads (decisions 0170 to 0173) | [proofs/window.md](proofs/window.md) |
+| Game meshes and game shaders (decisions 0180, 0181) | [proofs/game-meshes.md](proofs/game-meshes.md) |
 
 ## Adding a proof
 

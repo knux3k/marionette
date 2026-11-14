@@ -116,7 +116,9 @@ pub struct Camera {
 
 /// A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file,
 /// or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter),
-/// `primitive:plane` (1 m square, facing +Y).
+/// `primitive:plane` (1 m square, facing +Y), `primitive:grid` (the plane split into 64 x 64
+/// squares, for shaders that move vertices). Meshes built in game code are `mesh:<name>`
+/// (decision 0180).
 #[derive(Component, Reflect, Debug, Clone, PartialEq)]
 pub struct Model {
     pub asset: String,
@@ -400,6 +402,8 @@ pub struct BulkDraw {
     /// One affine transform per copy: the first three rows of the column-major world
     /// matrix, as `[x_axis.xyz, y_axis.xyz, z_axis.xyz, translation.xyz]`.
     pub transforms: Vec<[f32; 12]>,
+    /// A game shader for every copy (decision 0181); `None` uses the standard shader.
+    pub shader: Option<crate::shader::ShaderMaterial>,
 }
 
 /// What a bulk draw hook knows about the frame being drawn. Not simulation state.

@@ -19,6 +19,9 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+mod game_mesh;
+mod game_shader;
+
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
 /// Point and spot lights per frame (lowest entity ids win).
@@ -59,6 +62,8 @@ pub mod codes {
     pub const NO_ADAPTER: &str = "render.no_adapter";
     pub const DEVICE: &str = "render.device";
     pub const SURFACE: &str = "render.surface";
+    /// A game shader failed to load or compile, or its material is wrong (decision 0181).
+    pub const SHADER: &str = "render.shader";
 }
 
 #[repr(C)]
@@ -138,6 +143,8 @@ pub(crate) struct DrawCall<'a> {
     pub instances: std::ops::Range<u32>,
     /// ... of which the first `seen` are inside a view (views draw only those).
     pub seen: u32,
+    /// A game shader and its material group (decision 0181).
+    pub game: Option<game_shader::GameDraw<'a>>,
 }
 
 /// Everything a frame draws for models, shared by the shadow, HDR and final passes.
@@ -147,6 +154,10 @@ struct MeshCalls<'a> {
     skinned: &'a [crate::skinning::SkinnedCall<'a>],
     deform_groups: &'a [wgpu::BindGroup],
     skinned_instances: Option<&'a wgpu::Buffer>,
+    /// Empty bind group for groups 1 and 2 of game shader depth pipelines.
+    empty_group: Option<&'a wgpu::BindGroup>,
+    /// The standard lights group, which game shader pipelines use (decision 0181).
+    game_lights: Option<&'a wgpu::BindGroup>,
 }
 
 impl MeshCalls<'_> {
@@ -160,7 +171,13 @@ impl MeshCalls<'_> {
         local: bool,
         stats: &mut RenderStats,
     ) {
-        self.draw(pass, pipelines, (view_group, offset), (None, local, false), stats);
+        self.draw(
+            pass,
+            pipelines,
+            (view_group, offset),
+            (None, local, false, false),
+            stats,
+        );
     }
 
     /// Depth of what the view draws (decision 0093 prepass): only the instances in view.
@@ -172,10 +189,18 @@ impl MeshCalls<'_> {
         offset: u32,
         stats: &mut RenderStats,
     ) {
-        self.draw(pass, pipelines, (view_group, offset), (None, false, true), stats);
+        self.draw(
+            pass,
+            pipelines,
+            (view_group, offset),
+            (None, false, true, false),
+            stats,
+        );
     }
 
-    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material).
+    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material); `hdr` picks game
+    /// shader pipelines for the bloom target.
+    #[allow(clippy::too_many_arguments)]
     fn draw_lit(
         &self,
         pass: &mut wgpu::RenderPass,
@@ -183,13 +208,14 @@ impl MeshCalls<'_> {
         view_group: &wgpu::BindGroup,
         offset: u32,
         lights: &wgpu::BindGroup,
+        hdr: bool,
         stats: &mut RenderStats,
     ) {
         self.draw(
             pass,
             pipelines,
             (view_group, offset),
-            (Some(lights), false, true),
+            (Some(lights), false, true, hdr),
             stats,
         );
     }
@@ -200,15 +226,18 @@ impl MeshCalls<'_> {
         (plain, skinned): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
         (view_group, offset): (&wgpu::BindGroup, u32),
         // Lights group (lit draws), or none (depth); skip models holding a lamp; draw only
-        // the instances inside a view (views) or every caster (shadow maps).
-        (lights, skip_lamps, in_view): (Option<&wgpu::BindGroup>, bool, bool),
+        // the instances inside a view (views) or every caster (shadow maps); HDR target.
+        (lights, skip_lamps, in_view, hdr): (Option<&wgpu::BindGroup>, bool, bool, bool),
         stats: &mut RenderStats,
     ) {
         if let (Some(ib), false) = (self.instances, self.calls.is_empty()) {
             pass.set_pipeline(plain);
+            let mut current: *const wgpu::RenderPipeline = plain;
             pass.set_bind_group(0, view_group, &[offset]);
+            let mut bound_lights: *const wgpu::BindGroup = std::ptr::null();
             if let Some(l) = lights {
                 pass.set_bind_group(1, l, &[]);
+                bound_lights = l;
             }
             pass.set_vertex_buffer(1, ib.slice(..));
             for call in self.calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
@@ -221,8 +250,50 @@ impl MeshCalls<'_> {
                 if range.is_empty() {
                     continue;
                 }
-                if lights.is_some() {
+                // Game shaders (decision 0181): their own pipelines; blended or
+                // `no_shadows` ones do not cast.
+                // A depth prepass (decision 0093) keeps opaque game shaders whose vertices do not
+                // move; the others draw their own depth in the lit pass.
+                let pipeline = match (lights.is_some(), call.game) {
+                    (true, Some((g, _))) => &g.lit[hdr as usize],
+                    (false, Some((g, _))) if in_view => {
+                        if g.options.blend != marionette_core::shader::ShaderBlend::Opaque
+                            || g.shadow.is_some()
+                        {
+                            continue;
+                        }
+                        plain
+                    }
+                    (false, Some((g, _))) if !g.options.casts_shadows() => continue,
+                    (false, Some((g, _))) => g.shadow.as_ref().unwrap_or(plain),
+                    (_, None) => plain,
+                };
+                if !std::ptr::eq(current, pipeline) {
+                    pass.set_pipeline(pipeline);
+                    current = pipeline;
+                }
+                if let Some(l) = lights {
                     pass.set_bind_group(2, call.material, &[]);
+                    // Game shaders are built against the standard lights group; ray-traced
+                    // frames bind their own, so swap it around game draws.
+                    let want = match (call.game, self.game_lights) {
+                        (Some(_), Some(std)) => std,
+                        _ => l,
+                    };
+                    if !std::ptr::eq(bound_lights, want) {
+                        pass.set_bind_group(1, want, &[]);
+                        bound_lights = want;
+                    }
+                }
+                if let Some((g, group)) = call.game {
+                    if lights.is_none()
+                        && g.shadow.is_some()
+                        && let Some(empty) = self.empty_group
+                    {
+                        pass.set_bind_group(1, empty, &[]);
+                        pass.set_bind_group(2, empty, &[]);
+                    }
+                    pass.set_bind_group(3, group, &[]);
                 }
                 pass.set_vertex_buffer(0, call.part.vertices.slice(..));
                 pass.set_index_buffer(call.indices.0.slice(..), wgpu::IndexFormat::Uint32);
@@ -291,10 +362,27 @@ pub(crate) const MESH_VERTEX_STRIDE: u64 = size_of::<MeshVertex>() as u64;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-struct MeshVertex {
-    position: [f32; 3],
-    normal: [f32; 3],
-    uv: [f32; 2],
+pub(crate) struct MeshVertex {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub uv: [f32; 2],
+    /// Vertex color (sRGB-free linear 0..1 in 8 bits); white when the mesh has none. Read
+    /// only when the instance's `params.w` has `PARAM_VERTEX_COLORS` (decision 0180).
+    pub color: [u8; 4],
+}
+
+/// Bit in `InstanceData::params[3]` (as an integer): the part has a normal map.
+pub(crate) const PARAM_NORMAL_MAP: f32 = 1.0;
+/// Bit in `InstanceData::params[3]`: multiply the base color by the vertex colors.
+pub(crate) const PARAM_VERTEX_COLORS: f32 = 2.0;
+
+/// Vertex buffer layout of [`MeshVertex`] (shared by every mesh pipeline).
+pub(crate) const MESH_ATTRS: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 13 => Unorm8x4];
+
+/// One vertex color as stored on the GPU.
+pub(crate) fn color8(c: [f32; 4]) -> [u8; 4] {
+    c.map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
 }
 
 #[repr(C)]
@@ -316,6 +404,8 @@ pub(crate) struct GpuPart {
     /// Skin and morph target data for parts the GPU deforms (drawn by `skinning.rs`, not
     /// the static path).
     pub deform: Option<crate::skinning::Deform>,
+    /// The mesh has vertex colors (decision 0180).
+    pub colors: bool,
     /// Bounding sphere of the vertices (part space), for culling (decision 0080).
     pub bounds: crate::cull::Sphere,
     /// Reduced levels of detail (index buffer, index count); empty unless a scene asked
@@ -347,17 +437,33 @@ pub(crate) fn instance_material(
     match over {
         Some(m) => {
             let c = m.base_color;
-            ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
+            (
+                [c.r, c.g, c.b, c.a],
+                [m.metallic, m.roughness, 1.0, color_bit(part)],
+            )
         }
         None => {
             let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-            let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
+            let has_normal = if md.normal_texture.is_some() {
+                PARAM_NORMAL_MAP
+            } else {
+                0.0
+            };
             (
                 md.base_color,
-                [md.metallic, md.roughness, md.normal_scale, has_normal],
+                [
+                    md.metallic,
+                    md.roughness,
+                    md.normal_scale,
+                    has_normal + color_bit(part),
+                ],
             )
         }
     }
+}
+
+fn color_bit(part: &GpuPart) -> f32 {
+    if part.colors { PARAM_VERTEX_COLORS } else { 0.0 }
 }
 
 struct GpuTexture {
@@ -387,6 +493,8 @@ pub struct Renderer {
     view_group: wgpu::BindGroup,
     lights_buffer: wgpu::Buffer,
     lights_layout: wgpu::BindGroupLayout,
+    /// Game shaders and their materials (decision 0181); built when first used.
+    game: Option<game_shader::GameShading>,
     lights_group: wgpu::BindGroup,
     /// Sun shadow map, one layer per cascade, while a scene asks for shadows; 1x1 otherwise.
     shadow_map: LocalShadowMaps,
@@ -424,6 +532,8 @@ pub struct Renderer {
     sprite_sampler: wgpu::Sampler,
     defaults: [wgpu::TextureView; 3], // white sRGB, white linear, flat normal
     models: BTreeMap<String, Result<GpuModel, String>>,
+    /// Version of each uploaded game mesh (`mesh:<name>` assets, decision 0180).
+    game_mesh_versions: BTreeMap<String, u64>,
     /// Background model decoding while streaming (decision 0068); `None` until first used.
     loader: Option<ModelLoader>,
     /// Models first needed after the first prepared frame decode in the background.
@@ -821,6 +931,7 @@ impl Renderer {
             view_group,
             lights_buffer,
             lights_layout,
+            game: None,
             lights_group,
             view_layout,
             rt: None,
@@ -845,6 +956,7 @@ impl Renderer {
             sprite_sampler,
             defaults,
             models: BTreeMap::new(),
+            game_mesh_versions: BTreeMap::new(),
             loader: None,
             streaming: false,
             prepared_once: false,
@@ -943,6 +1055,14 @@ impl Renderer {
             self.models.clear();
         }
         self.lod_wanted = frame.lod.is_some();
+        self.sync_game_meshes(frame);
+        for (shader, msg) in self.sync_game_shaders(frame) {
+            errors.push(
+                Diagnostic::error(codes::SHADER, format!("{shader}: {msg}"))
+                    .component("ShaderMaterial")
+                    .fix("see docs/ai/SHADERS.md for the surface/vertex contract; the model draws with the standard shader until this is fixed"),
+            );
+        }
         let stream = self.streaming && self.prepared_once;
         for draw in &frame.meshes {
             self.ensure_model(&draw.asset, stream);
@@ -952,7 +1072,7 @@ impl Renderer {
                         .entity(draw.entity)
                         .component("Model")
                         .fix(
-                            "check the path (relative to the scene file) or use primitive:cube|sphere|plane",
+                            "check the path (relative to the scene file), use primitive:cube|sphere|plane, or store the mesh:<name> in GameMeshes",
                         ),
                 );
             }
@@ -1118,7 +1238,8 @@ impl Renderer {
 
     /// Loads a model now, or (streaming) asks the background thread for it.
     fn ensure_model(&mut self, asset: &str, stream: bool) {
-        if self.models.contains_key(asset) {
+        // Game meshes are uploaded by `sync_game_meshes`, never loaded from files.
+        if self.models.contains_key(asset) || marionette_core::mesh::mesh_name(asset).is_some() {
             return;
         }
         // Built-in shapes are cheap; only files go to the background.
@@ -1257,6 +1378,7 @@ impl Renderer {
                         position: p.mesh.positions[i],
                         normal: p.mesh.normals[i],
                         uv: p.mesh.uvs[i],
+                        color: p.mesh.colors.get(i).map_or([255; 4], |&c| color8(c)),
                     })
                     .collect();
                 GpuPart {
@@ -1275,6 +1397,7 @@ impl Renderer {
                     transform: p.transform,
                     node: p.node,
                     deform: crate::skinning::Deform::upload(&self.device, p, model.rig.skins.len()),
+                    colors: !p.mesh.colors.is_empty(),
                     bounds: crate::cull::Sphere::around(&p.mesh.positions),
                     lods: lod_indices
                         .get(i)
@@ -1356,14 +1479,15 @@ impl Renderer {
             let vp = view.proj * view.view;
             let vu = ViewUniform {
                 view_proj: mat(vp),
-                eye: view.eye.extend(1.0).to_array(),
+                // w: game time for game shaders (decision 0181); unused by the standard shader.
+                eye: view.eye.extend(frame.time).to_array(),
                 inv_view_proj: mat(vp.inverse()),
             };
             let (sw, sh) = (target.width as f32, target.height as f32);
             let ui_proj = glam::camera::rh::proj::directx::orthographic(0.0, sw, sh, 0.0, -1.0, 1.0);
             let uvu = ViewUniform {
                 view_proj: mat(ui_proj),
-                eye: [0.0, 0.0, 0.0, 1.0],
+                eye: [0.0, 0.0, 0.0, frame.time],
                 inv_view_proj: mat(ui_proj.inverse()),
             };
             let at = 2 * i * VIEW_STRIDE as usize;
@@ -1480,7 +1604,7 @@ impl Renderer {
                 for (k, (m, _)) in maps.iter().enumerate() {
                     let su = ViewUniform {
                         view_proj: mat(*m),
-                        eye: [0.0, 0.0, 0.0, 1.0],
+                        eye: [0.0, 0.0, 0.0, frame.time],
                         inv_view_proj: mat(m.inverse()),
                     };
                     let at = k * VIEW_STRIDE as usize;
@@ -1547,7 +1671,7 @@ impl Renderer {
             for (k, m) in layer_mats.iter().enumerate() {
                 let u = ViewUniform {
                     view_proj: mat(*m),
-                    eye: [0.0, 0.0, 0.0, 1.0],
+                    eye: [0.0, 0.0, 0.0, frame.time],
                     inv_view_proj: mat(m.inverse()),
                 };
                 let at = k * VIEW_STRIDE as usize;
@@ -1636,7 +1760,10 @@ impl Renderer {
         // lookup are skipped while the key repeats (entities come sorted by id, so runs of
         // the same model are the common case).
         // (asset, part, material overridden, holds a shadow-casting lamp, level of detail)
-        type Key<'k> = (&'k str, usize, bool, bool, usize);
+        // ..., game shader material slot (decision 0181)
+        type Key<'k> = (&'k str, usize, bool, bool, usize, Option<u32>);
+        let game = self.game.as_ref();
+        let game_slot = |slot: Option<u32>| slot.filter(|&s| game.is_some_and(|g| g.draw(s).is_some()));
         let mut group_of: BTreeMap<Key, u32> = BTreeMap::new();
         let culler = {
             let vps: Vec<Mat4> = views.iter().map(|(v, _)| v.proj * v.view).collect();
@@ -1693,7 +1820,14 @@ impl Renderer {
                     continue;
                 }
                 let (base_color, params) = instance_material(model, part, draw.material);
-                let key = (&*draw.asset, p, draw.material.is_some(), draw.lamp, level);
+                let key = (
+                    &*draw.asset,
+                    p,
+                    draw.material.is_some(),
+                    draw.lamp,
+                    level,
+                    game_slot(draw.shader),
+                );
                 let g = match last_key {
                     Some((k, g)) if k == key => g,
                     _ => {
@@ -1713,25 +1847,13 @@ impl Renderer {
                 class_of.push(class);
             }
         }
-        for bulk in &frame.bulk {
+        for (bi, bulk) in frame.bulk.iter().enumerate() {
             let Some(Ok(model)) = self.models.get(&bulk.asset) else {
                 continue;
             };
+            let shader = game_slot(bulk.shader.as_ref().map(|_| game_shader::bulk_slot(frame, bi)));
             for (p, part) in model.parts.iter().enumerate() {
-                let (base_color, params) = match bulk.material {
-                    Some(m) => {
-                        let c = m.base_color;
-                        ([c.r, c.g, c.b, c.a], [m.metallic, m.roughness, 1.0, 0.0])
-                    }
-                    None => {
-                        let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
-                        let has_normal = if md.normal_texture.is_some() { 1.0 } else { 0.0 };
-                        (
-                            md.base_color,
-                            [md.metallic, md.roughness, md.normal_scale, has_normal],
-                        )
-                    }
-                };
+                let (base_color, params) = instance_material(model, part, bulk.material);
                 let identity = part.transform == Mat4::IDENTITY;
                 let levels = 1 + part.lods.len();
                 raw.reserve(bulk.transforms.len());
@@ -1752,7 +1874,14 @@ impl Renderer {
                     let g = match last {
                         Some((l, g)) if l == level => g,
                         _ => {
-                            let key = (bulk.asset.as_str(), p, bulk.material.is_some(), false, level);
+                            let key = (
+                                bulk.asset.as_str(),
+                                p,
+                                bulk.material.is_some(),
+                                false,
+                                level,
+                                shader,
+                            );
                             let n = group_of.len() as u32;
                             let g = *group_of.entry(key).or_insert(n);
                             last = Some((level, g));
@@ -1785,7 +1914,7 @@ impl Renderer {
         let mut shadow_start_of = vec![0u32; group_of.len()];
         let mut calls = Vec::with_capacity(group_of.len());
         let mut at = 0u32;
-        for (&(asset, p, overridden, lamp, level), &g) in &group_of {
+        for (&(asset, p, overridden, lamp, level, slot), &g) in &group_of {
             let Some(Ok(model)) = self.models.get(asset) else {
                 continue;
             };
@@ -1812,9 +1941,15 @@ impl Renderer {
                 indices,
                 instances: at..at + n,
                 seen,
+                game: slot.and_then(|s| game.and_then(|gs| gs.draw(s))),
             });
             at += n;
         }
+        // Blended game shaders draw after everything opaque (instance ranges stay put).
+        calls.sort_by_key(|c| {
+            c.game
+                .is_some_and(|(g, _)| g.options.blend != marionette_core::shader::ShaderBlend::Opaque)
+        });
         instances.clear();
         instances.resize(raw.len(), InstanceData::zeroed());
         let (mut next, mut next_shadow) = (start_of, shadow_start_of);
@@ -2057,6 +2192,8 @@ impl Renderer {
             skinned: &skinned_calls,
             deform_groups: &deform_groups,
             skinned_instances: self.skinning.instances.as_ref(),
+            empty_group: self.game.as_ref().map(|g| &g.empty_group),
+            game_lights: Some(&self.lights_group),
         };
         let depth_pipelines = (&self.shadow_pipeline, &self.skinning.shadow_pipeline);
         let depth_pass = |encoder: &mut wgpu::CommandEncoder,
@@ -2187,6 +2324,7 @@ impl Renderer {
                     &self.view_group,
                     world_offset,
                     lights_group,
+                    true,
                     &mut stats,
                 );
                 if env {
@@ -2254,6 +2392,7 @@ impl Renderer {
                         &self.view_group,
                         world_offset,
                         lights_group,
+                        fi == 1,
                         &mut stats,
                     );
                     if env {
@@ -2766,7 +2905,7 @@ pub(crate) fn depth_pipeline(
         bind_group_layouts: &[Some(view_layout)],
         immediate_size: 0,
     });
-    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let mesh_attrs = crate::renderer::MESH_ATTRS;
     let targets = depth_targets(color);
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("depth"),
@@ -2863,7 +3002,7 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(view_layout), Some(lights_layout), Some(material_layout)],
         immediate_size: 0,
     });
-    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let mesh_attrs = crate::renderer::MESH_ATTRS;
     let pbr_for = |format: wgpu::TextureFormat| {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr"),

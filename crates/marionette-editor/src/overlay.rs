@@ -332,6 +332,7 @@ pub fn grid(frame: &mut FrameData, center: Vec3, height: f32) {
             pose: None,
             emissive: glow,
             lamp: false,
+            shader: None,
         });
     };
     let len = 2.0 * HALF as f32 * step;
@@ -384,6 +385,7 @@ mod tests {
             pose: None,
             emissive: Vec3::ZERO,
             lamp: false,
+            shader: None,
         });
         let view = FlyCamera::default().view(16.0 / 9.0);
         let items = [Pickable {

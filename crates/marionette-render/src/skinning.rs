@@ -183,7 +183,7 @@ pub(crate) fn depth_pipeline(
         bind_group_layouts: &[Some(view), None, None, Some(deform)],
         immediate_size: 0,
     });
-    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let mesh_attrs = crate::renderer::MESH_ATTRS;
     let targets = crate::renderer::depth_targets(color);
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("pbr skinned depth"),
@@ -238,7 +238,7 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(groups[0]), Some(groups[1]), Some(groups[2]), Some(groups[3])],
         immediate_size: 0,
     });
-    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let mesh_attrs = crate::renderer::MESH_ATTRS;
     let lit = |format: wgpu::TextureFormat| {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr skinned"),

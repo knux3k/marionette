@@ -119,6 +119,17 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "render-3d-game-shaders",
+      "description": "3D rendering with game shaders from files (decision 0181): textured tint, vertex-moved water with shadows, additive unlit hologram; both eyes of an emulated headset.",
+      "kind": "render",
+      "scene": "examples/game-shader.scene.json",
+      "views": 2,
+      "size": "640x360",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "render-3d-play",
       "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
       "kind": "render",

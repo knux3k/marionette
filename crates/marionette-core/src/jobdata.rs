@@ -226,6 +226,7 @@ pub fn draw_job_data(world: &World, _frame: &BulkDrawContext, out: &mut Vec<Bulk
                 asset: draw.asset.clone(),
                 material: draw.material,
                 transforms,
+                shader: None,
             });
         }
     }

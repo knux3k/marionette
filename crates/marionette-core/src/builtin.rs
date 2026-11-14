@@ -93,6 +93,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<spatial::Camera>();
     registry.register_component::<spatial::Model>();
     registry.register_component::<spatial::Material>();
+    registry.register_component::<crate::shader::ShaderMaterial>();
     registry.register_component::<spatial::ModelPlacement>();
     registry.register_component::<spatial::Sprite>();
     registry.register_component::<spatial::SpriteRegion>();

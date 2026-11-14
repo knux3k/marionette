@@ -90,6 +90,24 @@ Decisions 0210 to 0213; skill `marionette-multiplayer`.
 4. Steam needs the game's own `steam_api` library next to the executable (never in the engine
    repository) and `steam_appid.txt` during development.
 
+## Build a mesh in game code (terrain, generated props)
+
+Decision 0180. In a module (or any code with `&mut World`):
+
+1. Make a `marionette_core::mesh::GameMesh` (positions and counter-clockwise indices; normals,
+   UVs, vertex colors and up to two reduced index lists optional), or start from
+   `GameMesh::grid(cells_x, cells_z, size_x, size_z, height)`.
+2. `GameMeshes::set_in(world, "name", mesh)?` (or `set` on the resource); errors are text.
+3. Draw it with `Model { asset: "mesh:name" }` on entities, or `BulkDraw { asset: "mesh:name" }`.
+4. Change it by calling `set` again with the same name (same sizes: written in place);
+   `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
+
+## Give a model a game shader
+
+Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` in WGSL (a
+`.wgsl` file next to the scene, or `GameShaders::set_in` from Rust) and add
+`ShaderMaterial { shader, params, textures }` to the entity.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.
