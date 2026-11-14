@@ -71,5 +71,5 @@ Each line is one session of work; mark it done on landing.
 | Performance | Saving a large scene held the tick for 50 to 70 ms at 4x (a real port's budget is 2 ms) | done: `Sim::capture`, text written off the tick (decision 0073) |
 | Modularity | Porting tools could not see Unity Burst jobs and crashed on real code | done: job role, `jobs.rs` skeletons, partial classes (decision 0072) |
 | Performance | Every instance drawn in every view; far parts drawn at full detail | done: frustum culling always on, `LevelOfDetail` (decision 0080); render scale, upscaling and foveation open |
-| Performance | Script games allocate 900 to 2,200 times per tick | open; values no longer cross as text, 3x (decision 0271) |
+| Performance | Script games allocate 900 to 2,200 times per tick | open; scripts 3x faster (decision 0271) |
 | Performance | Every scene edit rewrote and checked the whole scene (1,000 creates: 89 s) | done (decision 0270); single live session edits still rebuild the world |
