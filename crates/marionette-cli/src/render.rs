@@ -102,6 +102,8 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
     let gpu = Gpu::headless()?;
     let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
     offscreen.set_culling(!no_cull);
+    // Both eyes in one pass where the device allows it (decision 0285).
+    let single_pass = offscreen.default_single_pass_stereo(&gpu, eyes);
     // Warm-up: load assets, compile pipelines, settle clocks. Not measured.
     for _ in 0..warmup {
         sim.step();
@@ -157,6 +159,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         "msaa": msaa,
         "eyes": eyes,
         "headset": headset,
+        "single_pass_stereo": single_pass,
         "culling": !no_cull,
         "frames": frames,
         "avg_ms": round(avg),

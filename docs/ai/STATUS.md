@@ -67,7 +67,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | --- | --- | --- | --- |
 | Operations, CLI, MCP (0061, 0062, 0290) | usable | Every proof game was built through them | A session of a real MCP client recorded |
 | Skills and handoffs (0160, 0161) | usable | Installed into games, checked by tests | Several real agents on one game |
-| Realistic render benchmark with a Unity twin (0284) | slice | The scene and its Unity builder exist | A run on a hardware GPU beside Unity |
+| Realistic render benchmark with a Unity twin (0284) | usable | Ran beside Unity on an RTX 2080: Marionette 19.3 ms, Unity 11.1 ms per frame (proofs/performance.md) | Marionette as fast as Unity on it |
 | Stability and performance harness (0023, 0260) | proven | All fast modes within budget on a hardware GPU; runs in CI | The long soak on a hardware GPU |
 | Editor (0130) | slice | Offscreen view and edit tests | A person using the window on a real scene |
 | Game starter (0150) | slice | Made games pass their tests; not played | A person playing one |
