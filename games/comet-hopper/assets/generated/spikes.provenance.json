@@ -1,0 +1,42 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "spikes",
+  "output": "texture",
+  "file": "spikes.png",
+  "sha256": "5799379712cba3d8b477f2c43b148fccaa8df7f1cc9505290bd8f48bcdfa6ba4",
+  "recipe": "spikes.recipe.json",
+  "recipe_sha256": "96e98c35e480197d9880b9a9b9e64212b88c66d50d273820df3f5daf4489c2e6",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a row of jagged blue crystal spikes, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "93fc36838c8c2c0ec036b543961ae30e6df4956042dfef5ac5e6cd87eaff8ae9",
+    "raw_sha256": "30bacd14b8d1cd8e726edc6a11fc5b18b8e5f484686fa2548190982b1c02bbc5",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "background_removed": true,
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

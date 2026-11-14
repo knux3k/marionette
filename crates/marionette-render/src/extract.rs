@@ -6,9 +6,10 @@ use marionette_core::Kind;
 use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
-    AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, LevelOfDetail,
-    LookAt, Material, Model, ModelPlacement, PointLight, Projection, Shadows, SkyLight, SpotLight, Sprite,
-    SpriteRegion, ToneMapping, Transform,
+    AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, Foveation,
+    LevelOfDetail, LookAt, Material, Model, ModelPlacement, PointLight, Projection, RayTracing,
+    ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
+    ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -25,6 +26,8 @@ pub struct FrameData {
     pub ui: Vec<UiDraw>,
     /// Copies drawn from modules' arrays (see `BulkDrawHooks`), in hook order.
     pub bulk: Vec<marionette_core::spatial::BulkDraw>,
+    /// World-space quads from modules (see `QuadDrawHooks`), in hook order.
+    pub quads: Vec<marionette_core::spatial::WorldQuads>,
     /// Point and spot lights, sorted by entity id (decision 0063).
     pub local_lights: Vec<LocalLightData>,
     /// Opt-in looks; `None` (the default) keeps the plain look.
@@ -41,6 +44,14 @@ pub struct FrameData {
     pub environment: Option<EnvironmentData>,
     /// Reduced levels of detail and hiding of small far things (decision 0080).
     pub lod: Option<crate::cull::Lod>,
+    /// Render scale and foveation (decisions 0081, 0082); `None` draws straight to the output.
+    pub scale: Option<crate::scale::ScaleSettings>,
+    /// Sun shadow cascades: count (2 to 4) and how far they reach (decision 0090).
+    pub cascades: Option<(u32, f32)>,
+    /// Reflection probes, sorted by entity id, at most four (decision 0092).
+    pub probes: Vec<ProbeData>,
+    /// Ray-traced lighting, when the scene asks for it (decision 0093).
+    pub ray_tracing: Option<RayTracing>,
     /// Meshes the game built in code, drawn by `mesh:<name>` assets (decision 0180). One
     /// shared copy: taking it costs a reference count.
     pub game_meshes: marionette_core::mesh::MeshMap,
@@ -51,6 +62,18 @@ pub struct FrameData {
     /// Game time in seconds (ticks plus `alpha`, times the step), for animated shaders.
     pub time: f32,
 }
+
+/// A reflection probe: where its picture is taken and the box it applies to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProbeData {
+    pub entity: u64,
+    pub position: Vec3,
+    pub extent: Vec3,
+    pub resolution: u32,
+}
+
+/// Most reflection probes a frame uses (lowest entity ids win).
+pub const MAX_PROBES: usize = 4;
 
 /// The `Environment` resource plus the sky colors a generated environment is made from.
 #[derive(Debug, Clone, PartialEq)]
@@ -204,8 +227,8 @@ fn rgba(c: Color) -> [f32; 4] {
     [c.r, c.g, c.b, c.a]
 }
 
-/// World matrix from `Position`/`Transform`/`LookAt`.
-fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
+/// World matrix from `Position`/`Transform`/`LookAt` (what the renderer draws an entity at).
+pub fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
     let t = t.copied().unwrap_or_default();
     let translation = p.map_or(v3(t.translation), |p| Vec3::new(p.x, p.y, p.z));
     let mut rotation = Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize();
@@ -270,6 +293,15 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         low_below: l.low_below.max(0.0),
         hide_below: l.hide_below.max(0.0),
     });
+    let render_scale = world.get_resource::<RenderScale>();
+    let foveation = world.get_resource::<Foveation>();
+    if render_scale.is_some() || foveation.is_some() {
+        frame.scale = Some(crate::scale::ScaleSettings {
+            scale: render_scale.map_or(1.0, |r| r.scale),
+            sharpness: render_scale.map_or(0.0, |r| r.sharpness),
+            foveation: foveation.map_or(0.0, |f| f.inner_radius),
+        });
+    }
     frame.environment = world.get_resource::<Environment>().map(|e| {
         let (sky, ground) = world
             .get_resource::<SkyLight>()
@@ -284,7 +316,26 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
             ground,
         }
     });
+    frame.cascades = world
+        .get_resource::<ShadowCascades>()
+        .filter(|c| c.count >= 2 && c.far > 0.0)
+        .map(|c| (c.count.min(4), c.far));
+    frame.ray_tracing = world.get_resource::<RayTracing>().copied();
     type Place<'a> = (Option<&'a Transform>, Option<&'a Position>, Option<&'a LookAt>);
+    if let Some(mut q) = world.try_query::<(&SceneId, &ReflectionProbe, Place)>() {
+        let mut probes: Vec<ProbeData> = q
+            .iter(world)
+            .map(|(id, probe, (t, p, l))| ProbeData {
+                entity: id.0,
+                position: world_matrix(t, p, l).w_axis.truncate(),
+                extent: v3(probe.extent).abs().max(Vec3::splat(0.05)),
+                resolution: probe.resolution.clamp(32, 512),
+            })
+            .collect();
+        probes.sort_by_key(|p| p.entity);
+        probes.truncate(MAX_PROBES);
+        frame.probes = probes;
+    }
 
     if let Some(mut q) = world.try_query::<(&SceneId, &Camera, Place)>() {
         for (id, camera, (t, p, l)) in q.iter(world) {
@@ -486,8 +537,27 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         frame.game_shaders = shaders.snapshot();
     }
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
+        let camera = frame.cameras.first().map(|c| c.world);
+        let context = marionette_core::spatial::BulkDrawContext {
+            alpha: alpha.clamp(0.0, 1.0),
+            eye: camera.map(|m| m.w_axis.truncate().to_array()),
+            forward: camera.map(|m| (-m.z_axis.truncate()).normalize_or(Vec3::NEG_Z).to_array()),
+        };
         for hook in &hooks.0 {
-            hook(world, alpha.clamp(0.0, 1.0), &mut frame.bulk);
+            hook(world, &context, &mut frame.bulk);
+        }
+    }
+    if let Some(hooks) = world.get_resource::<marionette_core::spatial::QuadDrawHooks>() {
+        let eye = frame
+            .cameras
+            .first()
+            .map_or([0.0; 3], |c| c.world.w_axis.truncate().to_array());
+        let ctx = marionette_core::spatial::QuadContext {
+            alpha: alpha.clamp(0.0, 1.0),
+            eye,
+        };
+        for hook in &hooks.0 {
+            hook(world, &ctx, &mut frame.quads);
         }
     }
     // Stable draw order for sprites: layer, then entity id.
@@ -513,7 +583,7 @@ fn shader_index(
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 22] = [
+pub const READS: [(&str, Kind); 27] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -535,5 +605,10 @@ pub const READS: [(&str, Kind); 22] = [
     ("CastShadows", Kind::Component),
     ("Environment", Kind::Resource),
     ("LevelOfDetail", Kind::Resource),
+    ("RenderScale", Kind::Resource),
+    ("Foveation", Kind::Resource),
+    ("ShadowCascades", Kind::Resource),
+    ("ReflectionProbe", Kind::Component),
+    ("RayTracing", Kind::Resource),
     ("ShaderMaterial", Kind::Component),
 ];

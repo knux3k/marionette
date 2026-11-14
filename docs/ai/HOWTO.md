@@ -41,7 +41,7 @@ Template: `examples/rust-module` (decision 0062).
 
 1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
    `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
-   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`).
+   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`).
 2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
    with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
    `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.
@@ -50,6 +50,45 @@ Template: `examples/rust-module` (decision 0062).
    `crates/marionette-cli/src/main.rs`. Tests use `Agent::with_engine` or `Engine::load_file`.
 4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
    workspace's.
+
+## Add save games to a game
+
+Decision 0076; code `crates/marionette-save`.
+
+1. Add resource `SaveFormat` to the game's scene: `game` (id), `version` (start at 1),
+   `autosave_every` (ticks, 0 for requests only), `autosave_slots`, `migrations` (file
+   relative to the scene, or `""`). Everything the player keeps must be in registered
+   components or resources; anything else is lost on load.
+2. Ask for saves at safe moments from scripts: `engine.emit("save_request")` (autosave slot)
+   or `engine.emit("save_request", { slot: "checkpoint", label: "Gate" })`.
+3. Changing saved data: raise `version` and add a step `{ "from": <old>, "changes": [...] }`
+   to the migrations file (`rename_type`, `remove_type`, `rename_field`, `set_field`,
+   `remove_field`), or a Rust step with `SaveModule::with(Migrations::new().rust(old, f))`
+   and `Engine::builder().replace(...)`. Test it: keep an old save under `tests/` and run
+   `save_check`, then `save_load`.
+4. Agents: `save_write`, `save_load`, `save_list`, `save_check`, `save_delete` on a live
+   session. Windowed: `marionette run <scene> --saves <dir>` (autosave, F5, F9). A game's
+   own binary: `SaveWriter::new(SaveStore::open(dir)?, registry)` plus
+   `Autosaver::after_step` after each step, and `marionette_save::load` to load.
+## Network a game (co-op lockstep, Steam, achievements)
+
+Decisions 0210 to 0213; skill `marionette-multiplayer`.
+
+1. Scripts read per-player actions `p<slot>.<action>` and the `NetPlayers` resource
+   (`examples/scripts/coop-player.ts`). Prove the scene with
+   `marionette op net_simulate '{"scene":"...","players":4,"late_join_at":200}'`:
+   `all_equal` must be true.
+2. In the game's binary add `marionette_net::NetModule` to the engine, pick a transport
+   (`Endpoint::new(UdpDatagram::bind(..))`, or `marionette_steam::Steam::load(None)` then
+   `.transport(2)`), gather players with a `Lobbies` backend, then each fixed step:
+   host `poll`, `set_local`, `next_frame`, `apply_frame` + `Sim::step`, hash when
+   `should_hash`, `provide_snapshot` when `needs_snapshot`, `flush`; client `poll`,
+   `set_local`, run `frames_due` frames, `flush`.
+3. Achievements: a `*.achievements.json` (check with `achievements_check`), a `Tracker` over
+   `OfflinePlatform` or `Steam::platform()`. Cloud saves: `sync_dir(save_folder, &[".save"], ..)`
+   at start and after saving, or Steam Auto-Cloud.
+4. Steam needs the game's own `steam_api` library next to the executable (never in the engine
+   repository) and `steam_appid.txt` during development.
 
 ## Build a mesh in game code (terrain, generated props)
 
@@ -171,3 +210,18 @@ Rules: `docs/ai/MEMORY-AND-CRASHES.md`.
 2. Run `marionette op test_run '{}' --json`; results are data (`passed`, `failed`, per assertion).
 3. Format: the module docs at the top of `crates/marionette-agent/src/scenario.rs` and the
    `test_run` entry in `docs/ai/reference/operations.md`.
+
+## Make a scene playable on a headset (decision 0190)
+
+1. One entity with `XrRig` (`height_offset` 0 for standing) and `Transform`: the play space.
+   Add `XrLocomotion` for stick movement, snap or smooth turning and teleport.
+2. A head entity: `XrTracked { rig, source: Head }`, `Camera` (near 0.05), `AudioListener`.
+3. Two hands: `XrTracked` with `LeftGrip` / `RightGrip`, plus `XrHand { grab_action,
+   grab_radius, throw_scale }` and a `Model`. Things to pick up get `Grabbable` (a dynamic
+   `RigidBody` keeps colliding while held).
+4. Bind actions to `xr:<left|right>/<input>` in the action map (inputs in
+   `marionette_input::XR_INPUTS`); keep keyboard bindings too for desktop testing.
+5. Check without a headset: feed poses with `marionette_xr::pose::events` (see
+   `crates/marionette-cli/tests/xr.rs`) or an inputs file (`examples/xr-throw.inputs.json`).
+   With one: `marionette xr --probe`, then `marionette xr <scene> [--record run.inputs.json]`.
+Example: `examples/xr.scene.json`, `examples/xr.actions.json`.

@@ -241,6 +241,18 @@ pub struct Shadows {
     pub softness: f32,
 }
 
+/// Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters
+/// from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp
+/// up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution`
+/// map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an
+/// orthographic camera keeps one map).
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ShadowCascades {
+    pub count: u32,
+    /// Distance from the camera where shadows end, in meters (capped at the camera's far plane).
+    pub far: f32,
+}
+
 /// Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so
 /// bright light rolls off smoothly instead of clipping at white. Without it, colors clamp
 /// at 1.0.
@@ -296,6 +308,27 @@ pub struct LevelOfDetail {
     pub hide_below: f32,
 }
 
+/// Draws the 3D world at `scale` times the output size and resizes it to the output
+/// (decision 0081); UI stays at full resolution. Below 1 it trades sharpness for speed:
+/// edge-preserving Catmull-Rom upscaling, `sharpness` 0 to 1 restores fine detail (0.3 is a
+/// good start). Above 1 (up to 2) it supersamples for the cleanest edges at a GPU cost.
+/// Range 0.5 to 2.0.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct RenderScale {
+    pub scale: f32,
+    pub sharpness: f32,
+}
+
+/// Foveated rendering for headsets (decision 0082): outside an inner ellipse, every other
+/// 2x2 pixel block is not shaded and is filled in from its neighbours, which the eye does
+/// not notice in a headset lens's blurry edge. `inner_radius` is the ellipse size as a share
+/// of the half width and height (1.0 touches the edges; 0.6 to 0.8 for a headset). Meant for
+/// stereo views; on a flat screen the edges look slightly soft.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Foveation {
+    pub inner_radius: f32,
+}
+
 /// Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows.
 /// A spot light uses one shadow map, a point light six (one per cube face); at most 24
 /// maps per frame, given to lights in entity id order (decision 0065). A model on the same
@@ -310,9 +343,12 @@ pub struct CastShadows {
 }
 
 /// Turns on environment lighting and reflections: surfaces are lit by, and shiny surfaces
-/// reflect, a surrounding image (decision 0066). `image` is an equirectangular PNG (2:1,
-/// relative to the scene file); empty makes one from `SkyLight` colors (or a default sky).
-/// Replaces `AmbientLight` and `SkyLight` ambient for models.
+/// reflect, a surrounding image (decision 0066). `image` is an equirectangular image (2:1,
+/// relative to the scene file): a PNG, or a Radiance `.hdr` or OpenEXR `.exr` file whose
+/// values above 1.0 keep real sun and sky brightness (decision 0091). Empty makes one from
+/// `SkyLight` colors (or a default sky). Replaces `AmbientLight` and `SkyLight` ambient for
+/// models. An image with a bright sun also lights surfaces through it: with a
+/// `DirectionalLight` for the same sun, keep the image's sun small or lower `intensity`.
 #[derive(Resource, Reflect, Debug, Clone, PartialEq)]
 pub struct Environment {
     pub image: String,
@@ -320,6 +356,38 @@ pub struct Environment {
     pub intensity: f32,
     /// Draw the environment behind everything instead of the camera's clear color.
     pub background: bool,
+}
+
+/// A box where shiny surfaces reflect a picture of the scene taken from the entity's position
+/// instead of the environment alone: rooms, halls, a car park (decision 0092). The picture is
+/// taken when the probe first appears and again when it moves or changes; objects that move
+/// later are not in it (`RayTracing` reflections show those). Up to four probes; a point
+/// inside several uses the one with the lowest entity id.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct ReflectionProbe {
+    /// Half size of the box in meters along x, y and z, centered on the entity. Reflections
+    /// are corrected for the box's walls, so match it to the room.
+    pub extent: Vec3,
+    /// Size of each of the six captured faces in texels (32 to 512; 128 is a good default).
+    pub resolution: u32,
+}
+
+/// Turns on ray-traced lighting on GPUs that support ray queries (decision 0093): exact
+/// shadows from every light, and reflections of other objects on smooth surfaces. Elsewhere
+/// the scene keeps its other looks (`Shadows`, `CastShadows`, `ReflectionProbe`,
+/// `Environment`), so add those as the fallback. Skinned models are not in the ray-traced
+/// scene yet.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct RayTracing {
+    /// Ray-traced shadows for every directional, point and spot light, replacing shadow maps.
+    pub shadows: bool,
+    /// Ray-traced reflections of other objects on surfaces smoother than `max_roughness`.
+    pub reflections: bool,
+    /// Roughness (0 to 1) above which reflections fade back to the environment; 0.5 is a
+    /// good default.
+    pub max_roughness: f32,
+    /// Size of the sun's disc in degrees for soft sun shadows (0 = hard; the real sun is 0.5).
+    pub sun_size_degrees: f32,
 }
 
 /// Many copies of one model drawn from a module's own arrays (belt items, crowds,
@@ -338,9 +406,22 @@ pub struct BulkDraw {
     pub shader: Option<crate::shader::ShaderMaterial>,
 }
 
-/// A function that adds bulk draws for the current world. `alpha` (0..1) is how far the
-/// frame is between the last tick and the next, for smooth motion at display rate.
-pub type BulkDrawHook = fn(&bevy_ecs::world::World, alpha: f32, &mut Vec<BulkDraw>);
+/// What a bulk draw hook knows about the frame being drawn. Not simulation state.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct BulkDrawContext {
+    /// How far (0..1) the frame is between the last tick and the next, for smooth motion
+    /// at display rate.
+    pub alpha: f32,
+    /// World position of the camera the frame is drawn from (the first camera by scene id;
+    /// the head for a headset), or `None` without a camera. Lets a hook skip far copies,
+    /// pick a level of detail or turn flat copies toward the viewer.
+    pub eye: Option<[f32; 3]>,
+    /// The direction that camera looks (unit length), when there is one.
+    pub forward: Option<[f32; 3]>,
+}
+
+/// A function that adds bulk draws for the current world and frame.
+pub type BulkDrawHook = fn(&bevy_ecs::world::World, &BulkDrawContext, &mut Vec<BulkDraw>);
 
 /// Bulk draw hooks registered by modules in `Module::init`. Not simulation state: not in
 /// the scene, the schema or the state hash.
@@ -351,6 +432,54 @@ impl BulkDrawHooks {
     /// Adds `hook` to the world's hooks (once).
     pub fn add(world: &mut bevy_ecs::world::World, hook: BulkDrawHook) {
         let mut hooks = world.get_resource_or_insert_with(BulkDrawHooks::default);
+        if !hooks.0.iter().any(|h| std::ptr::fn_addr_eq(*h, hook)) {
+            hooks.0.push(hook);
+        }
+    }
+}
+
+/// One corner of a world-space quad drawn by a [`QuadDrawHook`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct QuadVertex {
+    /// World position.
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
+    /// Linear RGBA.
+    pub color: [f32; 4],
+}
+
+/// Quads in world space that share one texture, four vertices per quad in counter-clockwise
+/// order seen from the front (the back is not drawn). The red channel of the texture is a
+/// signed distance field (0.5 on the edge): the result stays crisp at any size and distance,
+/// so a solid area is a texel that holds 1.0. Alpha blended, depth tested, no depth write,
+/// drawn in list order after the sprites and before the screen UI. Used for text and panels
+/// placed in the 3D world.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WorldQuads {
+    /// Image name as for [`Sprite::image`], or `generated:<key>` for an image a module made.
+    pub image: String,
+    pub vertices: Vec<QuadVertex>,
+}
+
+/// Camera information given to a [`QuadDrawHook`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct QuadContext {
+    pub alpha: f32,
+    /// World position of the first camera (the viewer), for sorting and range checks.
+    pub eye: [f32; 3],
+}
+
+/// A function that adds world-space quads for the current world.
+pub type QuadDrawHook = fn(&bevy_ecs::world::World, &QuadContext, &mut Vec<WorldQuads>);
+
+/// Quad draw hooks registered by modules in `Module::init`. Not simulation state.
+#[derive(bevy_ecs::prelude::Resource, Default, Clone)]
+pub struct QuadDrawHooks(pub Vec<QuadDrawHook>);
+
+impl QuadDrawHooks {
+    /// Adds `hook` to the world's hooks (once).
+    pub fn add(world: &mut bevy_ecs::world::World, hook: QuadDrawHook) {
+        let mut hooks = world.get_resource_or_insert_with(QuadDrawHooks::default);
         if !hooks.0.iter().any(|h| std::ptr::fn_addr_eq(*h, hook)) {
             hooks.0.push(hook);
         }

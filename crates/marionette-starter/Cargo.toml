@@ -1,0 +1,14 @@
+[package]
+name = "marionette-starter"
+description = "Marionette game starter: turns a short game brief (or a one-line prompt) into a playable project from a genre template, with a generated level, asset slots and tests."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars = "1.2"
+image = { version = "0.25.10", default-features = false, features = ["png"] }

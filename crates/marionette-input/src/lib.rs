@@ -19,6 +19,12 @@
 //! `mouse:Left|Right|Middle`, `pad:<Button>`, `axis:<Axis>`. The window feeds mouse movement as
 //! `axis:MouseX` (right +) and `axis:MouseY` (down +): pixels moved / 100, clamped to -1..1,
 //! for the one tick after the movement, then 0 (scripted tests use the same two axes).
+//!
+//! Headset controllers (fed by `marionette-openxr`, decision 0190) are `xr:<hand>/<input>`
+//! with hand `left` or `right` and input one of [`XR_INPUTS`]: `trigger`, `squeeze` (grip)
+//! and `pinch` (hand tracking: thumb to index) are 0..1, `thumbstick_x` / `thumbstick_y` are
+//! -1..1 (right and forward are +), the buttons are 0 or 1. Tracked poses are not inputs but
+//! directly set actions (`xr.head.px`, ...; see `marionette-xr`).
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -34,6 +40,20 @@ pub mod codes {
     pub const MAP: &str = "input.map";
     pub const EVENTS: &str = "input.events";
 }
+
+/// The controller inputs every headset feeds, per hand (`xr:left/trigger`, ...). A runtime
+/// maps each to whatever the controller in hand has (decision 0190).
+pub const XR_INPUTS: [&str; 9] = [
+    "trigger",
+    "squeeze",
+    "thumbstick_x",
+    "thumbstick_y",
+    "thumbstick_click",
+    "primary",
+    "secondary",
+    "menu",
+    "pinch",
+];
 
 pub const MAP_FORMAT: &str = "marionette.input-map";
 pub const EVENTS_FORMAT: &str = "marionette.input-events";
@@ -163,7 +183,7 @@ pub fn parse_map(text: &str, file: &str) -> Result<ActionMap> {
     }
     for (name, def) in &map.actions {
         for b in &def.bindings {
-            if !["key:", "mouse:", "pad:", "axis:"]
+            if !["key:", "mouse:", "pad:", "axis:", "xr:"]
                 .iter()
                 .any(|p| b.input.starts_with(p))
             {
@@ -171,8 +191,24 @@ pub fn parse_map(text: &str, file: &str) -> Result<ActionMap> {
                     codes::MAP,
                     file,
                     format!("action `{name}`: unknown input `{}`", b.input),
-                    "inputs start with key:, mouse:, pad: or axis:",
+                    "inputs start with key:, mouse:, pad:, axis: or xr:",
                 ));
+            }
+            if let Some(rest) = b.input.strip_prefix("xr:") {
+                let ok = rest.split_once('/').is_some_and(|(hand, input)| {
+                    (hand == "left" || hand == "right") && XR_INPUTS.contains(&input)
+                });
+                if !ok {
+                    return Err(bad(
+                        codes::MAP,
+                        file,
+                        format!("action `{name}`: unknown headset input `{}`", b.input),
+                        &format!(
+                            "use xr:left/<input> or xr:right/<input> with <input> one of {}",
+                            XR_INPUTS.join(", ")
+                        ),
+                    ));
+                }
             }
         }
     }

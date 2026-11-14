@@ -6,7 +6,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 
 | Operation | Mutating | Summary |
 | --- | --- | --- |
-| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json. |
+| `project_init` | yes | Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`). |
 | `project_validate` | no | Validate every *.scene.json and *.test.json under the project. Read-only. |
 | `project_schema` | no | List component and resource types. Pass `types` for their JSON Schemas, or `full: true` for the whole scene-file schema. |
 | `scene_create` | yes | Create a new scene file (empty, or `basic` with camera, light and ground). |
@@ -36,6 +36,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_stats` | no | Tick, entity count and step / render timings of a session. |
 | `observe_raycast` | no | Cast a ray through the physics scene; returns the first entity hit, distance, point and normal. |
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
+| `editor_view` | no | The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene). |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
 | `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
@@ -45,6 +46,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
 | `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
+| `perf_suite` | yes | Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`. |
+| `perf_compare` | no | Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first. |
 | `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
 | `jobs_run` | no | Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time. |
 | `jobs_reload` | yes | Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned. |
@@ -62,6 +65,10 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `anim_pose` | no | World position and rotation of an animated entity's nodes (bones) after `ticks` (scene) or now (session). `nodes` limits the list. |
 | `audio_music` | yes | Steer an entity's layered Music: set `intensity` (layers whose `at` is at most it fade in), `playing`, `volume` or `fade` seconds. Target: `scene` or `session`. |
 | `audio_mix` | no | What the listener hears now (session) or after `ticks` (scene), as numbers: per AudioSource its gain, pan (-1 left .. 1 right), low-pass hertz and whether it is behind; per Music layer its level and gain. Sorted loudest first, paged by `limit`. |
+| `nav_path` | no | Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`. |
+| `nav_agents` | no | NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left. |
+| `synth_render` | no | Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers. |
+| `synth_patches` | no | Synth presets and every Patch field with its default. |
 | `generate_recipe` | yes | Writes a generation recipe (<name>.recipe.json in assets/generated/ by default): an image, a texture or a 3D model to generate, with post-processing options. Generation is the LAST step of the asset lookup order: search the project, the owned library and CC0 sources first. |
 | `generate_plan` | no | Shows what generate_run would do, without calling any provider or writing anything: per recipe the provider and model, cache hit or call, estimated cost, whether a person must approve the reference image, and why a step would be refused (spend cap, key, network, approval). |
 | `generate_run` | yes | Builds recipes into engine-ready assets (PNG images and textures, normalized GLB models) with a provenance record each. Cached provider outputs are reused, so the same request is never paid twice; `offline` refuses any call that is not cached. Paid calls need a spend cap set by the project owner, and a model made from an image needs that image approved by a person. |
@@ -81,13 +88,32 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scan` | no | Scans Unity C# or Unreal C++ gameplay code (a folder or one file; Blueprint graphs copied as text in .t3d files too) and reports each class (role, fields with TypeScript types, lifecycle methods and the hook they go into, components to add), every engine API call with its Marionette equivalent and status (ready, script, rewrite, gap, hazard, unknown), input action names, gaps and determinism hazards. Read-only. |
 | `port_map` | no | Looks up the Unity/Unreal to Marionette concept tables (base classes, lifecycle hooks, components, types, API calls) by name, section or status. |
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
+| `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `save_write` | yes | Save a live session to a slot (crash-safe, keeps a backup). |
+| `save_load` | yes | Load a slot into a live session, migrating old saves. |
+| `save_list` | no | List save slots (headers only). |
+| `save_check` | no | Check that a slot would load into a session. |
+| `save_delete` | yes | Delete a slot and its backup. |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
+| `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
+| `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
+| `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
+| `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
+| `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
+| `skills_list` | no | List the task skills: name and when to use each. Read the matching one with skills_get before a task. |
+| `skills_get` | no | One skill's instructions: the tested procedure, traps and checks for a kind of task. |
+| `skills_install` | yes | Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone. |
+| `handoff_init` | yes | Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites. |
+| `handoff_status` | no | Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems. |
+| `handoff_claim` | yes | Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim. |
+| `handoff_note` | yes | End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim. |
 
 ## `project_init`
 
-Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json and tests/main.test.json.
+Create a new project from the template: PROTOCOL.md (the owner's rules; read it first), AGENTS.md, marionette.json, scenes/main.scene.json, tests/main.test.json, the handoff files (docs/ai, docs/decisions) and the game skills (`.claude/skills`, `.agents/skills`).
 
 Mutating: yes.
 
@@ -778,6 +804,46 @@ Output:
 | `tick` | integer | yes |  |
 | `total` | integer | yes |  |
 
+## `editor_view`
+
+The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `eye` | array \| null |  | Editor camera position. |
+| `frame` | boolean |  | Move the camera so the selection (or the whole scene) fills the view. |
+| `grid` | boolean \| null |  | Show the ground grid (default true). |
+| `image` | boolean \| null |  | Write the image (default true). With false only picks and the inspector come back. |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `look_at` | array \| null |  | Point the editor camera looks at (with `eye`; default: 1 m ahead along -Z). |
+| `msaa` | integer \| null |  | MSAA samples, 1 or 4 (default 4). |
+| `out` | string \| null |  | Output PNG path (default `.marionette/screenshots/<name>-editor.png`). |
+| `panels` | boolean \| null |  | Show the entity list and inspector panels (default true). |
+| `pick` | array of array of number |  | Pixels to pick at, `[x, y]` with y down. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `select` | integer \| null |  | Entity to select (highlighted, boxed and shown in the inspector). |
+| `session` | string \| null |  |  |
+| `size` | string \| null |  | Image size `WIDTHxHEIGHT` (default 1280x720; pick pixels use the same size). |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `camera` | array of array of number | yes | Where the editor camera ended up (useful after `frame`): position and look direction. |
+| `entities` | integer | yes |  |
+| `height` | integer | yes |  |
+| `path` | string \| null |  | PNG path, when an image was written. |
+| `picks` | array of Pick | yes |  |
+| `selected` | Selected \| null |  |  |
+| `tick` | integer | yes |  |
+| `width` | integer | yes |  |
+
 ## `test_run`
 
 Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data.
@@ -997,6 +1063,73 @@ Output:
 | `state_hash` | string | yes |  |
 | `threads` | integer | yes |  |
 | `ticks` | integer | yes |  |
+
+## `perf_suite`
+
+Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extra_scenes` | array of string |  | Extra scenes of a game to run as sim cases (and render cases if `render_extra`). |
+| `label` | string \| null |  | Name of this run, e.g. `baseline` or `lto-fat`. Default `<commit>-<profile>`. |
+| `length` | string \| null |  | `full` (default) or `quick` (a tenth of the ticks, one repeat: a smoke test). |
+| `lock` | string \| null |  | Lock file shared by every benchmark on this machine (several agents share one PC). The suite creates it before measuring and removes it after, and refuses to start while another run holds it. Default: env `MARIONETTE_BENCH_LOCK`; none if unset. |
+| `lock_owner` | string \| null |  | Who holds the lock (an area name such as `raytracing`); written into the lock file. Default: the label. |
+| `max_busy_pct` | number \| null |  | Refuse to start when other processes keep more than this share of all cores busy (default 15 percent; 100 turns the check off). |
+| `min_case_s` | number \| null |  | After `repeats`, run a case again until this many seconds of timed ticks are pooled (at most 100 runs), so cases of a few microseconds per tick get a stable p99. Default 2 (`quick`: 0). |
+| `min_idle_s` | integer |  | Refuse to start unless nobody has used keyboard or mouse for this many seconds (Windows only; elsewhere not checked). Default 0. On a shared desktop use 300. |
+| `no_gpu` | boolean |  | Skip render cases (default: run them when a GPU adapter exists). |
+| `only` | array of string |  | Only cases whose name starts with one of these (`sim/`, `render/factory`). |
+| `out` | string \| null |  | Report file (relative to the project root). Default `.marionette/perf/<label>.json`. |
+| `render_extra` | boolean |  | Also render the extra scenes at 1920x1080. |
+| `repeats` | integer \| null |  | Runs of each case; timings pool all runs. Default 3 (`quick`: 1). |
+| `seed` | integer |  |  |
+| `wait_s` | integer |  | Wait up to this many seconds for a held lock or a busy CPU, checking every 30 s (default 0: refuse at once). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `build` | string | yes |  |
+| `cases` | array of string | yes | One line per case: name, then the main numbers (ms) and the short output hash. |
+| `conditions` | string | yes | Lock held and other processes' CPU load before and between cases. |
+| `errors` | integer | yes |  |
+| `machine` | string | yes |  |
+| `report` | string | yes |  |
+| `seconds` | number | yes |  |
+| `skipped` | integer | yes |  |
+
+## `perf_compare`
+
+Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `base` | Reports | yes | The earlier report, or several runs of the earlier build (relative to the project root). Several runs per side, ideally alternated A B A B, give a change only when the two sides' ranges do not overlap. |
+| `new` | Reports | yes | The later report, or several runs of the later build. |
+| `threshold_pct` | number \| null |  | Report changes larger than this, percent (default 5). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `changes` | array of Change | yes | Changes beyond the threshold (and outside the run-to-run range when several runs are given), largest first. |
+| `output_mismatches` | array of string | yes |  |
+| `outputs_identical` | boolean | yes | Every state hash equal, and every image hash equal when both ran on the same GPU. |
+| `runs` | array of any | yes | Runs read per side. |
+| `same_gpu` | boolean | yes |  |
+| `same_machine` | boolean | yes |  |
+| `unmatched` | array of string | yes | Cases only in one side. |
+| `warnings` | array of string | yes | Notes on things that make the comparison weaker (different suite, length, machine). |
+| `within_threshold` | integer | yes | Metrics compared that stayed within the threshold or the run-to-run range. |
 
 ## `jobs_check`
 
@@ -1421,6 +1554,103 @@ Output:
 | `music` | array of HeardLayer | yes |  |
 | `sources` | array of HeardSource | yes |  |
 | `tick` | integer | yes |  |
+
+## `nav_path`
+
+Route over a NavSurface between two world points: ground corners, length, and whether it reaches `to`.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from` | array of number | yes |  |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `surface` | integer | yes | The entity with the NavSurface. |
+| `ticks` | integer |  |  |
+| `to` | array of number | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `complete` | boolean | yes |  |
+| `corners` | array of array of number | yes |  |
+| `length` | number | yes |  |
+
+## `nav_agents`
+
+NavAgent count per status, then up to `limit` agents (not arrived first) with status, speed and corners left.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `limit` | integer \| null |  | Most agents to list. Default 10. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `agents` | array of AgentRow | yes |  |
+| `counts` | object | yes | Status name -> agent count. |
+| `more` | integer | yes |  |
+| `tick` | integer | yes |  |
+
+## `synth_render`
+
+Render a synth score offline; report level, clipping, clicks, pitch, timing as numbers.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `base` | string \| null |  | Where stream files are found, relative to the project (default: the project root). |
+| `envelope_ms` | integer \| null |  | Also return rms per window of this many milliseconds (at most 400 windows). |
+| `file` | string \| null |  | Score JSON file, relative to the project. |
+| `score` | any |  | Inline score: `{rate, voices, seconds, block, notes:[{at, dur, note\|hz, velocity, patch\|custom}], streams:[{file, at, gain, looping}], master:[{at, gain}]}`. Times in seconds. |
+| `wav` | string \| null |  | Write the render here as a 16-bit stereo WAV (relative to the project). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `envelope` | array of number | yes |  |
+| `hash` | string | yes | Hash of the rendered samples: the same score gives the same hash everywhere. |
+| `report` | any | yes |  |
+| `stats` | any | yes |  |
+| `wav` | string \| null |  |  |
+
+## `synth_patches`
+
+Synth presets and every Patch field with its default.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `default` | any | yes | Every Patch field at its default. |
+| `patches` | object | yes | The presets in full. |
+| `presets` | array of string | yes |  |
 
 ## `generate_recipe`
 
@@ -1909,6 +2139,35 @@ Output:
 | `files` | array of ScaffoldFile | yes |  |
 | `written` | boolean | yes |  |
 
+## `port_serde`
+
+Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `derives` | array of string |  | Extra derives for every type (for example `Reflect`). |
+| `dry_run` | boolean |  | Return the code without writing. |
+| `external` | object |  | C# type name -> Rust path of a type the project already has (hand-written, or its own vector type). Used as is, never generated. |
+| `out` | string \| null |  | The .rs file to write, relative to the project root. Omit to get the code back. |
+| `overwrite` | boolean |  | Replace an existing `out` file. |
+| `roots` | array of string |  | Only these types and the types their saved fields reach. Default: every [Serializable] type. |
+| `source` | string | yes | Same as `port_scan`'s source. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `notes` | array of Note | yes |  |
+| `path` | string \| null |  | The file written, relative to the project root. |
+| `rust` | string \| null |  | The generated module; only when nothing was written. |
+| `types` | array of TypeInfo | yes |  |
+| `written` | boolean | yes |  |
+
 ## `port_convert`
 
 Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters).
@@ -1929,6 +2188,125 @@ Output:
 | --- | --- | --- | --- |
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
+
+## `save_write`
+
+Save a live session to a slot (crash-safe, keeps a backup).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Folder of slots, relative to the project root (default `saves`). |
+| `label` | string |  | Text for a slot menu. |
+| `meta` | any |  | Small JSON for a slot menu (at most 16 KB): play time, chapter. |
+| `session` | string | yes |  |
+| `slot` | string | yes | Slot name: 1 to 48 of a-z, 0-9, `_`, `-` (autosaves use `auto-N`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `capture_ms` | number | yes | Main-thread part: copying the state. |
+| `path` | string | yes |  |
+| `slot` | string | yes |  |
+| `tick` | integer | yes |  |
+| `version` | integer | yes |  |
+| `write_ms` | number | yes | The rest: scene text, checksum, file (a game does this on its save thread). |
+
+## `save_load`
+
+Load a slot into a live session, migrating old saves.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `exact` | boolean | yes | Module state (physics internals, held input) restored too: the game continues exactly as it would have. False after a migration. |
+| `from_version` | integer | yes |  |
+| `recovered` | string \| null |  | Why the slot's backup was loaded instead, if it was. |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `tick` | integer | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_list`
+
+List save slots (headers only).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `slots` | array of SlotRow | yes |  |
+
+## `save_check`
+
+Check that a slot would load into a session.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes | A live session of the game that would load the save (its format and migrations). |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from_version` | integer \| null |  |  |
+| `ok` | boolean | yes | Loading would succeed. |
+| `problems` | array of any | yes | What would stop the load (empty when `ok`). |
+| `recovered` | string \| null |  |  |
+| `slot` | string | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_delete`
+
+Delete a slot and its backup.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `deleted` | boolean | yes | False when the slot did not exist. |
+| `slot` | string | yes |  |
 
 ## `prefab_instantiate`
 
@@ -1959,6 +2337,164 @@ Output:
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
 
+## `package_targets`
+
+List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | string \| null |  | Game folder (holds marionette.json), relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | Game \| null |  | With `game`: what a package would hold. |
+| `host` | string | yes |  |
+| `targets` | array of TargetRow | yes |  |
+
+## `package_build`
+
+Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `archive` | boolean |  | Write a zip next to each folder (default true). |
+| `debug` | boolean |  | Debug build instead of release (faster to build, slow to play). |
+| `game` | string | yes | Game folder (holds marionette.json), relative to the project root. |
+| `out` | string |  | Output folder, relative to the project root. |
+| `smoke` | boolean |  | Run the packaged binary headless for a few ticks when this machine can (default true). |
+| `sysroots` | object |  | Link-time sysroots by architecture (`x86_64`, `aarch64`) for zigbuild builds (default: MARIONETTE_SYSROOT_X86_64 / MARIONETTE_SYSROOT_AARCH64; scripts/package-sysroots.sh makes them). |
+| `targets` | array of string |  | Targets, or `["all"]` for every target this machine can build. Default: this machine's own. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `packages` | array of Built | yes |  |
+
+## `game_brief`
+
+Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief \| null |  | Check this brief instead of reading a prompt. |
+| `prompt` | string \| null |  | The game idea in plain words ("a cozy 3d maze where a moth collects lanterns"). |
+| `template` | Template \| null |  | Force a template (`maze` or `platformer`). |
+| `view` | View \| null |  | Force a view (`2d` or `3d`; 3D is maze only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief | yes |  |
+| `slots` | array of SlotInfo | yes |  |
+
+## `game_make`
+
+Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `brief` | Brief \| null |  |  |
+| `generate` | boolean |  | Run generate_run for slots still waiting for art (paid providers follow the project's providers.json, keys and spend caps), then use what was built. |
+| `path` | string | yes | Project folder to create (must not exist or be empty), or to refresh. |
+| `prompt` | string \| null |  |  |
+| `refresh` | boolean |  | Re-make an existing starter project from its brief.json (or from `brief`). |
+| `template` | Template \| null |  |  |
+| `tries` | integer \| null |  | Seeds to try when the autopilot cannot win a level (default 8). |
+| `view` | View \| null |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `assets` | array of SlotResult | yes |  |
+| `autoplay` | Autoplay | yes |  |
+| `files` | array of string | yes |  |
+| `generation` | array of string | yes | What generate_run reported, when `generate` was set. |
+| `handoff` | array of string | yes | AI handoff files and skills for agents working on the game: per operation, `written` or why not. |
+| `path` | string | yes |  |
+| `pending` | array of string | yes | Recipes in assets/generated still to build (generate_run in the project, then game_make with `refresh`). |
+| `template` | Template | yes |  |
+| `tests_failed` | integer | yes |  |
+| `tests_passed` | integer | yes |  |
+| `title` | string | yes |  |
+| `view` | View | yes |  |
+
+## `net_simulate`
+
+Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array \| null |  | Actions that travel. Default: the scene's action map. |
+| `drop_at` | integer \| null |  |  |
+| `drop_slot` | integer \| null |  | A client slot whose game vanishes at `drop_at`. |
+| `hash_interval` | integer \| null |  | Compare state hashes every this many ticks (0 = never). Default 60. |
+| `input_change` | number \| null |  | Chance per tick per action that a player changes it. Default 0.05. |
+| `late_join_at` | integer \| null |  | A player who joins at this host tick (gets a snapshot). |
+| `link` | LinkConditions \| null |  | Simulated link, each direction. Default 40 ms, 10 ms jitter, 2% loss. |
+| `players` | integer \| null |  | Players at the start, including the host (1 to 8). Default 2. |
+| `scene` | string | yes | Scene file, relative to the project root. |
+| `seed` | integer \| null |  | Seed of the sims, the inputs and the network. Default 1. |
+| `ticks` | integer \| null |  | Ticks the host runs. Default 600. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string | yes |  |
+| `all_equal` | boolean | yes | Every peer still playing ended in the host's state. |
+| `desyncs` | array of array of any | yes | (slot, tick) of each hash mismatch the session itself reported. |
+| `final_tick` | integer | yes |  |
+| `hash_checks` | integer | yes | Hash comparisons made by the session protocol. |
+| `host_bytes_per_tick` | number | yes | Host bytes sent per tick, average. |
+| `host_hash` | string | yes |  |
+| `peers` | array of PeerReport | yes |  |
+| `seconds` | number | yes | Virtual seconds of play. |
+
+## `achievements_check`
+
+Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string | yes | Definitions file, relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `achievements` | array of string | yes |  |
+| `stat_driven` | integer | yes | Achievements unlocked by a stat threshold. |
+| `stats` | array of string | yes |  |
+
 ## `batch_run`
 
 Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied.
@@ -1978,4 +2514,159 @@ Output:
 | --- | --- | --- | --- |
 | `ran` | array of string | yes | Operation name of each step, in order. |
 | `steps` | integer | yes | Steps run (all of them: a failing step returns an error instead). |
+
+## `skills_list`
+
+List the task skills: name and when to use each. Read the matching one with skills_get before a task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `engine` | boolean |  | Also list the skills for work on the engine itself (default: game skills only). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `skills` | array of SkillSummary | yes |  |
+
+## `skills_get`
+
+One skill's instructions: the tested procedure, traps and checks for a kind of task.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Skill name from skills_list. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `instructions` | string | yes | The instructions, without the front matter. |
+| `name` | string | yes |  |
+
+## `skills_install`
+
+Write or refresh the game skills in a project (`.claude/skills`, `.agents/skills`) so skill-aware agents load them by themselves. The project's own skills are left alone.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string \| null |  | Project folder to install into (default: the project root). |
+| `targets` | array \| null |  | Which skill folders to write: `claude` (`.claude/skills`) and `agents` (`.agents/skills`). Default: both. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `files` | integer | yes | Files written. |
+| `folders` | array of string | yes | Skill folders written, relative to the project root. |
+| `skills` | array of string | yes | Skill names installed. |
+
+## `handoff_init`
+
+Add the handoff files (docs/ai, docs/decisions) to a project, with the game's title, summary and notes in a new START-HERE.md. Never overwrites.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `notes` | array of string |  | Lines for START-HERE.md's "This game" section: the files that matter and what each is. |
+| `path` | string \| null |  | Project folder, relative to the project root (default: the root itself). |
+| `summary` | string \| null |  | One line on what the game is. |
+| `title` | string \| null |  | The game's title, for START-HERE.md. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `written` | array of string | yes | Files written; files that already existed are left alone. |
+
+## `handoff_status`
+
+Start of every session: what to read first, claimed work, latest session notes, next free decision number, problems.
+
+Mutating: no.
+
+Input:
+
+No fields.
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `claims` | array of Claim | yes | Work in progress. |
+| `decisions` | integer | yes |  |
+| `latest_sessions` | array of string | yes | The newest session notes (at most 5, newest last); read these, not the whole folder. |
+| `next_decision` | integer | yes | The next decision number nobody has recorded or reserved. |
+| `problems` | array of string | yes | Things to fix before starting work. Empty when the handoff is in order. |
+| `read_first` | array of string | yes | Files to read before anything else, in order. |
+| `sessions` | integer | yes |  |
+
+## `handoff_claim`
+
+Claim work before starting it: the paths it will change and a block of decision numbers. Refused when a path overlaps another claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. Keep them narrow: a claim on `scenes` blocks everyone else's scene work. |
+| `branch` | string \| null |  | Branch the work is on. |
+| `date` | string | yes | Today's date, `YYYY-MM-DD` (operations never read the clock). |
+| `decisions` | integer |  | How many decision numbers to reserve (default 0). The block starts at the next free one. |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens, e.g. `power-grid`. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `areas` | array of string | yes | Paths (files or folders, relative to the project root) this work will change. |
+| `branch` | string \| null |  | Branch the work is on, if any. |
+| `date` | string | yes | The day the claim was made, `YYYY-MM-DD`. |
+| `decisions` | array \| null |  | Reserved decision numbers, first and last (inclusive). |
+| `summary` | string | yes | One sentence: what will exist when this is done. |
+| `topic` | string | yes | Short name of the work, lowercase with hyphens; also the file name. |
+
+## `handoff_note`
+
+End of every session: write the session note (done, not done, unverified, next). `release: true` removes the finished claim.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `date` | string | yes | Today's date, `YYYY-MM-DD`. |
+| `done` | array of string | yes | What was finished and how it was checked, one line each. |
+| `next` | array of string |  | The next step for whoever continues, most useful first. |
+| `not_done` | array of string |  | What was started or planned but is not finished. |
+| `release` | boolean |  | Remove the claim: its work is finished (or given up, with `not_done` saying so). |
+| `topic` | string | yes | The work this session was about (the claim's topic when there is one). |
+| `unverified` | array of string |  | What was written or assumed but not checked, with what would check it. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes | The session note written. |
+| `released` | boolean | yes | True when a claim was removed. |
+| `still_claimed` | boolean | yes | True when the topic still has a claim (work continues). |
 

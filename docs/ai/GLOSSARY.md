@@ -10,6 +10,8 @@
 - **Session**: a scene loaded into memory that stays alive between operation calls (MCP server),
   with its own tick and RNG. Edited, stepped, observed, snapshotted, saved.
 - **Snapshot**: a complete copy of a session's state (`session_snapshot`), restorable exactly.
+- **Save slot**: a named save game file `<slot>.msave` (plus `.bak`) holding snapshot content,
+  a header and a checksum; autosaves use `auto-N` (decision 0076).
 - **Operation**: one entry of the shared table in `crates/marionette-agent` (for example
   `entity_create`), callable as `marionette op <name>` and as an MCP tool.
 - **Module**: an optional engine part (input, physics, audio) plugged into the simulation through

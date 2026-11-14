@@ -1,0 +1,42 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "goal",
+  "output": "texture",
+  "file": "goal.png",
+  "sha256": "d43bbe93f2f413a8dc64aea0d75c61c34b00873e5328c4df0d63caece17245b4",
+  "recipe": "goal.recipe.json",
+  "recipe_sha256": "9e88acaa1b17646837f8bdfefc7c55e126da85d270232ac9e1887dfd82f9f19a",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a little red and white rocket ship standing upright, bright sci-fi cartoon, clean bold shapes, thick outlines, single game sprite side view facing right, centred, flat plain magenta background (#ff00ff), crisp edges, bold readable silhouette, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "bd16d442aab852f2af0c3a3ddc14174af416ed443b1d0daf4be0ade9a8e352e6",
+    "raw_sha256": "f5b4221d056ebf3e8d9d22550fcb3585c7edd98f677d7376e5c9091523bd71e5",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "background_removed": true,
+    "resized": true,
+    "size": [
+      256,
+      256
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

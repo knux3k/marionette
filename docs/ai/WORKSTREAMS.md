@@ -22,7 +22,7 @@ workstreams may append to: `crates/marionette-agent/src/lib.rs` (one line per ne
 | WP | Performance (budgets, jobs, instanced stereo renderer, factory module) | done, follow-ups open | any |
 | WA | Skeletal animation (skins, clips, GPU skinning, blend shapes) | done, follow-ups open | any |
 | WJ | Job TypeScript (TS subset compiled to WebAssembly for job bodies) | done, from scenes and scripts too (0070); speed follow-ups open | any |
-| W9 | Later (line 10): OpenXR, AI while playing, inspector | after W8 | - |
+| W9 | Later (line 10): OpenXR (first part done, decision 0190), AI while playing, inspector | after W8 | - |
 | W10 | Porting Unity and Unreal code | done (decision 0020) | any |
 | W0 | Owner: create the engine and assets repositories on GitHub | done | - |
 
@@ -179,6 +179,7 @@ Status: done (decision 0020). Guide: PORTING.md.
 
 ## W9: later (line 10)
 
-OpenXR module (VR optional, never required; the renderer's per-view design allows it), an
+OpenXR module (VR optional, never required): done in its first form (decision 0190,
+`marionette xr`); open: multiview, depth for reprojection, a headset-worn check. An
 optional AI-while-playing module (off by default, with budgets and a scripted fallback), a
 read-only inspector.

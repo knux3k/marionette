@@ -1,0 +1,83 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Position": {
+          "x": -3.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/coop-player.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 1,
+      "name": "player-0"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": -1.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/coop-player.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 2,
+      "name": "player-1"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 1.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/coop-player.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 3,
+      "name": "player-2"
+    },
+    {
+      "components": {
+        "Position": {
+          "x": 3.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "Script": {
+          "path": "scripts/coop-player.ts"
+        },
+        "Velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "id": 4,
+      "name": "player-3"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {},
+  "version": 1
+}

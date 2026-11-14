@@ -13,7 +13,7 @@
 //! ([`crate::module::RayCaster`]), so scripts never depend on it.
 
 use crate::Diagnostic;
-use crate::spatial::{BulkDraw, Material, Transform};
+use crate::spatial::{BulkDraw, BulkDrawContext, Material, Transform};
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 
@@ -182,7 +182,7 @@ fn rotate(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
 }
 
 /// The bulk draw hook for [`JobDraw`] (added to every world by [`crate::Sim`]).
-pub fn draw_job_data(world: &World, _alpha: f32, out: &mut Vec<BulkDraw>) {
+pub fn draw_job_data(world: &World, _frame: &BulkDrawContext, out: &mut Vec<BulkDraw>) {
     let Some(mut q) = world.try_query::<(&JobDraw, &JobData, Option<&Transform>)>() else {
         return;
     };

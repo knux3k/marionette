@@ -393,3 +393,172 @@ fn unity_jobs_partials_and_tuples() {
     std::fs::remove_dir_all(&dir).ok();
     assert!(scaffold::rust_jobs(&report("unity").0).is_none());
 }
+
+// ---------------------------------------------------------------------------------------
+// Serializable types to serde (decision 0240)
+
+/// A type the project already has, named in `external`.
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct Foreign {
+    pub id: i32,
+}
+
+fn serial_with(external: &[(&str, &str)]) -> marionette_port::serde_gen::Generated {
+    let a = scan(&fixture("serial")).expect("fixture scans");
+    marionette_port::serde_gen::generate(
+        &a,
+        &marionette_port::serde_gen::Options {
+            external: external
+                .iter()
+                .map(|(a, b)| (a.to_string(), b.to_string()))
+                .collect(),
+            ..Default::default()
+        },
+    )
+}
+
+fn serial() -> marionette_port::serde_gen::Generated {
+    serial_with(&[("Foreign", "crate::Foreign")])
+}
+
+#[test]
+fn serde_generator_handles_consts_properties_and_external_types() {
+    let g = serial();
+    let r = &g.rust;
+    // Const and static initializers, numeric limits, qualified `new`.
+    assert!(r.contains("version: 7,"));
+    assert!(
+        r.contains("where_: \"home\".to_string(),") || r.contains("r#where"),
+        "{r}"
+    );
+    assert!(r.contains("lowest: f32::MIN,"));
+    assert!(r.contains("nested: Inner::default(),"));
+    // An expression-bodied property is not a field.
+    assert!(!r.contains("pub ranked"));
+    // External and unknown element types.
+    assert!(r.contains("pub foreign: Vec<crate::Foreign>,"));
+    assert!(r.contains("pub more: Vec<crate::Foreign>,"));
+    assert!(r.contains("pub things: Vec<serde_json::Value>,"));
+    assert!(!r.contains("pub struct Foreign"));
+    let kinds: Vec<(&str, &str)> = g.notes.iter().map(|n| (n.kind.as_str(), n.at.as_str())).collect();
+    assert!(kinds.contains(&("unresolved", "Extras.things")), "{kinds:?}");
+    // An external vector type replaces the generated one.
+    let v = serial_with(&[("Foreign", "crate::Foreign"), ("Vector3", "glam_like::Vec3")]);
+    assert!(v.rust.contains("pub dir: glam_like::Vec3,"));
+    assert!(!v.rust.contains("pub struct Vector3"));
+    assert!(
+        v.rust
+            .contains("dir: glam_like::Vec3 { x: 0.0, y: 0.0, z: 0.0 },")
+    );
+}
+
+#[test]
+fn serde_generator_maps_jsonutility_rules() {
+    let g = serial();
+    let names: Vec<&str> = g.types.iter().map(|t| t.name.as_str()).collect();
+    for n in [
+        "Profile",
+        "Slot",
+        "Inner",
+        "Split",
+        "Mode",
+        "Perks",
+        "Vector3",
+        "Quaternion",
+        "Color",
+        "ObjectRef",
+    ] {
+        assert!(names.contains(&n), "{n} missing: {names:?}");
+    }
+    // Not [Serializable]: never emitted.
+    assert!(!names.contains(&"Helper"));
+    let r = &g.rust;
+    // Base fields first, then own fields; keywords and case handled with renames.
+    let base = r.find("pub version").unwrap();
+    assert!(base < r.find("pub name").unwrap());
+    assert!(r.contains("#[serde(rename = \"type\")]\n    pub type_: i32"));
+    assert!(r.contains("#[serde(rename = \"HPValue\")]\n    pub hp_value: i32"));
+    assert!(r.contains("#[serde(rename = \"_underscore\")]\n    pub underscore: i32"));
+    // Private [SerializeField] is saved; plain private, static, const, properties, dictionaries are not.
+    assert!(r.contains("pub hidden: i32"));
+    for gone in [
+        "not_saved",
+        "skipped",
+        "count",
+        "max",
+        "level",
+        "lookup",
+        "jagged",
+    ] {
+        assert!(!r.contains(&format!("pub {gone}:")), "{gone} must not be saved");
+    }
+    // Unknown type and unsaved class: unknown is kept raw, plain class is skipped.
+    assert!(r.contains("pub other: serde_json::Value"));
+    assert!(!r.contains("pub helper"));
+    // Initializers become the Default.
+    assert!(r.contains("speed: 1.5,"));
+    assert!(r.contains("ratio: 2.0,"));
+    assert!(r.contains("ticks: -7,"));
+    assert!(r.contains("big: 255,"));
+    assert!(r.contains("mode: Mode::Busy,"));
+    assert!(r.contains("name: \"new \\\"player\\\"\".to_string(),"));
+    assert!(r.contains("ids: vec![4, 5],"));
+    assert!(r.contains("position: Vector3 { x: 1.0, y: 2.0, z: 3.0 },"));
+    assert!(r.contains("rotation: Quaternion { x: 0.0, y: 0.0, z: 0.0, w: 1.0 },"));
+    assert!(r.contains("inner: Inner::default(),"));
+    // Enum values, including shifts and earlier members, and a byte underlying type.
+    assert!(r.contains("pub const Done: Mode = Mode(6);"));
+    assert!(r.contains("pub struct Perks(pub u8);"));
+    assert!(r.contains("pub const Both: Perks = Perks(3);"));
+    // Partial parts merge.
+    assert!(r.contains("pub a: i32") && r.contains("pub b: i32"));
+    let kinds: Vec<(&str, &str)> = g.notes.iter().map(|n| (n.kind.as_str(), n.at.as_str())).collect();
+    assert!(kinds.contains(&("skipped", "Profile.lookup")), "{kinds:?}");
+    assert!(kinds.contains(&("skipped", "Profile.jagged")));
+    assert!(kinds.contains(&("skipped", "Profile.helper")));
+    assert!(kinds.contains(&("unresolved", "Profile.other")));
+    assert!(kinds.contains(&("initializer", "Profile.computed")));
+}
+
+/// The generated module for the fixture, kept in the repository: it is compiled below and
+/// must equal what the generator writes now (regenerate with `MARIONETTE_BLESS=1`).
+#[rustfmt::skip]
+#[path = "generated/serial_fixture.rs"]
+mod generated;
+
+#[test]
+fn serde_generated_code_is_current_and_round_trips() {
+    let g = serial();
+    let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/generated/serial_fixture.rs");
+    if std::env::var_os("MARIONETTE_BLESS").is_some() {
+        std::fs::write(&golden, &g.rust).unwrap();
+    }
+    assert_eq!(
+        std::fs::read_to_string(&golden).unwrap(),
+        g.rust,
+        "generated module is stale: run with MARIONETTE_BLESS=1"
+    );
+    // Missing keys keep the C# initializers; nested objects are never null.
+    let p: generated::Profile =
+        generated::from_json("\u{feff}{\"name\":\"x\",\"slots\":[{\"id\":3}]}").unwrap();
+    assert_eq!(p.name, "x");
+    assert_eq!(p.version, 3);
+    assert_eq!(p.speed, 1.5);
+    assert_eq!(p.ids, vec![4, 5]);
+    assert_eq!(p.mode, generated::Mode::Busy);
+    assert_eq!(p.slots[0].id, 3);
+    assert_eq!(p.inner.underscore, 1);
+    assert_eq!(p.rotation.w, 1.0);
+    // Unknown keys are ignored; unknown enum integers survive a round trip.
+    let text = "{\"mode\":42,\"perks\":3,\"extra\":true,\"other\":{\"k\":[1]}}";
+    let p: generated::Profile = generated::from_json(text).unwrap();
+    assert_eq!(p.mode, generated::Mode(42));
+    let back = generated::to_json(&p).unwrap();
+    let again: generated::Profile = generated::from_json(&back).unwrap();
+    assert_eq!(p, again);
+    assert!(back.contains("\"mode\":42") && back.contains("\"other\":{\"k\":[1]}"));
+    // Fields are written in declaration order, base class first, every field present.
+    assert!(back.find("\"version\"").unwrap() < back.find("\"name\"").unwrap());
+    assert!(back.contains("\"inner\":{") && back.contains("\"tags\":[]"));
+}

@@ -56,3 +56,5 @@ A `vertex` function also runs in shadow passes, so moved vertices cast moved sha
 - Blended draws are not sorted back to front between objects.
 - Alpha-cutout (discarding pixels) does not cut shadows.
 - No full-screen or sky shaders yet; textures are 8-bit color images.
+- In ray-traced frames (decision 0090) game-shaded draws use the standard shadow maps, not
+  ray-traced shadows, and game meshes are left out of the ray-traced scene.

@@ -9,31 +9,45 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Done. First CI run (main at `6cbe22d`): Windows passed; Linux failed at build because the runner lacked the ALSA library. Workflow fixed (installs `libasound2-dev`); Linux CI result comes with the next run. |
-| 2 | Core | Done. |
-| 3 | Renderer | Done. Opt-in shadows, point and spot lights, sky light, emissive, tone mapping and fog (decision 0063); bloom, point and spot light shadows, environment lighting with sky background, glTF emissive (decisions 0064 to 0067); frustum culling always on and opt-in level of detail (decision 0080); meshes built in game code drawn as `mesh:<name>` (decision 0180); game shaders (`ShaderMaterial`, decision 0181). |
+| 1 | Workspace, CI | Done. Pull requests run a fast Linux check; the merge queue and main run the full suite incl. Windows (`.github/workflows/ci.yml`, decision 0260). |
+| 2 | Core | Done. Save games (decision 0076). |
+| 3 | Renderer | Done. Opt-in looks (decisions 0063 to 0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090 to 0093). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
-| 5 | Agent interface (CLI + MCP) | Done. Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
-| 6 | Input, physics, audio, UI | Done headless; windowed mode never opened on a screen. 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). |
+| 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
+| 6 | Input, physics, audio, UI | Done; windowed mode checked on a real screen (decisions 0170 to 0173). 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
-| 10 | Later (OpenXR, AI while playing, inspector) | Not started. |
+| 10 | Later (OpenXR, AI while playing, inspector) | OpenXR (0190), inspector (0130), co-op networking, achievements, cloud saves, optional Steam backend (0210-0213) done; rest not started. |
+| - | Game packages | Done (decision 0140): Windows, Linux, Steam Deck, Steam Frame (ARM64). |
 
 ## UNVERIFIED
 
-- Game meshes (decision 0180): drawn and updated only on Mesa lavapipe; rewrite cost on a
-  hardware GPU not measured; vertex colors not seen on a desktop GPU.
-- Game shaders (decision 0181): compiled and drawn only on Mesa lavapipe (Vulkan); not yet on
-  DX12 (Windows CI runs WARP) or a desktop GPU; pipeline build time per shader not measured.
-
+- Game packages (decision 0140): never run on a Deck, a Frame, a headset or a screen; Frame binaries
+  ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
+- Starter (0150): made games not played by a person.
+- Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
+  never run against a Steam client (first check: `steam_check`, app id 480, owner login).
+- Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
+  device once (64 voices clean; 128 and 256 had a few slow callbacks, cause unknown, see
+  proofs/play.md); no one has listened. OGG streaming untested (WAV is).
+- World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
+  not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
+- Game handoffs (decision 0161): tested with two claims in one working tree; no game has
+  been worked on by several real agents through it, and claims are not checked against a
+  remote.
+- Skills (decision 0160): the format and two agents' project skill folders were read from
+  their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
+  session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
+- Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
+- Game meshes, shaders (0180, 0181): lavapipe only.
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
-  not yet in a real headset through OpenXR, nor on AMD or Intel GPUs.
+  not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked
-  on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not in a real headset,
-  nor on AMD or Intel GPUs.
-- Frustum culling and `LevelOfDetail` (decision 0080): measured only on Mesa lavapipe in a
-  cloud container; hardware GPU and headset numbers not yet taken.
+  on Mesa lavapipe and one desktop GPU offscreen (numbers in PROOFS.md); not on AMD or Intel GPUs.
+- Render cost controls (0080 to 0082): one desktop GPU offscreen only; not in a headset or
+  on AMD/Intel. Scale plus foveation resolve not re-timed.
+- Ray tracing (0093): lavapipe and one desktop GPU only; skinned models are not traced.
 - CC0 pool online adapters (Poly Haven, ambientCG, Kenney and Quaternius archives, decision 0041;
   cgbookcase, decision 0071)
   are tested only against scripted answers shaped like the real APIs as read on 2026-11-12; the
@@ -43,23 +57,12 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   format, not on prefabs saved by the Unity editor or on a real pack; the model-root override
   rule, the nested file-id rule and the half turn for converted models are from knowledge of
   Unity's serializer, not checked in the editor.
-- Windows side of `marionette-host` (job object, run-folder locks, kill tests): compiles and
-  passes clippy for a Windows target; first run is the CI run of its merge.
 
-- Linux CI passes on `main` since the providers merge (ALSA fix in the workflow); Windows CI
-  passes, including the GPU tests on WARP. In a Linux container without a GPU the drift hash,
-  the seed-2 hash, the playground hashes (`line6_proofs.rs`) and the scripted example hash
-  match; GPU tests skipped there.
-- `marionette-script` (rquickjs/QuickJS-ng and oxc) on Windows MSVC: see the CI run of the
-  scripting merge; not built on the owner's desktop yet.
-- `marionette-jobs-ts` on Windows: wasmtime/Cranelift on MSVC and the pinned job hash equal to
-  Linux are expected from CI on the job TypeScript branch; not yet observed.
 - Job TypeScript speed on the owner's desktop and on ARM CPUs (only a 4-core x86-64 cloud
-  container measured). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
+  container measured; the full test suite passes on ARM64 in CI, decision 0140). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
-- Windowed mode (`marionette run <scene>` without `--headless`) has never been run on a screen:
-  live keyboard/mouse input, `UiButton` clicks and sound playback through a real audio device
-  are untested beyond unit tests.
+- Window (proofs/window.md; editor too): gamepads on hardware, high-refresh screens, clicks, speakers,
+  minimize CPU on Windows (62-172 ms per 2 s), Linux and macOS screens.
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.
@@ -95,7 +98,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   never on a desktop GPU, never with a real (non-generated) rigged character or a real FBX
   export.
 - Performance on a real desktop GPU and headset: all timings come from a Linux container with
-  Mesa lavapipe. `bench --headset` emulates two eyes offscreen; no OpenXR runtime has been used.
+  Mesa lavapipe. `bench --headset` emulates two eyes offscreen.
 - FBX conversion has only seen files written by Blender and Assimp (and ASCII made from them).
   FBX from Maya, 3ds Max, MotionBuilder or Unity's own exporter (pivots, pre-rotation, cubic
   curves, `InheritType` other than RSrs) is untested; a real Asset Store pack is the next check.
@@ -113,3 +116,5 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   class and `RelativeFilename` peek is tested on synthetic bytes; FBX from Unreal's own exporter
   is untested (the fixture is Blender writing Unreal's convention: +Z up, centimeters). Next
   check: a dry run over a project the owner has, with their permission.
+
+- `port_serde` (0240): field order and float text unchecked against real JsonUtility files.

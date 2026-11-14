@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "enemy_ref",
+  "output": "image",
+  "file": "enemy_ref.png",
+  "sha256": "862d8eea9ff3420d221e775c2668b74bd78a5c775f063027b2e2c11a8614659f",
+  "recipe": "enemy_ref.recipe.json",
+  "recipe_sha256": "abc9b67eb2a4664001f3034c2884f876bbca750cf42aa16109f3cb632b8b82d2",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a wandering topiary hedge monster with leafy teeth and stubby legs, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "9ec38fff8276be9a18b6c59a79f559381cf14304439735d9b499eec8bf68a3a0",
+    "raw_sha256": "b9d53fc641bbb4e1bcbce5dcf74f9e69e6eea672872825bb33f9ccaacbb8be1d",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

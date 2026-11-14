@@ -1,0 +1,15 @@
+[package]
+name = "marionette-editor"
+description = "Marionette scene editor view: fly camera, click to pick, inspector, play and pause, small edits through operations."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+marionette-core.workspace = true
+marionette-render = { path = "../marionette-render" }
+bevy_ecs.workspace = true
+glam = "0.34"
+winit = "0.30.13"
+serde_json.workspace = true

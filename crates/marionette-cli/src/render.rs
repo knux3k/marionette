@@ -3,13 +3,13 @@
 
 use marionette_agent::{Engine, engine};
 use marionette_core::{Diagnostic, Errors, Sim};
-use marionette_render::window::{WindowHooks, WindowOptions, run_windowed};
+use marionette_render::window::{Present, WindowHooks, WindowOptions, run_windowed};
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn parse_size(size: &str) -> Result<(u32, u32), Errors> {
+pub(crate) fn parse_size(size: &str) -> Result<(u32, u32), Errors> {
     let parsed = size
         .split_once(['x', 'X'])
         .and_then(|(w, h)| Some((w.trim().parse::<u32>().ok()?, h.trim().parse::<u32>().ok()?)))
@@ -182,6 +182,75 @@ struct Live {
     problems: Vec<String>,
     /// When the player last followed the world (real time, for Doppler velocities).
     last_audio: Option<std::time::Instant>,
+    #[cfg(feature = "gamepad")]
+    pads: Option<marionette_gamepad::Gamepads>,
+    #[cfg(feature = "save")]
+    saves: Option<Saves>,
+}
+
+/// Saving in the window (decision 0076): autosave, `save_request` events, F5 and F9.
+#[cfg(feature = "save")]
+struct Saves {
+    writer: marionette_save::SaveWriter,
+    auto: marionette_save::Autosaver,
+    written: u64,
+    last: Option<marionette_save::WriteResult>,
+}
+
+#[cfg(feature = "save")]
+impl Saves {
+    const QUICK: &str = "quick";
+
+    fn new(engine: &Engine, sim: &Sim, dir: &str) -> Result<Self, Errors> {
+        let store = marionette_save::SaveStore::open(dir)?;
+        let registry = std::sync::Arc::new(marionette_core::module::registry_with(&engine.modules()));
+        Ok(Self {
+            auto: marionette_save::Autosaver::new(sim, &store),
+            writer: marionette_save::SaveWriter::new(store, registry),
+            written: 0,
+            last: None,
+        })
+    }
+
+    fn quick_save(&self, sim: &mut Sim) -> Result<(), Errors> {
+        let info = marionette_save::SaveInfo {
+            label: "Quick save".into(),
+            meta: Value::Null,
+        };
+        self.writer
+            .submit(Self::QUICK, marionette_save::Pending::capture(sim, info))
+    }
+
+    fn quick_load(&mut self, sim: &mut Sim) -> Result<(), Errors> {
+        self.writer.flush();
+        marionette_save::load(sim, self.writer.store(), Self::QUICK)?;
+        self.auto = marionette_save::Autosaver::new(sim, self.writer.store());
+        Ok(())
+    }
+
+    /// Queues due autosaves and collects finished writes; returns write errors.
+    fn after_ticks(&mut self, sim: &mut Sim) -> Vec<String> {
+        let mut problems = Vec::new();
+        if let Err(e) = self.auto.after_step(sim, &self.writer) {
+            problems.push(e.to_string());
+        }
+        for r in self.writer.take_results() {
+            match &r.error {
+                Some(e) => problems.push(format!("save {}: {e}", r.slot)),
+                None => self.written += 1,
+            }
+            self.last = Some(r);
+        }
+        problems
+    }
+
+    fn finish(mut self) -> Value {
+        self.writer.flush();
+        let rest = self.writer.take_results();
+        self.written += rest.iter().filter(|r| r.error.is_none()).count() as u64;
+        let last = rest.into_iter().last().or(self.last.take());
+        json!({ "written": self.written, "last": last })
+    }
 }
 
 impl Live {
@@ -196,6 +265,17 @@ impl Live {
 
 impl WindowHooks for Live {
     fn device(&mut self, sim: &mut Sim, input: &str, value: f32) {
+        #[cfg(feature = "save")]
+        if value > 0.0
+            && let Some(saves) = self.saves.as_mut()
+        {
+            let r = match input {
+                "key:F5" => saves.quick_save(sim),
+                "key:F9" => saves.quick_load(sim),
+                _ => Ok(()),
+            };
+            self.note(r);
+        }
         let tick = sim.tick();
         let r = engine::queue_live(sim, tick, input, false, value);
         self.note(r);
@@ -204,7 +284,34 @@ impl WindowHooks for Live {
         let r = engine::queue_live(sim, tick, action, true, value);
         self.note(r);
     }
+    #[cfg(feature = "gamepad")]
+    fn before_ticks(&mut self, sim: &mut Sim) -> bool {
+        let Some(pads) = self.pads.as_mut() else {
+            return false;
+        };
+        let inputs = pads.poll();
+        for (name, value) in &inputs {
+            self.device(sim, name, *value);
+        }
+        !inputs.is_empty()
+    }
+    #[cfg(feature = "gamepad")]
+    fn focus(&mut self, sim: &mut Sim, focused: bool) {
+        if !focused && let Some(pads) = self.pads.as_mut() {
+            for (name, value) in pads.release_all() {
+                self.device(sim, &name, value);
+            }
+        }
+    }
     fn after_ticks(&mut self, sim: &mut Sim) {
+        #[cfg(feature = "save")]
+        if let Some(saves) = self.saves.as_mut() {
+            for m in saves.after_ticks(sim) {
+                if self.problems.len() < 20 {
+                    self.problems.push(m);
+                }
+            }
+        }
         if let Some(p) = self.player.as_mut() {
             let now = std::time::Instant::now();
             let dt = self.last_audio.map_or(0.0, |t| (now - t).as_secs_f32());
@@ -220,6 +327,38 @@ impl WindowHooks for Live {
     }
 }
 
+/// Play-feel flags of a windowed run (decisions 0170 to 0173).
+#[derive(clap::Args, Debug, Clone, Default)]
+pub struct WindowFlags {
+    /// Windowed mode: vsync (default), mailbox or immediate; falls back when unsupported.
+    #[arg(long, default_value = "vsync")]
+    pub present: String,
+    /// Windowed mode: frames queued ahead of the display, 1 (lowest latency) to 3.
+    #[arg(long, default_value_t = 2)]
+    pub frame_latency: u32,
+    /// Windowed mode: most frames per second when not using vsync.
+    #[arg(long)]
+    pub fps_cap: Option<f64>,
+    /// Windowed mode: start in borderless fullscreen (F11 or Alt+Enter toggles).
+    #[arg(long)]
+    pub fullscreen: bool,
+    /// Windowed mode: Escape goes to the game instead of closing the window.
+    #[arg(long)]
+    pub keep_escape: bool,
+    /// Windowed mode: hide and lock the cursor while focused (mouse look).
+    #[arg(long)]
+    pub grab_cursor: bool,
+    /// Windowed mode: keep simulating while minimized.
+    #[arg(long)]
+    pub run_in_background: bool,
+    /// Windowed mode: close after this many seconds.
+    #[arg(long)]
+    pub seconds: Option<f64>,
+    /// Windowed mode: also write the frame numbers to this JSON file.
+    #[arg(long)]
+    pub frame_stats: Option<String>,
+}
+
 /// Options of the windowed run beyond the shared ones.
 pub struct WindowedRun<'a> {
     pub engine: &'a Engine,
@@ -231,6 +370,11 @@ pub struct WindowedRun<'a> {
     pub input: Option<&'a str>,
     pub record: Option<&'a str>,
     pub mute: bool,
+    /// Window title (default `Marionette - <scene>`); packaged games use the game's title.
+    pub title: Option<&'a str>,
+    /// Save folder (autosave, F5 and F9); `None` saves nothing.
+    pub saves: Option<&'a str>,
+    pub window: WindowFlags,
 }
 
 pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
@@ -244,7 +388,19 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         input,
         record,
         mute,
+        title,
+        saves,
+        window: flags,
     } = run;
+    let present = Present::parse(&flags.present).ok_or_else(|| {
+        Errors::from(Diagnostic::error(
+            "cli.bad_present",
+            format!(
+                "--present must be vsync, mailbox or immediate, not {}",
+                flags.present
+            ),
+        ))
+    })?;
     let (width, height) = parse_size(size)?;
     let mut sim = load(o_engine, path, seed)?;
     if let Some(f) = input {
@@ -254,23 +410,63 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         player: None,
         problems: Vec::new(),
         last_audio: None,
+        #[cfg(feature = "gamepad")]
+        pads: None,
+        #[cfg(feature = "save")]
+        saves: match saves {
+            Some(dir) => Some(Saves::new(o_engine, &sim, dir)?),
+            None => None,
+        },
     };
+    #[cfg(feature = "gamepad")]
+    match marionette_gamepad::Gamepads::new() {
+        Ok(p) => live.pads = Some(p),
+        Err(m) => live.problems.push(m),
+    }
+    #[cfg(not(feature = "save"))]
+    if saves.is_some() {
+        return Err(Diagnostic::error("cli.no_saves", "this build has no save games")
+            .fix("build with the `save` feature")
+            .into());
+    }
     if !mute {
         match engine::SoundPlayer::new(scene_dir(path)) {
             Ok(p) => live.player = Some(p),
             Err(m) => live.problems.push(m),
         }
     }
-    let opts = WindowOptions {
-        title: format!("Marionette - {path}"),
-        width,
-        height,
-        camera,
-        sample_count: 4,
-        max_ticks: ticks,
-        base_dir: scene_dir(path),
-    };
-    let mut sim = run_windowed(sim, opts, &mut live).map_err(|e| e.with_file(path))?;
+    let mut opts = WindowOptions::new(
+        title.map_or_else(|| format!("Marionette - {path}"), str::to_string),
+        scene_dir(path),
+    );
+    opts.width = width;
+    opts.height = height;
+    opts.camera = camera;
+    opts.max_ticks = ticks;
+    opts.present = present;
+    opts.frame_latency = flags.frame_latency;
+    opts.fps_cap = flags.fps_cap;
+    opts.fullscreen = flags.fullscreen;
+    opts.escape_exits = !flags.keep_escape;
+    opts.grab_cursor = flags.grab_cursor;
+    opts.run_in_background = flags.run_in_background;
+    opts.max_seconds = flags.seconds;
+    let done = run_windowed(sim, opts, &mut live).map_err(|e| e.with_file(path))?;
+    let mut sim = done.sim;
+    let frames = done.stats.summary();
+    if let Some(out) = &flags.frame_stats {
+        let text = serde_json::to_string_pretty(&frames).unwrap_or_default();
+        std::fs::write(out, text + "\n").map_err(|e| {
+            Errors::from(Diagnostic::error(
+                "cli.write_failed",
+                format!("cannot write {out}: {e}"),
+            ))
+        })?;
+    }
+    #[cfg(feature = "save")]
+    let saved = live.saves.take().map(Saves::finish);
+    #[cfg(not(feature = "save"))]
+    let saved: Option<Value> = None;
     let recorded = match record {
         Some(out) => Some(engine::save_recording(&sim, Path::new(out), out)?),
         None => None,
@@ -284,9 +480,13 @@ pub fn windowed(run: WindowedRun) -> Result<Value, Errors> {
         "seed": seed,
         "state_hash": sim.state_hash(),
         "problems": live.problems,
+        "frames": frames,
     });
     if let Some(n) = recorded {
         out["recorded_events"] = json!(n);
+    }
+    if let Some(s) = saved {
+        out["saves"] = s;
     }
     Ok(out)
 }

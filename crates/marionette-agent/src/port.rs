@@ -32,6 +32,12 @@ pub(crate) fn ops() -> Vec<Op> {
             write_scaffold,
         ),
         op(
+            "port_serde",
+            "Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`.",
+            true,
+            write_serde,
+        ),
+        op(
             "port_convert",
             "Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters).",
             false,
@@ -265,6 +271,90 @@ fn write_scaffold(agent: &mut Agent, input: ScaffoldInput) -> Result<ScaffoldOut
     Ok(ScaffoldOutput {
         written: !input.dry_run,
         files,
+    })
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct SerdeInput {
+    /// Same as `port_scan`'s source.
+    source: String,
+    /// The .rs file to write, relative to the project root. Omit to get the code back.
+    #[serde(default)]
+    out: Option<String>,
+    /// Only these types and the types their saved fields reach. Default: every
+    /// [Serializable] type.
+    #[serde(default)]
+    roots: Vec<String>,
+    /// Extra derives for every type (for example `Reflect`).
+    #[serde(default)]
+    derives: Vec<String>,
+    /// C# type name -> Rust path of a type the project already has (hand-written, or its own
+    /// vector type). Used as is, never generated.
+    #[serde(default)]
+    external: std::collections::BTreeMap<String, String>,
+    /// Replace an existing `out` file.
+    #[serde(default)]
+    overwrite: bool,
+    /// Return the code without writing.
+    #[serde(default)]
+    dry_run: bool,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct SerdeOutput {
+    written: bool,
+    /// The file written, relative to the project root.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+    bytes: usize,
+    /// The generated module; only when nothing was written.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rust: Option<String>,
+    types: Vec<marionette_port::serde_gen::TypeInfo>,
+    notes: Vec<marionette_port::serde_gen::Note>,
+}
+
+fn write_serde(agent: &mut Agent, input: SerdeInput) -> Result<SerdeOutput, Errors> {
+    let a = run_scan(agent, &input.source)?;
+    let g = marionette_port::serde_gen::generate(
+        &a,
+        &marionette_port::serde_gen::Options {
+            roots: input.roots,
+            derives: input.derives,
+            external: input.external,
+        },
+    );
+    if g.types.is_empty() {
+        return Err(Diagnostic::error(
+            marionette_port::codes::NOTHING_FOUND,
+            "no [Serializable] classes or structs found",
+        )
+        .fix("check `source`, or `roots` names")
+        .into());
+    }
+    let bytes = g.rust.len();
+    let write = input.out.is_some() && !input.dry_run;
+    if let Some(out) = input.out.as_deref() {
+        let path = agent.resolve(out)?;
+        if write && !input.overwrite && path.exists() {
+            return Err(
+                Diagnostic::error(marionette_port::codes::EXISTS, format!("would overwrite {out}"))
+                    .fix("pass `overwrite: true`, or a different `out`")
+                    .into(),
+            );
+        }
+        if write {
+            crate::write_atomic(&path, out, g.rust.as_bytes())?;
+        }
+    }
+    Ok(SerdeOutput {
+        written: write,
+        path: input.out.filter(|_| write),
+        bytes,
+        rust: (!write).then_some(g.rust),
+        types: g.types,
+        notes: g.notes,
     })
 }
 

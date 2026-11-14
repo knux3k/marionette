@@ -1,5 +1,5 @@
 //! The engine as the agent runs it: core, the built-in modules (input, physics, audio,
-//! script, factory, animation, job schedules) and the operation table, plus whatever a game adds.
+//! script, factory, animation, XR gameplay, job schedules) and the operation table, plus whatever a game adds.
 //!
 //! A game adds its own Rust modules and operations without editing the engine (decision
 //! 0062):
@@ -61,8 +61,17 @@ impl EngineBuilder {
                 Part::Script,
                 Part::Module(Box::new(FactoryModule)),
                 Part::Module(Box::new(AnimModule)),
+                Part::Module(Box::new(marionette_xr::XrModule)),
+                #[cfg(feature = "ui3d")]
+                Part::Module(Box::new(marionette_ui3d::Ui3dModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "save")]
+                Part::Module(Box::new(marionette_save::SaveModule::default())),
+                #[cfg(feature = "nav")]
+                Part::Module(Box::new(marionette_nav::NavModule)),
+                #[cfg(feature = "netplay")]
+                Part::Module(Box::new(marionette_net::NetModule)),
             ],
             ops: crate::builtin_ops(),
         }
@@ -75,6 +84,21 @@ impl EngineBuilder {
     }
 
     /// Adds one operation (make it with [`crate::op`]).
+    /// Replaces the module that has the same [`Module::name`] (for example the standard
+    /// `save` module with `SaveModule::with(migrations)`); adds it if there is none.
+    pub fn replace(mut self, module: impl Module) -> Self {
+        let name = module.name();
+        let at = self
+            .parts
+            .iter()
+            .position(|p| matches!(p, Part::Module(m) if m.name() == name));
+        match at {
+            Some(i) => self.parts[i] = Part::Module(Box::new(module)),
+            None => self.parts.push(Part::Module(Box::new(module))),
+        }
+        self
+    }
+
     pub fn op(mut self, op: Op) -> Self {
         self.ops.push(op);
         self
@@ -235,6 +259,8 @@ pub(crate) fn write_recording(agent: &Agent, sim: &Sim, out: &str) -> Result<usi
 
 /// Plays `sound` events through the default audio device (windowed mode only).
 pub use marionette_audio::Player as SoundPlayer;
+/// The synth host and the synth crate (decision 0220).
+pub use marionette_audio::{SynthHost, synth};
 
 /// Loads a scene file with the built-in engine ([`Engine::load_file`] for a game's engine).
 pub fn load_file(path: &Path, shown: &str, seed: u64) -> Result<Sim, Errors> {

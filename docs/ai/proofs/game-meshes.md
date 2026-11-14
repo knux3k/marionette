@@ -23,3 +23,7 @@
 - Existing pictures unchanged: every reference image regenerated on lavapipe before and after
   the shader changes, compared byte for byte, identical.
 - `cargo test -p marionette-core shader` (options, `has_fn`, stored sources).
+
+UNVERIFIED: meshes and shaders ran only on Mesa lavapipe (Vulkan); not on a desktop GPU or DX12
+(Windows CI uses WARP); rewrite cost and pipeline build time on hardware not measured; not in
+ray-traced frames on hardware.

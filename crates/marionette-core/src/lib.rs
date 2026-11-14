@@ -19,12 +19,13 @@ pub mod shader;
 pub mod sim;
 pub mod spatial;
 pub mod ui;
+pub mod vmath;
 
 pub use error::{Diagnostic, Errors, Result, Severity};
 pub use module::{EngineEvent, EventLog, Module, Modules, SceneDir, SimSnapshot, Stage};
 pub use registry::{Kind, Registry};
 pub use scene::Scene;
-pub use sim::Sim;
+pub use sim::{Sim, StateCapture};
 
 /// A registry with every built-in type.
 pub fn default_registry() -> Registry {

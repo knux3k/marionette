@@ -25,6 +25,7 @@ Commands (all accept `--json`):
 | `marionette validate <scene>` | Checks a scene; errors have a code, line, entity and suggested fix |
 | `marionette run <scene> --headless --ticks N --seed S` | Simulates and prints a SHA-256 state hash |
 | `marionette run <scene>` | Opens a window (Escape closes; `--ticks N` closes after N ticks) |
+| `marionette edit <scene>` | Opens the scene editor: right mouse + WASD to fly, click to inspect, P to play; keys in its bottom bar |
 | `marionette screenshot <scene> --ticks N --seed S --camera ID --size WxH --out f.png` | Renders one PNG with no window |
 | `marionette bench <scene> --frames N --size WxH` | Measures offscreen frame time |
 | `marionette ops` | Lists every operation with its JSON Schemas |
@@ -78,6 +79,23 @@ Any other MCP client: start the process `marionette --project <game folder> mcp`
 over its stdin/stdout (newline-delimited JSON-RPC 2.0). Tool results carry `structuredContent`;
 failures have `isError: true` and `{"ok": false, "diagnostics": [...]}`. Agents without MCP can
 call the same operations with `marionette op <name> '<json>' --json`.
+
+## Skills
+
+The engine ships task skills: short, tested procedures (build a scene, find or generate assets,
+write a script or a job, port Unity or Unreal code, light a scene, animate, test, find a
+slowdown, add Rust code). A new project (`project_init`) gets them in `.claude/skills` and
+`.agents/skills`, where agents that support skills load the matching one by themselves;
+`marionette op skills_install '{}'` adds or refreshes them in an existing project. Any other
+agent reads them with `skills_list` and `skills_get`.
+
+## Handoffs
+
+Every project carries what the next agent needs: `docs/ai/START-HERE.md`, `docs/ai/STATE.md`,
+one claim file per piece of work in progress, one note per session, and decision records. An
+agent starts with `handoff_status`, claims work with `handoff_claim` (refused when it overlaps
+another agent's claim; it also reserves decision numbers) and ends with `handoff_note`.
+`marionette op handoff_init '{}'` adds the files to an existing project.
 | `marionette scene fmt <scene> [--check]` | Rewrites a scene in canonical form |
 
 ## For agents

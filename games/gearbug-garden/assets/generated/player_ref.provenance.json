@@ -1,0 +1,41 @@
+{
+  "format": "marionette.generated_asset/1",
+  "name": "player_ref",
+  "output": "image",
+  "file": "player_ref.png",
+  "sha256": "e3ffd53b731fa5da62994788838650e5ab16c81f7835891225abd53a938ef1a8",
+  "recipe": "player_ref.recipe.json",
+  "recipe_sha256": "c2549b9df6f8a3fe7455f903125f43fdf7cb302c621879ce0a2c24b9c365c893",
+  "source": {
+    "provider": "qwen",
+    "model": "qwen-image-3.0-pro",
+    "provider_verified": false,
+    "kind": "image",
+    "prompt": "a small brass clockwork beetle with a wind-up key on its back, whimsical steampunk garden, stylised low-poly, warm soft light, single object, three-quarter front view, centred, whole object in frame, plain light grey background, soft even studio light, stylised low-poly game asset, clean shapes, no text",
+    "size": [
+      1024,
+      1024
+    ],
+    "cache_key": "258972461403fbc64aabfa99bee3b48216701e216d3aa65a55b0787ba638ad9a",
+    "raw_sha256": "3b1843cd0209b1257f7c13695a93a97b03c5108a9b0566eb81d85c846b2d6212",
+    "cost_usd": 0.05
+  },
+  "postprocess": {
+    "resized": false,
+    "size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ],
+    "tileable": false
+  },
+  "license": {
+    "status": "generated",
+    "terms": "made with the `qwen` provider; its terms of service decide who owns this output and how it may be used. Check them before publishing"
+  },
+  "pool": "blocked",
+  "pool_reason": "generated assets are not offered to the CC0 pool: the provider's terms decide who owns the output, so it is not CC0 by default (decision 0045)"
+}

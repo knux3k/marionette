@@ -51,6 +51,7 @@ fn same_inputs_give_identical_images() {
         "ui.scene.json",
         "lighting.scene.json",
         "looks.scene.json",
+        "raytracing.scene.json",
         "game-shader.scene.json",
     ] {
         let a = render(&gpu, scene, (480, 270));
@@ -74,9 +75,24 @@ fn rendering_does_not_change_simulation_state() {
 fn matches_reference_images() {
     let Some(gpu) = gpu() else { return };
     let update = std::env::var("MARIONETTE_UPDATE_REFERENCES").as_deref() == Ok("1");
-    for name in ["showcase", "sprites", "ui", "lighting", "looks", "game-shader"] {
+    // The ray tracing example looks different without ray queries (its fallback looks), so it
+    // has a reference image for each (decision 0093).
+    let rt = if gpu.ray_tracing() {
+        "raytracing"
+    } else {
+        "raytracing-fallback"
+    };
+    for (name, image) in [
+        ("showcase", "showcase"),
+        ("sprites", "sprites"),
+        ("ui", "ui"),
+        ("lighting", "lighting"),
+        ("looks", "looks"),
+        ("raytracing", rt),
+        ("game-shader", "game-shader"),
+    ] {
         let pixels = render(&gpu, &format!("{name}.scene.json"), REF_SIZE);
-        let path = repo().join(format!("examples/reference/{name}.png"));
+        let path = repo().join(format!("examples/reference/{image}.png"));
         if update {
             std::fs::write(&path, encode_png(REF_SIZE.0, REF_SIZE.1, &pixels)).unwrap();
             continue;
@@ -618,4 +634,95 @@ fn level_of_detail_reduces_far_triangles_only_when_asked() {
     );
     let d = diff(&full, &reduced, REFERENCE_THRESHOLD);
     assert!(d.mean < 2.0, "{d:?}");
+}
+
+fn render_scene_with(
+    gpu: &Gpu,
+    scene: &str,
+    resources: &str,
+    size: (u32, u32),
+) -> (Vec<u8>, marionette_render::RenderStats) {
+    let path = repo().join("examples").join(scene);
+    let mut v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let extra: serde_json::Value = serde_json::from_str(&format!("{{{resources}}}")).unwrap();
+    for (k, val) in extra.as_object().unwrap() {
+        v["resources"][k] = val.clone();
+    }
+    let mut sim = Sim::from_text(&v.to_string(), None, default_registry(), SEED).unwrap();
+    sim.run(TICKS);
+    let mut off = Offscreen::new(gpu, size.0, size.1, 4, repo().join("examples"));
+    let stats = off.render(gpu, &extract(&sim.world), None).unwrap();
+    (off.read_pixels(gpu).unwrap(), stats)
+}
+
+/// Decision 0081: render scale draws the world smaller (or larger) and resolves it to the
+/// output; the picture stays close to native in the plain and the bloom path, and scale 1
+/// without foveation takes the direct path (identical image, no extra pass).
+#[test]
+fn render_scale_resizes_the_world_and_keeps_the_picture() {
+    let Some(gpu) = gpu() else { return };
+    let size = (320, 180);
+    for scene in ["lighting.scene.json", "looks.scene.json"] {
+        let (native, native_stats) = render_scene_with(&gpu, scene, "", size);
+        let (same, same_stats) = render_scene_with(
+            &gpu,
+            scene,
+            r#""RenderScale": {"scale": 1.0, "sharpness": 0.5}"#,
+            size,
+        );
+        assert!(native == same, "{scene}: scale 1 changed pixels");
+        assert_eq!(native_stats.draw_calls, same_stats.draw_calls);
+        for (scale, limit) in [(0.75, 4.0), (0.5, 6.0), (2.0, 3.0)] {
+            let res = format!(r#""RenderScale": {{"scale": {scale}, "sharpness": 0.3}}"#);
+            let (scaled, stats) = render_scene_with(&gpu, scene, &res, size);
+            let d = diff(&native, &scaled, REFERENCE_THRESHOLD);
+            assert!(d.mean < limit, "{scene} at {scale}: {d:?}");
+            // One resolve pass (bloom's glow chain also changes length with the image size).
+            if scene == "lighting.scene.json" {
+                assert_eq!(stats.draw_calls, native_stats.draw_calls + 1, "{scene}");
+            }
+        }
+    }
+}
+
+/// Decision 0082: foveation leaves the middle of the view as it was and fills the skipped
+/// quads at the edges from their neighbours (no black holes), in the plain and bloom paths.
+#[test]
+fn foveation_keeps_the_center_and_fills_the_edges() {
+    let Some(gpu) = gpu() else { return };
+    let size = (320, 180);
+    for scene in ["lighting.scene.json", "looks.scene.json"] {
+        let (native, _) = render_scene_with(&gpu, scene, "", size);
+        let (fov, _) = render_scene_with(&gpu, scene, r#""Foveation": {"inner_radius": 0.5}"#, size);
+        let px = |img: &[u8], x: u32, y: u32| {
+            let i = ((y * size.0 + x) * 4) as usize;
+            [img[i], img[i + 1], img[i + 2]]
+        };
+        // Center block: identical without bloom; with bloom the glow blurs a little of the
+        // filled edge in, so within 2 of 255.
+        let tolerance = if scene == "looks.scene.json" { 2 } else { 0 };
+        for y in 80..100 {
+            for x in 150..170 {
+                let (a, b) = (px(&native, x, y), px(&fov, x, y));
+                let worst = (0..3).map(|k| a[k].abs_diff(b[k])).max().unwrap();
+                assert!(worst <= tolerance, "{scene} center ({x},{y}): {a:?} vs {b:?}");
+            }
+        }
+        let d = diff(&native, &fov, REFERENCE_THRESHOLD);
+        assert!(d.mean < 3.0, "{scene}: {d:?}");
+        assert!(d.max < 160, "{scene}: no unfilled holes: {d:?}");
+        // With render scale too: fast filter inside the ellipse, bilinear outside.
+        let (both, _) = render_scene_with(
+            &gpu,
+            scene,
+            r#""Foveation": {"inner_radius": 0.5}, "RenderScale": {"scale": 0.75, "sharpness": 0.3}"#,
+            size,
+        );
+        let d = diff(&native, &both, REFERENCE_THRESHOLD);
+        assert!(d.mean < 6.0, "{scene} scaled and foveated: {d:?}");
+        assert!(
+            d.max < 200,
+            "{scene} scaled and foveated: no unfilled holes: {d:?}"
+        );
+    }
 }

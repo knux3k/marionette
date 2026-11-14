@@ -9,6 +9,9 @@ measuring: [PERFORMANCE.md](PERFORMANCE.md).
 | Frustum culling | on | no (tested identical) | 0080 |
 | `LevelOfDetail` resource | off | slightly, far away | 0080 |
 | 4x MSAA (`--msaa 4`, window always) | on | anti-aliasing | 0005 |
+| `RenderScale` resource | off | softer below 1, cleaner above 1 | 0081 |
+| `Foveation` resource (headsets) | off | edges of the view only | 0082 |
+| DLSS | not available | | 0083 |
 
 ## Frustum culling
 
@@ -28,16 +31,34 @@ or more triangles get levels at about 1/2 and 1/4 of their triangles when the mo
 (feature `lod` of `marionette-render`, on by default). `hide_below` above zero hides tiny far
 parts in views. Both eyes use the level picked from the first view.
 
+## Render scale and upscaling
+
+```bash
+marionette op resource_set '{"scene":"s.scene.json","resource":"RenderScale","value":{"scale":0.75,"sharpness":0.3}}'
+```
+
+The world is drawn at `scale` times the output size (0.5 to 2.0) and resolved to it; UI stays
+at full resolution. Below 1: Catmull-Rom clamped against ringing, plus `sharpness` (0 to 1).
+Above 1: supersampled and box-filtered down (cleanest edges, costs about `scale` squared).
+
+The resolve is one extra full-size pass per view (about 0.2 to 0.35 ms for two 2160x2160 eyes
+on a desktop GPU), so scale pays only when shading the world costs more than that: on a
+desktop GPU, 0.5 saved 26% on a bloom scene and 0.75 broke even; on a light scene 0.75 was
+slower. Measure your scene before keeping it (numbers in proofs/render.md).
+
+## Foveated rendering
+
+```bash
+marionette op resource_set '{"scene":"s.scene.json","resource":"Foveation","value":{"inner_radius":0.7}}'
+```
+
+Outside an ellipse (`inner_radius` of the half width and height) every other 2x2 pixel quad is
+not shaded and is filled from its neighbours. For headset views; combine with `RenderScale`
+freely (with scale below 1 the periphery is upscaled bilinearly). wgpu has no variable-rate
+shading, so this is done with a depth mask. Without `RenderScale` it adds a copy pass, so it
+pays only where edge shading is costly; on the small example scenes it was slightly slower.
+
 ## Proofs
 
-- `culling_drops_unseen_instances_without_changing_the_image` (`marionette-render` GPU tests):
-  pixels identical with culling on and off; 121 of 123 instances not drawn in view; a box out of
-  view still shadows the view.
-- `level_of_detail_reduces_far_triangles_only_when_asked`: far spheres draw a reduced mesh
-  (over 20% fewer triangles, mean pixel difference under 2 of 255), a tiny one is hidden.
-- Unit tests in `crates/marionette-render/src/cull.rs` (frustum planes, sphere transform,
-  shadow-only class, level choice, simplifier levels).
-- 32x factory (`perf_factory_scene` scale 32), `bench --headset --size 1024x1024`, release,
-  Mesa lavapipe in a 4-core cloud container: instances drawn per eye 9,792 -> 4,895,
-  triangles 117,504 -> 58,740, record phase p50 1.12 -> 0.99 ms. GPU wait on lavapipe is fill
-  bound (53.5 -> 50.5 ms) and says nothing about a hardware GPU; hardware numbers UNVERIFIED.
+In [proofs/render.md](proofs/render.md#culling-and-level-of-detail-decision-0080) and
+[desktop GPU numbers](proofs/render.md#render-cost-on-a-desktop-gpu-decisions-0080-to-0082).

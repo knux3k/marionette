@@ -22,6 +22,7 @@
 
 pub mod alloc;
 mod child;
+pub mod machine;
 mod run;
 
 pub use child::{contained, output, spawn};

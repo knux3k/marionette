@@ -8,20 +8,25 @@ Marionette game engine CLI
 Usage: marionette [OPTIONS] <COMMAND>
 
 Commands:
-  schema      Print the JSON Schema of the scene format and every component and resource
-  validate    Check a scene file against the schema
-  run         Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
-  screenshot  Simulate N ticks, then render one image with no window and save it as PNG
-  bench       Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
-  stability   Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
-  scene       Scene file tools
-  ops         List operations with their descriptions and JSON Schemas. `--brief` gives one line each
-  op          Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
-  provider    AI providers: list them, show this project's choices and spending, switch one
-  generate    Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
-  mcp         Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
-  docs        Write the generated reference docs (operations, components, CLI help)
-  help        Print this message or the help of the given subcommand(s)
+  schema       Print the JSON Schema of the scene format and every component and resource
+  validate     Check a scene file against the schema
+  run          Simulate a scene. With --headless, run N ticks and print a hash of the final state; otherwise open a window (closes after --ticks if given, or on Escape)
+  edit         Open the scene editor window: fly around (right mouse + WASD), click things to inspect them, play, pause and step, and move, copy or delete entities (written through the edit operations, with undo). Keys are listed in the window's bottom bar
+  screenshot   Simulate N ticks, then render one image with no window and save it as PNG
+  bench        Measure frame time offscreen: each frame runs one tick, renders and waits for the GPU
+  xr           Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered, head, controllers and hands fed in as input (marionette-xr). With --probe, only report the runtime and headset. Ends when the runtime ends the session, or after --frames or --ticks
+  stability    Stability suite (operation `stability_run`): run every game mode with seeded random input and check no panic, no hang, replay and snapshot determinism, time budgets and memory growth. Writes `report.json` and, per failure, `<mode>-seed<N>.crash.json` and a replayable `<mode>-seed<N>.inputs.json` to --out. Exit code 1 if any mode failed
+  scene        Scene file tools
+  ops          List operations with their descriptions and JSON Schemas. `--brief` gives one line each
+  op           Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
+  provider     AI providers: list them, show this project's choices and spending, switch one
+  generate     Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
+  make         Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+  mcp          Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
+  package      Package a game for players (operation `package_build`, decision 0140): a folder and a zip per target with the game binary, its runtime files, licenses and a manifest. The binary plays the entry scene when started with no arguments
+  audio-check  Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
+  docs         Write the generated reference docs (operations, components, CLI help)
+  help         Print this message or the help of the given subcommand(s)
 
 Options:
       --json
@@ -144,6 +149,82 @@ Options:
       --mute
           Windowed mode: do not open the audio device
 
+      --saves <SAVES>
+          Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request` events, F5 quick save and F9 quick load (slot `quick`)
+
+      --present <PRESENT>
+          Windowed mode: vsync (default), mailbox or immediate; falls back when unsupported
+          
+          [default: vsync]
+
+      --frame-latency <FRAME_LATENCY>
+          Windowed mode: frames queued ahead of the display, 1 (lowest latency) to 3
+          
+          [default: 2]
+
+      --fps-cap <FPS_CAP>
+          Windowed mode: most frames per second when not using vsync
+
+      --fullscreen
+          Windowed mode: start in borderless fullscreen (F11 or Alt+Enter toggles)
+
+      --keep-escape
+          Windowed mode: Escape goes to the game instead of closing the window
+
+      --grab-cursor
+          Windowed mode: hide and lock the cursor while focused (mouse look)
+
+      --run-in-background
+          Windowed mode: keep simulating while minimized
+
+      --seconds <SECONDS>
+          Windowed mode: close after this many seconds
+
+      --frame-stats <FRAME_STATS>
+          Windowed mode: also write the frame numbers to this JSON file
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette edit`
+
+```text
+Open the scene editor window: fly around (right mouse + WASD), click things to inspect them, play, pause and step, and move, copy or delete entities (written through the edit operations, with undo). Keys are listed in the window's bottom bar
+
+Usage: edit [OPTIONS] <SCENE>
+
+Arguments:
+  <SCENE>
+          
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --seed <SEED>
+          [default: 0]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --size <SIZE>
+          Window size, e.g. 1600x900
+          
+          [default: 1600x900]
+
+      --mute
+          Do not open the audio device
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --frames <FRAMES>
+          Close after this many frames (for scripted checks)
+
   -h, --help
           Print help
 
@@ -252,6 +333,68 @@ Options:
 
       --no-cull
           Draw every instance in every view (frustum culling off), to measure what culling saves (decision 0080)
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette xr`
+
+```text
+Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered, head, controllers and hands fed in as input (marionette-xr). With --probe, only report the runtime and headset. Ends when the runtime ends the session, or after --frames or --ticks
+
+Usage: xr [OPTIONS] [SCENE]
+
+Arguments:
+  [SCENE]
+          Scene file (not needed with --probe)
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --probe
+          Only check for a runtime and headset
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --seed <SEED>
+          [default: 0]
+
+      --camera <CAMERA>
+          Camera entity id (default: the lowest-id camera; put it on the tracked head)
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --msaa <MSAA>
+          MSAA sample count per eye (1 or 4)
+          
+          [default: 4]
+
+      --frames <FRAMES>
+          Stop after this many headset frames
+
+      --ticks <TICKS>
+          Stop after this many ticks
+
+      --scale <SCALE>
+          Eye size relative to the runtime's recommendation (0.25 to 2)
+          
+          [default: 1]
+
+      --input <INPUT>
+          Scripted input or a recording to replay alongside the headset
+
+      --record <RECORD>
+          Write every input action change (poses included) to this file when the run ends
+
+      --mute
+          Do not open the audio device
 
   -h, --help
           Print help
@@ -460,6 +603,52 @@ Options:
 
 ```
 
+## `marionette make`
+
+```text
+Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+
+Usage: make [OPTIONS] [PROMPT]
+
+Arguments:
+  [PROMPT]
+          The game idea in plain words
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --path <PATH>
+          Game folder (default: the title as a folder name)
+
+      --brief <BRIEF>
+          A brief file (marionette.brief/1) to use instead of the prompt
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --template <TEMPLATE>
+          maze or platformer
+
+      --view <VIEW>
+          2d or 3d
+
+      --generate
+          Generate missing art first, with the game's providers (paid ones need keys)
+
+      --refresh
+          Re-make the game in --path from its brief.json: new art in, tests re-pinned
+
+  -h, --help
+          Print help
+
+```
+
 ## `marionette mcp`
 
 ```text
@@ -484,6 +673,91 @@ Options:
 
       --read-only
           Refuse every operation that changes files or sessions
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette package`
+
+```text
+Package a game for players (operation `package_build`, decision 0140): a folder and a zip per target with the game binary, its runtime files, licenses and a manifest. The binary plays the entry scene when started with no arguments
+
+Usage: package [OPTIONS] [GAME]
+
+Arguments:
+  [GAME]
+          Game folder (holds marionette.json), e.g. games/cloudstep
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --target <TARGETS>
+          windows-x64, linux-x64, steamdeck, steam-frame or all (repeatable; default: this machine's own)
+
+      --out <OUT>
+          Output folder
+          
+          [default: dist]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --no-zip
+          Do not write zips
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --no-smoke
+          Do not start the packaged binary for a headless check
+
+      --debug
+          Debug build (quick to build, slow to play)
+
+      --list
+          List targets and what this machine can build (operation `package_targets`)
+
+  -h, --help
+          Print help
+
+```
+
+## `marionette audio-check`
+
+```text
+Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
+
+Usage: audio-check [OPTIONS]
+
+Options:
+      --json
+          Print a single JSON object on stdout instead of human-readable text
+
+      --seconds <SECONDS>
+          Seconds to play
+          
+          [default: 8]
+
+      --project <PROJECT>
+          Project root; relative paths in operations resolve against it
+          
+          [default: .]
+
+      --voices <VOICES>
+          Synth voices sounding at once (notes start at this many per second, each held 1 s)
+          
+          [default: 64]
+
+      --read-only
+          Refuse every operation that changes files or sessions
+
+      --stream <STREAM>
+          Stream this WAV or OGG in a loop alongside (default: a generated music file)
 
   -h, --help
           Print help

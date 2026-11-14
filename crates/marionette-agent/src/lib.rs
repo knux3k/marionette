@@ -11,16 +11,26 @@ pub mod audio;
 pub mod batch;
 pub mod docs;
 pub mod edit;
+#[cfg(feature = "editor")]
+pub mod editor;
 pub mod engine;
 #[cfg(feature = "generate")]
 pub mod generate;
+pub mod handoff;
 #[cfg(feature = "jobs-ts")]
 pub mod jobs_ts;
 #[cfg(feature = "import")]
 pub mod library;
 pub mod mcp;
+#[cfg(feature = "nav")]
+pub mod nav;
+#[cfg(feature = "netplay")]
+pub mod netplay;
 pub mod observe;
+#[cfg(feature = "package")]
+pub mod package;
 pub mod perf;
+pub mod perf_suite;
 #[cfg(feature = "pool")]
 pub mod pool;
 #[cfg(feature = "port")]
@@ -30,11 +40,19 @@ pub mod prefab;
 pub mod project;
 #[cfg(feature = "generate")]
 pub mod providers;
+#[cfg(feature = "save")]
+pub mod save;
 pub mod scenario;
 #[cfg(feature = "script")]
 pub mod script;
 pub mod session;
+pub mod skills;
 pub mod stability;
+#[cfg(feature = "starter")]
+pub mod starter;
+pub mod synth;
+#[cfg(feature = "ui3d")]
+mod ui3d;
 
 use marionette_core::{Diagnostic, Errors, Registry};
 use marionette_render::Gpu;
@@ -145,8 +163,22 @@ pub const FEATURES: &[&str] = &[
     "port",
     #[cfg(feature = "jobs-ts")]
     "jobs-ts",
+    #[cfg(feature = "package")]
+    "package",
+    #[cfg(feature = "save")]
+    "save",
+    #[cfg(feature = "starter")]
+    "starter",
+    #[cfg(feature = "ui3d")]
+    "ui3d",
+    #[cfg(feature = "nav")]
+    "nav",
     #[cfg(feature = "net")]
     "net",
+    #[cfg(feature = "editor")]
+    "editor",
+    #[cfg(feature = "netplay")]
+    "netplay",
 ];
 
 /// Every built-in operation compiled into this build, in a stable order.
@@ -156,16 +188,24 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         edit::ops(),
         session::ops(),
         observe::ops(),
+        #[cfg(feature = "editor")]
+        editor::ops(),
         scenario::ops(),
         #[cfg(feature = "import")]
         library::ops(),
         perf::ops(),
+        perf_suite::ops(),
         #[cfg(feature = "jobs-ts")]
         jobs_ts::ops(),
         #[cfg(feature = "generate")]
         providers::ops(),
         anim::ops(),
+        #[cfg(feature = "ui3d")]
+        ui3d::ops(),
         audio::ops(),
+        #[cfg(feature = "nav")]
+        nav::ops(),
+        synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),
         #[cfg(feature = "script")]
@@ -175,9 +215,19 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         pool::ops(),
         #[cfg(feature = "port")]
         port::ops(),
+        #[cfg(feature = "save")]
+        save::ops(),
         #[cfg(feature = "import")]
         prefab::ops(),
+        #[cfg(feature = "package")]
+        package::ops(),
+        #[cfg(feature = "starter")]
+        starter::ops(),
+        #[cfg(feature = "netplay")]
+        netplay::ops(),
         batch::ops(),
+        skills::ops(),
+        handoff::ops(),
     ];
     groups.into_iter().flatten().collect()
 }

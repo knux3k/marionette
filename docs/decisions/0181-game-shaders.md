@@ -61,3 +61,6 @@ engine's lighting changes (ray tracing and cascades are being added in parallel)
   does not cut shadows; no sky or full-screen shaders yet (SHADERS.md, "Limits").
 - Merge point with the lighting work: anything that changes `fs_main` should keep reading
   material values from `s` (the `Surface`) after the hook call.
+- Ray tracing (0090 to 0093) landed alongside: game-shaded draws bind the standard lights
+  group (shadow maps) in ray-traced frames, and blended or vertex-hooked shaders are left out
+  of the depth prepass. Ray-traced shadows for game shaders are open.

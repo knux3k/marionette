@@ -15,8 +15,14 @@ use marionette_core::{Diagnostic, Errors};
 use serde_json::{Value, json};
 use std::process::ExitCode;
 
+mod audio_check;
+#[cfg(feature = "editor")]
+mod edit;
+mod packaged;
 mod render;
 mod stability;
+#[cfg(feature = "xr")]
+mod xr;
 
 #[derive(Parser)]
 #[command(name = "marionette", version, about = "Marionette game engine CLI")]
@@ -67,6 +73,30 @@ enum Command {
         /// Windowed mode: do not open the audio device.
         #[arg(long)]
         mute: bool,
+        /// Windowed mode: save folder. Turns on autosave (scene `SaveFormat`), `save_request`
+        /// events, F5 quick save and F9 quick load (slot `quick`).
+        #[arg(long)]
+        saves: Option<String>,
+        #[command(flatten)]
+        window: render::WindowFlags,
+    },
+    /// Open the scene editor window: fly around (right mouse + WASD), click things to inspect
+    /// them, play, pause and step, and move, copy or delete entities (written through the
+    /// edit operations, with undo). Keys are listed in the window's bottom bar.
+    #[cfg(feature = "editor")]
+    Edit {
+        scene: String,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Window size, e.g. 1600x900.
+        #[arg(long, default_value = "1600x900")]
+        size: String,
+        /// Do not open the audio device.
+        #[arg(long)]
+        mute: bool,
+        /// Close after this many frames (for scripted checks).
+        #[arg(long)]
+        frames: Option<u64>,
     },
     /// Simulate N ticks, then render one image with no window and save it as PNG.
     Screenshot {
@@ -116,6 +146,44 @@ enum Command {
         /// saves (decision 0080).
         #[arg(long)]
         no_cull: bool,
+    },
+    /// Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered,
+    /// head, controllers and hands fed in as input (marionette-xr). With --probe, only report
+    /// the runtime and headset. Ends when the runtime ends the session, or after --frames or
+    /// --ticks.
+    #[cfg(feature = "xr")]
+    Xr {
+        /// Scene file (not needed with --probe).
+        scene: Option<String>,
+        /// Only check for a runtime and headset.
+        #[arg(long)]
+        probe: bool,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Camera entity id (default: the lowest-id camera; put it on the tracked head).
+        #[arg(long)]
+        camera: Option<u64>,
+        /// MSAA sample count per eye (1 or 4).
+        #[arg(long, default_value_t = 4)]
+        msaa: u32,
+        /// Stop after this many headset frames.
+        #[arg(long)]
+        frames: Option<u64>,
+        /// Stop after this many ticks.
+        #[arg(long)]
+        ticks: Option<u64>,
+        /// Eye size relative to the runtime's recommendation (0.25 to 2).
+        #[arg(long, default_value_t = 1.0)]
+        scale: f32,
+        /// Scripted input or a recording to replay alongside the headset.
+        #[arg(long)]
+        input: Option<String>,
+        /// Write every input action change (poses included) to this file when the run ends.
+        #[arg(long)]
+        record: Option<String>,
+        /// Do not open the audio device.
+        #[arg(long)]
+        mute: bool,
     },
     /// Stability suite (operation `stability_run`): run every game mode with seeded random
     /// input and check no panic, no hang, replay and snapshot determinism, time budgets and
@@ -178,6 +246,34 @@ enum Command {
         #[command(subcommand)]
         command: GenerateCommand,
     },
+    /// Make a playable game from one idea (operations `game_brief` and `game_make`):
+    /// `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`.
+    /// The level is proven winnable by the template's autopilot; art not found by the asset
+    /// lookup order is drawn as placeholders until generated (`--generate`, or later
+    /// `marionette generate run` in the game folder and `make --refresh`).
+    Make {
+        /// The game idea in plain words.
+        #[arg(required_unless_present_any = ["brief", "refresh"])]
+        prompt: Option<String>,
+        /// Game folder (default: the title as a folder name).
+        #[arg(long)]
+        path: Option<String>,
+        /// A brief file (marionette.brief/1) to use instead of the prompt.
+        #[arg(long)]
+        brief: Option<String>,
+        /// maze or platformer.
+        #[arg(long)]
+        template: Option<String>,
+        /// 2d or 3d.
+        #[arg(long)]
+        view: Option<String>,
+        /// Generate missing art first, with the game's providers (paid ones need keys).
+        #[arg(long)]
+        generate: bool,
+        /// Re-make the game in --path from its brief.json: new art in, tests re-pinned.
+        #[arg(long, requires = "path")]
+        refresh: bool,
+    },
     /// Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise).
     Mcp {
         /// Comma-separated operation groups or names to list: `core` (edit, run, observe,
@@ -187,6 +283,47 @@ enum Command {
         /// Leave output schemas out of the tool listing (smaller context for the client).
         #[arg(long)]
         lean: bool,
+    },
+    /// Package a game for players (operation `package_build`, decision 0140): a folder and a
+    /// zip per target with the game binary, its runtime files, licenses and a manifest. The
+    /// binary plays the entry scene when started with no arguments.
+    #[cfg(feature = "package")]
+    Package {
+        /// Game folder (holds marionette.json), e.g. games/cloudstep.
+        game: Option<String>,
+        /// windows-x64, linux-x64, steamdeck, steam-frame or all (repeatable; default: this
+        /// machine's own).
+        #[arg(long = "target")]
+        targets: Vec<String>,
+        /// Output folder.
+        #[arg(long, default_value = "dist")]
+        out: String,
+        /// Do not write zips.
+        #[arg(long)]
+        no_zip: bool,
+        /// Do not start the packaged binary for a headless check.
+        #[arg(long)]
+        no_smoke: bool,
+        /// Debug build (quick to build, slow to play).
+        #[arg(long)]
+        debug: bool,
+        /// List targets and what this machine can build (operation `package_targets`).
+        #[arg(long)]
+        list: bool,
+    },
+    /// Play a synth stress test through the real audio device and report glitch counters:
+    /// callbacks that ran longer than the audio they made, stream underruns, dropped commands,
+    /// stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device.
+    AudioCheck {
+        /// Seconds to play.
+        #[arg(long, default_value_t = 8.0)]
+        seconds: f64,
+        /// Synth voices sounding at once (notes start at this many per second, each held 1 s).
+        #[arg(long, default_value_t = 64)]
+        voices: usize,
+        /// Stream this WAV or OGG in a loop alongside (default: a generated music file).
+        #[arg(long)]
+        stream: Option<String>,
     },
     /// Write the generated reference docs (operations, components, CLI help).
     Docs {
@@ -267,6 +404,13 @@ enum SceneCommand {
     },
 }
 
+/// The command line definition (commands and flags), for tools and tests that check text
+/// against it, such as the skills test.
+pub fn command() -> clap::Command {
+    use clap::CommandFactory;
+    Cli::command()
+}
+
 /// The `marionette` tool with the built-in engine.
 pub fn main() -> ExitCode {
     main_with(Engine::standard())
@@ -275,6 +419,12 @@ pub fn main() -> ExitCode {
 /// The `marionette` tool with a game's engine (its own modules and operations added with
 /// [`marionette_agent::EngineBuilder`]). Every command, the MCP server included, uses it.
 pub fn main_with(engine: Engine) -> ExitCode {
+    // A packaged game started with no arguments plays its entry scene (decision 0140).
+    if std::env::args_os().len() == 1
+        && let Some(game) = packaged::find()
+    {
+        return packaged::play(&engine, &game);
+    }
     // Parsing may print help and exit; nothing is held yet at that point.
     let cli = Cli::parse();
     // Tie child processes to this process and remove what crashed engine processes left
@@ -300,7 +450,35 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                 }
             };
         }
+        Command::AudioCheck {
+            seconds,
+            voices,
+            stream,
+        } => {
+            return audio_check::run(seconds, voices, stream.as_deref(), cli.json);
+        }
         Command::Docs { out, check } => docs(&agent, &out, check),
+        #[cfg(feature = "package")]
+        Command::Package {
+            game,
+            targets,
+            out,
+            no_zip,
+            no_smoke,
+            debug,
+            list,
+        } => match (list, game) {
+            (true, game) | (false, game @ None) => agent
+                .call("package_targets", json!({ "game": game }))
+                .map(|v| merge("package_targets", v)),
+            (false, Some(game)) => agent
+                .call(
+                    "package_build",
+                    json!({ "game": game, "targets": targets, "out": out, "archive": !no_zip,
+                            "smoke": !no_smoke, "debug": debug }),
+                )
+                .map(|v| merge("package_build", v)),
+        },
         Command::Ops { brief, tools } => ops(&agent, brief, &tools),
         Command::Op { name, input } => parse_input(input.as_deref())
             .and_then(|input| agent.call(&name, input))
@@ -336,6 +514,8 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input,
             record,
             mute,
+            saves,
+            window,
         } => render::windowed(render::WindowedRun {
             engine: &engine,
             path: &scene,
@@ -346,6 +526,29 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             input: input.as_deref(),
             record: record.as_deref(),
             mute,
+            title: None,
+            saves: saves.as_deref(),
+            window,
+        }),
+        #[cfg(feature = "editor")]
+        Command::Edit {
+            scene,
+            seed,
+            size,
+            mute,
+            frames,
+        } => render::parse_size(&size).and_then(|(width, height)| {
+            edit::edit(
+                &mut agent,
+                edit::EditRun {
+                    scene: &scene,
+                    seed,
+                    width,
+                    height,
+                    mute,
+                    frames,
+                },
+            )
         }),
         Command::Screenshot {
             scene,
@@ -388,6 +591,41 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             eyes: if headset { 2 } else { eyes },
             headset,
         }),
+        #[cfg(feature = "xr")]
+        Command::Xr { probe: true, .. } => xr::probe(),
+        #[cfg(feature = "xr")]
+        Command::Xr {
+            scene,
+            seed,
+            camera,
+            msaa,
+            frames,
+            ticks,
+            scale,
+            input,
+            record,
+            mute,
+            ..
+        } => match scene {
+            None => Err(marionette_core::Diagnostic::error(
+                "cli.no_scene",
+                "marionette xr needs a scene (or --probe)",
+            )
+            .into()),
+            Some(scene) => xr::run(xr::XrRun {
+                engine: &engine,
+                path: &scene,
+                seed,
+                camera,
+                msaa,
+                frames,
+                ticks,
+                scale,
+                input: input.as_deref(),
+                record: record.as_deref(),
+                mute,
+            }),
+        },
         Command::Stability {
             suite,
             modes,
@@ -433,6 +671,15 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                     .map(|v| merge("provider_use", v))
             }
         },
+        Command::Make {
+            prompt,
+            path,
+            brief,
+            template,
+            view,
+            generate,
+            refresh,
+        } => make(&mut agent, prompt, path, brief, template, view, generate, refresh),
         Command::Generate { command } => match command {
             GenerateCommand::Plan { names, dir } => agent
                 .call("generate_plan", json!({ "names": names, "dir": dir }))
@@ -717,6 +964,67 @@ fn approve_all(project: &str, read_only: bool) -> Result<Value, Errors> {
 }
 
 /// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.
+/// `marionette make`: a brief from the prompt (or file), then `game_make`.
+#[allow(clippy::too_many_arguments)]
+fn make(
+    agent: &mut Agent,
+    prompt: Option<String>,
+    path: Option<String>,
+    brief: Option<String>,
+    template: Option<String>,
+    view: Option<String>,
+    generate: bool,
+    refresh: bool,
+) -> Result<Value, Errors> {
+    let mut input = json!({ "generate": generate, "refresh": refresh });
+    let mut ask = json!({});
+    if let Some(file) = brief {
+        let text = std::fs::read_to_string(&file)
+            .map_err(|e| Errors::from(Diagnostic::error("io.read", format!("cannot read {file}: {e}"))))?;
+        let b: Value = serde_json::from_str(&text).map_err(|e| {
+            Errors::from(Diagnostic::error("agent.bad_input", format!("{file}: {e}")).file(file.clone()))
+        })?;
+        ask["brief"] = b;
+    } else if let Some(p) = prompt {
+        ask["prompt"] = json!(p);
+    }
+    if let Some(t) = template {
+        ask["template"] = json!(t);
+    }
+    if let Some(v) = view {
+        ask["view"] = json!(v);
+    }
+    let path = match path {
+        Some(p) => p,
+        None => {
+            let b = agent.call("game_brief", ask.clone())?;
+            slug(b["brief"]["title"].as_str().unwrap_or("game"))
+        }
+    };
+    input["path"] = json!(path);
+    if (!refresh || ask.get("brief").is_some())
+        && let Value::Object(m) = ask
+    {
+        input.as_object_mut().expect("object").extend(m);
+    }
+    agent.call("game_make", input).map(|v| merge("make", v))
+}
+
+/// A folder name from a title: lowercase letters and digits joined by `-`.
+fn slug(title: &str) -> String {
+    let s: String = title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let s = s
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if s.is_empty() { "game".into() } else { s }
+}
+
 fn merge(command: &str, v: Value) -> Value {
     let mut out = json!({ "ok": true, "command": command });
     if let (Value::Object(o), Value::Object(m)) = (&mut out, v) {
@@ -763,6 +1071,38 @@ fn human(value: &Value) -> String {
             value["render"]["triangles"]
         ),
         Some("stability") => stability::human(value),
+        Some("make") => {
+            let placeholders: Vec<&str> = value["assets"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|a| a["source"] == "placeholder")
+                .filter_map(|a| a["slot"].as_str())
+                .collect();
+            let art = if placeholders.is_empty() {
+                "all art in place".to_string()
+            } else {
+                format!(
+                    "placeholders for {} (run `marionette generate run` in {}, then `marionette make --refresh --path {}`)",
+                    placeholders.join(", "),
+                    s("path"),
+                    s("path")
+                )
+            };
+            format!(
+                "made \"{}\" ({} {}) in {}: the autopilot wins in {} s (seed {}); tests {} passed, {} failed; {}.\nplay: marionette run scenes/main.scene.json --project {}",
+                s("title"),
+                value["view"].as_str().unwrap_or(""),
+                value["template"].as_str().unwrap_or(""),
+                s("path"),
+                value["autoplay"]["seconds"],
+                value["autoplay"]["seed"],
+                s("tests_passed"),
+                s("tests_failed"),
+                art,
+                s("path")
+            )
+        }
         Some("fmt") if value["changed"] == json!(true) => format!("formatted {}", s("scene")),
         Some("fmt") => format!("already canonical: {}", s("scene")),
         Some("provider_use") => format!(

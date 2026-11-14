@@ -147,6 +147,8 @@ impl Renderer {
                     )
                 })
                 .collect(),
+            // Game meshes are not in ray-traced scenes yet (decision 0180).
+            rt: None,
         };
         GpuModel {
             parts: vec![part],
@@ -154,6 +156,9 @@ impl Renderer {
             skins: Vec::new(),
             rest: Vec::new(),
             rest_morph: Vec::new(),
+            bounds: mesh
+                .bounds()
+                .map(|(lo, hi)| (glam::Vec3::from(lo), glam::Vec3::from(hi))),
         }
     }
 }

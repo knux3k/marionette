@@ -57,3 +57,5 @@ it) would break the no-file-reads-during-a-tick rule and cost a decode per chang
 - Automatic reduced levels (meshoptimizer) run at upload; for meshes that change often a
   game should give its own levels, or rewrites pay for simplification each time.
 - Physics colliders from game meshes and a TypeScript API to build meshes are open.
+- Game meshes are not in the ray-traced scene yet (`rt: None`); they still cast and receive
+  shadow-map shadows.

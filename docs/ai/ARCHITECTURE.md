@@ -9,18 +9,29 @@
 | `crates/marionette-assets` | CPU assets: glTF/GLB models, PNG, primitive shapes, built-in images and font | glam, gltf, png | wgpu, winit, any marionette crate |
 | `crates/marionette-render` | wgpu renderer (PBR, sprites, UI), offscreen capture, image diff, the window | core, assets, wgpu, winit, glam, bytemuck, pollster | physics, input, audio, agent |
 | `crates/marionette-input` | Action maps, input event queue, recording, `Stage::Input` system | core | render, winit, physics, audio |
-| `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
+| `crates/marionette-gamepad` | Controllers (gilrs) to `pad:`/`axis:` device inputs, polled by window hooks (decision 0172) | gilrs | core, render, winit |
+| `crates/marionette-physics` | Rapier 3D/2D bodies from components, character controller, events, raycast, snapshots; round worlds (`GravityWell`, `PlanetCharacter`, decision 0230) | core, assets, rapier3d, rapier2d, postcard | render, input, audio |
 | `crates/marionette-audio` | Sound triggers, `hear` (3D gain, pan, rear low-pass, Doppler), headless sound log, layered `Music`, kira player with live voices (decision 0075) | core, kira | render, input, physics |
 | `crates/marionette-import` | Owned library, license declarations and records, Unity project and `.unitypackage` import, pool admission gate | core, assets, flate2, image | render, input, physics, audio |
+| `crates/marionette-nav` | Navigation on round, changing worlds: cube-sphere grids (`NavSurface`), obstacles, shared route searches and crowd steering on `Jobs` (decisions 0231, 0232) | core, jobs, postcard | render, input, physics, audio |
 | `crates/marionette-jobs` | Deterministic data-parallel jobs (`Jobs` resource over rayon) | bevy_ecs, rayon | any other marionette crate |
 | `crates/marionette-factory` | Factory simulation: machines, belts, recipes as flat arrays; item bulk draws | core, jobs | render, input, physics, audio |
 | `crates/marionette-providers` | AI provider interface (language, image, model3d), offline mock, Claude, Qwen and Tripo plug-ins as HTTP-as-data, `providers.json`, spend caps and ledger, keys files, network transport behind feature `net` | core, assets, sha2, schemars, ureq (optional) | render, input, physics, audio (decisions 0019, 0045) |
 | `crates/marionette-generate` | Asset generation: recipes, request-keyed cache, provenance, image approval, PNG and GLB post-processing (decision 0045) | core, assets, providers, glam, gltf | render, input, physics, audio, script |
 | `crates/marionette-anim` | Skeletal animation: `Animator` layers advanced and cross-faded on the tick, deterministic clip sampling and blending into a `Pose` (decision 0028); blend spaces and masked or additive overlays (decision 0074) | core, assets | render, input, physics, audio, script |
+| `crates/marionette-xr` | XR gameplay on the tick: rig, tracked head and hands (poses are input actions), grab and throw, snap or smooth turn, stick movement, teleport, comfort vignette value (decision 0190) | core, input, physics, libm | render, wgpu, openxr |
+| `crates/marionette-openxr` | Headsets through OpenXR: Vulkan device via wgpu-hal, a swapchain per eye rendered by `Renderer::render_views`, controller actions and hand tracking fed as input, haptics, vignette pass, `probe` (decision 0190) | core, render, input, xr, openxr, wgpu, ash | agent, physics |
+| `crates/marionette-ui3d` | World-space UI (optional, feature `ui3d`): `UiPanel` and `UiContent`, distance-field font atlas, layout, pointer and touch hook (`UiPointers`), draws through `QuadDrawHooks` (decisions 0200, 0201) | core, assets, fontdue | render, input, agent |
 | `crates/marionette-script` | TypeScript game scripts: oxc type stripping, QuickJS-ng host, deterministic sandbox, `Stage::Script` system, hot reload, `marionette.d.ts` generator | core, anim (for `playClip`), rquickjs, oxc, libm | render, input, physics, audio, agent |
 | `crates/marionette-jobs-ts` | Job TypeScript: numbers-only TypeScript subset compiled to WebAssembly (oxc, wasm-encoder), run on `Jobs` in wasmtime instances, hot reload, `jobs.d.ts`, `JobsModule` (`JobSchedule` steps over `JobData`, the `JobRunner` for scripts, decision 0070) | core, jobs, oxc, wasm-encoder, wasmtime, libm | render, input, physics, audio, agent, script |
+| `crates/marionette-save` | Save games: `SaveFormat`, `.msave` files (header line plus checksummed body), slots with backups, migrations, `SaveWriter` thread, `Autosaver` (decision 0076) | core, serde, sha2 | render, input, physics, audio, agent |
 | `crates/marionette-port` | Porting Unity C# and Unreal C++/Blueprint code: lexer and structural scanner, concept tables (`data/*.json`), port report, TypeScript skeletons, coordinate conversion | core, serde, schemars | render, input, physics, audio, import |
-| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
+| `crates/marionette-package` | Game packages per target: cargo or zigbuild build of the game binary, runtime file selection, manifest, licenses, reproducible zip (decision 0140) | core, host, sha2, flate2, schemars | render, input, physics, audio, script, agent |
+| `crates/marionette-editor` | Scene editor view (decision 0130): fly camera, CPU picking, inspector text, overlay as UI draws, edits planned as operation calls with undo, the window (`marionette edit`) and its offscreen twin (`editor_view`) | core, render, glam, winit | agent, input, physics, audio, script |
+| `crates/marionette-net` | Co-op networking (decisions 0210, 0211): `Transport`/`Datagram` interfaces, reliability layer (`Endpoint`), loopback network with simulated latency and loss, UDP, host-stamped lockstep `Host`/`Client` with hash checks and late join, `NetModule` (`NetPlayers`), `Lobbies`, `simulate` | core, input, bevy_ecs, serde, schemars | render, physics, audio, agent, any store SDK |
+| `crates/marionette-platform` | Achievements and stats from a definitions file (`Tracker`), cloud files, three-way save-folder sync, `OfflinePlatform` (decision 0213) | serde, sha2, schemars | any marionette crate, any store SDK |
+| `crates/marionette-steam` | Optional Steam backend: `Transport`, `Lobbies`, `Achievements`, `CloudFiles` over the game's own steam_api library loaded at run time; no SDK files (decision 0212). Used by a game's binary only | net, platform, libloading | agent, cli (never in the `marionette` tool) |
+| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | all crates above (script, import, pool, generate, port, jobs-ts, netplay, nav, save, editor behind cargo features, decision 0062), rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary and `main_with(engine)` for a game's binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
 Planned crates (not created yet): marionette-ai-runtime (line 10).
@@ -38,7 +49,9 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
    tick's collisions, due timers, `update`). Decision 0022. Then entities whose `DestroyAt`
    tick has come get `onDestroy` and are removed (id order), and scripts first used by
    entities spawned this tick are loaded. Decision 0021.
-3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`).
+3. `Stage::Logic`: `random_impulse`, `follow`, `integrate` (`crates/marionette-core/src/builtin.rs`);
+   then `nav_tick` (`crates/marionette-nav/src/lib.rs`): obstacles, route searches, steering,
+   moving `Direct` agents or writing `MoveIntent`.
 4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): bodies for
    spawned entities and removal of bodies of removed ones (`sync`), kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
@@ -82,7 +95,8 @@ A session (`session_start`) is an in-memory copy of a scene with its own tick an
 long as the process holding it (the MCP server). Edits name exactly one target: `scene` (file:
 validated, written atomically, canonical) or `session` (live world: validated, reloaded keeping
 tick and RNG). File edits never touch sessions; session edits never touch files;
-`session_save` writes a session to a file. Snapshots (`session_snapshot`, `session_restore`) use
+`session_save` writes a session to a file. Save games (`save_*`, decision 0076) write the same
+state as snapshots into crash-safe `.msave` slot files. Snapshots (`session_snapshot`, `session_restore`) use
 `Sim::save_state` / `Sim::restore`. See decision 0009.
 
 ## Renderer
@@ -92,7 +106,8 @@ tick and RNG). File edits never touch sessions; session edits never touch files;
 1. PBR models, instanced: one draw call per (asset, part, material override) group, per-instance
    model matrix and material factors in a vertex buffer, normal matrix computed in the shader.
    Bind groups: 0 view (dynamic offset, one slot per view), 1 lights, 2 material textures.
-   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025).
+   Modules with many identical objects add a `BulkDrawHook` instead of entities (decision 0025);
+   the hook gets a `BulkDrawContext` with the camera's eye and forward for culling and levels of detail (decision 0110).
 2. Sprites, same view, alpha blended, depth-tested without depth writes.
 3. UI in screen pixels (separate view buffer), no depth test.
 
@@ -105,7 +120,13 @@ the final pass before sprites and UI (`post.rs`, decision 0064); `CastShadows` o
 spot light adds depth passes into one shadow map array (decision 0065); `Environment` adds a
 CPU-prefiltered sky texture for diffuse and reflections and an optional sky background
 (`environment.rs`, decision 0066); glTF emissive comes through a per-material uniform
-(decision 0067).
+(decision 0067). Remaining lighting (decisions 0090 to 0093): `ShadowCascades` puts 2 to 4 sun
+maps in the sun's shadow map array; `Environment` reads `.hdr`/`.exr` (`marionette-assets`
+`hdr.rs`); `ReflectionProbe` pictures are captured in `prepare` and prefiltered like the
+environment (`probes.rs`); `RayTracing` uses a variant of the PBR shader with ray queries
+(`raytrace.rs`, `shaders/raytrace.wgsl`; stubs between `RT:BEGIN` and `RT:END` in `pbr.wgsl`),
+its own pipelines and lights group, a BLAS per static part and a TLAS per frame, only on GPUs
+with ray queries.
 
 Meshes built in game code (`GameMeshes`, `mesh:<name>` assets, decision 0180) become
 ordinary one-part GPU models in `renderer/game_mesh.rs`, re-uploaded (in place when sizes
@@ -151,3 +172,15 @@ followed by `tick=<n>` and `rng=<state>`.
 Not in the hash: `EventLog` (collisions, jumps, sounds), `SceneDir`, input `DeviceState`,
 `InputQueue`, `InputRecording`, Rapier internals (`Physics` resource), session logs and stats.
 Rapier internals and input state are carried by snapshots instead.
+
+## Headsets (decision 0190)
+
+`marionette xr <scene>` (`crates/marionette-cli/src/xr.rs`) loads the scene and calls
+`marionette_openxr::run`: OpenXR instance, Vulkan made by the runtime and wrapped by wgpu
+(`gpu.rs`), session, play space (stage, else local), one swapchain per eye. Per frame:
+`xrWaitFrame`, controls read at the predicted display time and fed as input events
+(`controls.rs`), ticks run to catch up, eyes located and rendered (`render_eyes`), vignette
+(`vignette.rs`), `xrEndFrame` with one projection layer. In the tick, `marionette-xr`
+(`systems.rs`, `Stage::Logic`) moves the rig, places tracked entities, keeps hand history and
+grabs or throws. Scripted poses (`marionette_xr::pose::events`) drive the same systems with no
+headset (`crates/marionette-cli/tests/xr.rs`).
