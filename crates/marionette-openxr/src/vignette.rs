@@ -140,8 +140,8 @@ impl Vignette {
 /// memory, copied into a plain 16-byte array instead of reinterpreting the floats in place.
 fn f32_bytes(v: [f32; 4]) -> [u8; 16] {
     let mut out = [0u8; 16];
-    for (chunk, x) in out.chunks_exact_mut(4).zip(v) {
-        chunk.copy_from_slice(&x.to_ne_bytes());
+    for (chunk, x) in out.as_chunks_mut::<4>().0.iter_mut().zip(v) {
+        *chunk = x.to_ne_bytes();
     }
     out
 }
