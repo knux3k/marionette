@@ -94,6 +94,7 @@ impl SaveFile {
         }
         let header = SaveHeader {
             format: FORMAT,
+            // The format stays in the world; the header needs its own copy of the name.
             game: format.game.clone(),
             version: format.version,
             tick: snap.tick,
@@ -109,14 +110,15 @@ impl SaveFile {
         Ok(Self { header, body })
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let head = serde_json::to_string(&self.header).expect("headers always serialize");
+    pub fn to_bytes(&self) -> Result<Vec<u8>, Errors> {
+        let head = serde_json::to_string(&self.header)
+            .map_err(|e| Diagnostic::error(crate::codes::FORMAT, format!("cannot write the header: {e}")))?;
         let mut out = Vec::with_capacity(MAGIC.len() + head.len() + self.body.len() + 8);
         out.extend_from_slice(format!("{MAGIC} {FORMAT}\n").as_bytes());
         out.extend_from_slice(head.as_bytes());
         out.push(b'\n');
         out.extend_from_slice(&self.body);
-        out
+        Ok(out)
     }
 
     /// Decodes and checks a whole file.

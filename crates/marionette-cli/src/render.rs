@@ -209,7 +209,7 @@ impl Saves {
         let registry = std::sync::Arc::new(marionette_core::module::registry_with(&engine.modules()));
         Ok(Self {
             auto: marionette_save::Autosaver::new(sim, &store),
-            writer: marionette_save::SaveWriter::new(store, registry),
+            writer: marionette_save::SaveWriter::new(store, registry)?,
             written: 0,
             last: None,
         })

@@ -19,3 +19,5 @@
 - `a_script_asking_for_a_save_gets_its_own_slot` in `crates/marionette-agent/tests/save_ops.rs`:
   a TypeScript `engine.emit("save_request", { slot, label })` makes the autosaver write that
   slot with the label.
+
+Skill: `.claude/skills/marionette-save-games/SKILL.md` (feature `save`); `cargo test -p marionette-cli --test skills` checks its size, name and listing.

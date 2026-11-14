@@ -196,6 +196,7 @@ fn apply_change(scene: &mut Scene, change: &Change) -> Result<(), String> {
                 let (obj, key) = parent(v, field, true)
                     .ok_or_else(|| format!("`{on}.{field}` is not inside an object"))?;
                 if *overwrite || !obj.contains_key(key) {
+                    // One step can set the field on many objects, each needs its own value.
                     obj.insert(key.to_string(), value.clone());
                 }
             }

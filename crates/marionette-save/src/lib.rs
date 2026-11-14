@@ -106,6 +106,7 @@ impl Module for SaveModule {
     }
 
     fn init(&self, world: &mut World) -> marionette_core::Result<()> {
+        // Once per session start: the module keeps its Rust steps for the next init.
         let mut all = (*self.rust).clone();
         if let Some(file) = world
             .get_resource::<SaveFormat>()
@@ -202,7 +203,7 @@ pub fn restore(sim: &mut Sim, file: SaveFile) -> Result<Loaded, Errors> {
     let migrations = sim
         .world
         .get_resource::<SaveMigrations>()
-        .map(|m| m.0.clone())
+        .map(|m| Arc::clone(&m.0)) // a refcount bump, so `sim` can be borrowed mutably below
         .unwrap_or_default();
     let names: Vec<&'static str> = sim.modules().iter().map(|m| m.name()).collect();
     let (snap, from, exact) = prepare(file, &current, &migrations, &names)?;

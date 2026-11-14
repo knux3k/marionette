@@ -58,6 +58,7 @@ matches: `.claude/skills/<name>/SKILL.md` (agents that read skills load them by 
 | `marionette-package-game` | package a game for Windows, Linux, Steam Deck, Steam Frame |
 | `marionette-port-unity-unreal` | port Unity or Unreal code |
 | `marionette-round-worlds` | movement and navigation on round planets |
+| `marionette-save-games` | save slots, autosave, versions and migrations |
 | `marionette-synth-audio` | synth voices, streamed music, generated samples, audio checked as numbers |
 | `marionette-test-game` | scenarios, replays, stability soaks |
 | `marionette-tune-render-cost` | level of detail, render scale, foveation, anti-aliasing |

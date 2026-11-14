@@ -83,7 +83,7 @@ fn the_writer_thread_writes_what_save_state_holds_and_drop_finishes_every_save()
     let text = scene(None);
     let mut s = sim(&text, &d);
     let registry = Arc::new(marionette_core::module::registry_with(s.modules()));
-    let writer = SaveWriter::new(store.clone(), registry);
+    let writer = SaveWriter::new(store.clone(), registry).unwrap();
     let mut expected = Vec::new();
     for i in 0..10 {
         s.run(3);
@@ -108,7 +108,7 @@ fn a_newer_save_of_a_waiting_slot_replaces_the_waiting_one() {
     let store = SaveStore::open(d.join("saves")).unwrap();
     let mut s = sim(&scene(None), &d);
     let registry = Arc::new(marionette_core::module::registry_with(s.modules()));
-    let writer = SaveWriter::new(store.clone(), registry);
+    let writer = SaveWriter::new(store.clone(), registry).unwrap();
     for _ in 0..50 {
         s.step();
         writer
@@ -333,7 +333,7 @@ fn autosave_rotates_its_slots_and_save_requests_name_their_own() {
     let store = SaveStore::open(d.join("saves")).unwrap();
     let mut s = sim(&scene(Some(format("g", 1, 10, 2, ""))), &d);
     let registry = Arc::new(marionette_core::module::registry_with(s.modules()));
-    let writer = SaveWriter::new(store.clone(), registry);
+    let writer = SaveWriter::new(store.clone(), registry).unwrap();
     let mut auto = Autosaver::new(&s, &store);
     let mut queued = Vec::new();
     for t in 0..35 {
