@@ -30,3 +30,6 @@
     `stability/suite.json` (STABILITY.md, decision 0031); add it in the same change.
 15. Weigh every change against the four focuses (FOCUSES.md): modularity, token use,
     performance, graphics.
+16. Rust code follows [CODE-RULES.md](CODE-RULES.md): no new `unsafe` without the owner's
+    review, no `unwrap`/`expect` outside tests, `.clone()` and `Box<dyn>` only with a reason,
+    plain flat data first (decision 0104).

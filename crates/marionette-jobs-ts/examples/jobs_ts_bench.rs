@@ -64,18 +64,22 @@ fn rust_chunk(s: [&mut [f32]; 6]) {
     }
 }
 
-#[derive(Clone, Copy)]
-struct Ptrs([usize; 6]);
-
 fn rust_step(jobs: &Jobs, s: &mut State) {
     let n = s[0].len();
-    let p = Ptrs([0, 1, 2, 3, 4, 5].map(|i| s[i].as_mut_ptr() as usize));
-    jobs.map_chunks(n, CHUNK, move |r| {
-        let p = p;
-        // SAFETY: the six arrays outlive the call and chunk ranges are disjoint.
-        let s =
-            p.0.map(|a| unsafe { std::slice::from_raw_parts_mut((a as *mut f32).add(r.start), r.len()) });
-        rust_chunk(s);
+    // One lock per chunk holding that chunk's six slices: each call takes its own, so the
+    // compiler can see every element has one writer (the same scheme as the job runtime).
+    let mut columns = s.iter_mut().map(|v| v.chunks_mut(CHUNK));
+    let mut chunks: Vec<std::sync::Mutex<Option<[&mut [f32]; 6]>>> = Vec::new();
+    if let [Some(a), Some(b), Some(c), Some(d), Some(e), Some(f)] = [(); 6].map(|_| columns.next()) {
+        for (((((a, b), c), d), e), f) in a.zip(b).zip(c).zip(d).zip(e).zip(f) {
+            chunks.push(std::sync::Mutex::new(Some([a, b, c, d, e, f])));
+        }
+    }
+    jobs.map_chunks(n, CHUNK, |r| {
+        let taken = chunks[r.start / CHUNK].lock().ok().and_then(|mut g| g.take());
+        if let Some(slices) = taken {
+            rust_chunk(slices);
+        }
     });
 }
 

@@ -13,3 +13,6 @@ bevy_ecs.workspace = true
 glam = "0.34"
 winit = "0.30.13"
 serde_json.workspace = true
+
+[lints]
+workspace = true

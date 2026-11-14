@@ -11,3 +11,6 @@ marionette-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 schemars = "1.2"
+
+[lints]
+workspace = true

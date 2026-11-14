@@ -20,3 +20,6 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 
 [dev-dependencies]
 gltf = { version = "1.4.1", default-features = false, features = ["utils", "names"] }
+
+[lints]
+workspace = true

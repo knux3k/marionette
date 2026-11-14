@@ -26,7 +26,7 @@ table below is for everything else.
 | Task | Read |
 | --- | --- |
 | Pick or continue a workstream | your section of [WORKSTREAMS.md](WORKSTREAMS.md) |
-| Change engine code | the crate map and the relevant section of [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Change engine code | [CODE-RULES.md](CODE-RULES.md), the crate map and the relevant section of [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Add a component, system, operation, crate, scene, test | the recipe in [HOWTO.md](HOWTO.md) |
 | Build, test, toolchain, durations, no GPU | [ENVIRONMENT.md](ENVIRONMENT.md) |
 | Rerun or add a proof (hashes, reference images, test names) | one file of `docs/ai/proofs/` (index: [PROOFS.md](PROOFS.md)) |

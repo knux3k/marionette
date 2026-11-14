@@ -175,19 +175,117 @@ impl Arg<'_> {
     }
 }
 
-/// An argument reduced to plain addresses, so chunk calls can run on any worker.
+/// A read-only array argument, borrowed from the caller for the whole run.
 #[derive(Clone, Copy)]
-enum Planned {
-    Chunked { addr: usize, elem: Elem, write: bool },
-    All { addr: usize, len: usize, elem: Elem },
+enum Data<'a> {
+    F32(&'a [f32]),
+    F64(&'a [f64]),
+    I32(&'a [i32]),
+}
+
+impl<'a> Data<'a> {
+    fn len(self) -> usize {
+        match self {
+            Data::F32(s) => s.len(),
+            Data::F64(s) => s.len(),
+            Data::I32(s) => s.len(),
+        }
+    }
+
+    fn elem(self) -> Elem {
+        match self {
+            Data::F32(_) => Elem::F32,
+            Data::F64(_) => Elem::F64,
+            Data::I32(_) => Elem::I32,
+        }
+    }
+
+    fn slice(self, r: std::ops::Range<usize>) -> Data<'a> {
+        match self {
+            Data::F32(s) => Data::F32(&s[r]),
+            Data::F64(s) => Data::F64(&s[r]),
+            Data::I32(s) => Data::I32(&s[r]),
+        }
+    }
+
+    /// The elements as bytes in memory order. WebAssembly memory is little-endian, and so is
+    /// every target the engine builds for (x86-64, ARM64), so these are the bytes job memory
+    /// holds.
+    fn bytes(self) -> &'a [u8] {
+        match self {
+            Data::F32(s) => bytemuck::cast_slice(s),
+            Data::F64(s) => bytemuck::cast_slice(s),
+            Data::I32(s) => bytemuck::cast_slice(s),
+        }
+    }
+}
+
+/// One chunk's part of a writable array: the only reference to those elements.
+enum Piece<'a> {
+    F32(&'a mut [f32]),
+    F64(&'a mut [f64]),
+    I32(&'a mut [i32]),
+}
+
+impl Piece<'_> {
+    fn data(&self) -> Data<'_> {
+        match self {
+            Piece::F32(s) => Data::F32(s),
+            Piece::F64(s) => Data::F64(s),
+            Piece::I32(s) => Data::I32(s),
+        }
+    }
+
+    /// The elements as writable bytes (see [`Data::bytes`] for the byte order).
+    fn bytes_mut(&mut self) -> &mut [u8] {
+        match self {
+            Piece::F32(s) => bytemuck::cast_slice_mut(s),
+            Piece::F64(s) => bytemuck::cast_slice_mut(s),
+            Piece::I32(s) => bytemuck::cast_slice_mut(s),
+        }
+    }
+}
+
+/// Splits a writable array into one piece per chunk, each behind its own lock.
+fn pieces<'a, T>(
+    data: &'a mut [T],
+    chunk: usize,
+    wrap: fn(&'a mut [T]) -> Piece<'a>,
+) -> Vec<Mutex<Option<Piece<'a>>>> {
+    data.chunks_mut(chunk)
+        .map(|c| Mutex::new(Some(wrap(c))))
+        .collect()
+}
+
+/// An argument as the chunk calls see it. Chunk calls run on any worker at once, so a
+/// writable array is split up front into one piece per chunk (chunk `i` covers elements
+/// `i * chunk ..`), each in its own `Mutex<Option<..>>`: the call for chunk `i` takes piece
+/// `i` out, so every element has exactly one writer and the compiler can check it. The locks
+/// are never contended (one taker each).
+enum Planned<'a> {
+    /// Read-only array cut to each call's chunk.
+    ChunkedIn(Data<'a>),
+    /// Writable array, one piece per chunk.
+    ChunkedOut {
+        elem: Elem,
+        pieces: Vec<Mutex<Option<Piece<'a>>>>,
+    },
+    /// Read-only array every call sees whole.
+    All(Data<'a>),
     Scalar(Val),
     ChunkStart,
 }
 
-// SAFETY: the addresses come from slices borrowed for the whole `run` call; chunk calls
-// touch disjoint ranges of the mutable ones and only read the others.
-unsafe impl Send for Planned {}
-unsafe impl Sync for Planned {}
+impl Planned<'_> {
+    /// Element type of a chunked array (in or out).
+    fn chunk_elem(&self) -> Option<Elem> {
+        match self {
+            Planned::ChunkedIn(d) => Some(d.elem()),
+            Planned::ChunkedOut { elem, .. } => Some(*elem),
+            _ => None,
+        }
+    }
+}
 
 struct Slot {
     store: Store<()>,
@@ -323,7 +421,13 @@ impl JobProgram {
             })
     }
 
-    fn plan(&self, info: &FunctionInfo, len: usize, args: &mut [Arg]) -> Result<Vec<Planned>, Diagnostic> {
+    fn plan<'a>(
+        &self,
+        info: &FunctionInfo,
+        len: usize,
+        chunk: usize,
+        args: &'a mut [Arg],
+    ) -> Result<Vec<Planned<'a>>, Diagnostic> {
         let args_err = |m: String| {
             Diagnostic::error(codes::ARGS, m).file(self.file()).fix(format!(
                 "`{}` takes ({})",
@@ -341,48 +445,52 @@ impl JobProgram {
         }
         let mut plan = Vec::with_capacity(args.len());
         for (arg, (pname, p)) in args.iter_mut().zip(&info.params) {
-            let chunked = |addr: usize, n: usize, elem: Elem, write: bool| {
-                if n != len {
-                    return Err(args_err(format!(
+            let check = |n: usize| {
+                if n == len {
+                    Ok(())
+                } else {
+                    Err(args_err(format!(
                         "array `{pname}` has {n} elements but the run covers {len}"
-                    )));
+                    )))
                 }
-                Ok(Planned::Chunked { addr, elem, write })
             };
             let planned = match (arg, p) {
                 (Arg::F32(s), ParamType::Array(Elem::F32)) => {
-                    chunked(s.as_mut_ptr() as usize, s.len(), Elem::F32, true)?
+                    check(s.len())?;
+                    Planned::ChunkedOut {
+                        elem: Elem::F32,
+                        pieces: pieces(s, chunk, Piece::F32),
+                    }
                 }
                 (Arg::F64(s), ParamType::Array(Elem::F64)) => {
-                    chunked(s.as_mut_ptr() as usize, s.len(), Elem::F64, true)?
+                    check(s.len())?;
+                    Planned::ChunkedOut {
+                        elem: Elem::F64,
+                        pieces: pieces(s, chunk, Piece::F64),
+                    }
                 }
                 (Arg::I32(s), ParamType::Array(Elem::I32)) => {
-                    chunked(s.as_mut_ptr() as usize, s.len(), Elem::I32, true)?
+                    check(s.len())?;
+                    Planned::ChunkedOut {
+                        elem: Elem::I32,
+                        pieces: pieces(s, chunk, Piece::I32),
+                    }
                 }
                 (Arg::F32In(s), ParamType::Array(Elem::F32)) => {
-                    chunked(s.as_ptr() as usize, s.len(), Elem::F32, false)?
+                    check(s.len())?;
+                    Planned::ChunkedIn(Data::F32(s))
                 }
                 (Arg::F64In(s), ParamType::Array(Elem::F64)) => {
-                    chunked(s.as_ptr() as usize, s.len(), Elem::F64, false)?
+                    check(s.len())?;
+                    Planned::ChunkedIn(Data::F64(s))
                 }
                 (Arg::I32In(s), ParamType::Array(Elem::I32)) => {
-                    chunked(s.as_ptr() as usize, s.len(), Elem::I32, false)?
+                    check(s.len())?;
+                    Planned::ChunkedIn(Data::I32(s))
                 }
-                (Arg::F32All(s), ParamType::Array(Elem::F32)) => Planned::All {
-                    addr: s.as_ptr() as usize,
-                    len: s.len(),
-                    elem: Elem::F32,
-                },
-                (Arg::F64All(s), ParamType::Array(Elem::F64)) => Planned::All {
-                    addr: s.as_ptr() as usize,
-                    len: s.len(),
-                    elem: Elem::F64,
-                },
-                (Arg::I32All(s), ParamType::Array(Elem::I32)) => Planned::All {
-                    addr: s.as_ptr() as usize,
-                    len: s.len(),
-                    elem: Elem::I32,
-                },
+                (Arg::F32All(s), ParamType::Array(Elem::F32)) => Planned::All(Data::F32(s)),
+                (Arg::F64All(s), ParamType::Array(Elem::F64)) => Planned::All(Data::F64(s)),
+                (Arg::I32All(s), ParamType::Array(Elem::I32)) => Planned::All(Data::I32(s)),
                 (Arg::Number(v), ParamType::Number) => Planned::Scalar(Val::F64(v.to_bits())),
                 (Arg::Int(v), ParamType::I32) => Planned::Scalar(Val::I32(*v)),
                 (Arg::Bool(v), ParamType::Boolean) => Planned::Scalar(Val::I32(*v as i32)),
@@ -416,15 +524,16 @@ impl JobProgram {
         args: &mut [Arg],
     ) -> Result<Vec<f64>, Diagnostic> {
         let info = self.exported(name)?;
-        let plan = self.plan(info, len, args)?;
+        let chunk = chunk.max(1);
+        let plan = self.plan(info, len, chunk, args)?;
         if len > i32::MAX as usize {
             return Err(
                 Diagnostic::error(codes::ARGS, "a run covers at most 2^31 - 1 elements").file(self.file()),
             );
         }
         let run_id = self.runs.fetch_add(1, Ordering::Relaxed) + 1;
-        let results = jobs.map_chunks(len, chunk.max(1), |range| {
-            self.call_chunk(info, &plan, run_id, range)
+        let results = jobs.map_chunks(len, chunk, |range| {
+            self.call_chunk(info, &plan, run_id, range.start / chunk, range)
         });
         let mut out = Vec::new();
         for r in results {
@@ -491,10 +600,11 @@ impl JobProgram {
         info: &FunctionInfo,
         plan: &[Planned],
         run_id: u64,
+        index: usize,
         range: std::ops::Range<usize>,
     ) -> Result<Option<f64>, Diagnostic> {
         let mut slot = self.take_slot()?;
-        let result = self.call_in(&mut slot, info, plan, run_id, range);
+        let result = self.call_in(&mut slot, info, plan, run_id, index, range);
         // A slot whose call trapped is dropped (its state is unknown); others go back.
         if result.is_ok() {
             self.slots.lock().expect("slot pool").push(slot);
@@ -508,22 +618,33 @@ impl JobProgram {
         info: &FunctionInfo,
         plan: &[Planned],
         run_id: u64,
+        index: usize,
         range: std::ops::Range<usize>,
     ) -> Result<Option<f64>, Diagnostic> {
         let n = range.len();
+        // This call's pieces of the writable arrays, in argument order; nobody else has them.
+        let mut mine: Vec<Option<Piece>> = Vec::with_capacity(plan.len());
+        for p in plan {
+            mine.push(match p {
+                Planned::ChunkedOut { pieces, .. } => pieces
+                    .get(index)
+                    .and_then(|m| m.lock().map_or_else(|e| e.into_inner().take(), |mut g| g.take())),
+                _ => None,
+            });
+        }
         // Layout: whole arrays first (copied once per run and instance), then chunk arrays.
         let mut offsets = Vec::with_capacity(plan.len());
         let mut at = ALIGN; // keep address 0 unused
         for p in plan {
-            if let Planned::All { len, elem, .. } = p {
+            if let Planned::All(d) = p {
                 offsets.push(at);
-                at = align(at + len * elem.size() as usize);
+                at = align(at + d.len() * d.elem().size() as usize);
             } else {
                 offsets.push(0);
             }
         }
         for (i, p) in plan.iter().enumerate() {
-            if let Planned::Chunked { elem, .. } = p {
+            if let Some(elem) = p.chunk_elem() {
                 offsets[i] = at;
                 at = align(at + n * elem.size() as usize);
             }
@@ -543,22 +664,19 @@ impl JobProgram {
         let refresh_shared = slot.shared_run != run_id;
         {
             let mem = slot.memory.data_mut(&mut slot.store);
-            for (p, &off) in plan.iter().zip(&offsets) {
-                match *p {
-                    Planned::All { addr, len, elem } if refresh_shared => {
-                        let bytes = len * elem.size() as usize;
-                        // SAFETY: `addr` points at a live slice of `len` elements (see `Planned`).
-                        let src = unsafe { std::slice::from_raw_parts(addr as *const u8, bytes) };
-                        mem[off..off + bytes].copy_from_slice(src);
+            for ((p, piece), &off) in plan.iter().zip(&mine).zip(&offsets) {
+                match (p, piece) {
+                    (Planned::All(d), _) if refresh_shared => {
+                        let src = d.bytes();
+                        mem[off..off + src.len()].copy_from_slice(src);
                     }
-                    Planned::Chunked { addr, elem, .. } => {
-                        let size = elem.size() as usize;
-                        let bytes = n * size;
-                        // SAFETY: the chunk `range` lies inside the slice, which lives for the run.
-                        let src = unsafe {
-                            std::slice::from_raw_parts((addr + range.start * size) as *const u8, bytes)
-                        };
-                        mem[off..off + bytes].copy_from_slice(src);
+                    (Planned::ChunkedIn(d), _) => {
+                        let src = d.slice(range.clone()).bytes();
+                        mem[off..off + src.len()].copy_from_slice(src);
+                    }
+                    (Planned::ChunkedOut { .. }, Some(piece)) => {
+                        let src = piece.data().bytes();
+                        mem[off..off + src.len()].copy_from_slice(src);
                     }
                     _ => {}
                 }
@@ -567,16 +685,16 @@ impl JobProgram {
         slot.shared_run = run_id;
         let mut params = Vec::with_capacity(plan.len() * 2);
         for (p, &off) in plan.iter().zip(&offsets) {
-            match *p {
-                Planned::Chunked { .. } => {
+            match p {
+                Planned::ChunkedIn(_) | Planned::ChunkedOut { .. } => {
                     params.push(Val::I32(off as i32));
                     params.push(Val::I32(n as i32));
                 }
-                Planned::All { len, .. } => {
+                Planned::All(d) => {
                     params.push(Val::I32(off as i32));
-                    params.push(Val::I32(len as i32));
+                    params.push(Val::I32(d.len() as i32));
                 }
-                Planned::Scalar(v) => params.push(v),
+                Planned::Scalar(v) => params.push(*v),
                 Planned::ChunkStart => params.push(Val::I32(range.start as i32)),
             }
         }
@@ -594,19 +712,11 @@ impl JobProgram {
             .map_err(|e| self.trap_diagnostic(info, &range, e))?;
         // Copy writable chunk arrays back.
         let mem = slot.memory.data(&slot.store);
-        for (p, &off) in plan.iter().zip(&offsets) {
-            if let Planned::Chunked {
-                addr,
-                elem,
-                write: true,
-            } = *p
-            {
-                let size = elem.size() as usize;
-                let bytes = n * size;
-                // SAFETY: as above; the chunk ranges of different calls never overlap.
-                let dst =
-                    unsafe { std::slice::from_raw_parts_mut((addr + range.start * size) as *mut u8, bytes) };
-                dst.copy_from_slice(&mem[off..off + bytes]);
+        for ((p, piece), &off) in plan.iter().zip(&mut mine).zip(&offsets) {
+            if let (Planned::ChunkedOut { .. }, Some(piece)) = (p, piece) {
+                let dst = piece.bytes_mut();
+                let len = dst.len();
+                dst.copy_from_slice(&mem[off..off + len]);
             }
         }
         Ok(match (info.returns, results.first()) {

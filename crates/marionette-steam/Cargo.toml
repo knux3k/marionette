@@ -10,3 +10,8 @@ rust-version.workspace = true
 marionette-net = { path = "../marionette-net" }
 marionette-platform = { path = "../marionette-platform" }
 libloading = "0.8"
+
+# Calls C libraries or the OS, so `unsafe_code` is not forbidden here; only the files listed in
+# `repo_hygiene` may hold `unsafe`, each block with a SAFETY comment (decision 0104).
+[lints.rust]
+unsafe_code = "allow"

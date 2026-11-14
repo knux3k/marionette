@@ -13,3 +13,6 @@ marionette-physics = { path = "../marionette-physics" }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 libm = "0.2"
+
+[lints]
+workspace = true

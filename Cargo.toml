@@ -9,6 +9,13 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.95"
 
+# Rules every crate that opts in with `[lints] workspace = true` follows (decision 0104).
+# `deny`, not `forbid`, so the one test allocator can say `allow`; `repo_hygiene` keeps the list.
+# Crates that call C libraries or the OS (cli, host, openxr, render, script, steam) do not opt
+# in; `repo_hygiene` lists the only files allowed to hold `unsafe`.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
 [workspace.dependencies]
 marionette-core = { path = "crates/marionette-core" }
 marionette-host = { path = "crates/marionette-host" }

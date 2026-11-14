@@ -36,9 +36,7 @@ use marionette_core::rng::SimRng;
 use marionette_core::scene::{SceneId, SceneName};
 use marionette_core::{Diagnostic, Errors, Kind, Registry};
 use rquickjs::function::Opt;
-use rquickjs::{
-    Context, Ctx, Exception, Function, Module as JsModule, Object, Persistent, Runtime, TypedArray, Value,
-};
+use rquickjs::{Context, Ctx, Exception, Function, Module as JsModule, Object, Runtime, TypedArray, Value};
 use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -181,7 +179,7 @@ pub fn reload(world: &mut World) -> marionette_core::Result<Vec<String>> {
     };
     match ScriptHost::build(world, registry)? {
         Some(h) => {
-            let paths = h.scripts.keys().cloned().collect();
+            let paths = h.scripts.iter().cloned().collect();
             world.insert_resource(h);
             Ok(paths)
         }
@@ -192,9 +190,17 @@ pub fn reload(world: &mut World) -> marionette_core::Result<Vec<String>> {
     }
 }
 
-/// The world a script call may touch. Set only while `run_scripts` calls into JavaScript.
+/// What a script call may touch, set only while `run_scripts` calls into JavaScript. The
+/// world is moved in for the calls and moved back out after them, so engine functions called
+/// from JavaScript reach it through this lock and nothing else can touch it meanwhile (no
+/// pointer, nothing for the compiler to take on trust).
+struct Lent {
+    world: World,
+    bridge: Bridge,
+}
+
+/// Lookups for the current script calls.
 struct Bridge {
-    world: *mut World,
     registry: Arc<Registry>,
     ids: BTreeMap<u64, Entity>,
     /// Scene names to ids; the lowest id wins when a name repeats.
@@ -202,36 +208,31 @@ struct Bridge {
     current: u64,
 }
 
-// SAFETY: the pointer is only dereferenced on the thread running `run_scripts`, while that
-// function holds `&mut World` and does not use it until every script call has returned.
-unsafe impl Send for Bridge {}
+type Shared = Arc<Mutex<Option<Lent>>>;
 
-type Shared = Arc<Mutex<Option<Bridge>>>;
+/// Global JavaScript object holding each loaded script's module namespace by path. Keeping
+/// them in JavaScript (not as saved handles in Rust) leaves this host plain data that is safe
+/// to send between threads, which rquickjs' saved handles are not.
+const MODULES: &str = "__marionetteModules";
 
-/// Loaded scripts of one world. Field order matters: saved functions are dropped before
-/// the context and the runtime.
+/// Loaded scripts of one world. Field order matters: the context is dropped before the
+/// runtime.
 #[derive(Resource)]
 pub struct ScriptHost {
-    scripts: BTreeMap<String, Persistent<Object<'static>>>,
+    /// Paths whose modules are in the `MODULES` object.
+    scripts: std::collections::BTreeSet<String>,
     /// Scripts first used by a spawned entity that failed to load (reported once).
     failed: std::collections::BTreeSet<String>,
-    run: Persistent<Function<'static>>,
-    destroy: Persistent<Function<'static>>,
     bridge: Shared,
+    /// An empty world that stands in for the real one while scripts hold it (see `lend`).
+    /// Kept between ticks: making a fresh empty world costs about 80 allocations.
+    spare: Mutex<Option<World>>,
     registry: Arc<Registry>,
     /// Interrupt checks used by the current call; reset before each call.
     fuel: Arc<AtomicU64>,
     ctx: Context,
     rt: Runtime,
 }
-
-// SAFETY: built with rquickjs' `parallel` feature, so `Runtime` and `Context` are Send + Sync
-// and every use of the saved values goes through `Context::with`, which locks the runtime.
-// `Persistent` is not marked Send/Sync by rquickjs only because it cannot know that; the
-// saved values here are restored only inside `with` and dropped with the host, before the
-// context and runtime (field order).
-unsafe impl Send for ScriptHost {}
-unsafe impl Sync for ScriptHost {}
 
 fn engine_error(e: impl std::fmt::Display) -> Errors {
     Diagnostic::error(codes::ENGINE, format!("cannot create the script engine: {e}")).into()
@@ -342,28 +343,29 @@ impl ScriptHost {
         let ctx = Context::full(&rt).map_err(engine_error)?;
         let bridge: Shared = Arc::new(Mutex::new(None));
         ctx.with(|ctx| install(&ctx, &bridge)).map_err(engine_error)?;
-        let (scripts, run, destroy) = ctx.with(|ctx| -> marionette_core::Result<_> {
+        let scripts = ctx.with(|ctx| -> marionette_core::Result<_> {
             ctx.eval::<(), _>(include_str!("prelude.js"))
                 .map_err(|e| engine_error(exception_text(&ctx, e)))?;
-            let run: Function = ctx.globals().get("__run").map_err(engine_error)?;
-            let destroy: Function = ctx.globals().get("__destroy").map_err(engine_error)?;
-            let mut scripts = BTreeMap::new();
+            // The prelude's entry points must exist before any script runs.
+            let _: Function = ctx.globals().get("__run").map_err(engine_error)?;
+            let _: Function = ctx.globals().get("__destroy").map_err(engine_error)?;
+            let modules = Object::new(ctx.clone()).map_err(engine_error)?;
+            ctx.globals()
+                .set(MODULES, modules.clone())
+                .map_err(engine_error)?;
+            let mut scripts = std::collections::BTreeSet::new();
             for (path, js) in sources {
                 let ns = declare(&ctx, &fuel, &path, js)?;
-                scripts.insert(path.clone(), Persistent::save(&ctx, ns));
+                modules.set(path.as_str(), ns).map_err(engine_error)?;
+                scripts.insert(path);
             }
-            Ok((
-                scripts,
-                Persistent::save(&ctx, run),
-                Persistent::save(&ctx, destroy),
-            ))
+            Ok(scripts)
         })?;
         Ok(Some(Self {
             scripts,
             failed: Default::default(),
-            run,
-            destroy,
             bridge,
+            spare: Mutex::new(None),
             registry,
             fuel,
             ctx,
@@ -378,7 +380,7 @@ impl ScriptHost {
         let mut q = world.query::<&Script>();
         let missing: std::collections::BTreeSet<String> = q
             .iter(world)
-            .filter(|s| !self.scripts.contains_key(&s.path) && !self.failed.contains(&s.path))
+            .filter(|s| !self.scripts.contains(&s.path) && !self.failed.contains(&s.path))
             .map(|s| s.path.clone())
             .collect();
         if missing.is_empty() {
@@ -387,12 +389,15 @@ impl ScriptHost {
         let dir = scene_dir(world);
         for path in missing {
             let loaded = source(&dir, &path).and_then(|js| {
-                self.ctx
-                    .with(|ctx| declare(&ctx, &self.fuel, &path, js).map(|ns| Persistent::save(&ctx, ns)))
+                self.ctx.with(|ctx| {
+                    let ns = declare(&ctx, &self.fuel, &path, js)?;
+                    let modules: Object = ctx.globals().get(MODULES).map_err(engine_error)?;
+                    modules.set(path.as_str(), ns).map_err(engine_error)
+                })
             });
             match loaded {
-                Ok(ns) => {
-                    self.scripts.insert(path, ns);
+                Ok(()) => {
+                    self.scripts.insert(path);
                 }
                 Err(errs) => {
                     let message = errs.0.first().map(|d| format!("{}: {}", d.code, d.message));
@@ -436,7 +441,7 @@ fn guarded<R>(ctx: &Ctx<'_>, fuel: &AtomicU64, f: impl FnOnce() -> rquickjs::Res
 
 /// The bridge lock. A panic while it was held (caught by [`guarded`]) leaves it poisoned;
 /// its data is still consistent (plain values), so poisoning is ignored.
-fn bridge_lock(bridge: &Shared) -> MutexGuard<'_, Option<Bridge>> {
+fn bridge_lock(bridge: &Shared) -> MutexGuard<'_, Option<Lent>> {
     bridge.lock().unwrap_or_else(|p| p.into_inner())
 }
 
@@ -455,12 +460,10 @@ pub fn heap_bytes(world: &World) -> Option<u64> {
 /// Runs `f` with the world of the current script call.
 fn with_world<R>(bridge: &Shared, f: impl FnOnce(&mut World, &mut Bridge) -> R) -> R {
     let mut guard = bridge_lock(bridge);
-    let b = guard
+    let Lent { world, bridge } = guard
         .as_mut()
         .expect("engine functions are only callable during update()");
-    // SAFETY: see `Bridge`.
-    let world = unsafe { &mut *b.world };
-    f(world, b)
+    f(world, bridge)
 }
 
 fn throw(ctx: &Ctx<'_>, msg: String) -> rquickjs::Error {
@@ -1088,40 +1091,35 @@ enum OwnedArray<'js> {
     I32(TypedArray<'js, i32>, Vec<i32>),
 }
 
-fn copy_in<T: Copy + Default>(ta: &TypedArray<'_, T>) -> Vec<T> {
+fn copy_in<T: bytemuck::Pod>(ta: &TypedArray<'_, T>) -> Vec<T> {
     let Some(raw) = ta.as_raw() else {
         return Vec::new();
     };
-    // SAFETY: the bytes belong to a live typed array; no JavaScript runs while they are read.
+    // SAFETY: C FFI read. The bytes belong to a live QuickJS typed array, and no JavaScript
+    // runs while they are borrowed, so nothing can resize or free them.
     let bytes = unsafe { raw.as_ref() };
     let n = bytes.len() / std::mem::size_of::<T>();
-    let mut v = vec![T::default(); n];
-    // SAFETY: `v` has room for `n` elements; the byte copy needs no alignment.
-    unsafe {
-        std::ptr::copy_nonoverlapping(
-            bytes.as_ptr(),
-            v.as_mut_ptr().cast::<u8>(),
-            n * std::mem::size_of::<T>(),
-        )
-    };
+    let mut v = vec![T::zeroed(); n];
+    // A plain byte copy (memcpy); `bytemuck` checks the sizes, so no alignment or length
+    // assumptions are taken on trust.
+    let dst: &mut [u8] = bytemuck::cast_slice_mut(&mut v);
+    let len = dst.len();
+    dst.copy_from_slice(&bytes[..len]);
     v
 }
 
-fn copy_out<T: Copy>(ta: &TypedArray<'_, T>, v: &[T]) {
+fn copy_out<T: bytemuck::Pod>(ta: &TypedArray<'_, T>, v: &[T]) {
     let Some(mut raw) = ta.as_raw() else {
         return;
     };
-    // SAFETY: as in `copy_in`; the run did not call into JavaScript, so the buffer is unchanged
-    // in size.
+    // SAFETY: C FFI write, as in `copy_in`; the run did not call into JavaScript, so the
+    // buffer is unchanged in size.
     let bytes = unsafe { raw.as_mut() };
-    let n = (bytes.len() / std::mem::size_of::<T>()).min(v.len());
-    unsafe {
-        std::ptr::copy_nonoverlapping(
-            v.as_ptr().cast::<u8>(),
-            bytes.as_mut_ptr(),
-            n * std::mem::size_of::<T>(),
-        )
-    };
+    let src: &[u8] = bytemuck::cast_slice(v);
+    let n = src
+        .len()
+        .min(bytes.len() / std::mem::size_of::<T>() * std::mem::size_of::<T>());
+    bytes[..n].copy_from_slice(&src[..n]);
 }
 
 /// One parsed `engine.jobs.run` argument.
@@ -1545,6 +1543,35 @@ fn run_scripts(world: &mut World) {
     }
 }
 
+/// Moves the world into the bridge for script calls, leaving the host's spare empty world
+/// in its place (a move of the `World` struct, no allocation).
+fn lend(host: &ScriptHost, world: &mut World, ids: BTreeMap<u64, Entity>, names: BTreeMap<String, u64>) {
+    // Made once, on the first tick; afterwards the same empty world goes back and forth.
+    let spare = host
+        .spare
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .take()
+        .unwrap_or_default();
+    *bridge_lock(&host.bridge) = Some(Lent {
+        world: std::mem::replace(world, spare),
+        bridge: Bridge {
+            registry: host.registry.clone(),
+            ids,
+            names,
+            current: 0,
+        },
+    });
+}
+
+/// Moves the world back out of the bridge after script calls.
+fn take_back(host: &ScriptHost, world: &mut World) {
+    if let Some(lent) = bridge_lock(&host.bridge).take() {
+        let spare = std::mem::replace(world, lent.world);
+        *host.spare.lock().unwrap_or_else(|p| p.into_inner()) = Some(spare);
+    }
+}
+
 fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
     let (ids, names) = index(world);
     let mut q = world.query::<(&SceneId, &Script, Option<&ScriptState>, Option<&ScriptTimers>)>();
@@ -1564,26 +1591,28 @@ fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
     // contact involving a sensor collider goes to the trigger hooks instead (Unity's split).
     let contacts = contacts(world, &ids, &host.registry, tick);
     let entity_of = ids.clone();
-    *bridge_lock(&host.bridge) = Some(Bridge {
-        world: world as *mut World,
-        registry: host.registry.clone(),
-        ids,
-        names,
-        current: 0,
-    });
-    // Results are applied after all calls, so no `&mut World` is used while scripts run.
+    lend(host, world, ids, names);
+    // Results are applied after all calls, when the world is back.
     let mut results: Vec<Turn> = Vec::new();
     host.ctx.with(|ctx| {
-        let run = host.run.clone().restore(&ctx).expect("prelude function");
+        // Both exist from `build` on; scripts cannot run without them.
+        let (Ok(run), Ok(modules)) = (
+            ctx.globals().get::<_, Function>("__run"),
+            ctx.globals().get::<_, Object>(MODULES),
+        ) else {
+            return;
+        };
         for (id, path, state, timers) in work {
-            let Some(module) = host.scripts.get(&path) else {
+            if !host.scripts.contains(&path) {
+                continue;
+            }
+            let Ok(module) = modules.get::<_, Object>(path.as_str()) else {
                 continue;
             };
-            let module = module.clone().restore(&ctx).expect("script module");
             // No contacts is the usual case: nothing is built for it.
             let c = contacts.get(&id).cloned();
-            if let Some(b) = bridge_lock(&host.bridge).as_mut() {
-                b.current = id;
+            if let Some(lent) = bridge_lock(&host.bridge).as_mut() {
+                lent.bridge.current = id;
             }
             // No `ScriptState` yet means `start` has not run for this entity.
             let is_new = state.is_none();
@@ -1597,7 +1626,7 @@ fn turns(world: &mut World, host: &ScriptHost, tick: u64) {
             results.push((id, entity_of[&id], state, timers, out, path));
         }
     });
-    *bridge_lock(&host.bridge) = None;
+    take_back(host, world);
     for (id, e, state_before, timers_before, out, path) in results {
         // Timers are saved even when the turn threw: a one-shot timer that fired is gone,
         // so a failing callback is not called again every tick.
@@ -1643,24 +1672,24 @@ fn destroy_marked(world: &mut World, host: Option<&ScriptHost>, tick: u64) {
             && due.iter().any(|d| d.2.is_some())
         {
             let (ids, names) = index(world);
-            *bridge_lock(&host.bridge) = Some(Bridge {
-                world: world as *mut World,
-                registry: host.registry.clone(),
-                ids,
-                names,
-                current: 0,
-            });
+            lend(host, world, ids, names);
             let mut errors = Vec::new();
             host.ctx.with(|ctx| {
-                let destroy = host.destroy.clone().restore(&ctx).expect("prelude function");
+                let (Ok(destroy), Ok(modules)) = (
+                    ctx.globals().get::<_, Function>("__destroy"),
+                    ctx.globals().get::<_, Object>(MODULES),
+                ) else {
+                    return;
+                };
                 for (id, _, path, state) in &due {
-                    let (Some(path), Some(module)) = (path, path.as_ref().and_then(|p| host.scripts.get(p)))
-                    else {
+                    let Some(path) = path.as_ref().filter(|p| host.scripts.contains(*p)) else {
                         continue;
                     };
-                    let module = module.clone().restore(&ctx).expect("script module");
-                    if let Some(b) = bridge_lock(&host.bridge).as_mut() {
-                        b.current = *id;
+                    let Ok(module) = modules.get::<_, Object>(path.as_str()) else {
+                        continue;
+                    };
+                    if let Some(lent) = bridge_lock(&host.bridge).as_mut() {
+                        lent.bridge.current = *id;
                     }
                     let state_in = state.clone().unwrap_or_else(|| "{}".into());
                     host.fuel.store(0, Ordering::Relaxed);
@@ -1674,7 +1703,7 @@ fn destroy_marked(world: &mut World, host: Option<&ScriptHost>, tick: u64) {
                     }
                 }
             });
-            *bridge_lock(&host.bridge) = None;
+            take_back(host, world);
             for (id, path, message) in errors {
                 script_error(world, tick, Some(id), &path, message);
             }

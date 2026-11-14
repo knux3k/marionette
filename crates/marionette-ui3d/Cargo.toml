@@ -20,3 +20,6 @@ sha2.workspace = true
 [dev-dependencies]
 marionette-agent = { path = "../marionette-agent", default-features = false }
 marionette-render = { path = "../marionette-render" }
+
+[lints]
+workspace = true
