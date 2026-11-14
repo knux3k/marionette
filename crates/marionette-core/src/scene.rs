@@ -207,11 +207,12 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
 
     let mut ids = BTreeSet::new();
     for (i, e) in scene.entities.iter().enumerate() {
-        let id_pos = pos(&format!("/entities/{i}/id"));
+        // Looked up only for a problem: the first lookup scans the whole text.
+        let id_pos = || pos(&format!("/entities/{i}/id"));
         if e.id == 0 {
             errs.push(
                 Diagnostic::error(codes::SCENE_INVALID_ID, "entity id 0 is reserved")
-                    .at_pos(id_pos)
+                    .at_pos(id_pos())
                     .fix("use a positive integer id"),
             );
         } else if !ids.insert(e.id) {
@@ -220,7 +221,7 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
                     codes::SCENE_DUPLICATE_ID,
                     format!("entity id {} is used more than once", e.id),
                 )
-                .at_pos(id_pos)
+                .at_pos(id_pos())
                 .entity(e.id)
                 .fix(format!(
                     "give one of them an unused id, e.g. {}",
