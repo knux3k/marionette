@@ -26,6 +26,8 @@ flags changed: `cargo run -q -p marionette-cli -- docs`, and commit `docs/ai/ref
 2. `docs/ai/STATE.md`: status per plan line and the UNVERIFIED list only. Proofs (hashes,
    test names, measurements) go in the area file under `docs/ai/proofs/` (index and rules:
    `docs/ai/PROOFS.md`).
+   A feature's level (slice, usable, proven) and its evidence go in `docs/ai/STATUS.md`:
+   add or move its row when the change adds a feature or new evidence (decision 0274).
 3. One row in `docs/ai/SESSION-LOG.md`.
 4. Mark gaps you closed in `docs/ai/FOCUSES.md`.
 5. A skill that names what you changed is updated in the same change
