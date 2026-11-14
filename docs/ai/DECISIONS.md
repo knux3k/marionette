@@ -73,6 +73,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0100 | One shared performance suite with output checks (`perf_suite`, `perf_compare`), shared-machine lock and idle checks | accepted |
 | 0101 | Shipping builds use fat LTO with one codegen unit (`--profile dist`); `release` stays | accepted |
 | 0102 | Each sun shadow map draws only the casters inside it (`Culler::shadow_maps`, `RenderStats.shadow_instances`) | accepted |
+| 0103 | Benchmark frames in flight (`--in-flight`, CPU and GPU overlap) and GPU time per pass (`--gpu-passes`, timestamp queries) | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |

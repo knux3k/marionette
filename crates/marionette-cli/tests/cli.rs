@@ -170,3 +170,35 @@ fn drift_hash_is_unchanged_from_plan_line_2() {
         "7441258fdf64141911d44e0608c48498897564168684fdd86cd244e149926558"
     );
 }
+
+/// Decision 0103: the benchmark can overlap CPU and GPU (`--in-flight 2`) and time each pass
+/// on the GPU (`--gpu-passes`); both draw the same frames as the serialized run.
+#[test]
+fn bench_overlaps_frames_and_times_passes() {
+    let scene = format!("{EXAMPLES}/lighting.scene.json");
+    let base = [
+        "bench", &scene, "--frames", "4", "--warmup", "1", "--size", "64x36", "--json",
+    ];
+    let run = |extra: &[&str]| {
+        let args: Vec<&str> = base.iter().chain(extra).copied().collect();
+        marionette(&args)
+    };
+    let (ok, serial) = run(&[]);
+    if !ok && serial["diagnostics"][0]["code"] == "render.no_adapter" && !gpu_required() {
+        eprintln!("skipping: no GPU adapter");
+        return;
+    }
+    assert!(ok, "{serial}");
+    let (ok, overlapped) = run(&["--in-flight", "2"]);
+    assert!(ok, "{overlapped}");
+    assert_eq!(overlapped["in_flight"], 2);
+    assert_eq!(overlapped["render"], serial["render"], "same work per frame");
+    let (ok, timed) = run(&["--gpu-passes"]);
+    assert!(ok, "{timed}");
+    assert_eq!(timed["in_flight"], 1);
+    // Devices without timestamp queries report null; those with them time the main pass.
+    if let Some(passes) = timed["gpu_passes_p50_ms"].as_object() {
+        assert!(passes.contains_key("main"), "{timed}");
+        assert!(passes.contains_key("sun shadow 0"), "{timed}");
+    }
+}

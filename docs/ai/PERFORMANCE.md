@@ -40,8 +40,10 @@ cargo run --release -q -p marionette-example-factory --bin factory-bench -- benc
 
 `perf_sim` reports average, p50, p99 and max per tick, load time, thread count and the state
 hash. `bench` reports phase medians (sim, extract, record, GPU wait) and `RenderStats` (views,
-draw calls, instances, triangles, culled). `--no-cull` turns frustum culling off for a
-before/after comparison. Set `MARIONETTE_JOB_THREADS` to compare thread counts.
+draw calls, instances, triangles, culled, shadow instances). `--no-cull` turns frustum culling
+off for a before/after comparison. `--in-flight 2` lets the GPU draw one frame while the next
+is recorded (a game loop's frame queue); `--gpu-passes` gives GPU milliseconds per pass
+(decision 0103). Set `MARIONETTE_JOB_THREADS` to compare thread counts.
 
 ## Results (Linux container, Mesa lavapipe software GPU, release)
 
@@ -92,6 +94,8 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
 ```bash
 target/dist/marionette op perf_realistic_scene '{"out":"bench/realistic.scene.json"}'
 target/dist/marionette bench bench/realistic.scene.json --frames 1000   # second run: textures cached
+target/dist/marionette bench bench/realistic.scene.json --frames 1000 --in-flight 2   # against Unity
+target/dist/marionette bench bench/realistic.scene.json --frames 300 --gpu-passes     # where GPU time goes
 ```
 
 17.9 million triangles, 257 materials, 99 2K textures (BC7), 3,200 moving models, 4 shadow

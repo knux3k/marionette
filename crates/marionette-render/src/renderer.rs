@@ -651,6 +651,8 @@ pub struct Renderer {
     /// Reused per-frame array: the culling class of each instance in `scratch.0`.
     /// With each class, the sun shadow maps the instance touches (bit per map, decision 0102).
     scratch_class: Vec<(crate::cull::Class, u8)>,
+    /// GPU time per pass for benchmarks (decision 0103); `None` unless turned on.
+    pass_timer: Option<crate::pass_timer::PassTimer>,
     material_layout: wgpu::BindGroupLayout,
     sprite_tex_layout: wgpu::BindGroupLayout,
     sprite_pipeline: wgpu::RenderPipeline,
@@ -1236,11 +1238,31 @@ impl Renderer {
             compress_wanted: None,
             bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
+            pass_timer: None,
         }
     }
 
     /// Frustum culling (decision 0080) is on by default and never changes a pixel; turning
     /// it off draws every instance in every view, for before/after measurements.
+    /// Times every main render pass on the GPU (decision 0103). Returns whether the device
+    /// can (it needs `TIMESTAMP_QUERY`). For benchmarks: read with [`Self::pass_times`].
+    pub fn set_pass_timing(&mut self, on: bool) -> bool {
+        self.pass_timer = if on {
+            crate::pass_timer::PassTimer::new(&self.device, &self.queue)
+        } else {
+            None
+        };
+        self.pass_timer.is_some()
+    }
+
+    /// GPU milliseconds per pass of the last rendered frame, in recording order; call after
+    /// the GPU has finished it. Empty when timing is off.
+    pub fn pass_times(&self) -> Result<Vec<(&'static str, f64)>, String> {
+        self.pass_timer
+            .as_ref()
+            .map_or(Ok(Vec::new()), |t| t.read(&self.device))
+    }
+
     pub fn set_culling(&mut self, on: bool) {
         self.culling = on;
     }
@@ -2621,6 +2643,7 @@ impl Renderer {
                           view: &wgpu::TextureView,
                           offset: u32,
                           sun_map: Option<usize>,
+                          timer_label: &'static str,
                           stats: &mut RenderStats| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
@@ -2633,7 +2656,7 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes(timer_label)),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -2648,7 +2671,9 @@ impl Renderer {
         };
         for (k, layer) in self.shadow_map.per_layer.iter().take(cascades.len()).enumerate() {
             let offset = ((SUN_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
-            depth_pass(encoder, layer, offset, Some(k), &mut stats);
+            const SUN: [&str; MAX_CASCADES] =
+                ["sun shadow 0", "sun shadow 1", "sun shadow 2", "sun shadow 3"];
+            depth_pass(encoder, layer, offset, Some(k), SUN[k], &mut stats);
         }
         for (k, layer) in self
             .local_shadows
@@ -2658,7 +2683,7 @@ impl Renderer {
             .enumerate()
         {
             let offset = ((LOCAL_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
-            depth_pass(encoder, layer, offset, None, &mut stats);
+            depth_pass(encoder, layer, offset, None, "local shadow", &mut stats);
         }
 
         // UI quads in screen pixels, on top of everything in the output target.
@@ -2729,7 +2754,7 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("main (stereo)")),
                 occlusion_query_set: None,
                 multiview_mask: multiview::MASK,
             });
@@ -2812,7 +2837,7 @@ impl Renderer {
                         }),
                         stencil_ops: None,
                     }),
-                    timestamp_writes: None,
+                    timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("hdr")),
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
@@ -2880,7 +2905,7 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("main")),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -2985,7 +3010,7 @@ impl Renderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("output")),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -3000,6 +3025,9 @@ impl Renderer {
             crate::raytrace::RayTracer::built(&mut self.models);
         }
         self.scratch = (raw, gid, instances);
+        if let Some(t) = &self.pass_timer {
+            t.resolve(encoder);
+        }
         stats
     }
 }

@@ -334,6 +334,14 @@ Options:
       --no-cull
           Draw every instance in every view (frustum culling off), to measure what culling saves (decision 0080)
 
+      --in-flight <IN_FLIGHT>
+          Frames the GPU may work on while the next one is recorded (1 to 3). 1 waits for the GPU every frame, so CPU and GPU times add up; 2 overlaps them as a game loop does (decision 0103)
+          
+          [default: 1]
+
+      --gpu-passes
+          Time each render pass on the GPU (needs timestamp queries; forces --in-flight 1)
+
   -h, --help
           Print help
 
