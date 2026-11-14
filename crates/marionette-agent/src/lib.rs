@@ -6,7 +6,9 @@
 //! as data). Input and output JSON Schemas are generated from the same Rust types that parse
 //! and produce them.
 
+#[cfg(feature = "anim")]
 pub mod anim;
+#[cfg(feature = "audio")]
 pub mod audio;
 pub mod batch;
 pub mod docs;
@@ -51,6 +53,7 @@ pub mod skills;
 pub mod stability;
 #[cfg(feature = "starter")]
 pub mod starter;
+#[cfg(feature = "audio")]
 pub mod synth;
 #[cfg(feature = "ui3d")]
 mod ui3d;
@@ -152,6 +155,14 @@ where
 
 /// The optional engine parts (cargo features) compiled into this build (decision 0062).
 pub const FEATURES: &[&str] = &[
+    #[cfg(feature = "physics")]
+    "physics",
+    #[cfg(feature = "audio")]
+    "audio",
+    #[cfg(feature = "anim")]
+    "anim",
+    #[cfg(feature = "xr")]
+    "xr",
     #[cfg(feature = "script")]
     "script",
     #[cfg(feature = "import")]
@@ -201,12 +212,15 @@ pub(crate) fn builtin_ops() -> Vec<Op> {
         jobs_ts::ops(),
         #[cfg(feature = "generate")]
         providers::ops(),
+        #[cfg(feature = "anim")]
         anim::ops(),
         #[cfg(feature = "ui3d")]
         ui3d::ops(),
+        #[cfg(feature = "audio")]
         audio::ops(),
         #[cfg(feature = "nav")]
         nav::ops(),
+        #[cfg(feature = "audio")]
         synth::ops(),
         #[cfg(feature = "generate")]
         generate::ops(),

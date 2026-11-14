@@ -99,7 +99,7 @@ fn clashing_or_badly_named_parts_are_refused() {
         .module(SpringModule)
         .module(Named("spring"))
         .build();
-    let dup_builtin = Engine::builder().module(Named("physics")).build();
+    let dup_builtin = Engine::builder().module(Named("input")).build();
     let dup_op = Engine::builder().op(named_op("scene_run")).build();
     let bad_name = Engine::builder().op(named_op("Spring-Set")).build();
     for (what, r) in [("module", dup_module), ("builtin", dup_builtin), ("op", dup_op)] {

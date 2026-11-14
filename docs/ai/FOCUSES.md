@@ -63,7 +63,7 @@ Ordered by size. Each line is a piece of work for one session; mark it done here
 | Graphics | No HDR or tone mapping (colors clamp at 1.0); no emissive materials; no bloom | done (decisions 0063, 0064, 0067) |
 | Graphics | No sky, environment lighting or fog (ambient is a flat color) | done (decisions 0063, 0066, 0091 to 0093) |
 | Modularity | The module set and operation table are fixed in `marionette-agent`: a game cannot add a Rust module or operation without editing the engine | done: `Engine::builder()`, `marionette_cli::main_with`, template `examples/rust-module` (decision 0062) |
-| Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | done: features `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, CI lean build (decision 0062) |
+| Modularity | `marionette-agent` links every crate: no cargo features to leave out import, pool, generation, porting or job TypeScript | done: features for every optional part, CI lean build (decisions 0062, 0290) |
 | Modularity | Job TypeScript cannot be called from scenes or scripts yet (WJ next) | done: `JobData`, `JobSchedule`, `engine.jobs`, `JobDraw` (decision 0070) |
 | Tokens | Procedures reached an agent only as docs it had to find and read; games in their own repositories got none | done: 16 task skills, loaded by description, installed into games, checked by a test (decision 0160) |
 | Modularity | A game project had no handoff files and no way for parallel agents to claim work | done: handoff files, claims, session notes, `handoff_*` operations (decision 0161) |

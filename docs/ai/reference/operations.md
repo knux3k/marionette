@@ -44,7 +44,6 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
-| `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
 | `perf_realistic_scene` | yes | Write the realistic render benchmark: 32 models with 8 materials each and their own 2K texture set, a textured ground, about 380 large static models and 3,200 moving ones (about 18 million triangles at scale 1), sun with cascaded shadows, BC7 textures. Also writes a manifest and plain mesh files so another engine can build the same scene. |
 | `perf_suite` | yes | Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`. |
@@ -1010,30 +1009,6 @@ Output:
 | `compared_with_library` | boolean | yes | Whether file contents were compared against an owned library. |
 | `files_checked` | integer | yes |  |
 | `refusals` | array of PoolRefusal | yes |  |
-
-## `perf_factory_scene`
-
-Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun.
-
-Mutating: yes.
-
-Input:
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `out` | string | yes | Output scene file (relative to the project root). |
-| `scale` | integer |  | Size: 1 = 34 cells (238 machines, 204 belts, 4,352 slots). 1..=256. |
-
-Output:
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `belts` | integer | yes |  |
-| `cells` | integer | yes |  |
-| `entities` | integer | yes |  |
-| `machines` | integer | yes |  |
-| `scene` | string | yes |  |
-| `slots` | integer | yes |  |
 
 ## `perf_sim`
 

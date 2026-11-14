@@ -2,7 +2,7 @@
 //! scene round trips keep the state, and bad authoring data is refused with a code.
 
 use marionette_core::Sim;
-use marionette_factory::{FactoryModule, FactoryState};
+use marionette_example_factory::{FactoryModule, FactoryState};
 use marionette_jobs::Jobs;
 use serde_json::{Value, json};
 use std::sync::Arc;

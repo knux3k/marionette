@@ -3,10 +3,19 @@
 //! instancing keeps draw calls flat however many objects a scene has. Timing budgets are in
 //! `perf_budgets.rs` (release builds only).
 
-use marionette_agent::{Agent, engine};
+use marionette_agent::{Agent, Engine};
+use marionette_core::Sim;
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
+
+fn factory_engine() -> Engine {
+    marionette_example_factory::engine().unwrap()
+}
+
+fn load(path: &Path, shown: &str, seed: u64) -> Result<Sim, marionette_core::Errors> {
+    factory_engine().load_file(path, shown, seed)
+}
 
 /// State hash of the scale-1 factory benchmark after 60 warm-up and 300 timed ticks, seed 0.
 /// A change here changes simulation results: say so in the commit and in docs/ai/PROOFS.md.
@@ -39,7 +48,7 @@ fn factory_scene(agent: &mut Agent, dir: &Path, scale: u32) -> PathBuf {
 #[test]
 fn factory_benchmark_hash_is_recorded_and_independent_of_threads() {
     let dir = temp_dir();
-    let mut agent = Agent::new(&dir, false);
+    let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let scene = factory_scene(&mut agent, &dir, 1);
     let mut hashes = Vec::new();
     for threads in [1, 3] {
@@ -70,11 +79,11 @@ fn gpu() -> Option<Gpu> {
 fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
     let Some(gpu) = gpu() else { return };
     let dir = temp_dir();
-    let mut agent = Agent::new(&dir, false);
+    let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let mut seen = Vec::new();
     for scale in [1, 4] {
         let path = factory_scene(&mut agent, &dir, scale);
-        let mut sim = engine::load_file(&path, "factory", 0).unwrap();
+        let mut sim = load(&path, "factory", 0).unwrap();
         sim.run(240);
         let frame = extract(&sim.world);
         let items: usize = frame.bulk.iter().map(|b| b.transforms.len()).sum();
@@ -102,16 +111,16 @@ fn instancing_keeps_draw_calls_flat_as_the_factory_grows() {
 fn capture_saved_on_another_thread_equals_snapshot() {
     fn is_send<T: Send>(_: &T) {}
     let dir = temp_dir();
-    let mut agent = Agent::new(&dir, false);
+    let mut agent = Agent::with_engine(&dir, false, factory_engine());
     let factory = factory_scene(&mut agent, &dir, 1);
     let swarm = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/swarm.scene.json");
     for scene in [factory, swarm] {
-        let mut sim = engine::load_file(&scene, "capture", 0).unwrap();
+        let mut sim = load(&scene, "capture", 0).unwrap();
         sim.run(30);
         let cap = sim.capture();
         is_send(&cap);
-        let registry = engine::registry();
-        let text = std::thread::spawn(move || cap.into_scene(&registry).to_text())
+        let engine = factory_engine();
+        let text = std::thread::spawn(move || cap.into_scene(engine.registry()).to_text())
             .join()
             .unwrap();
         assert_eq!(text, sim.snapshot().to_text(), "{}", scene.display());

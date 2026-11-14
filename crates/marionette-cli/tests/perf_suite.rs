@@ -32,7 +32,7 @@ fn quick_suite_repeats_outputs_and_compares_identical() {
             &mut agent,
             "perf_suite",
             json!({ "out": out.to_string_lossy(), "label": label, "length": "quick",
-                    "repeats": 2, "only": ["sim/drift", "sim/factory-4x"], "no_gpu": true,
+                    "repeats": 2, "only": ["sim/drift", "sim/physics-2d"], "no_gpu": true,
                     "max_busy_pct": 100.0 }),
         );
         assert_eq!(r["errors"], json!(0), "{r}");

@@ -44,7 +44,9 @@ fn every_game_has_a_package_plan_without_tests_or_recipes() {
         // The games script in TypeScript and use no job TypeScript.
         assert_eq!(
             g.features,
-            ["gamepad", "save", "script"].map(String::from).to_vec(),
+            ["gamepad", "save", "physics", "audio", "anim", "script"]
+                .map(String::from)
+                .to_vec(),
             "{}",
             g.name
         );
@@ -73,7 +75,9 @@ fn job_typescript_is_detected_and_unreferenced_assets_are_listed() {
     let g = read_game(d).unwrap();
     assert_eq!(
         g.features,
-        ["gamepad", "save", "jobs-ts", "xr"].map(String::from).to_vec()
+        ["gamepad", "save", "physics", "audio", "anim", "jobs-ts", "xr"]
+            .map(String::from)
+            .to_vec()
     );
     assert!(marionette_package::is_vr(&g));
     assert_eq!(

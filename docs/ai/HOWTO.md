@@ -41,7 +41,8 @@ Template: `examples/rust-module` (decision 0062).
 
 1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
    `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
-   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`).
+   `physics`, `audio`, `anim`, `xr`, `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`,
+   `save`, `nav`; decision 0290).
 2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
    with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
    `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.

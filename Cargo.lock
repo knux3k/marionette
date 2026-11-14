@@ -2371,7 +2371,6 @@ dependencies = [
  "marionette-audio",
  "marionette-core",
  "marionette-editor",
- "marionette-factory",
  "marionette-generate",
  "marionette-host",
  "marionette-import",
@@ -2487,6 +2486,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-example-factory"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-agent",
+ "marionette-cli",
+ "marionette-core",
+ "marionette-host",
+ "marionette-jobs",
+ "marionette-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "marionette-example-rust-module"
 version = "0.1.0"
 dependencies = [
@@ -2498,17 +2514,6 @@ dependencies = [
  "marionette-host",
  "schemars",
  "serde",
- "serde_json",
-]
-
-[[package]]
-name = "marionette-factory"
-version = "0.1.0"
-dependencies = [
- "bevy_ecs",
- "bevy_reflect",
- "marionette-core",
- "marionette-jobs",
  "serde_json",
 ]
 

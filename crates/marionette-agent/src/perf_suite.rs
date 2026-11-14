@@ -11,7 +11,7 @@
 //! Timings are measurements of this machine; nothing here feeds back into a simulation.
 
 use crate::{Agent, Op, op, read_text, sha256_hex, write_atomic};
-use marionette_core::{Diagnostic, Errors, Sim, scene};
+use marionette_core::{Diagnostic, Errors, Sim};
 use marionette_render::{Offscreen, extract};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -53,8 +53,13 @@ pub const SUITE: &str = "core/1";
 #[derive(Clone, Copy)]
 enum Source {
     File(&'static str),
-    /// The generated factory benchmark scene at this scale (`perf_factory_scene`).
-    Factory(u32),
+    /// A scene written by an operation that takes `{ "out": <path>, "scale": <n> }`. A game
+    /// or example adds the operation (the factory example adds `perf_factory_scene`,
+    /// decision 0290); in an engine without it the case is skipped.
+    Generated {
+        op: &'static str,
+        scale: u32,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -112,6 +117,15 @@ const fn render(name: &'static str, source: Source, frames: u64, spec: RenderSpe
     }
 }
 
+const FACTORY_4: Source = Source::Generated {
+    op: "perf_factory_scene",
+    scale: 4,
+};
+const FACTORY_32: Source = Source::Generated {
+    op: "perf_factory_scene",
+    scale: 32,
+};
+
 /// The suite. Order is the report order. Cover each engine system once: core logic, physics
 /// 2D and 3D, scripts, animation, job TypeScript, the factory module at two sizes, the six
 /// proof games, and rendering of plain, opt-in looks, many instances, skinned models and a
@@ -136,8 +150,8 @@ const CASES: &[Case] = &[
         1000,
     ),
     sim("sim/job-swarm", Source::File("examples/swarm.scene.json"), 600),
-    sim("sim/factory-4x", Source::Factory(4), 1200),
-    sim("sim/factory-32x", Source::Factory(32), 300),
+    sim("sim/factory-4x", FACTORY_4, 1200),
+    sim("sim/factory-32x", FACTORY_32, 300),
     sim(
         "sim/game-lantern-keeper",
         Source::File("games/lantern-keeper/scenes/main.scene.json"),
@@ -210,8 +224,8 @@ const CASES: &[Case] = &[
         300,
         HD,
     ),
-    render("render/factory-4x-headset", Source::Factory(4), 300, HEADSET),
-    render("render/factory-32x-headset", Source::Factory(32), 120, HEADSET),
+    render("render/factory-4x-headset", FACTORY_4, 300, HEADSET),
+    render("render/factory-32x-headset", FACTORY_32, 120, HEADSET),
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -777,7 +791,7 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
         }
     }
 
-    // Generated factory scenes go to a temp folder that is removed with the process.
+    // Generated scenes go to a temp folder that is removed with the process.
     let temp = marionette_host::temp_dir("perf-suite").map_err(|e| {
         Errors::from(Diagnostic::error(
             marionette_core::error::codes::IO_WRITE,
@@ -832,13 +846,19 @@ fn suite(agent: &mut Agent, input: SuiteInput) -> Result<SuiteOutput, Errors> {
                 }
                 p
             }
-            Source::Factory(scale) => {
-                result.scene = format!("perf_factory_scene scale {scale}");
-                let p = temp.path().join(format!("factory-{scale}x.scene.json"));
+            Source::Generated { op, scale } => {
+                result.scene = format!("{op} scale {scale}");
+                if !agent.ops.iter().any(|o| o.info.name == op) {
+                    result.skipped = Some(format!(
+                        "operation `{op}` is not in this engine (the example or game that adds it runs this case)"
+                    ));
+                    results.push(result);
+                    continue;
+                }
+                let p = temp.path().join(format!("{op}-{scale}.scene.json"));
                 if !p.exists() {
-                    let (value, _) = crate::perf::factory_scene_json(scale);
-                    let text = scene::format_text(&value.to_string(), agent.registry())?;
-                    write_atomic(&p, &result.scene, text.as_bytes())?;
+                    let out = p.to_string_lossy().to_string();
+                    agent.call(op, serde_json::json!({ "out": out, "scale": scale }))?;
                 }
                 p
             }

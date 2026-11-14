@@ -15,6 +15,7 @@ use marionette_core::{Diagnostic, Errors};
 use serde_json::{Value, json};
 use std::process::ExitCode;
 
+#[cfg(feature = "audio")]
 mod audio_check;
 #[cfg(feature = "editor")]
 mod edit;
@@ -311,6 +312,7 @@ enum Command {
         #[arg(long)]
         list: bool,
     },
+    #[cfg(feature = "audio")]
     /// Play a synth stress test through the real audio device and report glitch counters:
     /// callbacks that ran longer than the audio they made, stream underruns, dropped commands,
     /// stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device.
@@ -450,6 +452,7 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
                 }
             };
         }
+        #[cfg(feature = "audio")]
         Command::AudioCheck {
             seconds,
             voices,

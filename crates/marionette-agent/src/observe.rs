@@ -47,6 +47,7 @@ pub(crate) fn ops() -> Vec<Op> {
             false,
             stats,
         ),
+        #[cfg(feature = "physics")]
         op(
             "observe_raycast",
             "Cast a ray through the physics scene; returns the first entity hit, distance, point and normal.",
@@ -578,6 +579,7 @@ pub struct RaycastHit {
     pub normal: [f32; 3],
 }
 
+#[cfg(feature = "physics")]
 fn raycast(agent: &mut Agent, input: RaycastInput) -> Result<RaycastOutput, Errors> {
     with_world(agent, &input.target, |_, sim, _| {
         let hit = marionette_physics::raycast(
