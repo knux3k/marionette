@@ -31,7 +31,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Feature | Level | Evidence | Next level needs |
 | --- | --- | --- | --- |
 | Opaque lit scenes: PBR, shadows, sky, HDR, bloom, fog (0063 to 0067, 0090 to 0092) | usable | Reference images, pixel tests of material textures (0273), one desktop GPU offscreen | AMD and Intel GPUs; a real game's content |
-| Mipmaps, anisotropy, cut-out and see-through materials, particles, BC7 textures (0280 to 0283) | slice | Tests on lavapipe only | A hardware GPU; a game's content; one-pass stereo |
+| Mipmaps, anisotropy, cut-out and see-through materials, particles, BC7 textures, one-pass stereo (0280 to 0285) | slice | Tests on lavapipe only | A hardware GPU; a game's content; one-pass stereo in the OpenXR runtime |
 | Culling, level of detail, render scale, foveation (0080 to 0082) | usable | Budgets and stability on one desktop GPU | A headset |
 | Ray tracing (0093) | slice | Lavapipe and one desktop GPU; skinned models not traced | A scene that needs it, on more than one GPU |
 | Skeletal animation (0028, 0074) | slice | Numeric pose tests on a generated puppet | A real rigged character on a hardware GPU |

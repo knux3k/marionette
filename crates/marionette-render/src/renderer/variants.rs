@@ -73,24 +73,33 @@ pub(crate) fn state(
 
 type Make = Box<dyn Fn(usize, usize) -> wgpu::RenderPipeline + Send + Sync>;
 
-/// One pipeline per variant and target (final format, floating-point), made on first use.
+/// Targets a pipeline draws into: the final format, the floating-point bloom target, and the
+/// final format with both eyes in one pass (decision 0285).
+pub(crate) const TARGETS: usize = 3;
+pub(crate) const FINAL: usize = 0;
+pub(crate) const HDR: usize = 1;
+pub(crate) const STEREO: usize = 2;
+
+/// One pipeline per variant and target, made on first use.
 pub(crate) struct VariantPipelines {
-    built: [[OnceLock<wgpu::RenderPipeline>; 2]; VARIANTS],
+    built: [[OnceLock<wgpu::RenderPipeline>; TARGETS]; VARIANTS],
     make: Make,
 }
 
 impl VariantPipelines {
-    /// `make(variant, target)` builds one; the plain variant is built right away.
+    /// `make(variant, target)` builds one; the plain variant's final and floating-point
+    /// pipelines are built right away.
     pub fn new(make: Make) -> Self {
-        let built: [[OnceLock<wgpu::RenderPipeline>; 2]; VARIANTS] = Default::default();
-        for (t, slot) in built[0].iter().enumerate() {
-            let _ = slot.set(make(0, t));
+        let built: [[OnceLock<wgpu::RenderPipeline>; TARGETS]; VARIANTS] = Default::default();
+        for t in [FINAL, HDR] {
+            let _ = built[0][t].set(make(0, t));
         }
         Self { built, make }
     }
 
-    pub fn get(&self, variant: usize, hdr: bool) -> &wgpu::RenderPipeline {
-        let t = usize::from(hdr);
+    /// The pipeline of `variant` into `target` ([`FINAL`], [`HDR`] or [`STEREO`]).
+    pub fn get(&self, variant: usize, target: usize) -> &wgpu::RenderPipeline {
+        let t = target.min(TARGETS - 1);
         let v = variant.min(VARIANTS - 1);
         self.built[v][t].get_or_init(|| (self.make)(v, t))
     }

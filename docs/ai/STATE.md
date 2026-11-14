@@ -15,7 +15,7 @@ check a feature there before building on it, and update its row when your work m
 | --- | --- | --- |
 | 1 | Workspace, CI | Landed: fast check on pull requests, full suite in the merge queue and on main (0260). |
 | 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
-| 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7 (0280 to 0283). |
+| 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
 | 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0173), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
@@ -45,7 +45,7 @@ check a feature there before building on it, and update its row when your work m
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Game meshes, shaders, mipmaps, alpha, particles, BC7 (0180-0181, 0280-0283): lavapipe only.
+- Game meshes, shaders, 0280-0285 renderer work (0180-0181): lavapipe only.
 - Opt-in looks (0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment, glTF emissive (0064-0067): checked

@@ -1148,6 +1148,14 @@ fn run_render(
         loads.push(load_ms);
         let gpu = agent.gpu()?;
         let mut off = Offscreen::new(gpu, spec.width, spec.height, spec.msaa, base.clone());
+        // Both eyes in one pass where the device allows it (decision 0285), as a headset
+        // would draw them; MARIONETTE_SINGLE_PASS_STEREO=0 times a pass per eye instead.
+        if spec.eyes == 2 {
+            off.set_single_pass_stereo(
+                gpu,
+                std::env::var("MARIONETTE_SINGLE_PASS_STEREO").as_deref() != Ok("0"),
+            );
+        }
         // Warm-up: decode assets, compile pipelines, settle clocks. Not timed.
         for _ in 0..warmup {
             sim.step();

@@ -147,3 +147,9 @@ Material textures (decision 0273): `cargo test -p marionette-render --test mater
 (`a_normal_map_tilts_the_surface_the_way_its_colors_say`,
 `roughness_is_read_from_green_and_metallic_from_blue`): a model and textures written by the
 test, brightness of four quarters compared under lights from above and from the right.
+
+Single-pass stereo (decision 0285):
+- `crates/marionette-render/tests/stereo.rs` (lavapipe): both eyes in one multiview pass give
+  the same right eye as a pass per eye (largest difference 0) for the material ball (draw calls
+  13 to 8) and skinned models (8 to 4); the bloom scene falls back to a pass per eye, identical.
+- Unit test `entry_points_pick_their_eye` (`renderer/multiview.rs`) checks the shader conversion.

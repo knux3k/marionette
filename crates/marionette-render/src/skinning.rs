@@ -229,7 +229,7 @@ pub(crate) fn depth_pipeline(
 /// with [`skinned_source`]) and groups view, lights, material, deform.
 pub(crate) fn lit_pipelines(
     device: &wgpu::Device,
-    shader: &wgpu::ShaderModule,
+    (shader, source): (&wgpu::ShaderModule, &str),
     groups: [&wgpu::BindGroupLayout; 4],
     color_format: wgpu::TextureFormat,
     depth: wgpu::DepthStencilState,
@@ -241,16 +241,22 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(groups[0]), Some(groups[1]), Some(groups[2]), Some(groups[3])],
         immediate_size: 0,
     });
-    let (dev, module) = (device.clone(), shader.clone());
-    let formats = [color_format, crate::post::HDR_FORMAT];
+    let (dev, plain) = (device.clone(), shader.clone());
+    let formats = [color_format, crate::post::HDR_FORMAT, color_format];
+    let stereo = crate::renderer::multiview::LazyModule::new(source, "pbr skinned (stereo)");
     VariantPipelines::new(Box::new(move |variant, target| {
         let (cull_mode, blend, depth) = crate::renderer::variants::state(variant, &depth);
+        let module = if target == crate::renderer::variants::STEREO {
+            stereo.get(&dev)
+        } else {
+            &plain
+        };
         let mesh_attrs = crate::renderer::MESH_ATTRS;
         dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr skinned"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &module,
+                module,
                 entry_point: Some("vs_skinned"),
                 compilation_options: Default::default(),
                 buffers: &[
@@ -278,7 +284,7 @@ pub(crate) fn lit_pipelines(
             depth_stencil: Some(depth),
             multisample,
             fragment: Some(wgpu::FragmentState {
-                module: &module,
+                module,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
@@ -287,7 +293,7 @@ pub(crate) fn lit_pipelines(
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview_mask: None,
+            multiview_mask: crate::renderer::multiview::mask(target),
             cache: None,
         })
     }))
@@ -307,13 +313,14 @@ impl Skinning {
             label: Some("deform"),
             entries: &[storage(0, MAT_SIZE), storage(1, 4), storage(2, 16)],
         });
+        let source = skinned_source(include_str!("shaders/pbr.wgsl"));
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pbr skinned"),
-            source: wgpu::ShaderSource::Wgsl(skinned_source(include_str!("shaders/pbr.wgsl")).into()),
+            source: wgpu::ShaderSource::Wgsl(source.as_str().into()),
         });
         let lit = lit_pipelines(
             device,
-            &shader,
+            (&shader, &source),
             [groups[0], groups[1], groups[2], &layout],
             color_format,
             depth,
