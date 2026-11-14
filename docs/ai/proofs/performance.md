@@ -73,3 +73,28 @@ UNVERIFIED: GPU time by timestamp queries (only submit-to-idle), PGO, ARM CPUs, 
 Intel GPUs. The alternated desktop run of `release` against `dist` is pending (single runs
 agree with the cloud). Large allocation counts per tick in script-driven games are the first
 target of the optimization pass.
+
+## Realistic scene against Unity (decision 0284)
+
+First run, 2026-11-14, main at `223fbc6`, Ryzen 7 2700X, RTX 2080, `--profile dist`; Unity
+6000.3.4f1, URP 17.3.0, an empty project built by `tools/unity-bench` (no script changes
+needed). 1920x1080, 4x MSAA, 1,000 timed frames after warm-up. Marionette on Vulkan, offscreen;
+Unity on Direct3D 12, a window, vertical sync off.
+
+| | Frame p50 / p99 ms | Where the time goes (p50 ms) |
+| --- | --- | --- |
+| Marionette | 19.31 / 24.73 | GPU wait 10.52, recording 7.95, extract 0.62, sim 0.20 (one after another) |
+| Unity | 11.13 / 15.95 | main thread 11.13, render thread 1.40, GPU about 4.3 (overlapped) |
+| Unity, static batching | 11.21 / 16.05 | the same |
+
+- Unity is 1.7x faster on this scene. Marionette's bench waits for the GPU every frame, so
+  its CPU and GPU time add up; overlapped, it would be bound by its GPU at about 10.5 ms,
+  still about 2.4x Unity's GPU time. Recording 1,285 draws (24,897 instances) takes 8 ms.
+- Marionette draws 14.9 million triangles after culling (3,776 parts culled).
+- Unity's GPU numbers are rough: some frames report 0 ms (average 3.26 below median 4.29).
+- Nobody looked at the Unity player's picture; its log shows no errors.
+- Headset, 2 eyes at 2160x2160: 21.05 ms p50 (GPU wait 12.49, recording 7.69), 1,542 draws.
+  This run drew a pass per eye: `marionette bench --headset` did not turn on single-pass stereo
+  (decision 0285) until the fix that followed it.
+- Next: the deferred optimization pass (decision 0100) starts from these two gaps, GPU time
+  per frame and CPU time per draw.

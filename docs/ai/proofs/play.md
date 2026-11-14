@@ -79,14 +79,19 @@ Line 6 (input, physics, audio, UI):
   decoder is shared); the PC figures. Planned PC run (Unity lock free, PC idle 5 minutes):
   `cargo run --release -p marionette-cli -- audio-check --seconds 30 --voices 128`, then 256,
   expecting `pass: true`; record `max_block_us` and the device rate here.
-- First real-device run (2026-11-13, Ryzen 7 2700X, USB speakers, 48 kHz, release build,
-  `audio-check --seconds 30`, PC idle 12 minutes, no Unity): 64 voices (79 at peak) passed with
-  0 slow callbacks, 0 underruns, 0 dropped, longest callback 2.4 ms. 128 voices (155 peak):
-  3 slow callbacks, longest 3.2 ms. 256 voices (309 peak): 12 slow, longest 3.0 ms. No stream
-  underruns, drops or late commands in any run. The test mix clipped heavily (notes were too
-  loud), so the check now scales velocity by voice count. The check also reports the device
-  callback size and worst callback load (`buffer_frames`, `max_load_permille`) to tell compute
-  from scheduling jitter; the 128 and 256 figures above are not yet explained.
+- Real-device runs (2026-11-13, Ryzen 7 2700X, USB speakers, 48 kHz, release build,
+  `audio-check --seconds 30`, no Unity, no other bench running). The device calls back with
+  96 frames (2 ms), so the deadline is tight. Run 1 (loud test mix, before the counters):
+  64 voices clean; 128 voices 3 slow callbacks; 256 voices 12. Run 2 (current check, quiet mix
+  that no longer clips; PR 63): 64 voices (79 at peak) 0 slow, worst callback 33% of its
+  deadline; 128 voices (155 peak) 0 slow, worst 96%; 256 voices (311 peak) 10 slow, worst 186%,
+  4.9 ms; 512 voices (1024 peak, pool full) 6232 slow, 5666 stolen, 5990 dropped commands.
+  In every run: 0 underruns, 0 stream underruns, 0 late commands. Reading: 64 voices has wide
+  margin (a game uses far fewer); 128 is at the edge of a 2 ms buffer; past that the callback
+  misses its deadline, as the release benchmark predicts (256 voices is about 20 to 30 percent
+  of a core per 10 ms, which is 2 to 3 ms per 10 ms but spikes past a 2 ms deadline). Not done:
+  asking the device for a larger buffer (kira's `StreamConfig` allows it), which would give
+  5x margin at 10 ms latency; nobody has listened to the output.
 
 Physics behaviour (decision 0273): `cargo test -p marionette-physics --test behaviour`
 (`free_fall_follows_gravity_and_its_scale`, `restitution_sets_how_high_a_ball_bounces`,

@@ -322,6 +322,14 @@ impl Offscreen {
         can
     }
 
+    /// Turns single-pass stereo on for two-eye renders unless MARIONETTE_SINGLE_PASS_STEREO=0
+    /// (benchmarks use this, so a pass per eye can be timed for comparison). Returns whether
+    /// it is on.
+    pub fn default_single_pass_stereo(&mut self, gpu: &Gpu, eyes: u32) -> bool {
+        let wanted = eyes == 2 && std::env::var("MARIONETTE_SINGLE_PASS_STEREO").as_deref() != Ok("0");
+        wanted && self.set_single_pass_stereo(gpu, true)
+    }
+
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }

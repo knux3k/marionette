@@ -33,9 +33,9 @@ check a feature there before building on it, and update its row when your work m
 - Starter (0150): made games not played by a person.
 - Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
-- Synth and streamed audio (0220): rendered and checked as numbers only; played through a real
-  device once (64 voices clean; 128 and 256 had a few slow callbacks, cause unknown, see
-  proofs/play.md); no one has listened. OGG streaming untested (WAV is).
+- Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
+  device twice (64 and 128 voices clean on a 96-frame buffer, 256 and up miss deadlines; see
+  proofs/play.md); no one has listened; the device buffer size is not configurable yet. OGG streaming untested (WAV is).
 - World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
   not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has
