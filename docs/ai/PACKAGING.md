@@ -45,7 +45,7 @@ tries the headset through OpenXR first and opens a window when no runtime or hea
 (`xr.no_*`). Linux and the Frame use the system OpenXR loader; on Windows put
 `openxr_loader.dll` in the game folder (the build warns when it is missing).
 
-The engine binary gets `gamepad` (decision 0172) and `save` (decision 0076) and only the other runtime features the game uses: `script` when it has
+The engine binary gets `gamepad` (decision 0172), `save` (decision 0076), `physics`, `audio` and `anim` (decision 0270) and only the other runtime features the game uses: `script` when it has
 TypeScript, `jobs-ts` when text names `JobData`, `JobSchedule` or `engine.jobs` (wasmtime is
 about 12 MB), `xr` when a scene has an `XrRig`. A game with its own `Cargo.toml` (decision 0062) is built from that package.
 
