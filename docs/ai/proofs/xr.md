@@ -23,3 +23,9 @@
   for want of a loader beside the exe (now also searched in SteamVR's default folder and
   `MARIONETTE_OPENXR_LOADER`), then SteamVR refused the app (its log: wireless headset not
   connected), now reported as `xr.runtime_refused`. No frames rendered; 90 Hz still unmeasured.
+- PC with SteamVR's null headset (2026-11-14): probe and a 900-frame run ok, loader found in
+  SteamVR's folder, all controller profiles accepted. The null headset is a desktop window, so
+  the compositor ran at the monitor's 60 Hz (interval p50 16.7 ms, p99 17.1 ms) and never
+  reported it worn (session stayed synchronized; 1 frame drawn, 3.3 ms CPU at 2016x2240 per
+  eye). 90 Hz needs a real or spoofed worn headset. SteamVR could not save bindings while the
+  app name held a `/`; names now pass through `safe_app_name`.

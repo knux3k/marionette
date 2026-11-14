@@ -79,7 +79,13 @@ pub fn run(r: XrRun) -> Result<Value, Errors> {
         max_ticks: r.ticks,
         resolution_scale: r.scale,
         base_dir: dir,
-        app_name: format!("Marionette - {}", r.path),
+        app_name: format!(
+            "Marionette - {}",
+            std::path::Path::new(&r.path)
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        ),
     };
     let (sim, report) = marionette_openxr::run(sim, opts, &mut hooks).map_err(|e| e.with_file(r.path))?;
     let recorded = match r.record {
