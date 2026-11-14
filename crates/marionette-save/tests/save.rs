@@ -141,7 +141,7 @@ fn a_damaged_or_cut_off_slot_loads_its_backup() {
     assert!(recovered.unwrap().contains("truncated"));
 
     // One flipped byte in the body.
-    let mut bad = good.clone();
+    let mut bad = good;
     let last = bad.len() - 5;
     bad[last] ^= 0x20;
     std::fs::write(&path, &bad).unwrap();

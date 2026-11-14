@@ -11,6 +11,7 @@
 //! arithmetic (no `sin`/`cos`/`slerp`), on one thread, in scene-id order. Model files are
 //! read only in [`Module::init`], never during a tick.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod blend;
 pub mod sample;
@@ -475,7 +476,7 @@ fn write_poses(world: &mut World, dt: Option<f32>) {
 /// or of the rest pose if the entity is not animated.
 pub fn node_matrix(world: &World, entity: Entity, node: &str) -> Option<[f32; 16]> {
     let model = world.get::<Model>(entity)?;
-    let rig = world.get_resource::<Rigs>()?.0.get(&model.asset)?.clone();
+    let rig = Arc::clone(world.get_resource::<Rigs>()?.0.get(&model.asset)?);
     let i = rig.node(node)?;
     match world.get::<Pose>(entity) {
         Some(p) => p.nodes.get(i).copied(),

@@ -26,6 +26,7 @@
 //! -1..1 (right and forward are +), the buttons are 0 or 1. Tracked poses are not inputs but
 //! directly set actions (`xr.head.px`, ...; see `marionette-xr`).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

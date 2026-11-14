@@ -111,7 +111,7 @@ impl LocalLobbies {
     /// The same directory, used by player `me`.
     pub fn handle(&self, me: PeerId) -> Self {
         Self {
-            dir: self.dir.clone(),
+            dir: Arc::clone(&self.dir),
             me,
         }
     }

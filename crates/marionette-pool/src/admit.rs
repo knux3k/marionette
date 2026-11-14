@@ -477,7 +477,7 @@ pub fn add(
                 bytes: b.len() as u64,
             })
             .collect(),
-        main: main.clone(),
+        main,
         engine_ready,
         notes: notes.clone(),
     };
@@ -589,7 +589,7 @@ pub fn read_folder(path: &Path) -> Result<Vec<(String, Vec<u8>)>, Errors> {
                 continue;
             }
             let child = if rel.is_empty() {
-                name.clone()
+                name
             } else {
                 format!("{rel}/{name}")
             };

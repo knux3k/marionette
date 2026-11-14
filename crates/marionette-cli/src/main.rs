@@ -1,5 +1,6 @@
 //! The `marionette` binary: the CLI library with the built-in engine.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use std::process::ExitCode;
 

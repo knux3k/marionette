@@ -2,6 +2,7 @@
 //! Nothing here touches the GPU: the renderer uploads these, and physics builds mesh and
 //! convex colliders from the same meshes.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub use glam;
 

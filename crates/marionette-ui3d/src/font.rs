@@ -214,7 +214,7 @@ fn pack(bakes: Vec<Bake>, spread: u32, line_height: f32, ascent: f32) -> FontDat
         srgb: false,
     });
     let key = format!("sdf-{key}");
-    marionette_assets::generated::put(&key, atlas.clone());
+    marionette_assets::generated::put(&key, Arc::clone(&atlas));
     FontData {
         glyphs,
         line_height,

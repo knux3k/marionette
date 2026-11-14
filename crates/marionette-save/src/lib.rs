@@ -15,6 +15,7 @@
 //!
 //! Loading: [`load`] reads a slot, migrates, and restores a [`Sim`].
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod autosave;
 pub mod format;

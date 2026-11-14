@@ -15,6 +15,7 @@
 //!
 //! Nothing here runs during a simulation tick.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod approval;
 pub mod cache;
@@ -872,7 +873,7 @@ fn build_one(
                 .map(String::from),
             size: (r.output != OutputKind::Model).then(|| r.size()),
             from,
-            cache_key: p.key.clone(),
+            cache_key: p.key,
             raw_sha256: meta.sha256.clone(),
             cost_usd: meta.cost_usd,
         },
@@ -907,7 +908,7 @@ fn build_one(
         output: r.output,
         file,
         provenance: provenance_file,
-        sha256: rec.sha256.clone(),
+        sha256: rec.sha256,
         provider: meta.provider,
         model: meta.model,
         how: how.into(),

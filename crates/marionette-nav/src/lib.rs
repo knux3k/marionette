@@ -17,6 +17,7 @@
 //! order, so a run is the same on every platform and thread count. Routes live in the module
 //! state (saved in snapshots); [`NavAgentState`] is in the scene and the state hash.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod grid;
 pub mod search;

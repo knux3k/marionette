@@ -201,7 +201,7 @@ fn instantiate(agent: &mut Agent, input: InstantiateInput) -> Result<Instantiate
 
     // Add the entities in one validated edit.
     let target = EditTarget {
-        scene: Some(input.scene.clone()),
+        scene: Some(input.scene),
         session: None,
     };
     let mut out_entities = Vec::new();

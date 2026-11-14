@@ -205,8 +205,8 @@ pub fn open_stream(
         played: AtomicU64::new(0),
         failed: std::sync::Mutex::new(None),
     });
-    let reader_shared = shared.clone();
-    let reader_stats = stats.clone();
+    let reader_shared = Arc::clone(&shared);
+    let reader_stats = Arc::clone(stats);
     let path = path.to_path_buf();
     let looping = settings.looping;
     let thread = std::thread::Builder::new()
@@ -267,8 +267,8 @@ pub fn open_stream(
     Ok((
         StreamSource {
             rx,
-            shared: shared.clone(),
-            stats: stats.clone(),
+            shared: Arc::clone(&shared),
+            stats: Arc::clone(stats),
             start_at: settings.start_at,
             blocking: settings.blocking,
             gain_now: settings.gain.max(0.0),

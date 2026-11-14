@@ -6,6 +6,7 @@ use marionette_agent::engine::{SoundPlayer, synth};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// A 12 s looping chord bed, rendered offline, so the check exercises a disk stream with no
@@ -72,7 +73,7 @@ pub fn run(seconds: f64, voices: usize, stream: Option<&str>, json_out: bool) ->
             }
         },
     };
-    let stats = host.handle.stats().clone();
+    let stats = Arc::clone(host.handle.stats());
     let (source, stream_handle) = match synth::open_stream(
         &stream_path,
         &stats,

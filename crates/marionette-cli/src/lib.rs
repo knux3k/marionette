@@ -9,6 +9,7 @@
 //! A game with its own Rust modules or operations makes its own binary with the same commands:
 //! `fn main() -> ExitCode { marionette_cli::main_with(engine) }` (decision 0062).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use clap::{Parser, Subcommand};
 use marionette_agent::{Agent, Engine};

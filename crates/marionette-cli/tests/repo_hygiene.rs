@@ -284,11 +284,14 @@ fn unsafe_code_only_in_listed_ffi_files() {
 }
 
 /// Every library and binary root denies `unwrap`, `expect` and `panic!` outside tests
-/// (decision 0104, `clippy.toml` allows them in tests).
+/// (decision 0105, `clippy.toml` allows them in tests) and `.clone()` on reference counts.
 #[test]
 fn every_crate_root_denies_panicking_shortcuts() {
     let root = repo();
-    let line = "#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]";
+    let lines = [
+        "#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]",
+        "#![deny(clippy::clone_on_ref_ptr)]",
+    ];
     let mut missing = Vec::new();
     for path in files() {
         let rel = path
@@ -299,9 +302,9 @@ fn every_crate_root_denies_panicking_shortcuts() {
         let is_root = (rel.starts_with("crates/") || rel.starts_with("examples/"))
             && (rel.ends_with("/src/lib.rs") || rel.ends_with("/src/main.rs"))
             && rel.matches('/').count() == 3;
-        if is_root && !std::fs::read_to_string(&path).is_ok_and(|t| t.contains(line)) {
+        if is_root && !std::fs::read_to_string(&path).is_ok_and(|t| lines.iter().all(|l| t.contains(l))) {
             missing.push(rel);
         }
     }
-    assert!(missing.is_empty(), "add `{line}` to: {missing:?}");
+    assert!(missing.is_empty(), "add {lines:?} to: {missing:?}");
 }

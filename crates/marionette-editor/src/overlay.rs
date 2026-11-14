@@ -10,6 +10,7 @@ use marionette_core::spatial::{Color, Material, Vec2 as CVec2};
 use marionette_core::ui::{Anchor, UiNode};
 use marionette_render::extract::{MeshDraw, UiDraw, UiLook};
 use marionette_render::{FrameData, View};
+use std::sync::Arc;
 
 /// UI layer of editor draws: above any game UI.
 pub const LAYER: i32 = 1_000_000;
@@ -326,7 +327,7 @@ pub fn grid(frame: &mut FrameData, center: Vec3, height: f32) {
     let mut line = |center: Vec3, scale: Vec3, glow: Vec3| {
         frame.meshes.push(MeshDraw {
             entity: u64::MAX,
-            asset: asset.clone(),
+            asset: Arc::clone(&asset),
             world: Mat4::from_scale_rotation_translation(scale, glam::Quat::IDENTITY, center),
             material: Some(black),
             pose: None,

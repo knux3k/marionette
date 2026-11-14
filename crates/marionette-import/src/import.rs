@@ -553,7 +553,7 @@ fn fbx_texture(
     {
         candidates.push(r);
     }
-    let mut d = dir.clone();
+    let mut d = dir;
     loop {
         let join = |a: &str, b: &str| {
             if a.is_empty() {
@@ -796,7 +796,7 @@ pub fn import(library: &Library, opts: &ImportOptions) -> Result<ImportReport, E
         source_name: source_name.clone(),
         dry_run: opts.dry_run,
         report: ImportReport {
-            source_name: source_name.clone(),
+            source_name,
             importer: importer.into(),
             dry_run: opts.dry_run,
             declarations: decls

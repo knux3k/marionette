@@ -274,7 +274,7 @@ impl Renderer {
 
     fn shader_source(&self, name: &str, frame: &FrameData) -> Result<Arc<str>, String> {
         if let Some(s) = frame.game_shaders.get(name) {
-            return Ok(s.clone());
+            return Ok(Arc::clone(s));
         }
         if name.ends_with(".wgsl") {
             let path = self.base_dir.join(name);

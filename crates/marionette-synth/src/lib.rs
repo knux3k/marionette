@@ -10,6 +10,7 @@
 //!
 //! Hosting on a real device (kira) lives in `marionette-audio` (decision 0220).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod analyze;
 pub mod dsp;

@@ -6,6 +6,7 @@
 //! - [`engine`] puts both on top of the built-in engine; `src/main.rs` runs it as a
 //!   `marionette`-style binary.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

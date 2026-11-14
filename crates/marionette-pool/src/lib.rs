@@ -13,6 +13,7 @@
 //!   Quaternius (ingest from a downloaded archive that carries their CC0 license text).
 //! - [`net`]: moving bytes; tests use a scripted transport, the CLI uses the system `curl`.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod admit;
 pub mod net;

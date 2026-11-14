@@ -20,6 +20,7 @@
 //! [`alloc::Counting`] is an opt-in global allocator that counts live bytes, used by the
 //! leak tests and by anything that wants a cheap heap probe.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod alloc;
 mod child;

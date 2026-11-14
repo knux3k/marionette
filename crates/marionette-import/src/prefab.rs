@@ -1262,7 +1262,7 @@ pub fn convert(rel: &str, text: &str, env: &dyn PrefabEnv) -> Result<Converted, 
     let mut stack = Vec::new();
     let tree = b.build(rel, text, &mut stack)?;
     let flat = flatten(&tree, env)?;
-    let mut notes = tree.notes.clone();
+    let mut notes = tree.notes;
     notes.extend(flat.notes);
     notes.push(
         "Marionette has no parent-child transforms: entities are placed relative to the prefab root and do not follow their parent when it moves"

@@ -97,7 +97,7 @@ impl Player {
         self.manager_mut()
             .play(SynthData {
                 synth,
-                closed: closed.clone(),
+                closed: Arc::clone(&closed),
             })
             .map_err(|e| format!("cannot start the synth: {e}"))?;
         Ok(SynthHost { handle, closed })

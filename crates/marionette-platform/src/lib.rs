@@ -7,6 +7,7 @@
 //!
 //! The Steam backend lives in the optional `marionette-steam` crate.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 mod defs;
 mod offline;

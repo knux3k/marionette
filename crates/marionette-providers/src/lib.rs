@@ -14,6 +14,7 @@
 //!
 //! Providers run outside the simulation; nothing here is called during a tick.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod claude;
 pub mod config;

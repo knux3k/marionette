@@ -109,7 +109,7 @@ pub fn scan_files(source: &Path) -> Vec<SourceEntry> {
                 continue;
             }
             let child = if rel.is_empty() {
-                name.clone()
+                name
             } else {
                 format!("{rel}/{name}")
             };

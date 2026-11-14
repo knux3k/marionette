@@ -383,7 +383,7 @@ fn morph_targets_change_the_mesh() {
         off.read_pixels(&gpu).unwrap()
     };
     let squashed = draw(&frame);
-    let mut flat = frame.clone();
+    let mut flat = frame;
     let mut p = (*pose).clone();
     p.morph_weights[body][0] = 0.0;
     flat.meshes[waver].pose = Some(std::sync::Arc::new(p));

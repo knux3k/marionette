@@ -32,7 +32,7 @@ fn definitions_are_checked() {
 fn tracker_unlocks_from_stats_and_persists() {
     let dir = tmp("tracker");
     let defs = parse_definitions(DEFS).unwrap();
-    let mut t = Tracker::new(defs.clone(), OfflinePlatform::open(&dir).unwrap());
+    let mut t = Tracker::new(defs, OfflinePlatform::open(&dir).unwrap());
     assert!(t.unlock("FIRST_BUILD").unwrap());
     assert!(!t.unlock("FIRST_BUILD").unwrap(), "once");
     assert_eq!(t.unlock("NOPE").unwrap_err().code, codes::UNKNOWN);

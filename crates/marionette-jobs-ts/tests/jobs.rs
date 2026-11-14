@@ -221,7 +221,7 @@ fn compiled_and_interpreted_runs_are_bit_identical() {
         &driver,
         vec![
             a0.iter().map(|&x| x as f64).collect(),
-            b0.clone(),
+            b0,
             ids0.iter().map(|&x| x as f64).collect(),
         ],
     );

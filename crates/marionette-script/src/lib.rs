@@ -22,6 +22,7 @@
 //! diagnostic (file, line, column); an exception during a tick becomes a `script_error`
 //! event and the tick goes on.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 pub mod convert;
 pub mod strip;
@@ -139,7 +140,7 @@ impl ScriptModule {
         }
     }
     fn registry(&self) -> Arc<Registry> {
-        self.cache.get_or_init(|| Arc::new((self.registry)())).clone()
+        Arc::clone(self.cache.get_or_init(|| Arc::new((self.registry)())))
     }
 }
 
@@ -174,7 +175,10 @@ impl Module for ScriptModule {
 /// Components, `ScriptState`, the tick and the RNG are untouched. On error the old scripts
 /// keep running. Returns the script paths now loaded.
 pub fn reload(world: &mut World) -> marionette_core::Result<Vec<String>> {
-    let Some(registry) = world.get_resource::<ScriptHost>().map(|h| h.registry.clone()) else {
+    let Some(registry) = world
+        .get_resource::<ScriptHost>()
+        .map(|h| Arc::clone(&h.registry))
+    else {
         // No scripts were loaded before; nothing in this world can have changed meaning.
         return Ok(Vec::new());
     };
@@ -337,7 +341,7 @@ impl ScriptHost {
         rt.set_memory_limit(MEMORY_LIMIT);
         rt.set_max_stack_size(STACK_LIMIT);
         let fuel = Arc::new(AtomicU64::new(0));
-        let f = fuel.clone();
+        let f = Arc::clone(&fuel);
         rt.set_interrupt_handler(Some(Box::new(move || {
             f.fetch_add(1, Ordering::Relaxed) >= STEP_BUDGET
         })));
@@ -624,7 +628,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     )?;
 
     let h = Object::new(ctx.clone())?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "get",
         Function::new(
@@ -647,7 +651,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     // value. `plan` gives [index, make body]; `read` writes the leaves.
     type Plans = Arc<Mutex<Vec<(&'static str, Arc<convert::Plan>)>>>;
     let plans: Plans = Arc::default();
-    let (b, table) = (bridge.clone(), plans.clone());
+    let (b, table) = (Arc::clone(bridge), Arc::clone(&plans));
     h.set(
         "plan",
         Function::new(
@@ -679,7 +683,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             .cloned()
     };
     // 1: leaves written; 0: no such entity or component; -1: take the general path.
-    let (b, table) = (bridge.clone(), plans);
+    let (b, table) = (Arc::clone(bridge), plans);
     h.set(
         "read",
         Function::new(
@@ -709,7 +713,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     )?;
     // `Entity.get` without JSON text (decision 0271); the text path when the direct one
     // declines.
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "get_value",
         Function::new(
@@ -732,7 +736,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
     )?;
     // `Entity.set` without JSON text. False: nothing was done and the caller takes the text
     // path (`set`), which also words every refusal.
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "set_value",
         Function::new(
@@ -772,7 +776,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "set",
         Function::new(
@@ -802,7 +806,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
         )?,
     )?;
     // The entity's waiting messages as text, read without a type lookup: every turn asks.
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "inbox",
         Function::new(
@@ -815,7 +819,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "has",
         Function::new(
@@ -831,7 +835,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "anim",
         Function::new(
@@ -849,14 +853,14 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "exists",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, id: f64| {
             in_world(&ctx, &b, |_, br| br.ids.contains_key(&(id as u64)))
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "name",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, id: f64| {
@@ -866,14 +870,14 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             })
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "find",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
             in_world(&ctx, &b, |_, br| br.names.get(&name).map(|id| *id as f64))
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "query",
         Function::new(
@@ -891,7 +895,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "resource",
         Function::new(
@@ -915,7 +919,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "tick",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
@@ -924,7 +928,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             })
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "dt",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
@@ -933,7 +937,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             })
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "rand",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>| {
@@ -943,28 +947,28 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             })
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "action",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
             action(&ctx, &b, &name, |a, n| a.value(n) as f64)
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "pressed",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
             action(&ctx, &b, &name, |a, n| a.pressed(n))
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "just_pressed",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, name: String| {
             action(&ctx, &b, &name, |a, n| a.just_pressed(n))
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "emit",
         Function::new(
@@ -982,14 +986,14 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "log",
         Function::new(ctx.clone(), move |ctx: Ctx<'_>, message: String| {
             event(&ctx, &b, "script_log", serde_json::json!({ "message": message }))
         })?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "spawn",
         Function::new(
@@ -1009,7 +1013,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "clone",
         Function::new(
@@ -1050,7 +1054,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "destroy",
         Function::new(
@@ -1073,7 +1077,7 @@ fn install<'js>(ctx: &Ctx<'js>, bridge: &Shared) -> rquickjs::Result<()> {
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "raycast",
         Function::new(
@@ -1233,7 +1237,7 @@ fn parse_job_args<'js>(
 }
 
 fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquickjs::Result<()> {
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "jobs_run",
         Function::new(
@@ -1294,7 +1298,7 @@ fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquick
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "jobs_get",
         Function::new(
@@ -1314,7 +1318,7 @@ fn install_jobs<'js>(ctx: &Ctx<'js>, h: &Object<'js>, bridge: &Shared) -> rquick
             },
         )?,
     )?;
-    let b = bridge.clone();
+    let b = Arc::clone(bridge);
     h.set(
         "jobs_set",
         Function::new(
@@ -1599,7 +1603,7 @@ fn lend(host: &ScriptHost, world: &mut World, ids: BTreeMap<u64, Entity>, names:
     *bridge_lock(&host.bridge) = Some(Lent {
         world: std::mem::replace(world, spare),
         bridge: Bridge {
-            registry: host.registry.clone(),
+            registry: Arc::clone(&host.registry),
             ids,
             names,
             current: 0,

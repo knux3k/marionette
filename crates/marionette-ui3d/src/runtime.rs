@@ -122,7 +122,7 @@ impl UiRuntime {
 
     /// Layout of a panel, rebuilt only when its components changed.
     pub fn layout(&self, id: u64, panel: &UiPanel, content: &UiContent) -> Arc<Layout> {
-        self.entry(id, panel, content, |c, _| c.layout.clone())
+        self.entry(id, panel, content, |c, _| Arc::clone(&c.layout))
     }
 
     /// Mesh of a panel, rebuilt only when its components or pointer state changed.
@@ -132,10 +132,10 @@ impl UiRuntime {
             if let Some((s, q)) = &c.mesh
                 && *s == state
             {
-                return q.clone();
+                return Arc::clone(q);
             }
             let q = Arc::new(layout::mesh(panel, content, &c.layout, font, state));
-            c.mesh = Some((state, q.clone()));
+            c.mesh = Some((state, Arc::clone(&q)));
             q
         })
     }

@@ -264,7 +264,7 @@ impl GameMeshes {
 
     /// A cheap copy of every mesh for one frame.
     pub fn snapshot(&self) -> MeshMap {
-        self.map.clone()
+        Arc::clone(&self.map)
     }
 
     /// Convenience for modules: stores into the world's resource, creating it.

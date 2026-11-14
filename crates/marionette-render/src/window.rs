@@ -347,7 +347,7 @@ impl App<'_> {
         );
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance
-            .create_surface(window.clone())
+            .create_surface(Arc::clone(&window))
             .map_err(|e| surface_err(format!("cannot create surface: {e}")))?;
         let gpu = Gpu::new(instance, Some(&surface))?;
         let size = window.inner_size();
@@ -762,7 +762,7 @@ impl Presenter {
         let surface_err = |msg: String| Errors::from(Diagnostic::error(renderer::codes::SURFACE, msg));
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance
-            .create_surface(window.clone())
+            .create_surface(Arc::clone(&window))
             .map_err(|e| surface_err(format!("cannot create surface: {e}")))?;
         let gpu = Gpu::new(instance, Some(&surface))?;
         let size = window.inner_size();
