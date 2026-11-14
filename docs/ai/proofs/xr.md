@@ -19,3 +19,7 @@
   and wait for the eye images, extract, record, submit) p50 0.56 ms, p99 3.8 ms. The frame
   interval (50 ms) is Monado compositing in software, not the engine; GPU time on a desktop GPU
   and a worn headset is UNVERIFIED (STATE.md).
+- PC with SteamVR (2026-11-14), headset not linked: release build ran; the probe first failed
+  for want of a loader beside the exe (now also searched in SteamVR's default folder and
+  `MARIONETTE_OPENXR_LOADER`), then SteamVR refused the app (its log: wireless headset not
+  connected), now reported as `xr.runtime_refused`. No frames rendered; 90 Hz still unmeasured.
