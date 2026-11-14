@@ -125,12 +125,26 @@ macro_rules! backend {
                 let scale = [t.scale.x, t.scale.y, t.scale.z];
                 let comp = world.get::<BodyComp>(e).copied();
                 let character = world.get::<CharacterController>(e).is_some();
+                // A child (decision 0272) is placed by its parent every tick, so physics
+                // cannot also move it; a bare collider on a child follows it as a kinematic body.
+                let child = world
+                    .get::<marionette_core::hierarchy::ChildOf>(e)
+                    .is_some();
                 let kind = match (character, comp.map(|b| b.kind)) {
                     (true, _) => 3,
                     (false, Some(BodyKind::Dynamic)) => 0,
                     (false, Some(BodyKind::Kinematic)) => 2,
+                    (false, None) if child => 2,
                     (false, Some(BodyKind::Fixed)) | (false, None) => 1,
                 };
+                if child && (kind == 0 || kind == 3) {
+                    return Err(err(
+                        crate::codes::CHILD,
+                        id,
+                        format!("entity {id} has ChildOf and a dynamic body or character controller"),
+                        "remove ChildOf, or make the RigidBody Kinematic: a child is placed by its parent",
+                    ));
+                }
                 let mut b = match kind {
                     0 => RigidBodyBuilder::dynamic(),
                     1 => RigidBodyBuilder::fixed(),

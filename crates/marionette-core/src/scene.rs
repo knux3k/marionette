@@ -290,11 +290,61 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
     }
     entities.sort_by_key(|(id, _, _)| *id);
 
+    let parents: BTreeMap<u64, u64> = scene
+        .entities
+        .iter()
+        .filter_map(|e| Some((e.id, parent_of(e)?)))
+        .collect();
+    let cycles = parent_cycles(&parents);
+    for (i, e) in scene.entities.iter().enumerate() {
+        if cycles.contains(&e.id) {
+            let ptr = pointer(["entities", &i.to_string(), "components", "ChildOf"]);
+            errs.push(
+                Diagnostic::error(
+                    codes::SCENE_PARENT_CYCLE,
+                    format!("entity {} is its own ancestor through `ChildOf`", e.id),
+                )
+                .at_pos(pos(&ptr))
+                .pointer(ptr)
+                .entity(e.id)
+                .component("ChildOf")
+                .fix("change `ChildOf.parent` on one entity of the cycle, or remove its `ChildOf`"),
+            );
+        }
+    }
+
     if errs.is_empty() {
         Ok(ValidScene { resources, entities })
     } else {
         Err(Errors(errs))
     }
+}
+
+/// The parent an entity's `ChildOf` names (decision 0272), read from its untyped value.
+pub(crate) fn parent_of(e: &SceneEntity) -> Option<u64> {
+    e.components.get("ChildOf")?.get("parent")?.as_u64()
+}
+
+/// The ids that are their own ancestor, given each child's parent. Linear in the entities.
+pub(crate) fn parent_cycles(parents: &BTreeMap<u64, u64>) -> BTreeSet<u64> {
+    let (mut done, mut on) = (BTreeSet::new(), BTreeSet::new());
+    for &start in parents.keys() {
+        let (mut path, mut in_path, mut at) = (Vec::new(), BTreeSet::new(), start);
+        while let Some(&parent) = parents.get(&at) {
+            if done.contains(&at) {
+                break;
+            }
+            if !in_path.insert(at) {
+                let from = path.iter().position(|id| *id == at).expect("in the path");
+                on.extend(path[from..].iter().copied());
+                break;
+            }
+            path.push(at);
+            at = parent;
+        }
+        done.extend(path);
+    }
+    on
 }
 
 fn ids_hint(ids: &BTreeSet<u64>) -> String {

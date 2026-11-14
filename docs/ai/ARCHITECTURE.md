@@ -57,6 +57,8 @@ Planned crates (not created yet): marionette-ai-runtime (line 10).
 4. `Stage::Physics`: `physics_tick` (`crates/marionette-physics/src/lib.rs`): bodies for
    spawned entities and removal of bodies of removed ones (`sync`), kinematic targets,
    character controllers, Rapier step, collision events, write-back to components.
+   Children: `hierarchy::place` runs before this stage and again after it; it writes the world
+   `Transform` of every entity with `ChildOf` from its parent, parents first (decision 0272).
 5. `Stage::Effects`: `play_sounds` then `advance_music` (`crates/marionette-audio`): sound
    events, music layer levels (decision 0075); `animate` (`crates/marionette-anim/src/lib.rs`):
    advance `Animator` layers, blend spaces and overlays, write `Pose` (decisions 0028, 0074).

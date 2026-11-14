@@ -27,6 +27,7 @@ use std::collections::BTreeMap;
 pub mod codes {
     pub const MISSING: &str = "physics.missing_collider";
     pub const POSITION: &str = "physics.position_conflict";
+    pub const CHILD: &str = "physics.child_body";
     pub const SHAPE: &str = "physics.shape";
     pub const SNAPSHOT: &str = "physics.snapshot";
 }

@@ -111,7 +111,50 @@ fn steps() -> Vec<(&'static str, Value)> {
             "entity_create",
             s(json!({ "components": { "Transform": t(9.0) } })),
         ),
+        // Parents and children (decision 0272).
+        (
+            "entity_create",
+            s(json!({ "id": 50, "components": { "Transform": t(1.0) } })),
+        ),
+        (
+            "entity_create",
+            s(json!({ "id": 51, "components": { "ChildOf": child(50) } })),
+        ),
+        (
+            "entity_create",
+            s(json!({ "id": 52, "components": { "ChildOf": child(51) } })),
+        ),
+        (
+            "component_set",
+            s(json!({ "id": 50, "component": "ChildOf", "value": child(52) })),
+        ), // a cycle
+        (
+            "component_set",
+            s(json!({ "id": 51, "component": "ChildOf", "value": child(51) })),
+        ), // its own parent
+        (
+            "entity_create",
+            s(json!({ "id": 53, "components": { "ChildOf": child(53) } })),
+        ), // its own parent
+        (
+            "entity_create",
+            s(json!({ "id": 54, "components": { "Transform": t(7.0) } })),
+        ),
+        ("entity_attach", s(json!({ "id": 54, "parent": 52 }))),
+        ("entity_attach", s(json!({ "id": 50, "parent": 54 }))), // a cycle
+        ("entity_attach", s(json!({ "id": 54, "parent": 99 }))), // no such parent
+        (
+            "component_set",
+            s(json!({ "id": 51, "component": "ChildOf", "value": child(54) })),
+        ), // a cycle through the attached entity
+        ("entity_delete", s(json!({ "id": 50 }))),               // still a parent
     ]
+}
+
+fn child(parent: u64) -> Value {
+    let mut v = t(2.0);
+    v["parent"] = json!(parent);
+    v
 }
 
 fn answer(r: Result<Value, marionette_core::Errors>) -> Value {
@@ -138,7 +181,7 @@ fn indexed_edits_match_whole_scene_edits_step_by_step() {
         );
     }
     assert!(
-        refused >= 10,
+        refused >= 17,
         "the refusals were meant to be exercised ({refused})"
     );
     for d in [fast, slow] {
@@ -310,7 +353,7 @@ fn session_edits_match_whole_scene_edits_step_by_step() {
         refused += usize::from(x.get("err").is_some());
     }
     assert!(
-        refused >= 10,
+        refused >= 17,
         "the refusals were meant to be exercised ({refused})"
     );
     assert_eq!(seen(&mut a, &id), seen(&mut b, &id));

@@ -96,6 +96,10 @@ impl Sim {
         let mut world = World::new();
         self.registry.init_world(&mut world);
         load(&mut world)?;
+        crate::hierarchy::place_loaded(&mut world).map_err(|e| match file {
+            Some(f) => e.with_file(f),
+            None => e,
+        })?;
         world.insert_resource(rng);
         world.insert_resource(clock);
         world.insert_resource(SceneDir(self.scene_dir.clone()));
