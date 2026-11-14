@@ -13,7 +13,7 @@ use crate::extract::{FrameData, View};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3};
 use marionette_core::Diagnostic;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -2133,7 +2133,12 @@ impl Renderer {
         type Key<'k> = (&'k str, usize, bool, bool, usize, Option<u32>, variants::Look);
         let game = self.game.as_ref();
         let game_slot = |slot: Option<u32>| slot.filter(|&s| game.is_some_and(|g| g.draw(s).is_some()));
-        let mut group_of: BTreeMap<Key, u32> = BTreeMap::new();
+        // Lookup by model address (no string compares or hashing per instance); `keys[g]` keeps
+        // each group's full key, and groups are put in key order after the loop, so draw order
+        // is the same as before and the same on every run.
+        type Fast = (usize, usize, bool, bool, usize, Option<u32>, variants::Look);
+        let mut group_of: HashMap<Fast, u32, BuildFast> = HashMap::default();
+        let mut keys: Vec<Key> = Vec::new();
         let culler = {
             let vps: Vec<Mat4> = views.iter().map(|(v, _)| v.proj * v.view).collect();
             let lamps = frame
@@ -2202,8 +2207,20 @@ impl Renderer {
                 let g = match last_key {
                     Some((k, g)) if k == key => g,
                     _ => {
+                        let fast = (
+                            std::ptr::from_ref(model) as usize,
+                            key.1,
+                            key.2,
+                            key.3,
+                            key.4,
+                            key.5,
+                            key.6,
+                        );
                         let n = group_of.len() as u32;
-                        let g = *group_of.entry(key).or_insert(n);
+                        let g = *group_of.entry(fast).or_insert_with(|| {
+                            keys.push(key);
+                            n
+                        });
                         last_key = Some((key, g));
                         g
                     }
@@ -2256,8 +2273,20 @@ impl Renderer {
                                 shader,
                                 look,
                             );
+                            let fast = (
+                                std::ptr::from_ref(model) as usize,
+                                p,
+                                key.2,
+                                key.3,
+                                level,
+                                shader,
+                                look,
+                            );
                             let n = group_of.len() as u32;
-                            let g = *group_of.entry(key).or_insert(n);
+                            let g = *group_of.entry(fast).or_insert_with(|| {
+                                keys.push(key);
+                                n
+                            });
                             last = Some((level, g));
                             g
                         }
@@ -2288,7 +2317,10 @@ impl Renderer {
         let mut shadow_start_of = vec![0u32; group_of.len()];
         let mut calls = Vec::with_capacity(group_of.len());
         let mut at = 0u32;
-        for (&(asset, p, overridden, lamp, level, slot, look), &g) in &group_of {
+        let mut order: Vec<u32> = (0..keys.len() as u32).collect();
+        order.sort_unstable_by(|&a, &b| keys[a as usize].cmp(&keys[b as usize]));
+        for g in order {
+            let (asset, p, overridden, lamp, level, slot, look) = keys[g as usize];
             let Some(Ok(model)) = self.models.get(asset) else {
                 continue;
             };
@@ -3351,6 +3383,37 @@ fn material_textures(
         ],
     })
 }
+
+/// A multiply-rotate hash (the one rustc uses internally) for small keys of integers that
+/// the engine makes itself: several times cheaper than the default SipHash, which defends
+/// against keys chosen by an attacker, something group keys cannot be.
+#[derive(Default, Clone, Copy)]
+pub(crate) struct FastHasher(u64);
+
+impl std::hash::Hasher for FastHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(u64::from(b));
+        }
+    }
+    fn write_u8(&mut self, n: u8) {
+        self.write_u64(u64::from(n));
+    }
+    fn write_u32(&mut self, n: u32) {
+        self.write_u64(u64::from(n));
+    }
+    fn write_usize(&mut self, n: usize) {
+        self.write_u64(n as u64);
+    }
+    fn write_u64(&mut self, n: u64) {
+        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+}
+
+pub(crate) type BuildFast = std::hash::BuildHasherDefault<FastHasher>;
 
 /// Writes `data` into `slot`, recreating the buffer when it is too small.
 pub(crate) fn write_growable<T: Pod>(
