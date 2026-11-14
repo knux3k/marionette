@@ -195,7 +195,27 @@ struct Base {
     hand_tracking: bool,
 }
 
+/// The application name as runtimes may use it: SteamVR builds file names from it (saved
+/// controller bindings), so path separators and other unsafe characters become `_`, and it is
+/// cut to OpenXR's 127-byte limit.
+pub fn safe_app_name(name: &str) -> String {
+    let mut out: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    out.truncate(127);
+    let out = out.trim().to_string();
+    if out.is_empty() { "Marionette".into() } else { out }
+}
+
 fn instance(app_name: &str) -> Result<Base, XrError> {
+    let app_name = &safe_app_name(app_name);
     let entry = entry()?;
     let available = entry.enumerate_extensions().map_err(|e| {
         XrError::new(codes::NO_RUNTIME, format!("no active OpenXR runtime: {e}"))
@@ -780,6 +800,17 @@ fn render_eyes(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_names_are_safe_as_file_names() {
+        assert_eq!(
+            safe_app_name("Marionette - examples/xr.scene.json"),
+            "Marionette - examples_xr.scene.json"
+        );
+        assert_eq!(safe_app_name(r"a\b:c"), "a_b_c");
+        assert_eq!(safe_app_name("  "), "Marionette");
+        assert_eq!(safe_app_name(&"x".repeat(300)).len(), 127);
+    }
 
     #[test]
     fn a_refusing_runtime_is_not_reported_as_missing() {
