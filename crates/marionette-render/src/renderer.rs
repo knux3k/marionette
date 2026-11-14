@@ -21,7 +21,10 @@ use wgpu::util::DeviceExt;
 
 mod game_mesh;
 mod game_shader;
+pub(crate) mod variants;
 
+/// Anisotropic filtering of model textures (decision 0270).
+pub const MATERIAL_ANISOTROPY: u16 = 16;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
 /// Point and spot lights per frame (lowest entity ids win).
@@ -111,6 +114,7 @@ struct LightsUniform {
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct MaterialUniform {
+    /// rgb = emissive factor, w = alpha cutoff of a cut-out material (0: none).
     emissive: [f32; 4],
 }
 
@@ -131,6 +135,7 @@ struct GpuEnvironment {
 }
 
 /// One instanced draw of a static mesh part.
+#[derive(Clone)]
 pub(crate) struct DrawCall<'a> {
     /// The model shares its entity with a shadow-casting point or spot light: it does not
     /// cast into local light shadow maps (a lantern would otherwise block its own light).
@@ -145,11 +150,40 @@ pub(crate) struct DrawCall<'a> {
     pub seen: u32,
     /// A game shader and its material group (decision 0181).
     pub game: Option<game_shader::GameDraw<'a>>,
+    /// Sides, blending and cut-out of the material (decision 0270).
+    pub look: variants::Look,
+}
+
+/// Which of a frame's model draws a pass makes (decision 0270): opaque and cut-out ones, then
+/// (after the sky) see-through ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    Opaque,
+    Blended,
+}
+
+/// Pipelines of one pass over the models.
+#[derive(Clone, Copy)]
+enum Pipes<'a> {
+    /// Depth only: static parts, cut-out static parts (`None`: leave them out), skinned parts.
+    Depth(
+        &'a wgpu::RenderPipeline,
+        Option<&'a wgpu::RenderPipeline>,
+        &'a wgpu::RenderPipeline,
+    ),
+    /// Lit, per material variant: static, skinned; and whether the target is the HDR one.
+    Lit(
+        &'a variants::VariantPipelines,
+        &'a variants::VariantPipelines,
+        bool,
+    ),
 }
 
 /// Everything a frame draws for models, shared by the shadow, HDR and final passes.
 struct MeshCalls<'a> {
     calls: &'a [DrawCall<'a>],
+    /// `calls[..first_blended]` are opaque or cut out; the rest are see-through.
+    first_blended: usize,
     instances: Option<&'a wgpu::Buffer>,
     skinned: &'a [crate::skinning::SkinnedCall<'a>],
     deform_groups: &'a [wgpu::BindGroup],
@@ -158,64 +192,73 @@ struct MeshCalls<'a> {
     empty_group: Option<&'a wgpu::BindGroup>,
     /// The standard lights group, which game shader pipelines use (decision 0181).
     game_lights: Option<&'a wgpu::BindGroup>,
+    /// Empty group 1 of the cut-out shadow pipeline (decision 0270).
+    masked_empty: &'a wgpu::BindGroup,
 }
 
 impl MeshCalls<'_> {
     /// Depth only (shadow maps): group 0 at `offset` holds the light's view-projection.
+    #[allow(clippy::too_many_arguments)]
     fn draw_depth(
         &self,
         pass: &mut wgpu::RenderPass,
-        pipelines: (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+        pipelines: (
+            &wgpu::RenderPipeline,
+            &wgpu::RenderPipeline,
+            &wgpu::RenderPipeline,
+        ),
         view_group: &wgpu::BindGroup,
         offset: u32,
         local: bool,
         stats: &mut RenderStats,
     ) {
+        let (plain, masked, skinned) = pipelines;
         self.draw(
             pass,
-            pipelines,
+            Pipes::Depth(plain, Some(masked), skinned),
             (view_group, offset),
-            (None, local, false, false),
+            (None, local, false, Phase::Opaque),
             stats,
         );
     }
 
-    /// Depth of what the view draws (decision 0093 prepass): only the instances in view.
+    /// Depth of what the view draws (decision 0093 prepass): only the opaque instances in
+    /// view; cut-outs draw their own depth in the lit pass.
     fn draw_prepass(
         &self,
         pass: &mut wgpu::RenderPass,
-        pipelines: (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+        (plain, skinned): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
         view_group: &wgpu::BindGroup,
         offset: u32,
         stats: &mut RenderStats,
     ) {
         self.draw(
             pass,
-            pipelines,
+            Pipes::Depth(plain, None, skinned),
             (view_group, offset),
-            (None, false, true, false),
+            (None, false, true, Phase::Opaque),
             stats,
         );
     }
 
-    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material); `hdr` picks game
-    /// shader pipelines for the bloom target.
+    /// Lit: groups 0 (view at `offset`), 1 (lights) and 2 (material); `hdr` picks pipelines
+    /// for the bloom target.
     #[allow(clippy::too_many_arguments)]
     fn draw_lit(
         &self,
         pass: &mut wgpu::RenderPass,
-        pipelines: (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+        pipelines: (&variants::VariantPipelines, &variants::VariantPipelines),
         view_group: &wgpu::BindGroup,
         offset: u32,
         lights: &wgpu::BindGroup,
-        hdr: bool,
+        (hdr, phase): (bool, Phase),
         stats: &mut RenderStats,
     ) {
         self.draw(
             pass,
-            pipelines,
+            Pipes::Lit(pipelines.0, pipelines.1, hdr),
             (view_group, offset),
-            (Some(lights), false, true, hdr),
+            (Some(lights), false, true, phase),
             stats,
         );
     }
@@ -223,16 +266,20 @@ impl MeshCalls<'_> {
     fn draw(
         &self,
         pass: &mut wgpu::RenderPass,
-        (plain, skinned): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+        pipes: Pipes,
         (view_group, offset): (&wgpu::BindGroup, u32),
         // Lights group (lit draws), or none (depth); skip models holding a lamp; draw only
-        // the instances inside a view (views) or every caster (shadow maps); HDR target.
-        (lights, skip_lamps, in_view, hdr): (Option<&wgpu::BindGroup>, bool, bool, bool),
+        // the instances inside a view (views) or every caster (shadow maps); which draws.
+        (lights, skip_lamps, in_view, phase): (Option<&wgpu::BindGroup>, bool, bool, Phase),
         stats: &mut RenderStats,
     ) {
-        if let (Some(ib), false) = (self.instances, self.calls.is_empty()) {
-            pass.set_pipeline(plain);
-            let mut current: *const wgpu::RenderPipeline = plain;
+        let calls = match phase {
+            Phase::Opaque => &self.calls[..self.first_blended.min(self.calls.len())],
+            Phase::Blended => &self.calls[self.first_blended.min(self.calls.len())..],
+        };
+        let hdr = matches!(pipes, Pipes::Lit(_, _, true));
+        if let (Some(ib), false) = (self.instances, calls.is_empty()) {
+            let mut current: *const wgpu::RenderPipeline = std::ptr::null();
             pass.set_bind_group(0, view_group, &[offset]);
             let mut bound_lights: *const wgpu::BindGroup = std::ptr::null();
             if let Some(l) = lights {
@@ -240,7 +287,7 @@ impl MeshCalls<'_> {
                 bound_lights = l;
             }
             pass.set_vertex_buffer(1, ib.slice(..));
-            for call in self.calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
+            for call in calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
                 // Views draw the instances inside them; shadow maps draw every caster.
                 let range = if in_view {
                     call.instances.start..call.instances.start + call.seen
@@ -250,13 +297,19 @@ impl MeshCalls<'_> {
                 if range.is_empty() {
                     continue;
                 }
+                // The standard pipeline for this call's material, or none (left out).
+                let standard = match pipes {
+                    Pipes::Lit(pbr, _, hdr) => Some(pbr.get(call.look.variant as usize, hdr)),
+                    Pipes::Depth(_, masked, _) if call.look.masked && call.game.is_none() => masked,
+                    Pipes::Depth(plain, _, _) => Some(plain),
+                };
                 // Game shaders (decision 0181): their own pipelines; blended or
                 // `no_shadows` ones do not cast.
                 // A depth prepass (decision 0093) keeps opaque game shaders whose vertices do not
                 // move; the others draw their own depth in the lit pass.
-                let pipeline = match (lights.is_some(), call.game) {
-                    (true, Some((g, _))) => &g.lit[hdr as usize],
-                    (false, Some((g, _))) if in_view => {
+                let pipeline = match (lights.is_some(), call.game, standard) {
+                    (true, Some((g, _)), _) => &g.lit[hdr as usize],
+                    (false, Some((g, _)), Some(plain)) if in_view => {
                         if g.options.blend != marionette_core::shader::ShaderBlend::Opaque
                             || g.shadow.is_some()
                         {
@@ -264,9 +317,10 @@ impl MeshCalls<'_> {
                         }
                         plain
                     }
-                    (false, Some((g, _))) if !g.options.casts_shadows() => continue,
-                    (false, Some((g, _))) => g.shadow.as_ref().unwrap_or(plain),
-                    (_, None) => plain,
+                    (false, Some((g, _)), _) if !g.options.casts_shadows() => continue,
+                    (false, Some((g, _)), Some(plain)) => g.shadow.as_ref().unwrap_or(plain),
+                    (_, _, Some(p)) => p,
+                    (_, _, None) => continue,
                 };
                 if !std::ptr::eq(current, pipeline) {
                     pass.set_pipeline(pipeline);
@@ -284,6 +338,10 @@ impl MeshCalls<'_> {
                         pass.set_bind_group(1, want, &[]);
                         bound_lights = want;
                     }
+                } else if call.look.masked && call.game.is_none() {
+                    // Cut-out shadows read the material's base color (decision 0270).
+                    pass.set_bind_group(1, self.masked_empty, &[]);
+                    pass.set_bind_group(2, call.material, &[]);
                 }
                 if let Some((g, group)) = call.game {
                     if lights.is_none()
@@ -301,17 +359,36 @@ impl MeshCalls<'_> {
                 stats.draw_calls += 1;
             }
         }
+        let skinned_calls = self
+            .skinned
+            .iter()
+            .zip(self.deform_groups)
+            .filter(|(c, _)| c.look.blended() == (phase == Phase::Blended))
+            // The prepass leaves cut-outs to the lit pass.
+            .filter(|(c, _)| !(c.look.masked && matches!(pipes, Pipes::Depth(_, None, _))));
         if let (Some(ib), false) = (self.skinned_instances, self.skinned.is_empty()) {
-            pass.set_pipeline(skinned);
-            pass.set_bind_group(0, view_group, &[offset]);
-            if let Some(l) = lights {
-                pass.set_bind_group(1, l, &[]);
-            }
-            pass.set_vertex_buffer(1, ib.slice(..));
-            for (call, group) in self.skinned.iter().zip(self.deform_groups) {
+            let mut current: *const wgpu::RenderPipeline = std::ptr::null();
+            let mut started = false;
+            for (call, group) in skinned_calls {
                 let Some(deform) = &call.part.deform else {
                     continue;
                 };
+                let pipeline = match pipes {
+                    Pipes::Lit(_, skinned, hdr) => skinned.get(call.look.variant as usize, hdr),
+                    Pipes::Depth(_, _, skinned) => skinned,
+                };
+                if !started {
+                    pass.set_bind_group(0, view_group, &[offset]);
+                    if let Some(l) = lights {
+                        pass.set_bind_group(1, l, &[]);
+                    }
+                    pass.set_vertex_buffer(1, ib.slice(..));
+                    started = true;
+                }
+                if !std::ptr::eq(current, pipeline) {
+                    pass.set_pipeline(pipeline);
+                    current = pipeline;
+                }
                 if lights.is_some() {
                     pass.set_bind_group(2, call.material, &[]);
                 }
@@ -429,6 +506,17 @@ pub(crate) struct GpuModel {
 }
 
 /// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
+/// Pipeline variant and cut-out of `part` drawn with its material or an override
+/// (decision 0270).
+pub(crate) fn part_look(
+    model: &GpuModel,
+    part: &GpuPart,
+    over: Option<&marionette_core::spatial::Material>,
+) -> variants::Look {
+    let (_, md) = &model.materials[part.material.min(model.materials.len() - 1)];
+    variants::Look::of(md, over)
+}
+
 pub(crate) fn instance_material(
     model: &GpuModel,
     part: &GpuPart,
@@ -500,6 +588,9 @@ pub struct Renderer {
     shadow_map: LocalShadowMaps,
     shadow_sampler: wgpu::Sampler,
     shadow_pipeline: wgpu::RenderPipeline,
+    /// Shadows of cut-out parts (alpha tested against the material) and the empty group 1
+    /// their layout skips (decision 0270).
+    masked_shadow: (wgpu::RenderPipeline, wgpu::BindGroup),
     /// Point and spot light shadow maps (decision 0065); one 1x1 layer when none cast.
     local_shadows: LocalShadowMaps,
     /// Environment (decision 0066), built in `prepare`; `None` while no scene asks.
@@ -646,6 +737,49 @@ struct Decoded {
     model: ModelData,
     /// Per part, the index lists of its reduced levels (empty for parts that keep one).
     lods: Vec<Vec<Vec<u32>>>,
+    /// Per image, its mipmap levels below the full size (decision 0270).
+    mips: Vec<Vec<Vec<u8>>>,
+}
+
+/// Mipmap chains of a model's images, each averaged the way its materials use it: normal
+/// maps as vectors, data as numbers, colors in linear light keeping cut-out coverage.
+fn texture_mips(model: &ModelData) -> Vec<Vec<Vec<u8>>> {
+    use assets::mips::{MipKind, chain};
+    let mut kinds: Vec<Option<MipKind>> = vec![None; model.images.len()];
+    let mut set = |i: Option<usize>, kind: MipKind| {
+        if let Some(k) = i.and_then(|i| kinds.get_mut(i)) {
+            *k = Some(match (*k, kind) {
+                // A texture shared by a cut-out and another material keeps the coverage.
+                (Some(MipKind::Color { coverage: Some(c) }), MipKind::Color { .. }) => {
+                    MipKind::Color { coverage: Some(c) }
+                }
+                _ => kind,
+            });
+        }
+    };
+    for m in &model.materials {
+        let coverage = match m.alpha_mode {
+            assets::AlphaMode::Mask { cutoff } => Some(cutoff),
+            _ => None,
+        };
+        set(m.base_color_texture, MipKind::Color { coverage });
+        set(m.emissive_texture, MipKind::Color { coverage: None });
+        set(m.metallic_roughness_texture, MipKind::Linear);
+        set(m.normal_texture, MipKind::Normal);
+    }
+    model
+        .images
+        .iter()
+        .zip(kinds)
+        .map(|(img, kind)| {
+            let kind = kind.unwrap_or(if img.srgb {
+                MipKind::Color { coverage: None }
+            } else {
+                MipKind::Linear
+            });
+            chain(img, kind)
+        })
+        .collect()
 }
 
 fn decode_model(asset: &str, base: &std::path::Path, lod: bool) -> Result<Decoded, String> {
@@ -665,7 +799,8 @@ fn decode_model(asset: &str, base: &std::path::Path, lod: bool) -> Result<Decode
     } else {
         Vec::new()
     };
-    Ok(Decoded { model, lods })
+    let mips = texture_mips(&model);
+    Ok(Decoded { model, lods, mips })
 }
 
 fn mat(m: Mat4) -> [[f32; 4]; 4] {
@@ -813,6 +948,7 @@ impl Renderer {
             wgpu::MultisampleState::default(),
             (None, None), // both faces cast shadows; no color target
         );
+        let masked_shadow = masked_shadow_pipeline(device, &pbr_shader, &view_layout, &material_layout);
 
         let skinning = crate::skinning::Skinning::new(
             device,
@@ -898,7 +1034,20 @@ impl Renderer {
                 ..Default::default()
             })
         };
-        let material_sampler = sampler("material", wgpu::FilterMode::Linear, wgpu::AddressMode::Repeat);
+        // Model textures: trilinear through the mipmaps, 16x anisotropic where the GPU has it
+        // (wgpu clamps to 1 elsewhere), so surfaces seen at a grazing angle stay sharp
+        // without shimmering (decision 0270).
+        let material_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("material"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            anisotropy_clamp: MATERIAL_ANISOTROPY,
+            ..Default::default()
+        });
         // Linear + clamp; atlas regions are inset by half a texel so neighbours never bleed in.
         let sprite_sampler = sampler("sprite", wgpu::FilterMode::Linear, wgpu::AddressMode::ClampToEdge);
         // Nearest for the bitmap font, so text stays crisp at whole-number scales.
@@ -940,6 +1089,7 @@ impl Renderer {
             shadow_map,
             shadow_sampler,
             shadow_pipeline,
+            masked_shadow,
             local_shadows,
             environment: None,
             no_environment,
@@ -1338,7 +1488,11 @@ impl Renderer {
         let views: Vec<wgpu::TextureView> = model
             .images
             .iter()
-            .map(|img| create_texture_view(&self.device, &self.queue, img))
+            .enumerate()
+            .map(|(i, img)| {
+                let mips = decoded.mips.get(i).map_or(&[][..], Vec::as_slice);
+                create_texture_view_mips(&self.device, &self.queue, img, mips)
+            })
             .collect();
         let materials = model
             .materials
@@ -1760,8 +1914,8 @@ impl Renderer {
         // lookup are skipped while the key repeats (entities come sorted by id, so runs of
         // the same model are the common case).
         // (asset, part, material overridden, holds a shadow-casting lamp, level of detail)
-        // ..., game shader material slot (decision 0181)
-        type Key<'k> = (&'k str, usize, bool, bool, usize, Option<u32>);
+        // ..., game shader material slot (decision 0181), material look (decision 0270)
+        type Key<'k> = (&'k str, usize, bool, bool, usize, Option<u32>, variants::Look);
         let game = self.game.as_ref();
         let game_slot = |slot: Option<u32>| slot.filter(|&s| game.is_some_and(|g| g.draw(s).is_some()));
         let mut group_of: BTreeMap<Key, u32> = BTreeMap::new();
@@ -1827,6 +1981,7 @@ impl Renderer {
                     draw.lamp,
                     level,
                     game_slot(draw.shader),
+                    part_look(model, part, draw.material.as_ref()),
                 );
                 let g = match last_key {
                     Some((k, g)) if k == key => g,
@@ -1854,6 +2009,7 @@ impl Renderer {
             let shader = game_slot(bulk.shader.as_ref().map(|_| game_shader::bulk_slot(frame, bi)));
             for (p, part) in model.parts.iter().enumerate() {
                 let (base_color, params) = instance_material(model, part, bulk.material);
+                let look = part_look(model, part, bulk.material.as_ref());
                 let identity = part.transform == Mat4::IDENTITY;
                 let levels = 1 + part.lods.len();
                 raw.reserve(bulk.transforms.len());
@@ -1881,6 +2037,7 @@ impl Renderer {
                                 false,
                                 level,
                                 shader,
+                                look,
                             );
                             let n = group_of.len() as u32;
                             let g = *group_of.entry(key).or_insert(n);
@@ -1914,7 +2071,7 @@ impl Renderer {
         let mut shadow_start_of = vec![0u32; group_of.len()];
         let mut calls = Vec::with_capacity(group_of.len());
         let mut at = 0u32;
-        for (&(asset, p, overridden, lamp, level, slot), &g) in &group_of {
+        for (&(asset, p, overridden, lamp, level, slot, look), &g) in &group_of {
             let Some(Ok(model)) = self.models.get(asset) else {
                 continue;
             };
@@ -1942,14 +2099,10 @@ impl Renderer {
                 instances: at..at + n,
                 seen,
                 game: slot.and_then(|s| game.and_then(|gs| gs.draw(s))),
+                look,
             });
             at += n;
         }
-        // Blended game shaders draw after everything opaque (instance ranges stay put).
-        calls.sort_by_key(|c| {
-            c.game
-                .is_some_and(|(g, _)| g.options.blend != marionette_core::shader::ShaderBlend::Opaque)
-        });
         instances.clear();
         instances.resize(raw.len(), InstanceData::zeroed());
         let (mut next, mut next_shadow) = (start_of, shadow_start_of);
@@ -1963,6 +2116,42 @@ impl Renderer {
             *slot += 1;
         }
         self.scratch_class = class_of;
+        // See-through materials (decision 0270) draw after everything opaque, one instance per
+        // draw, farthest from the first view first, so what is behind shows through what is in
+        // front. They cast no shadows, so their shadow-only instances are dropped. Blended game
+        // shaders follow them, in group order (instance ranges stay put).
+        let eye = views.first().map_or(Vec3::ZERO, |(v, _)| v.eye);
+        let (mut opaque, mut blended): (Vec<DrawCall>, Vec<DrawCall>) = calls
+            .into_iter()
+            .partition(|c| !c.look.blended() || c.game.is_some());
+        let mut sorted: Vec<(f32, DrawCall)> = Vec::new();
+        for c in blended.drain(..) {
+            for k in c.instances.start..c.instances.start + c.seen {
+                let m = &instances[k as usize].model;
+                let d = Vec3::new(m[3][0], m[3][1], m[3][2]).distance_squared(eye);
+                sorted.push((
+                    d,
+                    DrawCall {
+                        instances: k..k + 1,
+                        seen: 1,
+                        ..c.clone()
+                    },
+                ));
+            }
+        }
+        // Stable: equal distances keep instance order, so frames are reproducible.
+        sorted.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let game_blended = |c: &DrawCall| {
+            c.game
+                .is_some_and(|(g, _)| g.options.blend != marionette_core::shader::ShaderBlend::Opaque)
+        };
+        opaque.sort_by_key(game_blended);
+        let first_game_blended = opaque.iter().position(game_blended).unwrap_or(opaque.len());
+        let game_tail = opaque.split_off(first_game_blended);
+        let first_blended = opaque.len();
+        let mut calls = opaque;
+        calls.extend(sorted.into_iter().map(|(_, c)| c));
+        calls.extend(game_tail);
         if !instances.is_empty() {
             write_growable(
                 &self.device,
@@ -2173,18 +2362,8 @@ impl Renderer {
         // Lit pipelines and lights group: the ray tracing variant when it ran this frame.
         let (lit, skinned_lit, lights_group, prepass) =
             match self.rt.as_ref().and_then(|r| Some((r, r.group.as_ref()?))) {
-                Some((rt, group)) => (
-                    &rt.lit,
-                    [&rt.skinned[0], &rt.skinned[1]],
-                    group,
-                    Some(&rt.prepass),
-                ),
-                None => (
-                    &self.lit,
-                    [&self.skinning.pipeline, &self.skinning.hdr_pipeline],
-                    &self.lights_group,
-                    None,
-                ),
+                Some((rt, group)) => (&rt.lit, &rt.skinned, group, Some(&rt.prepass)),
+                None => (&self.lit, &self.skinning.lit, &self.lights_group, None),
             };
         let meshes = MeshCalls {
             calls: &calls,
@@ -2194,8 +2373,14 @@ impl Renderer {
             skinned_instances: self.skinning.instances.as_ref(),
             empty_group: self.game.as_ref().map(|g| &g.empty_group),
             game_lights: Some(&self.lights_group),
+            masked_empty: &self.masked_shadow.1,
+            first_blended,
         };
-        let depth_pipelines = (&self.shadow_pipeline, &self.skinning.shadow_pipeline);
+        let depth_pipelines = (
+            &self.shadow_pipeline,
+            &self.masked_shadow.0,
+            &self.skinning.shadow_pipeline,
+        );
         let depth_pass = |encoder: &mut wgpu::CommandEncoder,
                           view: &wgpu::TextureView,
                           offset: u32,
@@ -2318,21 +2503,23 @@ impl Renderer {
                 if let Some([_, [p, s]]) = prepass {
                     meshes.draw_prepass(&mut pass, (p, s), &self.view_group, world_offset, &mut stats);
                 }
-                meshes.draw_lit(
-                    &mut pass,
-                    (&lit.pbr[1], skinned_lit[1]),
-                    &self.view_group,
-                    world_offset,
-                    lights_group,
-                    true,
-                    &mut stats,
-                );
-                if env {
-                    pass.set_pipeline(&lit.sky[1]);
-                    pass.set_bind_group(0, &self.view_group, &[world_offset]);
-                    pass.set_bind_group(1, lights_group, &[]);
-                    pass.draw(0..3, 0..1);
-                    stats.draw_calls += 1;
+                for phase in [Phase::Opaque, Phase::Blended] {
+                    if phase == Phase::Blended && env {
+                        pass.set_pipeline(&lit.sky[1]);
+                        pass.set_bind_group(0, &self.view_group, &[world_offset]);
+                        pass.set_bind_group(1, lights_group, &[]);
+                        pass.draw(0..3, 0..1);
+                        stats.draw_calls += 1;
+                    }
+                    meshes.draw_lit(
+                        &mut pass,
+                        (&lit.pbr, skinned_lit),
+                        &self.view_group,
+                        world_offset,
+                        lights_group,
+                        (true, phase),
+                        &mut stats,
+                    );
                 }
                 drop(pass);
                 stats.draw_calls += self.post.glow(t, encoder);
@@ -2386,21 +2573,24 @@ impl Renderer {
                         let [p, s] = &depth[fi];
                         meshes.draw_prepass(&mut pass, (p, s), &self.view_group, world_offset, &mut stats);
                     }
-                    meshes.draw_lit(
-                        &mut pass,
-                        (&lit.pbr[fi], skinned_lit[fi]),
-                        &self.view_group,
-                        world_offset,
-                        lights_group,
-                        fi == 1,
-                        &mut stats,
-                    );
-                    if env {
-                        pass.set_pipeline(&lit.sky[fi]);
-                        pass.set_bind_group(0, &self.view_group, &[world_offset]);
-                        pass.set_bind_group(1, lights_group, &[]);
-                        pass.draw(0..3, 0..1);
-                        stats.draw_calls += 1;
+                    // Opaque models, the sky behind them, then see-through models over both.
+                    for phase in [Phase::Opaque, Phase::Blended] {
+                        if phase == Phase::Blended && env {
+                            pass.set_pipeline(&lit.sky[fi]);
+                            pass.set_bind_group(0, &self.view_group, &[world_offset]);
+                            pass.set_bind_group(1, lights_group, &[]);
+                            pass.draw(0..3, 0..1);
+                            stats.draw_calls += 1;
+                        }
+                        meshes.draw_lit(
+                            &mut pass,
+                            (&lit.pbr, skinned_lit),
+                            &self.view_group,
+                            world_offset,
+                            lights_group,
+                            (fi == 1, phase),
+                            &mut stats,
+                        );
                     }
                 }
             }
@@ -2760,10 +2950,15 @@ fn material_textures(
         resource: wgpu::BindingResource::TextureView(view),
     };
     let e = m.emissive;
+    // A cutoff of exactly zero would keep every fragment anyway.
+    let cutoff = match m.alpha_mode {
+        assets::AlphaMode::Mask { cutoff } => cutoff.clamp(1e-4, 1.0),
+        _ => 0.0,
+    };
     let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("material"),
         contents: bytemuck::bytes_of(&MaterialUniform {
-            emissive: [e[0].max(0.0), e[1].max(0.0), e[2].max(0.0), 0.0],
+            emissive: [e[0].max(0.0), e[1].max(0.0), e[2].max(0.0), cutoff],
         }),
         usage: wgpu::BufferUsages::UNIFORM,
     });
@@ -2808,7 +3003,6 @@ pub(crate) fn write_growable<T: Pod>(
     queue.write_buffer(slot.as_ref().expect("just created"), 0, bytes);
 }
 
-/// Uploads an RGBA8 image (no mipmaps) and returns a view of it.
 /// Rest-pose bounding box of a model: every part's positions through its node transform.
 fn model_bounds(model: &ModelData) -> Option<(glam::Vec3, glam::Vec3)> {
     let mut b: Option<(glam::Vec3, glam::Vec3)> = None;
@@ -2821,7 +3015,19 @@ fn model_bounds(model: &ModelData) -> Option<(glam::Vec3, glam::Vec3)> {
     b
 }
 
+/// Uploads an RGBA8 image (no mipmaps: sprites, UI, fonts) and returns a view of it.
 pub fn create_texture_view(device: &wgpu::Device, queue: &wgpu::Queue, img: &Image) -> wgpu::TextureView {
+    create_texture_view_mips(device, queue, img, &[])
+}
+
+/// Uploads an RGBA8 image with the mipmap levels below it (`mips`, largest first, as
+/// [`assets::mips::chain`] makes them) and returns a view of every level.
+pub fn create_texture_view_mips(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    img: &Image,
+    mips: &[Vec<u8>],
+) -> wgpu::TextureView {
     let size = wgpu::Extent3d {
         width: img.width,
         height: img.height,
@@ -2835,7 +3041,7 @@ pub fn create_texture_view(device: &wgpu::Device, queue: &wgpu::Queue, img: &Ima
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("image"),
         size,
-        mip_level_count: 1,
+        mip_level_count: 1 + mips.len() as u32,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
@@ -2852,6 +3058,32 @@ pub fn create_texture_view(device: &wgpu::Device, queue: &wgpu::Queue, img: &Ima
         },
         size,
     );
+    let (mut w, mut h) = (img.width, img.height);
+    for (level, texels) in mips.iter().enumerate() {
+        (w, h) = ((w / 2).max(1), (h / 2).max(1));
+        if texels.len() != (4 * w * h) as usize {
+            break;
+        }
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 1 + level as u32,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            texels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * w),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
     texture.create_view(&wgpu::TextureViewDescriptor::default())
 }
 
@@ -2863,7 +3095,8 @@ pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_
 
 /// Lit model pipelines (final format, HDR) and sky pipelines (final format, HDR).
 pub(crate) struct LitPipelines {
-    pub pbr: [wgpu::RenderPipeline; 2],
+    /// Per material variant (decision 0270) and target.
+    pub pbr: variants::VariantPipelines,
     pub sky: [wgpu::RenderPipeline; 2],
 }
 
@@ -2982,6 +3215,64 @@ pub(crate) fn lights_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
 }
 
 /// The lit model and sky pipelines from `shader` (the plain PBR shader or its ray tracing
+/// Shadow pipeline of cut-out parts (decision 0270): like the plain one, plus a fragment
+/// stage that drops texels under the material's cutoff. Groups: view, empty, material.
+fn masked_shadow_pipeline(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    view_layout: &wgpu::BindGroupLayout,
+    material_layout: &wgpu::BindGroupLayout,
+) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
+    let empty_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("empty"),
+        entries: &[],
+    });
+    let empty = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("empty"),
+        layout: &empty_layout,
+        entries: &[],
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("cut-out shadow"),
+        bind_group_layouts: &[Some(view_layout), Some(&empty_layout), Some(material_layout)],
+        immediate_size: 0,
+    });
+    let mesh_attrs = MESH_ATTRS;
+    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("cut-out shadow"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs_shadow_masked"),
+            compilation_options: Default::default(),
+            buffers: &[
+                Some(wgpu::VertexBufferLayout {
+                    array_stride: size_of::<MeshVertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &mesh_attrs,
+                }),
+                Some(wgpu::VertexBufferLayout {
+                    array_stride: size_of::<InstanceData>() as u64,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &INSTANCE_ATTRS,
+                }),
+            ],
+        },
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: Some(shadow_depth_state()),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs_shadow_masked"),
+            compilation_options: Default::default(),
+            targets: &[],
+        }),
+        multiview_mask: None,
+        cache: None,
+    });
+    (pipeline, empty)
+}
+
 /// variant) and groups view, lights, material.
 pub(crate) fn lit_pipelines(
     device: &wgpu::Device,
@@ -3002,13 +3293,16 @@ pub(crate) fn lit_pipelines(
         bind_group_layouts: &[Some(view_layout), Some(lights_layout), Some(material_layout)],
         immediate_size: 0,
     });
-    let mesh_attrs = crate::renderer::MESH_ATTRS;
-    let pbr_for = |format: wgpu::TextureFormat| {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    let (dev, module, opaque_depth) = (device.clone(), shader.clone(), depth_stencil(true));
+    let formats = [color_format, crate::post::HDR_FORMAT];
+    let pbr = variants::VariantPipelines::new(Box::new(move |variant, target| {
+        let (cull_mode, blend, depth) = variants::state(variant, &opaque_depth);
+        let mesh_attrs = crate::renderer::MESH_ATTRS;
+        dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pbr"),
             layout: Some(&pbr_layout),
             vertex: wgpu::VertexState {
-                module: shader,
+                module: &module,
                 entry_point: Some("vs_main"),
                 compilation_options: Default::default(),
                 buffers: &[
@@ -3025,25 +3319,25 @@ pub(crate) fn lit_pipelines(
                 ],
             },
             primitive: wgpu::PrimitiveState {
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode,
                 ..Default::default()
             },
-            depth_stencil: Some(depth_stencil(true)),
+            depth_stencil: Some(depth),
             multisample,
             fragment: Some(wgpu::FragmentState {
-                module: shader,
+                module: &module,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: None,
+                    format: formats[target],
+                    blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
             multiview_mask: None,
             cache: None,
         })
-    };
+    }));
     // Sky background: full-screen triangle at the far plane, depth-tested, not written.
     let sky_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("sky"),
@@ -3079,7 +3373,7 @@ pub(crate) fn lit_pipelines(
     };
     let hdr = crate::post::HDR_FORMAT;
     LitPipelines {
-        pbr: [pbr_for(color_format), pbr_for(hdr)],
+        pbr,
         sky: [sky_for(color_format), sky_for(hdr)],
     }
 }

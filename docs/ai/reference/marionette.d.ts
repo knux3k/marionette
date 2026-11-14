@@ -710,7 +710,7 @@ type LookAt = {
   };
 };
 
-/** Overrides the material of a `Model` (all of its parts) with simple PBR values. */
+/** Overrides the material of a `Model` (all of its parts) with simple PBR values. A base color alpha below 1 draws it see-through (decision 0271); the parts keep their sidedness. */
 type Material = {
   /** Linear RGBA color, each channel 0..1. */
   base_color: {

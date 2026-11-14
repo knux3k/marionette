@@ -2,7 +2,7 @@
 
 Line 3 (renderer):
 - Reference images (320x180, 60 ticks, seed 1, MSAA 4), SHA-256 of the committed files:
-  - `examples/reference/showcase.png`: `9563bd7152cc2ac32f2aff9119ad9ce8475e07cd96a085fc6c22651e6adab996`
+  - `examples/reference/showcase.png`: `d08640e0420a03ba5aa45c563f042bfc1da3d1f295c779ccfab6ac8e0a51a8f3`
   - `examples/reference/sprites.png`: `4b07882d40928aca85f67d169868b3e1a4bde97de84186c86d2e16c64e97e97d`
   - `examples/reference/ui.png`: `4c7417beb5c10b9bba89ad7ab9721a1a49aa8c566ca2bd4c7e9c36f4fa56df06`
 - Tests: `crates/marionette-render/tests/render.rs` (`same_inputs_give_identical_images`,
@@ -105,3 +105,22 @@ Remaining lighting (decisions 0090 to 0093):
   `render-3d-raytracing` frame p99 1.81 ms, `render-3d-looks` 1.02 ms (budget 11.1 ms).
   Before the depth prepass and adaptive sun rays the same scene measured about 2.4 ms
   (noisy run).
+
+Textured materials (decisions 0270, 0271):
+- Example `examples/materials.scene.json`, built by `examples/materials.ops.json`; models
+  `examples/assets/{material-ball,fence,glass}.glb` made by
+  `cargo run -p marionette-render --example make_materials`.
+  `run examples/materials.scene.json --headless --ticks 60 --seed 1` prints
+  `b4f94a1508b9c75ec12836421ad4724bdff332c4a0acee731105720cc9ca9cad`.
+- Reference image `examples/reference/materials.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
+  lavapipe): `b693cceaa5ced5bf7441b4f6f47575d0acda48f670be0ca1f718170801427359`. `showcase.png` was
+  rewritten (2026-11-14, decision 0270): its textured gem is now mipmapped (0.7% of pixels had
+  moved past the threshold); the other reference images were not rewritten.
+- Tests in `crates/marionette-render/tests/materials.rs`:
+  `reference_catches_swapped_metal_rough_and_flipped_normals` (swapped channels: 5.2% of pixels
+  over threshold, flipped normal green: 3.4%, limit 1%), `cut_outs_show_through_both_sides_and_in_shadows`,
+  `blended_surfaces_mix_and_draw_back_to_front`, `mipmaps_average_far_textures` (far floor
+  spread 0 with mipmaps, 18 without), `glb_alpha_modes_and_sides_are_read`,
+  `committed_models_match_their_generator`; unit tests in `crates/marionette-assets/src/mips.rs`.
+  Each GPU test was checked to fail with its feature switched off.
+- Stability mode `render-3d-materials` (120 ticks, lavapipe: passed).

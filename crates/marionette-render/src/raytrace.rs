@@ -131,7 +131,7 @@ pub(crate) struct RayTracer {
     pub layout: wgpu::BindGroupLayout,
     pub lit: LitPipelines,
     /// Skinned pipelines (final, HDR) with the ray tracing fragment shader.
-    pub skinned: [wgpu::RenderPipeline; 2],
+    pub skinned: crate::renderer::variants::VariantPipelines,
     /// Depth prepass ([static, skinned] for the final and HDR formats): every pixel's nearest surface is known before the lit
     /// pass, so rays are traced once per pixel instead of once per overlapping surface.
     pub prepass: [[wgpu::RenderPipeline; 2]; 2],

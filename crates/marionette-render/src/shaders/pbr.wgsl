@@ -52,7 +52,7 @@ struct LightsU {
 };
 
 struct MaterialU {
-    emissive: vec4<f32>, // rgb = glTF emissive factor times strength
+    emissive: vec4<f32>, // rgb = glTF emissive factor times strength, w = alpha cutoff (0: none)
 };
 
 
@@ -134,6 +134,30 @@ fn vs_main(in: VsIn, inst: InstIn) -> VsOut {
 fn vs_shadow(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
     let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
     return view.view_proj * model * vec4<f32>(in.position, 1.0);
+}
+
+// Shadows of cut-out materials (decision 0270): texels under the cutoff cast nothing.
+struct MaskedShadowOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) @interpolate(flat) alpha: f32,
+};
+
+@vertex
+fn vs_shadow_masked(in: VsIn, inst: InstIn) -> MaskedShadowOut {
+    let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
+    var out: MaskedShadowOut;
+    out.clip = view.view_proj * model * vec4<f32>(in.position, 1.0);
+    out.uv = in.uv;
+    out.alpha = inst.base_color.a;
+    return out;
+}
+
+@fragment
+fn fs_shadow_masked(in: MaskedShadowOut) {
+    if (in.alpha * textureSample(base_tex, samp, in.uv).a < material.emissive.w) {
+        discard;
+    }
 }
 
 // Game shaders (decision 0181). A game shader may move vertices in world space; these entry
@@ -427,6 +451,10 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         0.0,
     );
     surface_hook(&s, SurfaceIn(in.world_pos, geo, in.uv, in.color, view.eye.xyz, view.eye.w));
+    // Cut-out materials (decision 0270): nothing under the cutoff is drawn.
+    if (s.base_color.a < material.emissive.w) {
+        discard;
+    }
     let base = s.base_color;
     let metallic = clamp(s.metallic, 0.0, 1.0);
     let roughness = clamp(s.roughness, 0.045, 1.0);

@@ -24,3 +24,6 @@ default = ["lod"]
 # Reduced levels of detail built with meshoptimizer's simplifier (decision 0080). Without it
 # `LevelOfDetail` still hides small far things but every part keeps one level.
 lod = ["dep:meshopt"]
+
+[dev-dependencies]
+marionette-host.workspace = true
