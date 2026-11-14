@@ -11,10 +11,10 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
 | --- | --- | --- |
 | 1 | Workspace, CI | Done. Pull requests run a fast Linux check; the merge queue and main run the full suite incl. Windows (`.github/workflows/ci.yml`, decision 0260). |
 | 2 | Core | Done. Save games (decision 0076). |
-| 3 | Renderer | Done. Opt-in looks (0063-0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090-0093); mipmaps, alpha modes (0270, 0271). |
+| 3 | Renderer | Done. Opt-in looks (0063-0067); culling, opt-in level of detail (0080); cascades, HDR environment files, reflection probes, ray tracing (0090-0093); mipmaps, alpha, particles (0270-0272). |
 | 4 | Scripting (TypeScript vs Luau) | Done (W7): TypeScript chosen, binding landed (decision 0022). Scenes and scripts run job TypeScript over saved job arrays (decision 0070). |
 | 5 | Agent interface (CLI + MCP) | Done. Task skills ship with the engine and install into games (decision 0160). Game projects get handoff files and work claims for parallel agents (decision 0161). Games add their own Rust modules and operations and pick optional parts by cargo feature (decision 0062). |
-| 6 | Input, physics, audio, UI | Done; windowed mode checked on a real screen (decisions 0170 to 0173). 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
+| 6 | Input, physics, audio, UI | Done; windowed mode checked on a real screen (0170-0173). 3D sound (distance curves, rear muffle, Doppler, head pose) and layered music (decision 0075). World-space UI and text as an optional crate (decisions 0200, 0201; offscreen only). Procedural and streamed audio (decision 0220): crate `marionette-synth`, ops `synth_render`, `synth_patches`, CLI `audio-check`. |
 | 7 | Providers | Done offline (W5, decision 0019): interface, mock default, Claude/Qwen/Tripo plug-ins tested against recorded shapes, one-command switch, spend cap. Network transport behind the `net` feature, keys files and per-provider caps added with W4 (decision 0045); live Qwen (personal plan address, decision 0046) and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | In progress: owned library, Unity importer, FBX to glTF conversion and Unity prefab import done (W2, decisions 0027, 0040); Unreal importer done (W6, decision 0029); generation pipeline done (W4, decisions 0045-0048: recipes, cache, provenance, approval with an owner waiver, PNG/GLB post-processing with model slimming); 19 generated models for the 3D proof games are in `games/*/assets/generated`; CC0 pool and asset search done (W3, decision 0041, online adapters unverified live). |
 | 9 | Six proof scenes | Done (W8, decision 0050): all 6 games (`games/lantern-keeper`, `games/ember-run`, `games/cloudstep`, `games/crystal-ward`, `games/dust-circuit`, `games/signal-yard`) with stability modes, each using its generated images or models (models drawn through `ModelPlacement`). Gaps found: `docs/ai/PROOF-SCENES.md`. |
@@ -40,7 +40,7 @@ Standing priorities: [FOCUSES.md](FOCUSES.md).
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Game meshes, shaders, mipmaps, alpha modes (0180-0181, 0270-0271): lavapipe only.
+- Game meshes, shaders, mipmaps, alpha, particles (0180-0181, 0270-0272): lavapipe only.
 - Opt-in looks (decision 0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment and glTF emissive (decisions 0064 to 0067): checked

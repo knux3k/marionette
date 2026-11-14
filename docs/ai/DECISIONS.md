@@ -99,3 +99,4 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0260 | Merge queue: pull requests run a fast Linux check, the queue and main run the full suite, `CI gate` is the required check | accepted |
 | 0270 | Model textures get CPU-made mipmaps (linear-light color, vector normals, cut-out coverage kept) and 16x anisotropic filtering | accepted |
 | 0271 | Cut-out and see-through materials from glTF alpha modes, double-sided materials; lazily built pipeline variants; see-through parts sorted back to front | accepted |
+| 0272 | Particles computed on the GPU from game time alone (`ParticleEmitter`): no stored state, one draw per emitter | accepted |

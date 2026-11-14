@@ -103,6 +103,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<spatial::PointLight>();
     registry.register_component::<spatial::SpotLight>();
     registry.register_component::<spatial::Emissive>();
+    registry.register_component::<spatial::ParticleEmitter>();
     registry.register_resource::<spatial::Shadows>();
     registry.register_resource::<spatial::ToneMapping>();
     registry.register_resource::<spatial::Fog>();

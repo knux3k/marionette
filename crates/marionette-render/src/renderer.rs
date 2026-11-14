@@ -639,6 +639,8 @@ pub struct Renderer {
     ui_pipeline: wgpu::RenderPipeline,
     ui_output_pipeline: wgpu::RenderPipeline,
     world_quads: crate::worldquads::WorldQuadPass,
+    /// Particle emitters (decision 0272).
+    particles: crate::particles::Particles,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
     ui_indices: Option<wgpu::Buffer>,
@@ -1023,6 +1025,15 @@ impl Renderer {
             multisample,
         );
 
+        let particles = crate::particles::Particles::new(
+            device,
+            &view_layout,
+            &sprite_tex_layout,
+            color_format,
+            DEPTH_FORMAT,
+            multisample,
+        );
+
         let sampler = |label, filter, address| {
             device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some(label),
@@ -1117,6 +1128,7 @@ impl Renderer {
             ui_pipeline,
             ui_output_pipeline,
             world_quads,
+            particles,
             nearest_sampler,
             ui_vertices: None,
             ui_indices: None,
@@ -1183,6 +1195,7 @@ impl Renderer {
             .map(|s| s.image.as_str())
             .chain(frame.ui.iter().map(|u| u.look.image()))
             .chain(crate::worldquads::WorldQuadPass::images(&frame.quads))
+            .chain(crate::particles::Particles::images(&frame.particles))
             .collect();
         let before = self.cached_assets();
         self.models.retain(|k, _| models.contains(k.as_str()));
@@ -1254,6 +1267,16 @@ impl Renderer {
                         .entity(ui.entity)
                         .component("UiImage")
                         .fix("check the PNG path (relative to the scene file) or use a builtin: image"),
+                );
+            }
+        }
+        for p in &frame.particles {
+            if let Some(msg) = self.ensure_texture(&p.emitter.image) {
+                errors.push(
+                    Diagnostic::error(codes::ASSET, msg.clone())
+                        .entity(p.entity)
+                        .component("ParticleEmitter")
+                        .fix("check the PNG path (relative to the scene file) or use builtin:circle"),
                 );
             }
         }
@@ -2330,6 +2353,16 @@ impl Renderer {
         }
 
         self.world_quads.upload(&self.device, &self.queue, &frame.quads);
+        // Particles (decision 0272): not in probe captures. Into the HDR target they write
+        // linear light; into the final target they are tone mapped like models.
+        let particle_list: &[crate::extract::ParticleDraw] = if capture { &[] } else { &frame.particles };
+        self.particles.upload(
+            &self.device,
+            &self.queue,
+            particle_list,
+            frame.time_f64,
+            frame.exposure.filter(|_| bloom.is_none()),
+        );
 
         if rt_cfg.is_some()
             && let (Some(rt), Some(ib)) = (self.rt.as_mut(), self.instance_buffer.as_ref())
@@ -2521,6 +2554,14 @@ impl Renderer {
                         &mut stats,
                     );
                 }
+                stats.draw_calls +=
+                    self.particles
+                        .draw(&mut pass, &self.view_group, world_offset, true, |img| {
+                            self.sprite_textures
+                                .get(img)
+                                .and_then(|t| t.as_ref().ok())
+                                .map(|t| &t.bind_group)
+                        });
                 drop(pass);
                 stats.draw_calls += self.post.glow(t, encoder);
                 t
@@ -2591,6 +2632,16 @@ impl Renderer {
                             (fi == 1, phase),
                             &mut stats,
                         );
+                    }
+                    if !capture {
+                        stats.draw_calls +=
+                            self.particles
+                                .draw(&mut pass, &self.view_group, world_offset, false, |img| {
+                                    self.sprite_textures
+                                        .get(img)
+                                        .and_then(|t| t.as_ref().ok())
+                                        .map(|t| &t.bind_group)
+                                });
                     }
                 }
             }

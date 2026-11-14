@@ -139,6 +139,15 @@
       "frame_budget_ms": 11.1
     },
     {
+      "name": "render-3d-particles",
+      "description": "Particles (decision 0272): additive fire and sparks, alpha smoke, with bloom; computed on the GPU from game time.",
+      "kind": "render",
+      "scene": "examples/particles.scene.json",
+      "fast_ticks": 120,
+      "long_ticks": 54000,
+      "frame_budget_ms": 11.1
+    },
+    {
       "name": "render-3d-play",
       "description": "3D game played with random input and rendered every tick (the windowed loop without a window).",
       "kind": "render",

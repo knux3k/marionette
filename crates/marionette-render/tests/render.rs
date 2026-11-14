@@ -54,6 +54,7 @@ fn same_inputs_give_identical_images() {
         "raytracing.scene.json",
         "game-shader.scene.json",
         "materials.scene.json",
+        "particles.scene.json",
     ] {
         let a = render(&gpu, scene, (480, 270));
         let b = render(&gpu, scene, (480, 270));
@@ -92,6 +93,7 @@ fn matches_reference_images() {
         ("raytracing", rt),
         ("game-shader", "game-shader"),
         ("materials", "materials"),
+        ("particles", "particles"),
     ] {
         let pixels = render(&gpu, &format!("{name}.scene.json"), REF_SIZE);
         let path = repo().join(format!("examples/reference/{image}.png"));

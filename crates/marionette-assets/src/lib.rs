@@ -496,7 +496,9 @@ pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
     }
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {
-            format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas, font")
+            format!(
+                "unknown built-in image `{builtin}`; built-ins are white, circle, soft, checker, atlas, font"
+            )
         });
     }
     let path = base_dir.join(name);
@@ -569,6 +571,12 @@ pub fn builtin_image(name: &str) -> Option<Image> {
     Some(match name {
         "white" => Image::solid([255; 4], true),
         "circle" => make(64, 64, &|x, y| disc(x, y, 32.0, 31.0, [255, 255, 255])),
+        // White dot fading smoothly to clear at its edge (particles, glows).
+        "soft" => make(64, 64, &|x, y| {
+            let (dx, dy) = ((x as f32 + 0.5) / 32.0 - 1.0, (y as f32 + 0.5) / 32.0 - 1.0);
+            let t = (1.0 - (dx * dx + dy * dy).sqrt()).clamp(0.0, 1.0);
+            [255, 255, 255, (t * t * (3.0 - 2.0 * t) * 255.0).round() as u8]
+        }),
         "checker" => make(256, 256, &|x, y| {
             if (x / 32 + y / 32) % 2 == 0 {
                 [235, 235, 235, 255]

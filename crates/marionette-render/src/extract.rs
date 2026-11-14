@@ -7,9 +7,9 @@ use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
     AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, Foveation,
-    LevelOfDetail, LookAt, Material, Model, ModelPlacement, PointLight, Projection, RayTracing,
-    ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
-    ToneMapping, Transform,
+    LevelOfDetail, LookAt, Material, Model, ModelPlacement, ParticleEmitter, PointLight, Projection,
+    RayTracing, ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite,
+    SpriteRegion, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -61,6 +61,18 @@ pub struct FrameData {
     pub shader_materials: Vec<marionette_core::shader::ShaderMaterial>,
     /// Game time in seconds (ticks plus `alpha`, times the step), for animated shaders.
     pub time: f32,
+    /// The same game time in double precision, for particles (decision 0272).
+    pub time_f64: f64,
+    /// Particle emitters, sorted by entity id (decision 0272).
+    pub particles: Vec<ParticleDraw>,
+}
+
+/// One particle emitter and where it is.
+#[derive(Debug, Clone)]
+pub struct ParticleDraw {
+    pub entity: u64,
+    pub world: Mat4,
+    pub emitter: ParticleEmitter,
 }
 
 /// A reflection probe: where its picture is taken and the box it applies to.
@@ -415,6 +427,16 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
     }
+    if let Some(mut q) = world.try_query::<(&SceneId, &ParticleEmitter, Place)>() {
+        for (id, emitter, (t, p, l)) in q.iter(world) {
+            frame.particles.push(ParticleDraw {
+                entity: id.0,
+                world: world_matrix(t, p, l),
+                emitter: emitter.clone(),
+            });
+        }
+        frame.particles.sort_unstable_by_key(|p| p.entity);
+    }
     if let Some(mut q) = world.try_query::<(&SceneId, &Sprite, Option<&SpriteRegion>, Place)>() {
         for (id, sprite, region, (t, p, l)) in q.iter(world) {
             frame.sprites.push(SpriteDraw {
@@ -531,7 +553,8 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         let dt = world
             .get_resource::<marionette_core::builtin::FixedStep>()
             .map_or(marionette_core::builtin::DEFAULT_DT, |s| s.dt);
-        frame.time = ((tick as f64 + alpha.clamp(0.0, 1.0) as f64) * dt as f64) as f32;
+        frame.time_f64 = (tick as f64 + alpha.clamp(0.0, 1.0) as f64) * dt as f64;
+        frame.time = frame.time_f64 as f32;
     }
     if let Some(shaders) = world.get_resource::<marionette_core::shader::GameShaders>() {
         frame.game_shaders = shaders.snapshot();

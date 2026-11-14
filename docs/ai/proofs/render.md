@@ -124,3 +124,14 @@ Textured materials (decisions 0270, 0271):
   `committed_models_match_their_generator`; unit tests in `crates/marionette-assets/src/mips.rs`.
   Each GPU test was checked to fail with its feature switched off.
 - Stability mode `render-3d-materials` (120 ticks, lavapipe: passed).
+
+Particles (decision 0272):
+- Example `examples/particles.scene.json` (fire, sparks, smoke, bloom), built by
+  `examples/particles.ops.json`. `run examples/particles.scene.json --headless --ticks 60 --seed 1`
+  prints `7153f063848be52350afcef6018f578b32067323184eb22ded326d26f814621f`.
+- Reference image `examples/reference/particles.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
+  lavapipe): `efe57e57be33f807d5f733d08f19fee23ab76ca277745e539d401ad38e21b250`.
+- Tests: `crates/marionette-render/tests/particles.rs` (`particles_are_a_pure_function_of_game_time`,
+  `one_draw_per_emitter_whatever_the_rate`, `particles_draw_along_the_emitter`); unit tests of
+  `particles::span` (exact after 10 hours of game time, capped at 100,000).
+- Stability mode `render-3d-particles` (120 ticks, lavapipe: passed).

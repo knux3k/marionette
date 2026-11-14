@@ -91,6 +91,7 @@ fn every_example_is_valid_and_canonical() {
         "looks",
         "game-shader",
         "materials",
+        "particles",
     ] {
         let path = format!("{EXAMPLES}/{name}.scene.json");
         let (ok, v) = marionette(&["scene", "fmt", "--check", &path, "--json"]);
