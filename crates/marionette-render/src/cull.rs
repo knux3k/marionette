@@ -171,6 +171,26 @@ impl Culler {
         self
     }
 
+    /// Which sun shadow maps draw a world-space sphere: bit `k` is set when it touches the
+    /// volume of map `k` (cascade `k`). The test is the same conservative one as
+    /// [`Self::classify`] against the map's own clip volume, so leaving a caster out of a map it
+    /// does not touch never changes a texel. Every bit when culling is off or the frame keeps
+    /// everything.
+    pub fn shadow_maps(&self, s: &Sphere) -> u8 {
+        if !self.culls_shadow_maps() {
+            return u8::MAX;
+        }
+        self.shadow
+            .iter()
+            .enumerate()
+            .fold(0, |mask, (k, f)| if f.touches(s) { mask | 1 << k } else { mask })
+    }
+
+    /// Whether [`Self::shadow_maps`] can leave casters out (culling on, not keeping all).
+    pub fn culls_shadow_maps(&self) -> bool {
+        self.enabled && !self.keep_all
+    }
+
     /// The class of a world-space sphere and the level to draw it at (0 = full detail).
     pub fn classify(&self, s: &Sphere, levels: usize) -> (Class, usize) {
         if !self.enabled {

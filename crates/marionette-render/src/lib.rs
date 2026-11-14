@@ -12,6 +12,7 @@ pub mod extract;
 pub mod frame_stats;
 pub mod gpu;
 pub mod particles;
+mod pass_timer;
 mod post;
 mod probes;
 mod raytrace;

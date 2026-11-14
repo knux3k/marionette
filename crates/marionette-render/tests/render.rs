@@ -605,6 +605,33 @@ fn culling_drops_unseen_instances_without_changing_the_image() {
     );
 }
 
+/// Decision 0102: each sun shadow cascade draws only the casters inside it, which leaves the
+/// picture exactly as it was when every cascade drew every caster.
+#[test]
+fn shadow_cascades_draw_only_their_own_casters_without_changing_the_image() {
+    let Some(gpu) = gpu() else { return };
+    // A row of boxes walking away from the camera: each falls into one or two cascades.
+    let mut extra = String::new();
+    for (i, z) in (0..12).map(|i| (i, -3.0 - i as f32 * 6.0)) {
+        extra += &cube(20 + i, (i % 3) as f32 - 1.0, 0.5, z, 2.0);
+    }
+    extra += &cube(10, 10.0, 10.0, 0.0, 1.0);
+    extra += r#", {"id": 9, "name": "sun", "components": {"DirectionalLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "direction": {"x": -1, "y": -1, "z": -0.3}, "illuminance": 2.0}}}"#;
+    let shadows = r#""AmbientLight": {"color": {"r": 1, "g": 1, "b": 1, "a": 1}, "intensity": 0.2},
+        "Shadows": {"distance": 40.0, "resolution": 1024, "softness": 1.0},
+        "ShadowCascades": {"count": 4, "far": 80.0}"#;
+    let sim = stage(&extra, shadows);
+    let (all, all_stats) = render_with(&gpu, &sim, false);
+    let (culled, stats) = render_with(&gpu, &sim, true);
+    assert!(all == culled, "per-cascade culling changed pixels");
+    // Without culling every cascade draws every instance; with it, far less.
+    assert!(
+        stats.shadow_instances * 3 < all_stats.shadow_instances * 2,
+        "{stats:?} vs {all_stats:?}"
+    );
+    assert!(stats.shadow_instances > 0, "{stats:?}");
+}
+
 /// Decision 0080: with `LevelOfDetail`, a far sphere draws a reduced mesh (fewer triangles,
 /// nearly the same picture) and a tiny one is hidden; without it nothing changes.
 #[test]

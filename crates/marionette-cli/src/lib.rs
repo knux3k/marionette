@@ -147,6 +147,14 @@ enum Command {
         /// saves (decision 0080).
         #[arg(long)]
         no_cull: bool,
+        /// Frames the GPU may work on while the next one is recorded (1 to 3). 1 waits for the
+        /// GPU every frame, so CPU and GPU times add up; 2 overlaps them as a game loop does
+        /// (decision 0103).
+        #[arg(long, default_value_t = 1)]
+        in_flight: usize,
+        /// Time each render pass on the GPU (needs timestamp queries; forces --in-flight 1).
+        #[arg(long)]
+        gpu_passes: bool,
     },
     /// Run a scene on a headset through OpenXR (SteamVR, Monado, ...): both eyes rendered,
     /// head, controllers and hands fed in as input (marionette-xr). With --probe, only report
@@ -579,10 +587,14 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             headset,
             warmup,
             no_cull,
+            in_flight,
+            gpu_passes,
         } => render::bench(render::BenchOptions {
             engine: &engine,
             warmup,
             no_cull,
+            in_flight: if gpu_passes { 1 } else { in_flight },
+            gpu_passes,
             path: &scene,
             frames,
             seed,

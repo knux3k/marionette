@@ -152,10 +152,24 @@ pub(crate) struct DrawCall<'a> {
     pub instances: std::ops::Range<u32>,
     /// ... of which the first `seen` are inside a view (views draw only those).
     pub seen: u32,
+    /// Copies of the casters each sun shadow map touches (decision 0102), placed after every
+    /// group's `instances` in the instance buffer; map `k` draws only `cascades[k]`.
+    pub cascades: [std::ops::Range<u32>; MAX_CASCADES],
     /// A game shader and its material group (decision 0181).
     pub game: Option<game_shader::GameDraw<'a>>,
     /// Sides, blending and cut-out of the material (decision 0280).
     pub look: variants::Look,
+}
+
+/// Which instances of each draw a pass makes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Casters {
+    /// Those inside a view (views and the depth prepass).
+    InView,
+    /// Those inside sun shadow map `k` (decision 0102).
+    SunMap(usize),
+    /// Every caster (point and spot light shadow maps).
+    All,
 }
 
 /// Which of a frame's model draws a pass makes (decision 0280): opaque and cut-out ones, then
@@ -213,15 +227,20 @@ impl MeshCalls<'_> {
         ),
         view_group: &wgpu::BindGroup,
         offset: u32,
-        local: bool,
+        sun_map: Option<usize>,
         stats: &mut RenderStats,
     ) {
         let (plain, masked, skinned) = pipelines;
+        // Local light maps skip lamps' own models; sun maps draw only the casters inside them.
+        let (skip_lamps, casters) = match sun_map {
+            Some(k) => (false, Casters::SunMap(k)),
+            None => (true, Casters::All),
+        };
         self.draw(
             pass,
             Pipes::Depth(plain, Some(masked), skinned),
             (view_group, offset),
-            (None, local, false, Phase::Opaque),
+            (None, skip_lamps, casters, Phase::Opaque),
             stats,
         );
     }
@@ -240,7 +259,7 @@ impl MeshCalls<'_> {
             pass,
             Pipes::Depth(plain, None, skinned),
             (view_group, offset),
-            (None, false, true, Phase::Opaque),
+            (None, false, Casters::InView, Phase::Opaque),
             stats,
         );
     }
@@ -262,7 +281,7 @@ impl MeshCalls<'_> {
             pass,
             Pipes::Lit(pipelines.0, pipelines.1, target),
             (view_group, offset),
-            (Some(lights), false, true, phase),
+            (Some(lights), false, Casters::InView, phase),
             stats,
         );
     }
@@ -272,9 +291,9 @@ impl MeshCalls<'_> {
         pass: &mut wgpu::RenderPass,
         pipes: Pipes,
         (view_group, offset): (&wgpu::BindGroup, u32),
-        // Lights group (lit draws), or none (depth); skip models holding a lamp; draw only
-        // the instances inside a view (views) or every caster (shadow maps); which draws.
-        (lights, skip_lamps, in_view, phase): (Option<&wgpu::BindGroup>, bool, bool, Phase),
+        // Lights group (lit draws), or none (depth); skip models holding a lamp; which
+        // instances; which draws.
+        (lights, skip_lamps, casters, phase): (Option<&wgpu::BindGroup>, bool, Casters, Phase),
         stats: &mut RenderStats,
     ) {
         let calls = match phase {
@@ -282,6 +301,7 @@ impl MeshCalls<'_> {
             Phase::Blended => &self.calls[self.first_blended.min(self.calls.len())..],
         };
         let hdr = matches!(pipes, Pipes::Lit(_, _, variants::HDR));
+        let in_view = casters == Casters::InView;
         if let (Some(ib), false) = (self.instances, calls.is_empty()) {
             let mut current: *const wgpu::RenderPipeline = std::ptr::null();
             pass.set_bind_group(0, view_group, &[offset]);
@@ -292,11 +312,10 @@ impl MeshCalls<'_> {
             }
             pass.set_vertex_buffer(1, ib.slice(..));
             for call in calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
-                // Views draw the instances inside them; shadow maps draw every caster.
-                let range = if in_view {
-                    call.instances.start..call.instances.start + call.seen
-                } else {
-                    call.instances.clone()
+                let range = match casters {
+                    Casters::InView => call.instances.start..call.instances.start + call.seen,
+                    Casters::SunMap(k) => call.cascades[k].clone(),
+                    Casters::All => call.instances.clone(),
                 };
                 if range.is_empty() {
                     continue;
@@ -359,6 +378,9 @@ impl MeshCalls<'_> {
                 }
                 pass.set_vertex_buffer(0, call.part.vertices.slice(..));
                 pass.set_index_buffer(call.indices.0.slice(..), wgpu::IndexFormat::Uint32);
+                if !in_view {
+                    stats.shadow_instances += range.len() as u32;
+                }
                 pass.draw_indexed(0..call.indices.1, 0, range);
                 stats.draw_calls += 1;
             }
@@ -436,6 +458,8 @@ pub struct RenderStats {
     /// `LevelOfDetail`. Those in a shadow volume are still drawn into shadow maps.
     /// `instances + culled` is every static mesh instance of the frame.
     pub culled: u32,
+    /// Static mesh instances drawn into shadow maps, summed over the maps (decision 0102).
+    pub shadow_instances: u32,
 }
 
 /// Bytes per mesh vertex (position first, as ray tracing structures read it).
@@ -625,7 +649,10 @@ pub struct Renderer {
     /// Reused per-frame arrays: instances in frame order, their group, instances by group.
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
     /// Reused per-frame array: the culling class of each instance in `scratch.0`.
-    scratch_class: Vec<crate::cull::Class>,
+    /// With each class, the sun shadow maps the instance touches (bit per map, decision 0102).
+    scratch_class: Vec<(crate::cull::Class, u8)>,
+    /// GPU time per pass for benchmarks (decision 0103); `None` unless turned on.
+    pass_timer: Option<crate::pass_timer::PassTimer>,
     material_layout: wgpu::BindGroupLayout,
     sprite_tex_layout: wgpu::BindGroupLayout,
     sprite_pipeline: wgpu::RenderPipeline,
@@ -1211,11 +1238,31 @@ impl Renderer {
             compress_wanted: None,
             bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
+            pass_timer: None,
         }
     }
 
     /// Frustum culling (decision 0080) is on by default and never changes a pixel; turning
     /// it off draws every instance in every view, for before/after measurements.
+    /// Times every main render pass on the GPU (decision 0103). Returns whether the device
+    /// can (it needs `TIMESTAMP_QUERY`). For benchmarks: read with [`Self::pass_times`].
+    pub fn set_pass_timing(&mut self, on: bool) -> bool {
+        self.pass_timer = if on {
+            crate::pass_timer::PassTimer::new(&self.device, &self.queue)
+        } else {
+            None
+        };
+        self.pass_timer.is_some()
+    }
+
+    /// GPU milliseconds per pass of the last rendered frame, in recording order; call after
+    /// the GPU has finished it. Empty when timing is off.
+    pub fn pass_times(&self) -> Result<Vec<(&'static str, f64)>, String> {
+        self.pass_timer
+            .as_ref()
+            .map_or(Ok(Vec::new()), |t| t.read(&self.device))
+    }
+
     pub fn set_culling(&mut self, on: bool) {
         self.culling = on;
     }
@@ -2102,7 +2149,7 @@ impl Renderer {
                 .with_projection_scale(views.first().map_or(1.0, |(v, _)| v.proj.y_axis.y))
         };
         // Which passes draw each instance (`cull::Class`), parallel to `gid`.
-        let mut class_of: Vec<crate::cull::Class> = std::mem::take(&mut self.scratch_class);
+        let mut class_of: Vec<(crate::cull::Class, u8)> = std::mem::take(&mut self.scratch_class);
         class_of.clear();
         // Scratch arrays live across frames: fresh multi-megabyte allocations every frame
         // cost more in page faults than filling them does.
@@ -2136,7 +2183,8 @@ impl Renderer {
                     _ => part.transform,
                 };
                 let model_m = draw.world * local;
-                let (class, level) = culler.classify(&part.bounds.transformed(&model_m), 1 + part.lods.len());
+                let sphere = part.bounds.transformed(&model_m);
+                let (class, level) = culler.classify(&sphere, 1 + part.lods.len());
                 if class == crate::cull::Class::Hidden {
                     stats.culled += 1;
                     continue;
@@ -2167,7 +2215,7 @@ impl Renderer {
                     emissive: draw.emissive.extend(0.0).to_array(),
                 });
                 gid.push(g);
-                class_of.push(class);
+                class_of.push((class, culler.shadow_maps(&sphere)));
             }
         }
         for (bi, bulk) in frame.bulk.iter().enumerate() {
@@ -2190,7 +2238,8 @@ impl Renderer {
                         t[11], 1.0,
                     ]);
                     let model_m = if identity { world } else { world * part.transform };
-                    let (class, level) = culler.classify(&part.bounds.transformed(&model_m), levels);
+                    let sphere = part.bounds.transformed(&model_m);
+                    let (class, level) = culler.classify(&sphere, levels);
                     if class == crate::cull::Class::Hidden {
                         stats.culled += 1;
                         continue;
@@ -2220,7 +2269,7 @@ impl Renderer {
                         emissive: [0.0; 4],
                     });
                     gid.push(g);
-                    class_of.push(class);
+                    class_of.push((class, culler.shadow_maps(&sphere)));
                 }
             }
         }
@@ -2229,7 +2278,7 @@ impl Renderer {
         // shadow-only casters after them.
         let mut counts = vec![0u32; group_of.len()];
         let mut seen_counts = vec![0u32; group_of.len()];
-        for (&g, &c) in gid.iter().zip(&class_of) {
+        for (&g, &(c, _)) in gid.iter().zip(&class_of) {
             counts[g as usize] += 1;
             if c == crate::cull::Class::Seen {
                 seen_counts[g as usize] += 1;
@@ -2266,6 +2315,7 @@ impl Renderer {
                 indices,
                 instances: at..at + n,
                 seen,
+                cascades: Default::default(),
                 game: slot.and_then(|s| game.and_then(|gs| gs.draw(s))),
                 look,
             });
@@ -2273,17 +2323,47 @@ impl Renderer {
         }
         instances.clear();
         instances.resize(raw.len(), InstanceData::zeroed());
+        // The shadow map bits follow their instance into its final place.
+        let mut maps_at = vec![0u8; raw.len()];
         let (mut next, mut next_shadow) = (start_of, shadow_start_of);
-        for ((inst, &g), &c) in raw.iter().zip(&gid).zip(&class_of) {
+        for ((inst, &g), &(c, maps)) in raw.iter().zip(&gid).zip(&class_of) {
             let slot = if c == crate::cull::Class::Seen {
                 &mut next[g as usize]
             } else {
                 &mut next_shadow[g as usize]
             };
             instances[*slot as usize] = *inst;
+            maps_at[*slot as usize] = maps;
             *slot += 1;
         }
         self.scratch_class = class_of;
+        // Sun shadow maps draw only the casters inside them (decision 0102): each map gets a copy
+        // of those instances after the main ones, one range per draw. Without this every map drew
+        // every caster, so four cascades cost about four times the scene's triangles. The test is
+        // against the map's own clip volume, so the maps come out the same texel for texel.
+        // Only draws that cast into the sun maps get copies (see `MeshCalls::draw`).
+        let casts = |c: &DrawCall| match c.game {
+            Some((g, _)) => {
+                g.options.blend == marionette_core::shader::ShaderBlend::Opaque && g.options.casts_shadows()
+            }
+            None => !c.look.blended(),
+        };
+        for k in 0..cascades.len().min(MAX_CASCADES) {
+            for call in calls.iter_mut().filter(|c| casts(c)) {
+                if !culler.culls_shadow_maps() {
+                    call.cascades[k] = call.instances.clone();
+                    continue;
+                }
+                let start = instances.len() as u32;
+                for i in call.instances.clone() {
+                    if maps_at[i as usize] & (1 << k) != 0 {
+                        let copy = instances[i as usize];
+                        instances.push(copy);
+                    }
+                }
+                call.cascades[k] = start..instances.len() as u32;
+            }
+        }
         // See-through materials (decision 0280) draw after everything opaque, one instance per
         // draw, farthest from the first view first, so what is behind shows through what is in
         // front. They cast no shadows, so their shadow-only instances are dropped. Blended game
@@ -2562,7 +2642,8 @@ impl Renderer {
         let depth_pass = |encoder: &mut wgpu::CommandEncoder,
                           view: &wgpu::TextureView,
                           offset: u32,
-                          local: bool,
+                          sun_map: Option<usize>,
+                          timer_label: &'static str,
                           stats: &mut RenderStats| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
@@ -2575,15 +2656,24 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes(timer_label)),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            meshes.draw_depth(&mut pass, depth_pipelines, &self.view_group, offset, local, stats);
+            meshes.draw_depth(
+                &mut pass,
+                depth_pipelines,
+                &self.view_group,
+                offset,
+                sun_map,
+                stats,
+            );
         };
         for (k, layer) in self.shadow_map.per_layer.iter().take(cascades.len()).enumerate() {
             let offset = ((SUN_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
-            depth_pass(encoder, layer, offset, false, &mut stats);
+            const SUN: [&str; MAX_CASCADES] =
+                ["sun shadow 0", "sun shadow 1", "sun shadow 2", "sun shadow 3"];
+            depth_pass(encoder, layer, offset, Some(k), SUN[k], &mut stats);
         }
         for (k, layer) in self
             .local_shadows
@@ -2593,7 +2683,7 @@ impl Renderer {
             .enumerate()
         {
             let offset = ((LOCAL_SHADOW_SLOT + k as u64) * VIEW_STRIDE) as u32;
-            depth_pass(encoder, layer, offset, true, &mut stats);
+            depth_pass(encoder, layer, offset, None, "local shadow", &mut stats);
         }
 
         // UI quads in screen pixels, on top of everything in the output target.
@@ -2664,7 +2754,7 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("main (stereo)")),
                 occlusion_query_set: None,
                 multiview_mask: multiview::MASK,
             });
@@ -2747,7 +2837,7 @@ impl Renderer {
                         }),
                         stencil_ops: None,
                     }),
-                    timestamp_writes: None,
+                    timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("hdr")),
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
@@ -2815,7 +2905,7 @@ impl Renderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("main")),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -2920,7 +3010,7 @@ impl Renderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes: self.pass_timer.as_ref().and_then(|t| t.writes("output")),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -2935,6 +3025,9 @@ impl Renderer {
             crate::raytrace::RayTracer::built(&mut self.models);
         }
         self.scratch = (raw, gid, instances);
+        if let Some(t) = &self.pass_timer {
+            t.resolve(encoder);
+        }
         stats
     }
 }

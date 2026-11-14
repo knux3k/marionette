@@ -17,7 +17,9 @@ measuring: [PERFORMANCE.md](PERFORMANCE.md).
 
 Always on. Instances outside every view are not drawn in views; those inside a shadow volume
 (directional shadow box, range of a light with `CastShadows`) still draw into shadow maps.
-Skinned and morphed parts are not culled. `RenderStats.culled` counts what views skipped.
+Each sun shadow cascade draws only the casters inside its own volume (decision 0102).
+Skinned and morphed parts are not culled. `RenderStats.culled` counts what views skipped;
+`RenderStats.shadow_instances` counts instances drawn into shadow maps.
 Compare with `marionette bench <scene> --no-cull`.
 
 ## Level of detail

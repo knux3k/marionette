@@ -66,10 +66,12 @@ impl Gpu {
             // BC7 model textures under `TextureCompression` (decision 0283) where supported.
             // Both eyes in one pass (decision 0285) where supported; MSAA two-layer targets
             // need multisampled arrays.
+            // GPU pass timing for benchmarks (decision 0103) where supported; unused otherwise.
             required_features: (adapter.features()
                 & (wgpu::Features::TEXTURE_COMPRESSION_BC
                     | wgpu::Features::MULTIVIEW
-                    | wgpu::Features::MULTISAMPLE_ARRAY))
+                    | wgpu::Features::MULTISAMPLE_ARRAY
+                    | wgpu::Features::TIMESTAMP_QUERY))
                 | if rt { ray_query } else { wgpu::Features::empty() },
             required_limits: wgpu::Limits {
                 max_multiview_view_count: adapter.limits().max_multiview_view_count.min(2),
@@ -183,6 +185,13 @@ pub struct Offscreen {
     sample_count: u32,
     /// Two-layer targets for single-pass stereo (decision 0285), made when turned on.
     stereo: Option<StereoTargets>,
+    /// Frames the GPU may still be working on when a render returns (decision 0103); 1 waits
+    /// for every frame.
+    in_flight: usize,
+    /// Submissions not yet waited for, oldest first (at most `in_flight - 1` after a render).
+    pending: std::collections::VecDeque<wgpu::SubmissionIndex>,
+    /// GPU milliseconds per pass of the last frame, when pass timing is on.
+    pub last_passes: Vec<(&'static str, f64)>,
 }
 
 /// Color, resolve and depth with two layers: each as one array view and per layer.
@@ -299,6 +308,9 @@ impl Offscreen {
         Self {
             renderer,
             last_timing: FrameTiming::default(),
+            in_flight: 1,
+            pending: std::collections::VecDeque::new(),
+            last_passes: Vec::new(),
             width,
             height,
             msaa,
@@ -392,6 +404,20 @@ impl Offscreen {
         self.render_from(gpu, frame, base, eyes, ipd)
     }
 
+    /// Lets up to `frames` renders run on the GPU at once (1 to 3, decision 0103): a render
+    /// returns once the frame `frames - 1` renders back is done, as a game loop with a frame
+    /// queue does. 1 (the default) waits for every frame. Read pixels or pass times only at 1.
+    pub fn set_frames_in_flight(&mut self, gpu: &Gpu, frames: usize) -> Result<(), Errors> {
+        self.in_flight = frames.clamp(1, 3);
+        if self.in_flight == 1 {
+            self.pending.clear();
+            gpu.device
+                .poll(wgpu::PollType::wait_indefinitely())
+                .map_err(|e| device_error(format!("GPU wait failed: {e}")))?;
+        }
+        Ok(())
+    }
+
     /// Renders the frame from an explicit view (an editor camera, not a scene camera) and
     /// waits for the GPU to finish.
     pub fn render_view(&mut self, gpu: &Gpu, frame: &FrameData, view: View) -> Result<RenderStats, Errors> {
@@ -469,11 +495,25 @@ impl Offscreen {
             }
             _ => self.renderer.render_views(frame, &views, &mut encoder),
         };
-        gpu.queue.submit([encoder.finish()]);
+        let index = gpu.queue.submit([encoder.finish()]);
         let submitted = std::time::Instant::now();
-        gpu.device
-            .poll(wgpu::PollType::wait_indefinitely())
-            .map_err(|e| device_error(format!("GPU wait failed: {e}")))?;
+        self.pending.push_back(index);
+        // Wait for the frame `in_flight - 1` frames back (all of them when 1), so the CPU can
+        // record the next frame while the GPU draws this one.
+        while self.pending.len() >= self.in_flight {
+            let Some(oldest) = self.pending.pop_front() else {
+                break;
+            };
+            gpu.device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: Some(oldest),
+                    timeout: None,
+                })
+                .map_err(|e| device_error(format!("GPU wait failed: {e}")))?;
+        }
+        if self.in_flight == 1 {
+            self.last_passes = self.renderer.pass_times().map_err(device_error)?;
+        }
         // Measurement only (benchmarks); never read by the simulation.
         self.last_timing = FrameTiming {
             record_ms: (submitted - started).as_secs_f64() * 1000.0,

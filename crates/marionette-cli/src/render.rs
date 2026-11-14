@@ -62,6 +62,10 @@ pub struct BenchOptions<'a> {
     pub headset: bool,
     pub warmup: u32,
     pub no_cull: bool,
+    /// Frames in flight (decision 0103).
+    pub in_flight: usize,
+    /// GPU time per pass.
+    pub gpu_passes: bool,
 }
 
 /// Head turn for headset emulation: yaw in radians at frame `i` (90 Hz, 2 s period).
@@ -84,6 +88,8 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         headset,
         warmup,
         no_cull,
+        in_flight,
+        gpu_passes,
     } = o;
     let (width, height) = parse_size(size)?;
     check_msaa(msaa)?;
@@ -102,6 +108,7 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
     let gpu = Gpu::headless()?;
     let mut offscreen = Offscreen::new(&gpu, width, height, msaa, scene_dir(path));
     offscreen.set_culling(!no_cull);
+    let gpu_passes = gpu_passes && offscreen.renderer.set_pass_timing(true);
     // Both eyes in one pass where the device allows it (decision 0285).
     let single_pass = offscreen.default_single_pass_stereo(&gpu, eyes);
     // Warm-up: load assets, compile pipelines, settle clocks. Not measured.
@@ -119,6 +126,9 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         Vec::with_capacity(n),
         Vec::with_capacity(n),
     );
+    offscreen.set_frames_in_flight(&gpu, in_flight)?;
+    // GPU milliseconds per pass label, one entry per frame (labels repeat, e.g. per cascade).
+    let mut passes: std::collections::BTreeMap<&'static str, Vec<f64>> = std::collections::BTreeMap::new();
     let mut stats = marionette_render::RenderStats::default();
     let ms = |d: std::time::Duration| d.as_secs_f64() * 1000.0;
     for i in 0..frames {
@@ -139,7 +149,12 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         extracts.push(ms(extracted - stepped));
         records.push(offscreen.last_timing.record_ms);
         waits.push(offscreen.last_timing.gpu_wait_ms);
+        for (label, ms) in &offscreen.last_passes {
+            passes.entry(label).or_default().push(*ms);
+        }
     }
+    // Every frame still in flight finishes before the numbers are final.
+    offscreen.set_frames_in_flight(&gpu, 1)?;
     let round = |x: f64| (x * 1000.0).round() / 1000.0;
     let pct = |v: &[f64], p: f64| {
         let mut sorted = v.to_vec();
@@ -147,6 +162,10 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         round(sorted[((sorted.len() as f64 - 1.0) * p).round() as usize])
     };
     let avg = times.iter().sum::<f64>() / times.len() as f64;
+    let gpu_pass_p50: serde_json::Map<String, Value> = passes
+        .iter()
+        .map(|(label, v)| ((*label).to_string(), json!(pct(v, 0.5))))
+        .collect();
     let max = times.iter().copied().fold(0.0, f64::max);
     const BUDGET_MS: f64 = 1000.0 / 90.0;
     Ok(json!({
@@ -161,6 +180,8 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         "headset": headset,
         "single_pass_stereo": single_pass,
         "culling": !no_cull,
+        "in_flight": in_flight.clamp(1, 3),
+        "gpu_passes_p50_ms": if gpu_passes { Value::Object(gpu_pass_p50) } else { Value::Null },
         "frames": frames,
         "avg_ms": round(avg),
         "p50_ms": pct(&times, 0.5),
@@ -175,7 +196,11 @@ pub fn bench(o: BenchOptions) -> Result<Value, Errors> {
         "render": stats,
         "budget_ms": round(BUDGET_MS),
         "within_budget": max <= BUDGET_MS,
-        "method": "offscreen; per frame: 1 sim tick + extract + render all eyes + wait for GPU idle (serialized, so conservative)",
+        "method": if in_flight <= 1 {
+            "offscreen; per frame: 1 sim tick + extract + render all eyes + wait for GPU idle (serialized, so conservative)"
+        } else {
+            "offscreen; per frame: 1 sim tick + extract + render all eyes + wait for the frame in_flight-1 back (CPU and GPU overlap)"
+        },
     }))
 }
 
