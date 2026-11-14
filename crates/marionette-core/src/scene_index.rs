@@ -12,7 +12,7 @@
 //! whole-scene path would have given (`tests/scene_index.rs` holds the two against each other).
 
 use crate::registry::{Kind, Registry};
-use crate::scene::{FORMAT, Scene, SceneEntity, VERSION, collect_refs, typed};
+use crate::scene::{FORMAT, Scene, SceneEntity, VERSION, collect_refs, parent_cycles, parent_of, typed};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 
@@ -140,7 +140,25 @@ impl SceneIndex {
         if index.incoming.keys().any(|id| !index.entities.contains_key(id)) {
             return None;
         }
-        Some(index)
+        let parents = index
+            .entities
+            .values()
+            .filter_map(|e| Some((e.entity.id, parent_of(&e.entity)?)))
+            .collect();
+        parent_cycles(&parents).is_empty().then_some(index)
+    }
+
+    /// True when making `entity` a child of the parent its `ChildOf` names would make it its
+    /// own ancestor. The indexed scene has no cycle, so the walk ends.
+    fn closes_cycle(&self, entity: &SceneEntity) -> bool {
+        let mut at = parent_of(entity);
+        while let Some(id) = at {
+            if id == entity.id {
+                return true;
+            }
+            at = self.entities.get(&id).and_then(|e| parent_of(&e.entity));
+        }
+        false
     }
 
     fn canonical_resource(&self, name: &str, value: &Value, registry: &Registry) -> Option<Value> {
@@ -200,7 +218,7 @@ impl SceneIndex {
             return None;
         }
         let (entity, refs) = canonical(entity, registry)?;
-        if !self.refs_exist(&refs) {
+        if !self.refs_exist(&refs) || self.closes_cycle(&entity) {
             return None;
         }
         self.put(entity.clone(), refs);
@@ -217,7 +235,7 @@ impl SceneIndex {
             return None;
         }
         let (entity, refs) = canonical(entity, registry)?;
-        if !self.refs_exist(&refs) {
+        if !self.refs_exist(&refs) || self.closes_cycle(&entity) {
             return None;
         }
         let before = self.take(entity.id);

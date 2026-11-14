@@ -7,8 +7,11 @@
 //! `session_save`. See docs/decisions/0009-live-sessions-and-files.md.
 
 use crate::{Agent, Op, codes, op, read_text, write_atomic};
+use marionette_core::builtin::SceneRef;
+use marionette_core::hierarchy::{self, ChildOf};
 use marionette_core::scene::{self, Scene, SceneEntity};
 use marionette_core::scene_index::{Changed, SceneIndex};
+use marionette_core::spatial::{Quat, Transform, Vec3};
 use marionette_core::{Diagnostic, Errors, Registry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -36,6 +39,14 @@ pub(crate) fn ops() -> Vec<Op> {
             "Remove an entity. Fails if other entities still refer to it.",
             true,
             entity_delete,
+        ),
+        op(
+            "entity_attach",
+            "Make an entity a child of another without moving it: adds `ChildOf` with the local \
+             placement that keeps it where it is. It then follows the parent. To detach, remove \
+             `ChildOf` (`component_remove`); to move a child, set its `ChildOf`.",
+            true,
+            entity_attach,
         ),
         op(
             "component_set",
@@ -627,6 +638,108 @@ fn entity_delete(agent: &mut Agent, input: EntityDeleteInput) -> Result<EditOutp
     let (target, diff, _) = entity_edit(agent, &input.target, fast, |s, t| {
         entity_mut(s, id, t)?;
         s.entities.retain(|e| e.id != id);
+        Ok(())
+    })?;
+    Ok(EditOutput { target, id, diff })
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct EntityAttachInput {
+    #[serde(flatten)]
+    pub target: EditTarget,
+    /// The entity that becomes the child.
+    pub id: u64,
+    /// The entity it follows from now on.
+    pub parent: u64,
+}
+
+fn vec3(v: Option<&Value>, default: f32) -> Vec3 {
+    let f = |k: &str| {
+        v.and_then(|v| v.get(k))
+            .and_then(Value::as_f64)
+            .map_or(default, |n| n as f32)
+    };
+    Vec3::new(f("x"), f("y"), f("z"))
+}
+
+/// A `Transform` or the placement part of a `ChildOf`, read from scene data.
+fn placement(v: Option<&Value>) -> Transform {
+    let r = v.and_then(|v| v.get("rotation"));
+    let f = |k: &str, d: f32| {
+        r.and_then(|r| r.get(k))
+            .and_then(Value::as_f64)
+            .map_or(d, |n| n as f32)
+    };
+    Transform {
+        translation: vec3(v.and_then(|v| v.get("translation")), 0.0),
+        rotation: Quat {
+            x: f("x", 0.0),
+            y: f("y", 0.0),
+            z: f("z", 0.0),
+            w: f("w", 1.0),
+        },
+        scale: vec3(v.and_then(|v| v.get("scale")), 1.0),
+    }
+}
+
+/// Where an entity is in the world, from scene data alone: through its `ChildOf` chain if it
+/// has one (a file may hold an older `Transform` for a child), else its `Transform` with
+/// `Position` as the translation.
+fn world_placement(s: &Scene, id: u64, depth: usize) -> Transform {
+    let Some(e) = s.entities.iter().find(|e| e.id == id) else {
+        return Transform::default();
+    };
+    let link = e.components.get("ChildOf");
+    let parent = link.and_then(|c| c.get("parent")).and_then(Value::as_u64);
+    if let (Some(link), Some(parent)) = (link, parent)
+        && depth < s.entities.len()
+    {
+        let local = placement(Some(link));
+        return hierarchy::compose(
+            &world_placement(s, parent, depth + 1),
+            &ChildOf {
+                parent: SceneRef(parent),
+                translation: local.translation,
+                rotation: local.rotation,
+                scale: local.scale,
+            },
+        );
+    }
+    let mut t = placement(e.components.get("Transform"));
+    if let Some(p) = e.components.get("Position") {
+        t.translation = vec3(Some(p), 0.0);
+    }
+    t
+}
+
+fn entity_attach(agent: &mut Agent, input: EntityAttachInput) -> Result<EditOutput, Errors> {
+    let (id, parent) = (input.id, input.parent);
+    let (target, diff) = apply(agent, &input.target, |s, t| {
+        entity_mut(s, parent, t)?;
+        entity_mut(s, id, t)?;
+        let mut old = s.clone();
+        // Where the child is now, with any earlier parent still in place.
+        let at = world_placement(&old, id, 0);
+        if let Some(e) = old.entities.iter_mut().find(|e| e.id == id) {
+            e.components.remove("ChildOf");
+        }
+        let c = hierarchy::local(&world_placement(&old, parent, 0), &at, SceneRef(parent)).ok_or_else(|| {
+            Errors::from(
+                Diagnostic::error(codes::BAD_INPUT, format!("entity {parent} has a scale of 0 on an axis"))
+                    .entity(parent)
+                    .fix("give the parent a scale that is not 0, or set `ChildOf` yourself with `component_set`"),
+            )
+        })?;
+        let xyz = |v: Vec3| serde_json::json!({ "x": v.x, "y": v.y, "z": v.z });
+        entity_mut(s, id, t)?.components.insert(
+            "ChildOf".into(),
+            serde_json::json!({
+                "parent": parent,
+                "translation": xyz(c.translation),
+                "rotation": { "x": c.rotation.x, "y": c.rotation.y, "z": c.rotation.z, "w": c.rotation.w },
+                "scale": xyz(c.scale),
+            }),
+        );
         Ok(())
     })?;
     Ok(EditOutput { target, id, diff })

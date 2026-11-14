@@ -181,8 +181,8 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `GameObject.FindGameObjectsWithTag` | `engine.query("<MarkerComponent>")` | rewrite |  |
 | `GameObject.FindWithTag` | `engine.query("<MarkerComponent>")` | rewrite | No tags. |
 | `GetComponent` | `self.get("<Component>")` | script | Components are plain data: get returns a copy, change it, then self.set(name, value). Use self.has(name) to test. |
-| `GetComponentInChildren` |  | gap | No hierarchy; reference the other entity by id or name. |
-| `GetComponentInParent` |  | gap | No hierarchy. |
+| `GetComponentInChildren` |  | gap | Children are not listed; reference the other entity by id or name. |
+| `GetComponentInParent` |  | gap | A child names its parent in ChildOf.parent; read the component from that entity. |
 | `GetComponents` |  | rewrite | One component of each type per entity. |
 | `Graphics.DrawMeshInstanced` | `JobDraw (decision 0070), or a BulkDrawHooks render hook from a Rust module` | rewrite | Never one entity per drawn item. |
 | `Graphics.RenderMeshInstanced` | `JobDraw (instanced draw from job arrays, decision 0070), or a BulkDrawHooks render hook from a Rust module` | rewrite | Never one entity per drawn item. |
@@ -373,15 +373,15 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `transform.GetChild` |  | gap |  |
 | `transform.LookAt` | `LookAt component` | ready | Set LookAt.target; it overrides Transform.rotation. |
 | `transform.Rotate` | `multiply Transform.rotation by a precomputed quaternion` | rewrite |  |
-| `transform.SetParent` |  | gap | No hierarchy yet. |
+| `transform.SetParent` | `self.set("ChildOf", { parent, translation, rotation, scale })` | script | In a scene use the operation entity_attach, which keeps the world placement. A script cannot detach yet (scripts cannot remove components); the operation component_remove can. |
 | `transform.Translate` | `add to Transform.translation` | script |  |
-| `transform.childCount` |  | gap | No hierarchy. |
+| `transform.childCount` |  | gap | Children are not listed: a child names its parent in ChildOf. |
 | `transform.eulerAngles` | `convert to a quaternion` | hazard | Euler conversion needs sin/cos; precompute constants or use quaternion math with sqrt only (ARCHITECTURE.md, determinism). |
 | `transform.forward` | `rotate (0, 0, -1) by Transform.rotation` | rewrite | Marionette forward is -Z (glTF); Unity forward is +Z. Flip z when porting positions and directions. |
-| `transform.localPosition` | `self.get("Transform").translation` | script | No hierarchy, so local equals world. |
-| `transform.localRotation` | `self.get("Transform").rotation` | script |  |
-| `transform.localScale` | `self.get("Transform").scale` | script |  |
-| `transform.parent` |  | gap | No parent-child hierarchy yet; keep offsets in script and copy positions each tick, or use Follow. |
+| `transform.localPosition` | `self.get("ChildOf").translation` | script | For a child (an entity with ChildOf); change it and set ChildOf to move the child. Without a parent, local equals world: use Transform. |
+| `transform.localRotation` | `self.get("ChildOf").rotation` | script | For a child; without a parent use Transform.rotation. |
+| `transform.localScale` | `self.get("ChildOf").scale` | script | For a child; without a parent use Transform.scale. |
+| `transform.parent` | `self.get("ChildOf").parent` | script | The parent's entity id; undefined when the entity has no ChildOf. |
 | `transform.position` | `self.get("Transform").translation` | script | Write: const t = self.get("Transform"); t.translation = {...}; self.set("Transform", t). Kinematic bodies follow Transform; dynamic bodies are moved by physics. |
 | `transform.right` | `rotate (1, 0, 0) by Transform.rotation` | rewrite |  |
 | `transform.rotation` | `self.get("Transform").rotation` | script | Quaternion {x, y, z, w}. |
@@ -665,7 +665,7 @@ Status: `ready` exists now as data (component, action map, file, operation); `sc
 | `SetRootComponent` |  | ready | Not needed. |
 | `SetSimulatePhysics` | `RigidBody { kind: Dynamic } in the scene` | ready |  |
 | `SetText` | `set UiText.text on the UI entity` | script |  |
-| `SetupAttachment` |  | gap | No attachment hierarchy yet; use separate entities, Follow, or copy positions in update. |
+| `SetupAttachment` | `ChildOf` | rewrite | Scene data: give the child a ChildOf component (operation entity_attach keeps its world placement). |
 | `Size` | `Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)` | script |  |
 | `SpawnActor` | `engine.clone(templateEntity, overrides) or engine.spawn(components)` | script |  |
 | `StopJumping` |  | ready | Not needed. |

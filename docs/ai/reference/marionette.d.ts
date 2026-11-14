@@ -372,6 +372,29 @@ type CharacterState = {
   vertical_velocity: number;
 };
 
+/** Places the entity relative to `parent`: the engine sets this entity's `Transform` to the parent's `Transform` (its `Position`, if it has one, as the translation) combined with `translation`, `rotation` and `scale` here, at load and every tick. Change these fields to move the entity; a `Transform` written directly is overwritten. Scales multiply per axis, so a turned child of a parent with unequal scales is not sheared. Not for dynamic bodies or characters, which physics moves. Use `entity_attach` to attach an entity where it is. */
+type ChildOf = {
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  parent: number;
+  /** Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). */
+  rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  scale: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  translation: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
 /** The shape and surface of a body. An entity with a `Collider` but no `RigidBody` is fixed. */
 type Collider = {
   density: number;
@@ -1261,6 +1284,7 @@ interface Components {
   CharacterController: CharacterController;
   CharacterInput: CharacterInput;
   CharacterState: CharacterState;
+  ChildOf: ChildOf;
   Collider: Collider;
   DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;

@@ -21,6 +21,7 @@ pub mod codes {
     pub const SCENE_UNKNOWN_FIELD: &str = "scene.unknown_field";
     pub const SCENE_FIELD_TYPE: &str = "scene.field_type";
     pub const SCENE_DANGLING_REF: &str = "scene.dangling_ref";
+    pub const SCENE_PARENT_CYCLE: &str = "scene.parent_cycle";
     pub const SCENE_NOT_CANONICAL: &str = "scene.not_canonical";
     pub const REGISTRY_DUPLICATE: &str = "registry.duplicate";
 }

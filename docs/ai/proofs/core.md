@@ -11,3 +11,14 @@ Line 2 (core):
   `different_seed_gives_different_hash`, `load_then_save_is_byte_identical`,
   `diagnostic_positions_are_exact`); `drift_hash_is_unchanged_from_plan_line_2` in
   `crates/marionette-cli/tests/cli.rs`.
+
+Parent and child transforms (decision 0272):
+- `crates/marionette-core/tests/hierarchy.rs`: `children_are_placed_at_load_and_follow_every_tick`,
+  `links_changed_while_running_are_followed`, `a_cycle_is_refused_with_its_own_code`,
+  `local_is_the_inverse_of_compose`, `snapshots_and_reruns_give_the_same_hash`.
+- `crates/marionette-physics/tests/children.rs`: `a_collider_on_a_child_moves_with_the_parent`,
+  `a_child_moved_by_physics_is_refused`, `a_child_of_a_falling_body_is_on_it_in_the_same_tick`.
+- `crates/marionette-agent/tests/hierarchy.rs` (`entity_attach` in a file and a session, a
+  parent moved by a script) and the `ChildOf` steps in `tests/indexed_edits.rs`.
+- `cargo test --release -p marionette-cli --test engine_budgets -- --ignored hierarchy_budgets`:
+  10,000 children under 2,500 moving parents, 1.3 ms per tick (release, 4-core container).

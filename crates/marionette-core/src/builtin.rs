@@ -3,6 +3,7 @@
 //! - `random_impulse`: entities with `RandomImpulse` get a seeded random kick each tick.
 //! - `follow`: entities with `Follow` accelerate toward another entity.
 //! - `integrate`: `Position += Velocity * dt`.
+//! - `hierarchy::place`: entities with `ChildOf` are placed relative to their parent.
 //!
 //! All arithmetic is plain `f32` add/multiply (no transcendental functions), and every
 //! system that consumes randomness visits entities in stable-id order.
@@ -89,6 +90,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_resource::<FixedStep>();
     // Data read by renderers (see `spatial`).
     registry.register_component::<spatial::Transform>();
+    registry.register_component::<crate::hierarchy::ChildOf>();
     registry.register_component::<spatial::LookAt>();
     registry.register_component::<spatial::Camera>();
     registry.register_component::<spatial::Model>();
@@ -131,6 +133,11 @@ pub fn register_builtins(registry: &mut Registry) {
 /// Adds the built-in systems to `schedule`, in a fixed order.
 pub fn add_builtin_systems(schedule: &mut Schedule) {
     schedule.add_systems((random_impulse, follow, integrate).chain().in_set(Stage::Logic));
+    // Children follow their parents (decision 0272): before physics, so colliders on children
+    // are where they belong, and after it, so the finished tick is consistent.
+    use crate::hierarchy::place;
+    schedule.add_systems(place.after(Stage::Logic).before(Stage::Physics));
+    schedule.add_systems(place.after(Stage::Physics).before(Stage::Effects));
     schedule.add_systems(advance_clock.in_set(Stage::End));
 }
 
