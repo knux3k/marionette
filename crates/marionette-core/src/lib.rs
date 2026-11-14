@@ -14,6 +14,7 @@ pub mod person_only;
 pub mod registry;
 pub mod rng;
 pub mod scene;
+pub mod scene_index;
 pub mod schema;
 pub mod shader;
 pub mod sim;
