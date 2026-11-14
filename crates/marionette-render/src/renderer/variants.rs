@@ -12,7 +12,7 @@ pub(crate) const DOUBLE_SIDED: usize = 1;
 pub(crate) const BLENDED: usize = 2;
 
 /// How one drawn part looks to the pipelines: its variant and whether it is cut out.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub(crate) struct Look {
     pub variant: u8,
     pub masked: bool,
