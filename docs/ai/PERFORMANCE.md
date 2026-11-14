@@ -15,6 +15,7 @@ GPU. Decisions: 0023 (budgets), 0024 (jobs), 0025 (renderer), 0026 (factory modu
 | Render CPU, 32x factory, 2 eyes, p50 | 4 ms | `perf_budgets::render_cpu_budget` |
 | Build a 10,000 entity scene in one batch; one edit of it (file, live session) | 2 s; 20 ms, 500 ms | `engine_budgets::scene_edit_budgets` |
 | Tick of 1,000 scripts: empty `update`; read, change and write `Transform` | 5 ms; 18 ms | `engine_budgets::script_budgets` |
+| Tick of 10,000 children in chains of four under 2,500 moving parents | 3 ms | `engine_budgets::hierarchy_budgets` |
 | Draw calls for a factory frame | fixed per asset and part, independent of scale | `perf_proofs` (every `cargo test`) |
 | Sim result independent of job threads | same state hash with 1 and 3 threads | `perf_proofs` (every `cargo test`) |
 

@@ -20,6 +20,9 @@ Run operations as `marionette op <name> '<json>' --json`, or as MCP tools of the
    - `scene_create` (`template`: `empty` or `basic` with camera, light, ground).
    - `entity_create` with `components`, `entity_update` to set and remove several at once,
      `component_set`, `component_remove`, `entity_delete`.
+   - `entity_attach` (`id`, `parent`) makes an entity follow another without moving it: it
+     adds `ChildOf` (parent id and local placement). Move a child by setting `ChildOf`; its
+     `Transform` is written by the engine. Detach with `component_remove`.
    - `resource_set` for scene-wide settings (`FixedStep`, `PhysicsSettings`, `AmbientLight`).
 4. Run: `scene_run` gives a state hash for scene, seed and ticks. For repeated looks keep a
    world loaded: `session_start`, then `session_step`; edits with `session` instead of `scene`

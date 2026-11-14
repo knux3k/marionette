@@ -1,5 +1,5 @@
-//! Timing budgets of the engine itself (decision 0023): scene edits (decision 0270) and
-//! scripts (decision 0271). Wall-clock numbers depend on the machine, so these run only when
+//! Timing budgets of the engine itself (decision 0023): scene edits (decision 0270), scripts
+//! (decision 0271) and children (decision 0272). Wall-clock numbers depend on the machine, so these run only when
 //! asked, in a release build, one test at a time:
 //!
 //! `cargo test --release -p marionette-cli --test engine_budgets -- --ignored --test-threads=1`
@@ -189,5 +189,50 @@ fn script_budgets() {
     check("1,000 scripts with an empty update", empty, SCRIPT_EMPTY_1K_MS);
     let mover = scripted(&mut agent, &d, "mover", 1000, MOVER);
     check("1,000 scripts that move their entity", mover, SCRIPT_MOVER_1K_MS);
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+/// Decision 0272: a tick of 10,000 children in chains of four under moving parents (measured
+/// 1.3 ms).
+const CHILDREN_10K_MS: f64 = 3.0;
+
+#[test]
+#[ignore = "timing: release builds only, see the file header"]
+fn hierarchy_budgets() {
+    let d = dir().join("children");
+    std::fs::create_dir_all(&d).unwrap();
+    let mut agent = Agent::new(&d, false);
+    let scene = "scenes/children.scene.json";
+    let place = |parent: Option<u32>| {
+        let mut v = json!({ "translation": { "x": 1, "y": 0, "z": 0 },
+            "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 }, "scale": { "x": 1, "y": 1, "z": 1 } });
+        if let Some(p) = parent {
+            v["parent"] = json!(p);
+        }
+        v
+    };
+    let mut ops = vec![json!({ "op": "scene_create", "input": { "scene": scene, "template": "basic" } })];
+    for i in 0..2500u32 {
+        let root = 100 + i * 5;
+        ops.push(json!({ "op": "entity_create", "input": { "scene": scene, "id": root, "components": {
+            "Transform": place(None), "Position": { "x": i, "y": 0, "z": 0 }, "Velocity": { "x": 0, "y": 1, "z": 0 } } } }));
+        for k in 1..5 {
+            ops.push(
+                json!({ "op": "entity_create", "input": { "scene": scene, "id": root + k, "components": {
+                "ChildOf": place(Some(root + k - 1)) } } }),
+            );
+        }
+    }
+    call(&mut agent, "batch_run", json!({ "ops": ops }));
+    let r = call(
+        &mut agent,
+        "perf_sim",
+        json!({ "scene": scene, "ticks": 300, "warmup": 60 }),
+    );
+    check(
+        "10,000 children following 2,500 moving parents",
+        r["avg_ms"].as_f64().unwrap(),
+        CHILDREN_10K_MS,
+    );
     let _ = std::fs::remove_dir_all(&d);
 }

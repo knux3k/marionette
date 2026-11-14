@@ -853,13 +853,13 @@
       "pattern": "GetComponentInChildren",
       "marionette": "",
       "status": "gap",
-      "note": "No hierarchy; reference the other entity by id or name."
+      "note": "Children are not listed; reference the other entity by id or name."
     },
     {
       "pattern": "GetComponentInParent",
       "marionette": "",
       "status": "gap",
-      "note": "No hierarchy."
+      "note": "A child names its parent in ChildOf.parent; read the component from that entity."
     },
     {
       "pattern": "GetComponents",
@@ -914,9 +914,9 @@
     },
     {
       "pattern": "transform.localPosition",
-      "marionette": "self.get(\"Transform\").translation",
+      "marionette": "self.get(\"ChildOf\").translation",
       "status": "script",
-      "note": "No hierarchy, so local equals world."
+      "note": "For a child (an entity with ChildOf); change it and set ChildOf to move the child. Without a parent, local equals world: use Transform."
     },
     {
       "pattern": "transform.rotation",
@@ -926,13 +926,15 @@
     },
     {
       "pattern": "transform.localRotation",
-      "marionette": "self.get(\"Transform\").rotation",
-      "status": "script"
+      "marionette": "self.get(\"ChildOf\").rotation",
+      "status": "script",
+      "note": "For a child; without a parent use Transform.rotation."
     },
     {
       "pattern": "transform.localScale",
-      "marionette": "self.get(\"Transform\").scale",
-      "status": "script"
+      "marionette": "self.get(\"ChildOf\").scale",
+      "status": "script",
+      "note": "For a child; without a parent use Transform.scale."
     },
     {
       "pattern": "transform.eulerAngles",
@@ -974,15 +976,15 @@
     },
     {
       "pattern": "transform.parent",
-      "marionette": "",
-      "status": "gap",
-      "note": "No parent-child hierarchy yet; keep offsets in script and copy positions each tick, or use Follow."
+      "marionette": "self.get(\"ChildOf\").parent",
+      "status": "script",
+      "note": "The parent's entity id; undefined when the entity has no ChildOf."
     },
     {
       "pattern": "transform.SetParent",
-      "marionette": "",
-      "status": "gap",
-      "note": "No hierarchy yet."
+      "marionette": "self.set(\"ChildOf\", { parent, translation, rotation, scale })",
+      "status": "script",
+      "note": "In a scene use the operation entity_attach, which keeps the world placement. A script cannot detach yet (scripts cannot remove components); the operation component_remove can."
     },
     {
       "pattern": "transform.Find",
@@ -1569,7 +1571,7 @@
       "pattern": "transform.childCount",
       "marionette": "",
       "status": "gap",
-      "note": "No hierarchy."
+      "note": "Children are not listed: a child names its parent in ChildOf."
     },
     {
       "pattern": "Screen.width",

@@ -35,6 +35,13 @@ fn add(v: &Value, key: &str, d: f32) -> Value {
 /// Moves an entity by `delta` meters: its `Position` if it has one, else its `Transform`
 /// translation. Entities with neither cannot move.
 pub fn nudge(scene: &str, e: &Inspected, delta: Vec3) -> Result<Plan, String> {
+    if component(e, "ChildOf").is_some() {
+        // A child's Transform is written by the engine from its parent (decision 0272).
+        return Err(format!(
+            "#{} is a child: move its parent, or set its ChildOf translation",
+            e.id
+        ));
+    }
     let (name, old, new) = if let Some(p) = component(e, "Position") {
         let new = json!({ "x": add(p, "x", delta.x), "y": add(p, "y", delta.y), "z": add(p, "z", delta.z) });
         ("Position", p.clone(), new)
@@ -145,6 +152,15 @@ mod tests {
             components: vec![],
         };
         assert!(nudge("s", &none, Vec3::Y).is_err());
+        let child = Inspected {
+            id: 3,
+            name: None,
+            components: vec![
+                e.components[0].clone(),
+                ("ChildOf".into(), json!({ "parent": 1 })),
+            ],
+        };
+        assert!(nudge("s", &child, Vec3::Y).unwrap_err().contains("child"));
     }
 
     #[test]

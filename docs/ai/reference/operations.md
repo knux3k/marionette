@@ -16,6 +16,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `entity_create` | yes | Add an entity (id defaults to the next free id) with optional name and components. Target: `scene` (file) or `session` (live world). |
 | `entity_update` | yes | Rename an entity and/or set and remove several components in one validated edit. |
 | `entity_delete` | yes | Remove an entity. Fails if other entities still refer to it. |
+| `entity_attach` | yes | Make an entity a child of another without moving it: adds `ChildOf` with the local placement that keeps it where it is. It then follows the parent. To detach, remove `ChildOf` (`component_remove`); to move a child, set its `ChildOf`. |
 | `component_set` | yes | Add or replace one component on an entity. |
 | `component_remove` | yes | Remove one component from an entity. |
 | `resource_set` | yes | Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`). |
@@ -316,6 +317,29 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `entity_attach`
+
+Make an entity a child of another without moving it: adds `ChildOf` with the local placement that keeps it where it is. It then follows the parent. To detach, remove `ChildOf` (`component_remove`); to move a child, set its `ChildOf`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer | yes | The entity that becomes the child. |
+| `parent` | integer | yes | The entity it follows from now on. |
 | `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
 | `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
 

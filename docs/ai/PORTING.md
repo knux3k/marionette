@@ -121,8 +121,11 @@ hooks. The other side is an `Entity`, not a Collision or hit result.
 - **Destroying** (`Destroy(obj, t)`, `K2_DestroyActor`): `engine.destroy(entity, seconds?)`;
   the entity is removed at the end of the script stage after its `onDestroy`.
   `Destroy(component)` has no equivalent yet.
-- **No hierarchy.** Parenting (`SetParent`, `SetupAttachment`) is a gap: use separate entities,
-  `Follow` or `LookAt`, or copy positions in `update`.
+- **Parenting** (`SetParent`, `SetupAttachment`, decision 0272): the child gets a `ChildOf`
+  component (`parent` id and local `translation`, `rotation`, `scale`); the engine writes its
+  world `Transform` every tick. `entity_attach` attaches an entity where it stands. Local
+  position is `self.get("ChildOf").translation`. Children are not listed, a script cannot
+  detach yet, and imported prefabs are still flattened to world transforms.
 
 ## Coordinates and units
 
