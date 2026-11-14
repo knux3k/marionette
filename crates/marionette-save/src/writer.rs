@@ -7,10 +7,10 @@
 
 use crate::Pending;
 use crate::store::{SaveStore, check_slot};
-use marionette_core::{Errors, Registry};
+use marionette_core::{Diagnostic, Errors, Registry};
 use serde::Serialize;
 use std::collections::VecDeque;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -40,6 +40,18 @@ struct Shared {
     cv: Condvar,
 }
 
+impl Shared {
+    /// A poisoned lock only means a writer thread panicked mid-update; the queue and
+    /// results are still well formed, so keep using them rather than panic again.
+    fn lock(&self) -> MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn wait<'a>(&self, st: MutexGuard<'a, State>) -> MutexGuard<'a, State> {
+        self.cv.wait(st).unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
 pub struct SaveWriter {
     shared: Arc<Shared>,
     thread: Option<JoinHandle<()>>,
@@ -54,22 +66,24 @@ impl SaveWriter {
 
     /// A writer into `store`. `registry` must be the registry of the simulations whose
     /// captures it gets (e.g. `registry_with(sim.modules())`).
-    pub fn new(store: SaveStore, registry: Arc<Registry>) -> Self {
+    pub fn new(store: SaveStore, registry: Arc<Registry>) -> Result<Self, Errors> {
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             cv: Condvar::new(),
         });
-        let s = shared.clone();
+        // The thread and this handle both own the queue (an `Arc`, so a refcount bump)
+        // and the save folder path, which the thread keeps after `new` returns.
+        let s = Arc::clone(&shared);
         let st = store.clone();
         let thread = std::thread::Builder::new()
             .name("marionette-save".into())
             .spawn(move || run(&s, &st, &registry))
-            .expect("the OS can start a thread");
-        Self {
+            .map_err(|e| Diagnostic::error(crate::codes::IO, format!("cannot start the save thread: {e}")))?;
+        Ok(Self {
             shared,
             thread: Some(thread),
             store,
-        }
+        })
     }
 
     pub fn store(&self) -> &SaveStore {
@@ -80,14 +94,14 @@ impl SaveWriter {
     /// of other slots, see the module docs).
     pub fn submit(&self, slot: &str, pending: Pending) -> Result<(), Errors> {
         check_slot(slot)?;
-        let mut st = self.shared.state.lock().expect("save writer lock");
+        let mut st = self.shared.lock();
         if let Some(waiting) = st.queue.iter_mut().find(|(s, _)| s == slot) {
             waiting.1 = pending;
             st.replaced += 1;
             return Ok(());
         }
         while st.queue.len() >= Self::QUEUE {
-            st = self.shared.cv.wait(st).expect("save writer lock");
+            st = self.shared.wait(st);
         }
         st.queue.push_back((slot.to_string(), pending));
         self.shared.cv.notify_all();
@@ -96,28 +110,28 @@ impl SaveWriter {
 
     /// Waits until every queued save is on disk.
     pub fn flush(&self) {
-        let mut st = self.shared.state.lock().expect("save writer lock");
+        let mut st = self.shared.lock();
         while !st.queue.is_empty() || st.busy {
-            st = self.shared.cv.wait(st).expect("save writer lock");
+            st = self.shared.wait(st);
         }
     }
 
     /// Results since the last call (at most [`SaveWriter::RESULTS`], newest kept).
     pub fn take_results(&self) -> Vec<WriteResult> {
-        let mut st = self.shared.state.lock().expect("save writer lock");
+        let mut st = self.shared.lock();
         st.results.drain(..).collect()
     }
 
     /// Waiting saves that a newer save of the same slot replaced.
     pub fn replaced(&self) -> u64 {
-        self.shared.state.lock().expect("save writer lock").replaced
+        self.shared.lock().replaced
     }
 }
 
 impl Drop for SaveWriter {
     fn drop(&mut self) {
         self.flush();
-        self.shared.state.lock().expect("save writer lock").stop = true;
+        self.shared.lock().stop = true;
         self.shared.cv.notify_all();
         if let Some(t) = self.thread.take() {
             let _ = t.join();
@@ -128,7 +142,7 @@ impl Drop for SaveWriter {
 fn run(shared: &Shared, store: &SaveStore, registry: &Registry) {
     loop {
         let (slot, pending) = {
-            let mut st = shared.state.lock().expect("save writer lock");
+            let mut st = shared.lock();
             loop {
                 if let Some(job) = st.queue.pop_front() {
                     st.busy = true;
@@ -138,7 +152,7 @@ fn run(shared: &Shared, store: &SaveStore, registry: &Registry) {
                 if st.stop {
                     return;
                 }
-                st = shared.cv.wait(st).expect("save writer lock");
+                st = shared.wait(st);
             }
         };
         let tick = pending.state.tick;
@@ -151,7 +165,7 @@ fn run(shared: &Shared, store: &SaveStore, registry: &Registry) {
             Ok(b) => (b, None),
             Err(e) => (0, e.0.first().map(|d| format!("{}: {}", d.code, d.message))),
         };
-        let mut st = shared.state.lock().expect("save writer lock");
+        let mut st = shared.lock();
         if st.results.len() >= SaveWriter::RESULTS {
             st.results.pop_front();
         }

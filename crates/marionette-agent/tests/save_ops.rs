@@ -136,7 +136,7 @@ fn a_script_asking_for_a_save_gets_its_own_slot() {
     let mut sim = engine.load_file(&scene, "gate", 0).unwrap();
     let store = marionette_save::SaveStore::open(root.join("saves")).unwrap();
     let registry = std::sync::Arc::new(marionette_core::module::registry_with(&engine.modules()));
-    let writer = marionette_save::SaveWriter::new(store.clone(), registry);
+    let writer = marionette_save::SaveWriter::new(store.clone(), registry).unwrap();
     let mut auto = marionette_save::Autosaver::new(&sim, &store);
     let mut queued = Vec::new();
     for _ in 0..20 {

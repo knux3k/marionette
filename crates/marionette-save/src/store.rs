@@ -113,7 +113,7 @@ impl SaveStore {
     /// Writes `file` to `slot` crash-safely (see the module docs). Returns bytes written.
     pub fn write(&self, slot: &str, file: &SaveFile) -> Result<u64, Errors> {
         check_slot(slot)?;
-        let bytes = file.to_bytes();
+        let bytes = file.to_bytes()?;
         let target = self.path(slot);
         let tmp = self.dir.join(format!(".{slot}.{}.tmp", std::process::id()));
         let shown = target.display().to_string();
@@ -228,9 +228,12 @@ fn read_file(path: &Path) -> Result<SaveFile, Problem> {
         },
         message: format!("{}: {e}", path.display()),
     })?;
-    SaveFile::from_bytes(&bytes).map_err(|e| Problem {
-        code: e.0.first().map_or(codes::CORRUPT, |d| d.code),
-        message: e.0.first().map_or_else(String::new, |d| d.message.clone()),
+    SaveFile::from_bytes(&bytes).map_err(|e| {
+        let first = e.0.into_iter().next();
+        Problem {
+            code: first.as_ref().map_or(codes::CORRUPT, |d| d.code),
+            message: first.map_or_else(String::new, |d| d.message),
+        }
     })
 }
 
@@ -244,7 +247,7 @@ fn read_header(path: &Path) -> Result<SaveHeader, Problem> {
         })?;
     parse_header(&buf).map(|(h, _)| h).map_err(|e| Problem {
         code: codes::CORRUPT,
-        message: e.0.first().map_or_else(String::new, |d| d.message.clone()),
+        message: e.0.into_iter().next().map_or_else(String::new, |d| d.message),
     })
 }
 

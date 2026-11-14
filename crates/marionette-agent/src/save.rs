@@ -192,15 +192,24 @@ fn list(agent: &mut Agent, input: ListInput) -> Result<ListOutput, Errors> {
         .list()?
         .into_iter()
         .map(|i| {
-            let h = i.header;
+            let (game, version, tick, label, saved_unix) = match i.header {
+                Some(h) => (
+                    Some(h.game),
+                    Some(h.version),
+                    Some(h.tick),
+                    h.label,
+                    Some(h.saved_unix),
+                ),
+                None => (None, None, None, String::new(), None),
+            };
             SlotRow {
                 slot: i.slot,
                 bytes: i.bytes,
-                game: h.as_ref().map(|h| h.game.clone()),
-                version: h.as_ref().map(|h| h.version),
-                tick: h.as_ref().map(|h| h.tick),
-                label: h.as_ref().map(|h| h.label.clone()).unwrap_or_default(),
-                saved_unix: h.as_ref().map(|h| h.saved_unix),
+                game,
+                version,
+                tick,
+                label,
+                saved_unix,
                 backup: i.has_backup,
                 problem: i.problem,
             }
@@ -246,18 +255,19 @@ fn check(agent: &mut Agent, input: CheckInput) -> Result<CheckOutput, Errors> {
         .sim
         .world
         .get_resource::<marionette_save::SaveMigrations>()
-        .map(|m| m.0.clone())
+        .map(|m| std::sync::Arc::clone(&m.0)) // a refcount bump; the session is used below
         .unwrap_or_default();
     let names: Vec<&'static str> = s.sim.modules().iter().map(|m| m.name()).collect();
+    let read = store.read(&input.slot);
     let mut out = CheckOutput {
-        slot: input.slot.clone(),
+        slot: input.slot,
         ok: false,
         from_version: None,
         to_version: current.version,
         recovered: None,
         problems: Vec::new(),
     };
-    let (file, recovered) = match store.read(&input.slot) {
+    let (file, recovered) = match read {
         Ok(x) => x,
         Err(e) => {
             out.problems = e.0;
