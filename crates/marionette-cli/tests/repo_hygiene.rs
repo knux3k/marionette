@@ -183,3 +183,102 @@ fn generated_reference_docs_are_current() {
         String::from_utf8_lossy(&out.stdout)
     );
 }
+
+/// Decision 0104: `unsafe` only where the engine calls C libraries or the OS, each file
+/// listed here with what it calls. Every other crate denies `unsafe_code` through
+/// `[workspace.lints]`. Adding a file needs the owner's review first (`docs/ai/RULES.md`).
+const UNSAFE_ALLOWED: &[(&str, &str)] = &[
+    (
+        "crates/marionette-cli/src/packaged.rs",
+        "Windows console and message box calls",
+    ),
+    (
+        "crates/marionette-host/src/alloc.rs",
+        "counting global allocator over the system one",
+    ),
+    (
+        "crates/marionette-host/src/child.rs",
+        "OS process groups and job objects",
+    ),
+    (
+        "crates/marionette-host/src/machine.rs",
+        "OS idle and CPU time queries",
+    ),
+    (
+        "crates/marionette-openxr/src/gpu.rs",
+        "OpenXR and Vulkan device sharing with wgpu",
+    ),
+    (
+        "crates/marionette-openxr/src/lib.rs",
+        "loading the OpenXR runtime library",
+    ),
+    (
+        "crates/marionette-render/src/gpu.rs",
+        "wgpu's experimental ray query switch",
+    ),
+    (
+        "crates/marionette-script/src/lib.rs",
+        "reading and writing QuickJS typed array memory",
+    ),
+    (
+        "crates/marionette-steam/src/ffi.rs",
+        "loading the Steam library's C functions",
+    ),
+    (
+        "crates/marionette-steam/src/lib.rs",
+        "calling the Steam library's C functions",
+    ),
+    (
+        "crates/marionette-synth/tests/realtime.rs",
+        "per-thread counting allocator in a test",
+    ),
+];
+
+#[test]
+fn unsafe_code_only_in_listed_ffi_files() {
+    let root = repo();
+    let mut found = Vec::new();
+    for path in files() {
+        // This file names the patterns it looks for.
+        if path.extension().is_none_or(|e| e != "rs") || path.ends_with("tests/repo_hygiene.rs") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let uses = text.lines().any(|l| {
+            let code = l.split("//").next().unwrap_or("");
+            [
+                "unsafe {",
+                "unsafe impl",
+                "unsafe fn",
+                "unsafe extern",
+                "allow(unsafe_code)",
+            ]
+            .iter()
+            .any(|p| code.contains(p))
+        });
+        if uses {
+            let rel = path
+                .strip_prefix(&root)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
+            found.push(rel);
+        }
+    }
+    let allowed: Vec<&str> = UNSAFE_ALLOWED.iter().map(|(f, _)| *f).collect();
+    let extra: Vec<&String> = found.iter().filter(|f| !allowed.contains(&f.as_str())).collect();
+    assert!(
+        extra.is_empty(),
+        "unsafe code outside the FFI list (decision 0104; needs the owner's review): {extra:?}"
+    );
+    let stale: Vec<&&str> = allowed
+        .iter()
+        .filter(|f| !found.iter().any(|x| x == *f))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "listed files no longer hold unsafe; remove them: {stale:?}"
+    );
+}

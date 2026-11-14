@@ -2592,6 +2592,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
+ "bytemuck",
  "libm",
  "marionette-core",
  "marionette-jobs",
@@ -2765,6 +2766,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
+ "bytemuck",
  "libm",
  "marionette-anim",
  "marionette-core",

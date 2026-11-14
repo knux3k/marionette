@@ -87,3 +87,6 @@ editor = ["dep:marionette-editor", "dep:glam"]
 nav = ["physics", "dep:marionette-nav"]
 # Network transport for paid providers (off by default; decision 0045).
 net = ["generate", "marionette-providers/net"]
+
+[lints]
+workspace = true

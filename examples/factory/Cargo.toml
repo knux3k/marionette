@@ -26,3 +26,6 @@ schemars = "1.2"
 
 [dev-dependencies]
 marionette-render = { path = "../../crates/marionette-render" }
+
+[lints]
+workspace = true

@@ -15,7 +15,14 @@ serde_json.workspace = true
 rquickjs = { version = "0.14", features = ["parallel"] }
 oxc = { version = "0.158", features = ["transformer", "codegen", "semantic"] }
 libm = "0.2"
+# Safe byte views of number arrays when copying typed arrays (decision 0104).
+bytemuck = "1.25"
 marionette-anim = { path = "../marionette-anim" }
 
 [dev-dependencies]
 serde_json.workspace = true
+
+# Calls C libraries or the OS, so `unsafe_code` is not forbidden here; only the files listed in
+# `repo_hygiene` may hold `unsafe`, each block with a SAFETY comment (decision 0104).
+[lints.rust]
+unsafe_code = "allow"

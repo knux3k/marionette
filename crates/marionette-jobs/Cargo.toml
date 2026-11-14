@@ -9,3 +9,6 @@ rust-version.workspace = true
 [dependencies]
 bevy_ecs.workspace = true
 rayon = "1.12"
+
+[lints]
+workspace = true

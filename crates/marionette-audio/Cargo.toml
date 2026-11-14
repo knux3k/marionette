@@ -14,3 +14,6 @@ serde.workspace = true
 serde_json.workspace = true
 marionette-synth.workspace = true
 kira = { version = "0.12.6", default-features = false, features = ["cpal", "wav", "pcm", "ogg", "vorbis"] }
+
+[lints]
+workspace = true

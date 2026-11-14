@@ -19,3 +19,6 @@ ureq = { version = "3.5.1", optional = true, default-features = false, features 
 # The network transport (`http::Network`). Off by default: a default build cannot reach any
 # paid API (decisions 0019 and 0045).
 net = ["dep:ureq"]
+
+[lints]
+workspace = true

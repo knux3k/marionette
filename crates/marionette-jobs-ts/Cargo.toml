@@ -17,8 +17,13 @@ oxc = { version = "0.158" }
 wasm-encoder = "0.243"
 wasmtime = { version = "48", default-features = false, features = ["cranelift", "runtime", "std"] }
 libm = "0.2"
+# Safe byte views of number arrays for copies into job memory (no unsafe in this crate).
+bytemuck = "1.25"
 
 [dev-dependencies]
 marionette-script = { path = "../marionette-script" }
 rquickjs = "0.14"
 sha2.workspace = true
+
+[lints]
+workspace = true

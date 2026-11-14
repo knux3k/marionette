@@ -23,3 +23,6 @@ compress = ["dep:intel_tex_2", "dep:sha2"]
 
 [dev-dependencies]
 marionette-host.workspace = true
+
+[lints]
+workspace = true

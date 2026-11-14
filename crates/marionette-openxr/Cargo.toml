@@ -19,3 +19,8 @@ glam = "0.34"
 openxr = { version = "0.22", default-features = false, features = ["loaded"] }
 wgpu = { version = "30.0.1", default-features = false, features = ["vulkan", "wgsl", "std", "parking_lot"] }
 ash = { version = "0.38", default-features = false, features = ["loaded", "debug", "std"] }
+
+# Calls C libraries or the OS, so `unsafe_code` is not forbidden here; only the files listed in
+# `repo_hygiene` may hold `unsafe`, each block with a SAFETY comment (decision 0104).
+[lints.rust]
+unsafe_code = "allow"

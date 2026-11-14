@@ -2,6 +2,10 @@
 //! `Synth::render` runs with voices starting, stopping and being stolen, queued commands and a
 //! generator in play.
 
+// A per-thread counting allocator needs the `unsafe` allocator trait; it forwards every call
+// to the system allocator unchanged. Listed in `repo_hygiene` (decision 0104).
+#![allow(unsafe_code)]
+
 use marionette_synth::*;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
