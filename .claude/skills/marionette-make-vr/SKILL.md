@@ -38,8 +38,9 @@ Use `project_schema` for exact fields of `XrRig`, `XrTracked`, `XrHand`, `Grabba
 ## On a headset
 
 1. `marionette xr --probe`: runtime, headset name, eye size, hand tracking. Error
-   `xr.no_runtime` means no OpenXR runtime is active; `xr.no_headset` means it is asleep or
-   unplugged.
+   `xr.no_runtime` means no loader or no runtime; `xr.runtime_refused` (SteamVR) or
+   `xr.no_headset` means the headset is off, asleep or not linked. Without a loader beside the
+   exe, set `MARIONETTE_OPENXR_LOADER`; SteamVR's default folder is also searched.
 2. `marionette xr <scene> --record vr.inputs.json`: plays until the player quits from the
    runtime's menu. Replay the recording headless to reproduce a bug exactly.
 3. Only a person wearing the headset can judge comfort, bindings and hand tracking; ask them,
