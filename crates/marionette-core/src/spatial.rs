@@ -148,7 +148,7 @@ impl Default for ModelPlacement {
 }
 
 /// Overrides the material of a `Model` (all of its parts) with simple PBR values. A base
-/// color alpha below 1 draws it see-through (decision 0271); the parts keep their sidedness.
+/// color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
 pub struct Material {
     pub base_color: Color,
@@ -231,7 +231,7 @@ pub struct Emissive {
 }
 
 /// Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game
-/// time alone (decision 0272): no particle state is stored or simulated, so they cost no tick
+/// time alone (decision 0282): no particle state is stored or simulated, so they cost no tick
 /// time, never change the state hash, and the same tick always draws the same picture.
 /// Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and
 /// stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive.

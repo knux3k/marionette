@@ -136,7 +136,7 @@ fn vs_shadow(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
     return view.view_proj * model * vec4<f32>(in.position, 1.0);
 }
 
-// Shadows of cut-out materials (decision 0270): texels under the cutoff cast nothing.
+// Shadows of cut-out materials (decision 0280): texels under the cutoff cast nothing.
 struct MaskedShadowOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -451,7 +451,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         0.0,
     );
     surface_hook(&s, SurfaceIn(in.world_pos, geo, in.uv, in.color, view.eye.xyz, view.eye.w));
-    // Cut-out materials (decision 0270): nothing under the cutoff is drawn.
+    // Cut-out materials (decision 0280): nothing under the cutoff is drawn.
     if (s.base_color.a < material.emissive.w) {
         discard;
     }

@@ -113,13 +113,13 @@ impl Deform {
 pub(crate) struct SkinnedCall<'a> {
     pub part: &'a GpuPart,
     pub material: &'a wgpu::BindGroup,
-    /// Pipeline variant of the material (decision 0270).
+    /// Pipeline variant of the material (decision 0280).
     pub look: crate::renderer::variants::Look,
     pub instances: std::ops::Range<u32>,
 }
 
 pub(crate) struct Skinning {
-    /// Lit pipelines per material variant (decision 0270), final and floating-point target
+    /// Lit pipelines per material variant (decision 0280), final and floating-point target
     /// (bloom, decision 0064).
     pub lit: VariantPipelines,
     /// Depth-only pass from the shadow-casting light (decision 0063).

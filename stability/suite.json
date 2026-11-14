@@ -131,7 +131,7 @@
     },
     {
       "name": "render-3d-materials",
-      "description": "Textured glTF materials (decision 0270): mipmapped normal and metal-rough textures, a cut-out fence with cut-out shadows, a see-through glass pane.",
+      "description": "Textured glTF materials (decision 0280): mipmapped normal and metal-rough textures, a cut-out fence with cut-out shadows, a see-through glass pane.",
       "kind": "render",
       "scene": "examples/materials.scene.json",
       "fast_ticks": 120,
@@ -140,7 +140,7 @@
     },
     {
       "name": "render-3d-particles",
-      "description": "Particles (decision 0272): additive fire and sparks, alpha smoke, with bloom; computed on the GPU from game time.",
+      "description": "Particles (decision 0282): additive fire and sparks, alpha smoke, with bloom; computed on the GPU from game time.",
       "kind": "render",
       "scene": "examples/particles.scene.json",
       "fast_ticks": 120,

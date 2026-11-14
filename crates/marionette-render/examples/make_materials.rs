@@ -1,4 +1,4 @@
-//! Writes the textured material test models to `examples/assets/` (decision 0270):
+//! Writes the textured material test models to `examples/assets/` (decision 0280):
 //! `material-ball.glb` (base color, metallic-roughness and normal textures), `fence.glb`
 //! (double-sided cut-out) and `glass.glb` (blended). Made entirely in code; CC0 1.0.
 //!

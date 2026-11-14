@@ -1,4 +1,4 @@
-//! GPU tests of particles (decision 0272). They skip (pass with a note) when no GPU adapter
+//! GPU tests of particles (decision 0282). They skip (pass with a note) when no GPU adapter
 //! exists, unless MARIONETTE_REQUIRE_GPU=1.
 
 use marionette_core::{Sim, default_registry};

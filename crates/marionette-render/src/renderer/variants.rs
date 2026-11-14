@@ -1,4 +1,4 @@
-//! Lit pipeline variants per material (decision 0270): single- or double-sided, opaque or
+//! Lit pipeline variants per material (decision 0280): single- or double-sided, opaque or
 //! blended. Cut-outs need no variant (the fragment shader discards below the material's
 //! cutoff). Variants other than the plain one are built the first time a frame draws them,
 //! so scenes without such materials pay nothing.

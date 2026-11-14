@@ -1,4 +1,4 @@
-# 0270: Model textures get mipmaps made on the CPU and 16x anisotropic filtering
+# 0280: Model textures get mipmaps made on the CPU and 16x anisotropic filtering
 
 Date: 2026-11-14. Status: accepted. Focuses 3 (performance) and 4 (graphics), decision 0060.
 
@@ -17,7 +17,7 @@ bandwidth. An independent audit (2026-11-14) listed this first among renderer ga
      darken;
    - normal maps averaged as vectors and renormalized;
    - data (metallic-roughness) averaged as numbers;
-   - textures of cut-out materials (decision 0271) keep their alpha coverage at the cutoff
+   - textures of cut-out materials (decision 0281) keep their alpha coverage at the cutoff
      on every level (alpha scaled by bisection), so foliage and fences do not thin out with
      distance.
    The use comes from the materials that reference the image.

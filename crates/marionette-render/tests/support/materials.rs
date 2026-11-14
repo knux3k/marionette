@@ -1,4 +1,4 @@
-//! Textured glTF test models made in code (decision 0270), shared by the render tests and
+//! Textured glTF test models made in code (decision 0280), shared by the render tests and
 //! the `make_materials` example that writes the committed copies in `examples/assets/`.
 //! Everything here is CC0 1.0 (public domain).
 

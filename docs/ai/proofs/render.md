@@ -106,7 +106,7 @@ Remaining lighting (decisions 0090 to 0093):
   Before the depth prepass and adaptive sun rays the same scene measured about 2.4 ms
   (noisy run).
 
-Textured materials (decisions 0270, 0271):
+Textured materials (decisions 0280, 0281):
 - Example `examples/materials.scene.json`, built by `examples/materials.ops.json`; models
   `examples/assets/{material-ball,fence,glass}.glb` made by
   `cargo run -p marionette-render --example make_materials`.
@@ -114,7 +114,7 @@ Textured materials (decisions 0270, 0271):
   `b4f94a1508b9c75ec12836421ad4724bdff332c4a0acee731105720cc9ca9cad`.
 - Reference image `examples/reference/materials.png` (320x180, 60 ticks, seed 1, MSAA 4, Mesa
   lavapipe): `b693cceaa5ced5bf7441b4f6f47575d0acda48f670be0ca1f718170801427359`. `showcase.png` was
-  rewritten (2026-11-14, decision 0270): its textured gem is now mipmapped (0.7% of pixels had
+  rewritten (2026-11-14, decision 0280): its textured gem is now mipmapped (0.7% of pixels had
   moved past the threshold); the other reference images were not rewritten.
 - Tests in `crates/marionette-render/tests/materials.rs`:
   `reference_catches_swapped_metal_rough_and_flipped_normals` (swapped channels: 5.2% of pixels
@@ -125,7 +125,7 @@ Textured materials (decisions 0270, 0271):
   Each GPU test was checked to fail with its feature switched off.
 - Stability mode `render-3d-materials` (120 ticks, lavapipe: passed).
 
-Particles (decision 0272):
+Particles (decision 0282):
 - Example `examples/particles.scene.json` (fire, sparks, smoke, bloom), built by
   `examples/particles.ops.json`. `run examples/particles.scene.json --headless --ticks 60 --seed 1`
   prints `7153f063848be52350afcef6018f578b32067323184eb22ded326d26f814621f`.

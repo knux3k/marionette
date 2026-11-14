@@ -1,4 +1,4 @@
-# 0272: Particles computed on the GPU from game time alone (`ParticleEmitter`)
+# 0282: Particles computed on the GPU from game time alone (`ParticleEmitter`)
 
 Date: 2026-11-14. Status: accepted. Focuses 1 (modularity), 2 (tokens), 3 (performance) and 4
 (graphics), decision 0060.

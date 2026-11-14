@@ -1,4 +1,4 @@
-//! GPU tests of textured materials (decision 0270): mipmaps, cut-out and see-through
+//! GPU tests of textured materials (decision 0280): mipmaps, cut-out and see-through
 //! materials from glTF alpha modes, double-sided materials, and a textured reference model
 //! whose test proves that swapped metallic-roughness channels or a flipped normal map fail
 //! it. They skip (pass with a note) when no GPU adapter exists, unless

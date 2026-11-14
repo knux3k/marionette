@@ -1,4 +1,4 @@
-// Particles (decision 0272): camera-facing quads computed entirely from game time. Nothing
+// Particles (decision 0282): camera-facing quads computed entirely from game time. Nothing
 // is simulated or stored: particle `first + i` of an emitter started `i / rate` seconds before
 // the newest one, and its random start (point, direction) comes from hashing its number, so
 // any tick draws the same picture on any GPU and the CPU never touches a particle.

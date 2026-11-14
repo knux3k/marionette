@@ -1,4 +1,4 @@
-# 0271: Cut-out and see-through materials from glTF alpha modes; double-sided materials
+# 0281: Cut-out and see-through materials from glTF alpha modes; double-sided materials
 
 Date: 2026-11-14. Status: accepted. Focus 4 (graphics), decision 0060.
 
@@ -32,7 +32,7 @@ as solid quads, glass and water could not be drawn, and every surface culled its
 ## Alternatives
 
 - Alpha to coverage for cut-outs: smoother edges under MSAA, but needs a pipeline per variant
-  and does nothing without MSAA; discard plus coverage-preserving mipmaps (decision 0270) keeps
+  and does nothing without MSAA; discard plus coverage-preserving mipmaps (decision 0280) keeps
   foliage solid at distance. Can be added as a variant later.
 - Order-independent transparency (weighted blended): no sorting, but approximate colors and an
   extra target; per-instance sorting is exact for separate objects and cheap at the counts

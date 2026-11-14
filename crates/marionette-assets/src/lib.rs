@@ -76,13 +76,13 @@ pub struct MaterialData {
     /// sRGB image multiplying `emissive`.
     pub emissive_texture: Option<usize>,
     /// How alpha is used: ignored, cut out at a threshold, or blended (glTF `alphaMode`,
-    /// decision 0270).
+    /// decision 0280).
     pub alpha_mode: AlphaMode,
     /// Both faces drawn (glTF `doubleSided`); single-sided materials cull back faces.
     pub double_sided: bool,
 }
 
-/// How a material's alpha is used (glTF `alphaMode`, decision 0270).
+/// How a material's alpha is used (glTF `alphaMode`, decision 0280).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum AlphaMode {
     /// Alpha is ignored; the surface is fully opaque.

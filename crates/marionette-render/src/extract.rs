@@ -61,9 +61,9 @@ pub struct FrameData {
     pub shader_materials: Vec<marionette_core::shader::ShaderMaterial>,
     /// Game time in seconds (ticks plus `alpha`, times the step), for animated shaders.
     pub time: f32,
-    /// The same game time in double precision, for particles (decision 0272).
+    /// The same game time in double precision, for particles (decision 0282).
     pub time_f64: f64,
-    /// Particle emitters, sorted by entity id (decision 0272).
+    /// Particle emitters, sorted by entity id (decision 0282).
     pub particles: Vec<ParticleDraw>,
 }
 

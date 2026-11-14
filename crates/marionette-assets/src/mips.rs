@@ -1,4 +1,4 @@
-//! Mipmap chains for model textures (decision 0270), built on the CPU so the result is the
+//! Mipmap chains for model textures (decision 0280), built on the CPU so the result is the
 //! same on every GPU and can be made off the frame (the background model loader calls it).
 //!
 //! Each level halves the one above with a 2x2 box filter. Colors are averaged in linear

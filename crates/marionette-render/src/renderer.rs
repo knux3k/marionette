@@ -23,7 +23,7 @@ mod game_mesh;
 mod game_shader;
 pub(crate) mod variants;
 
-/// Anisotropic filtering of model textures (decision 0270).
+/// Anisotropic filtering of model textures (decision 0280).
 pub const MATERIAL_ANISOTROPY: u16 = 16;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 4;
@@ -150,11 +150,11 @@ pub(crate) struct DrawCall<'a> {
     pub seen: u32,
     /// A game shader and its material group (decision 0181).
     pub game: Option<game_shader::GameDraw<'a>>,
-    /// Sides, blending and cut-out of the material (decision 0270).
+    /// Sides, blending and cut-out of the material (decision 0280).
     pub look: variants::Look,
 }
 
-/// Which of a frame's model draws a pass makes (decision 0270): opaque and cut-out ones, then
+/// Which of a frame's model draws a pass makes (decision 0280): opaque and cut-out ones, then
 /// (after the sky) see-through ones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -192,7 +192,7 @@ struct MeshCalls<'a> {
     empty_group: Option<&'a wgpu::BindGroup>,
     /// The standard lights group, which game shader pipelines use (decision 0181).
     game_lights: Option<&'a wgpu::BindGroup>,
-    /// Empty group 1 of the cut-out shadow pipeline (decision 0270).
+    /// Empty group 1 of the cut-out shadow pipeline (decision 0280).
     masked_empty: &'a wgpu::BindGroup,
 }
 
@@ -339,7 +339,7 @@ impl MeshCalls<'_> {
                         bound_lights = want;
                     }
                 } else if call.look.masked && call.game.is_none() {
-                    // Cut-out shadows read the material's base color (decision 0270).
+                    // Cut-out shadows read the material's base color (decision 0280).
                     pass.set_bind_group(1, self.masked_empty, &[]);
                     pass.set_bind_group(2, call.material, &[]);
                 }
@@ -507,7 +507,7 @@ pub(crate) struct GpuModel {
 
 /// Base color and (metallic, roughness, normal scale, has normal map) of one instance.
 /// Pipeline variant and cut-out of `part` drawn with its material or an override
-/// (decision 0270).
+/// (decision 0280).
 pub(crate) fn part_look(
     model: &GpuModel,
     part: &GpuPart,
@@ -589,7 +589,7 @@ pub struct Renderer {
     shadow_sampler: wgpu::Sampler,
     shadow_pipeline: wgpu::RenderPipeline,
     /// Shadows of cut-out parts (alpha tested against the material) and the empty group 1
-    /// their layout skips (decision 0270).
+    /// their layout skips (decision 0280).
     masked_shadow: (wgpu::RenderPipeline, wgpu::BindGroup),
     /// Point and spot light shadow maps (decision 0065); one 1x1 layer when none cast.
     local_shadows: LocalShadowMaps,
@@ -639,7 +639,7 @@ pub struct Renderer {
     ui_pipeline: wgpu::RenderPipeline,
     ui_output_pipeline: wgpu::RenderPipeline,
     world_quads: crate::worldquads::WorldQuadPass,
-    /// Particle emitters (decision 0272).
+    /// Particle emitters (decision 0282).
     particles: crate::particles::Particles,
     nearest_sampler: wgpu::Sampler,
     ui_vertices: Option<wgpu::Buffer>,
@@ -739,7 +739,7 @@ struct Decoded {
     model: ModelData,
     /// Per part, the index lists of its reduced levels (empty for parts that keep one).
     lods: Vec<Vec<Vec<u32>>>,
-    /// Per image, its mipmap levels below the full size (decision 0270).
+    /// Per image, its mipmap levels below the full size (decision 0280).
     mips: Vec<Vec<Vec<u8>>>,
 }
 
@@ -1047,7 +1047,7 @@ impl Renderer {
         };
         // Model textures: trilinear through the mipmaps, 16x anisotropic where the GPU has it
         // (wgpu clamps to 1 elsewhere), so surfaces seen at a grazing angle stay sharp
-        // without shimmering (decision 0270).
+        // without shimmering (decision 0280).
         let material_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("material"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -1937,7 +1937,7 @@ impl Renderer {
         // lookup are skipped while the key repeats (entities come sorted by id, so runs of
         // the same model are the common case).
         // (asset, part, material overridden, holds a shadow-casting lamp, level of detail)
-        // ..., game shader material slot (decision 0181), material look (decision 0270)
+        // ..., game shader material slot (decision 0181), material look (decision 0280)
         type Key<'k> = (&'k str, usize, bool, bool, usize, Option<u32>, variants::Look);
         let game = self.game.as_ref();
         let game_slot = |slot: Option<u32>| slot.filter(|&s| game.is_some_and(|g| g.draw(s).is_some()));
@@ -2139,7 +2139,7 @@ impl Renderer {
             *slot += 1;
         }
         self.scratch_class = class_of;
-        // See-through materials (decision 0270) draw after everything opaque, one instance per
+        // See-through materials (decision 0280) draw after everything opaque, one instance per
         // draw, farthest from the first view first, so what is behind shows through what is in
         // front. They cast no shadows, so their shadow-only instances are dropped. Blended game
         // shaders follow them, in group order (instance ranges stay put).
@@ -2353,7 +2353,7 @@ impl Renderer {
         }
 
         self.world_quads.upload(&self.device, &self.queue, &frame.quads);
-        // Particles (decision 0272): not in probe captures. Into the HDR target they write
+        // Particles (decision 0282): not in probe captures. Into the HDR target they write
         // linear light; into the final target they are tone mapped like models.
         let particle_list: &[crate::extract::ParticleDraw] = if capture { &[] } else { &frame.particles };
         self.particles.upload(
@@ -3146,7 +3146,7 @@ pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_
 
 /// Lit model pipelines (final format, HDR) and sky pipelines (final format, HDR).
 pub(crate) struct LitPipelines {
-    /// Per material variant (decision 0270) and target.
+    /// Per material variant (decision 0280) and target.
     pub pbr: variants::VariantPipelines,
     pub sky: [wgpu::RenderPipeline; 2],
 }
@@ -3266,7 +3266,7 @@ pub(crate) fn lights_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
 }
 
 /// The lit model and sky pipelines from `shader` (the plain PBR shader or its ray tracing
-/// Shadow pipeline of cut-out parts (decision 0270): like the plain one, plus a fragment
+/// Shadow pipeline of cut-out parts (decision 0280): like the plain one, plus a fragment
 /// stage that drops texels under the material's cutoff. Groups: view, empty, material.
 fn masked_shadow_pipeline(
     device: &wgpu::Device,

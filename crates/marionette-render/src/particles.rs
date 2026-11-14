@@ -1,4 +1,4 @@
-//! Particles (decision 0272): one uniform per emitter, one instanced draw of six vertices per
+//! Particles (decision 0282): one uniform per emitter, one instanced draw of six vertices per
 //! particle slot; the vertex shader (`shaders/particles.wgsl`) computes every particle from
 //! game time. The CPU cost is one small uniform per emitter, whatever the particle count.
 
