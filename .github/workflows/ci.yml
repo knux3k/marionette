@@ -1,8 +1,7 @@
 name: CI
 
 # Decision 0260: a pull request runs the fast Linux check; the full suite (Windows, stability,
-# budgets, valgrind, simulated headset) runs in the merge queue (merge_group) and on main, so
-# nothing reaches main without all of it. Pushes to other branches do not run a second copy.
+# budgets, valgrind, simulated headset) runs on main (and in a merge queue, if one is ever turned on). Pushes to other branches do not run a second copy.
 on:
   push:
     branches: [main]
