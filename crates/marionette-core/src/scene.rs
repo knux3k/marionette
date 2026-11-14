@@ -189,7 +189,7 @@ fn parse_entity(item: &Value) -> std::result::Result<SceneEntity, String> {
 }
 
 /// One typed value ready to insert.
-type Typed<'r> = (&'r TypeEntry, Box<dyn Reflect>);
+pub(crate) type Typed<'r> = (&'r TypeEntry, Box<dyn Reflect>);
 
 /// A scene whose values have all been checked against the registry.
 pub struct ValidScene<'r> {
@@ -207,11 +207,12 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
 
     let mut ids = BTreeSet::new();
     for (i, e) in scene.entities.iter().enumerate() {
-        let id_pos = pos(&format!("/entities/{i}/id"));
+        // Looked up only for a problem: the first lookup scans the whole text.
+        let id_pos = || pos(&format!("/entities/{i}/id"));
         if e.id == 0 {
             errs.push(
                 Diagnostic::error(codes::SCENE_INVALID_ID, "entity id 0 is reserved")
-                    .at_pos(id_pos)
+                    .at_pos(id_pos())
                     .fix("use a positive integer id"),
             );
         } else if !ids.insert(e.id) {
@@ -220,7 +221,7 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
                     codes::SCENE_DUPLICATE_ID,
                     format!("entity id {} is used more than once", e.id),
                 )
-                .at_pos(id_pos)
+                .at_pos(id_pos())
                 .entity(e.id)
                 .fix(format!(
                     "give one of them an unused id, e.g. {}",
@@ -289,11 +290,61 @@ pub fn validate<'r>(scene: &Scene, registry: &'r Registry, text: Option<&str>) -
     }
     entities.sort_by_key(|(id, _, _)| *id);
 
+    let parents: BTreeMap<u64, u64> = scene
+        .entities
+        .iter()
+        .filter_map(|e| Some((e.id, parent_of(e)?)))
+        .collect();
+    let cycles = parent_cycles(&parents);
+    for (i, e) in scene.entities.iter().enumerate() {
+        if cycles.contains(&e.id) {
+            let ptr = pointer(["entities", &i.to_string(), "components", "ChildOf"]);
+            errs.push(
+                Diagnostic::error(
+                    codes::SCENE_PARENT_CYCLE,
+                    format!("entity {} is its own ancestor through `ChildOf`", e.id),
+                )
+                .at_pos(pos(&ptr))
+                .pointer(ptr)
+                .entity(e.id)
+                .component("ChildOf")
+                .fix("change `ChildOf.parent` on one entity of the cycle, or remove its `ChildOf`"),
+            );
+        }
+    }
+
     if errs.is_empty() {
         Ok(ValidScene { resources, entities })
     } else {
         Err(Errors(errs))
     }
+}
+
+/// The parent an entity's `ChildOf` names (decision 0272), read from its untyped value.
+pub(crate) fn parent_of(e: &SceneEntity) -> Option<u64> {
+    e.components.get("ChildOf")?.get("parent")?.as_u64()
+}
+
+/// The ids that are their own ancestor, given each child's parent. Linear in the entities.
+pub(crate) fn parent_cycles(parents: &BTreeMap<u64, u64>) -> BTreeSet<u64> {
+    let (mut done, mut on) = (BTreeSet::new(), BTreeSet::new());
+    for &start in parents.keys() {
+        let (mut path, mut in_path, mut at) = (Vec::new(), BTreeSet::new(), start);
+        while let Some(&parent) = parents.get(&at) {
+            if done.contains(&at) {
+                break;
+            }
+            if !in_path.insert(at) {
+                let from = path.iter().position(|id| *id == at).expect("in the path");
+                on.extend(path[from..].iter().copied());
+                break;
+            }
+            path.push(at);
+            at = parent;
+        }
+        done.extend(path);
+    }
+    on
 }
 
 fn ids_hint(ids: &BTreeSet<u64>) -> String {
@@ -306,7 +357,7 @@ fn ids_hint(ids: &BTreeSet<u64>) -> String {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn typed<'r>(
+pub(crate) fn typed<'r>(
     registry: &'r Registry,
     kind: Kind,
     name: &str,
@@ -404,7 +455,7 @@ fn typed<'r>(
 }
 
 /// Finds every [`SceneRef`] inside a reflected value.
-fn collect_refs(value: &dyn PartialReflect, out: &mut Vec<u64>) {
+pub(crate) fn collect_refs(value: &dyn PartialReflect, out: &mut Vec<u64>) {
     if let Some(r) = value.try_downcast_ref::<SceneRef>() {
         out.push(r.0);
         return;

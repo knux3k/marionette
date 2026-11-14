@@ -41,7 +41,8 @@ Template: `examples/rust-module` (decision 0062).
 
 1. Make a crate for the game depending on `marionette-core`, `marionette-agent` and
    `marionette-cli` (`default-features = false`, `features = [...]` for the parts it uses:
-   `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`).
+   `physics`, `audio`, `anim`, `xr`, `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`,
+   `save`, `nav`; decision 0290).
 2. Write a `Module` (unique `name`, `register`, `add_systems` in a `Stage`) and operations
    with `marionette_agent::op("group_verb", "...", mutating, handler)`. Handlers get
    `&mut Agent`: `session_sim`, `load_sim`, `write_file`, `resolve`, `call`.
@@ -51,6 +52,25 @@ Template: `examples/rust-module` (decision 0062).
 4. Test the crate alone (`cargo test -p <crate>`) so its features are not unified with the
    workspace's.
 
+## Add save games to a game
+
+Decision 0076; code `crates/marionette-save`.
+
+1. Add resource `SaveFormat` to the game's scene: `game` (id), `version` (start at 1),
+   `autosave_every` (ticks, 0 for requests only), `autosave_slots`, `migrations` (file
+   relative to the scene, or `""`). Everything the player keeps must be in registered
+   components or resources; anything else is lost on load.
+2. Ask for saves at safe moments from scripts: `engine.emit("save_request")` (autosave slot)
+   or `engine.emit("save_request", { slot: "checkpoint", label: "Gate" })`.
+3. Changing saved data: raise `version` and add a step `{ "from": <old>, "changes": [...] }`
+   to the migrations file (`rename_type`, `remove_type`, `rename_field`, `set_field`,
+   `remove_field`), or a Rust step with `SaveModule::with(Migrations::new().rust(old, f))`
+   and `Engine::builder().replace(...)`. Test it: keep an old save under `tests/` and run
+   `save_check`, then `save_load`.
+4. Agents: `save_write`, `save_load`, `save_list`, `save_check`, `save_delete` on a live
+   session. Windowed: `marionette run <scene> --saves <dir>` (autosave, F5, F9). A game's
+   own binary: `SaveWriter::new(SaveStore::open(dir)?, registry)` plus
+   `Autosaver::after_step` after each step, and `marionette_save::load` to load.
 ## Network a game (co-op lockstep, Steam, achievements)
 
 Decisions 0210 to 0213; skill `marionette-multiplayer`.
@@ -70,6 +90,24 @@ Decisions 0210 to 0213; skill `marionette-multiplayer`.
    at start and after saving, or Steam Auto-Cloud.
 4. Steam needs the game's own `steam_api` library next to the executable (never in the engine
    repository) and `steam_appid.txt` during development.
+
+## Build a mesh in game code (terrain, generated props)
+
+Decision 0180. In a module (or any code with `&mut World`):
+
+1. Make a `marionette_core::mesh::GameMesh` (positions and counter-clockwise indices; normals,
+   UVs, vertex colors and up to two reduced index lists optional), or start from
+   `GameMesh::grid(cells_x, cells_z, size_x, size_z, height)`.
+2. `GameMeshes::set_in(world, "name", mesh)?` (or `set` on the resource); errors are text.
+3. Draw it with `Model { asset: "mesh:name" }` on entities, or `BulkDraw { asset: "mesh:name" }`.
+4. Change it by calling `set` again with the same name (same sizes: written in place);
+   `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
+
+## Give a model a game shader
+
+Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` in WGSL (a
+`.wgsl` file next to the scene, or `GameShaders::set_in` from Rust) and add
+`ShaderMaterial { shader, params, textures }` to the entity.
 
 ## Add a game mode, example or proof scene
 

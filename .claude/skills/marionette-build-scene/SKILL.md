@@ -20,6 +20,9 @@ Run operations as `marionette op <name> '<json>' --json`, or as MCP tools of the
    - `scene_create` (`template`: `empty` or `basic` with camera, light, ground).
    - `entity_create` with `components`, `entity_update` to set and remove several at once,
      `component_set`, `component_remove`, `entity_delete`.
+   - `entity_attach` (`id`, `parent`) makes an entity follow another without moving it: it
+     adds `ChildOf` (parent id and local placement). Move a child by setting `ChildOf`; its
+     `Transform` is written by the engine. Detach with `component_remove`.
    - `resource_set` for scene-wide settings (`FixedStep`, `PhysicsSettings`, `AmbientLight`).
 4. Run: `scene_run` gives a state hash for scene, seed and ticks. For repeated looks keep a
    world loaded: `session_start`, then `session_step`; edits with `session` instead of `scene`
@@ -29,13 +32,17 @@ Run operations as `marionette op <name> '<json>' --json`, or as MCP tools of the
    the picture is the question). Lists are paged: pass `offset` for more.
 
 Many edits at once: write them as a `*.ops.json` file and run `batch_run`. The file is also
-the recipe that rebuilds the scene, so keep it beside the scene.
+the recipe that rebuilds the scene, so keep it beside the scene. A batch writes a scene file
+once and builds a live session's world once (10,000 creates take about a second); a single
+edit of a live session builds its world again each time, so batch those too.
 
 ## Common pieces
 
 | Need | Components |
 | --- | --- |
 | Something visible in 3D | `Transform`, `Model` (`primitive:cube`, `primitive:sphere`, `primitive:plane` or a glTF path), optional `Material` |
+| Glass, leaves, fences | glTF `alphaMode` `BLEND` (see-through) or `MASK` (cut-out), `doubleSided` for both faces; or a `Material` whose `base_color` alpha is below 1 (see-through) |
+| Fire, sparks, smoke, dust | `ParticleEmitter` (image `builtin:soft`, blend Additive or Alpha); drawn from game time, no state |
 | Something visible in 2D | `Transform`, `Sprite` |
 | A solid object | `Collider`; add `RigidBody` to make it move |
 | A player | `CharacterController` plus the actions it names |

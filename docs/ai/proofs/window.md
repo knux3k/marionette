@@ -30,12 +30,48 @@ Commit before the warm-up and minimize fixes (start-up frames still counted). 10
 - Vsync snapping: 13 of 448 frames ran other than one tick, all at start-up or the focus
   change (the 66 ms max is the first frame).
 - Minimized for 2 s: 219 ms of CPU (the loop kept drawing; Windows reports minimizing neither
-  as size 0 nor as `Occluded`). Fixed by checking `Window::is_minimized`; rerun pending.
+  as size 0 nor as `Occluded`). Fixed by checking `Window::is_minimized`; not yet confirmed
+  (see the second run).
 - Exit codes were not read by the script (Windows PowerShell 5.1 needs `$p.Handle`); fixed.
 - Offscreen bench of `examples/lighting.scene.json` on the same machine: 0.827 ms avg,
   p99 1.76 ms.
 - Not covered: gamepads (none connected), high-refresh displays, the editor and quick
   save/load keys (not on `main` yet).
+
+## Second run: same machine, engine `1ea3ca4`
+
+Warm-up frames now left out (`warmup_ms` 430 to 730 ms for vsync runs, about 30 ms for the
+others). All six windows exited with code 0.
+
+| Run | Interval mean / p99 / max ms | Frame work mean ms | missed_refreshes |
+| --- | --- | --- | --- |
+| default (fifo, queue 2) | 16.67 / 17.3 / 18.6 | 16.47 | 0 |
+| `--frame-latency 1` | 16.67 / 17.3 / 17.3 | 16.49 | 0 |
+| `--present mailbox` | 0.46 / 0.85 / 2.4 | 0.38 | 0 |
+| `--present immediate` | 0.46 / 0.75 / 1.9 | 0.38 | 0 |
+| immediate, `--fps-cap 144` | 6.94 / 8.05 / 8.8 | 0.58 | 0 |
+| `--fullscreen` | 16.67 / 17.15 / 17.8 | 16.49 | 0 |
+
+- No synthetic input reached the windows: the desktop was in Task View, which kept the
+  foreground, so input latency, focus loss, resize and the minimize CPU check were not
+  exercised (input counts 0, empty recording). The script now records `foreground` per run
+  and says when input did not land.
+- Third run (Task View closed): keys reached the mailbox, immediate, capped and fullscreen
+  windows (40 events each; input latency mean 8.0 ms mailbox, 9.2 ms immediate, 9.4 ms capped,
+  16.5 ms fullscreen vsync), but not the first two windows (vsync, queue depth 1) in either of
+  two tries. The script's `foreground` flag did not match delivery, so it now also records
+  `recorded_events`. CPU while minimized read 62 and 172 ms per 2 s on two tries.
+- Minimized-CPU trace at `a72d4c4` (per-thread CPU over 10 s, starting 2 s after minimizing,
+  three runs each of the standard build and a build without `gamepad`): runs 2 and 3 of each
+  build used 0 ms, with no thread above 1 ms; the first 2 s straight after minimizing also used
+  0 ms. The loop sleeps when minimized; gamepad polling costs nothing there. The first run of each
+  freshly built exe kept drawing on the main thread (765 and 125 ms; frame counts show it was
+  never minimized): the script's 5 s wait for the window handle ran out while the new exe was
+  still starting, so it minimized and focused handle 0. That also explains the first windows
+  that missed synthetic input. The script now waits up to 30 s, stops if there is no window,
+  and records `minimized` (`IsIconic`) before it measures CPU.
+- `resizes` is 2 on a plain windowed run with no resize: Windows sends start-up size
+  changes after the first frame. Not yet explained.
 
 ## Findings for later work
 

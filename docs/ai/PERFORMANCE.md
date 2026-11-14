@@ -13,6 +13,9 @@ GPU. Decisions: 0023 (budgets), 0024 (jobs), 0025 (renderer), 0026 (factory modu
 | Load the 32x factory scene | 5 s | `perf_budgets::sim_tick_budgets` |
 | Main-thread part of a save, 4x factory (`Sim::capture`) | 2 ms | `perf_budgets::save_capture_budget` |
 | Render CPU, 32x factory, 2 eyes, p50 | 4 ms | `perf_budgets::render_cpu_budget` |
+| Build a 10,000 entity scene in one batch; one edit of it (file, live session) | 2 s; 20 ms, 500 ms | `engine_budgets::scene_edit_budgets` |
+| Tick of 1,000 scripts: empty `update`; read, change and write `Transform` | 5 ms; 18 ms | `engine_budgets::script_budgets` |
+| Tick of 10,000 children in chains of four under 2,500 moving parents | 3 ms | `engine_budgets::hierarchy_budgets` |
 | Draw calls for a factory frame | fixed per asset and part, independent of scale | `perf_proofs` (every `cargo test`) |
 | Sim result independent of job threads | same state hash with 1 and 3 threads | `perf_proofs` (every `cargo test`) |
 
@@ -23,14 +26,16 @@ CI multiplies timing budgets by `MARIONETTE_BUDGET_SCALE=2` (job `perf` in
 
 ```bash
 # Timing budgets (release, one test at a time)
-cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1 --nocapture
+cargo test --release -p marionette-cli --test engine_budgets -- --ignored --test-threads=1 --nocapture
+cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
 
-# A factory of a given size, then its tick cost
-cargo run --release -q -p marionette-cli -- op perf_factory_scene '{"out":"target/f4.scene.json","scale":4}'
-cargo run --release -q -p marionette-cli -- op perf_sim '{"scene":"target/f4.scene.json","ticks":1200}'
+# A factory of a given size, then its tick cost. The factory is an example module, not part
+# of the engine (decision 0290): `factory-bench` is the CLI with it added.
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_factory_scene '{"out":"target/f4.scene.json","scale":4}'
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_sim '{"scene":"target/f4.scene.json","ticks":1200}'
 
 # Rendering with an emulated headset (2 eyes, 2160x2160 each, 64 mm IPD, head yaw)
-cargo run --release -q -p marionette-cli -- bench target/f4.scene.json --headset --frames 120
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- bench target/f4.scene.json --headset --frames 120
 ```
 
 `perf_sim` reports average, p50, p99 and max per tick, load time, thread count and the state
@@ -51,6 +56,47 @@ before/after comparison. Set `MARIONETTE_JOB_THREADS` to compare thread counts.
 | 10,000 cubes, mono, CPU frame, before / after instancing | 153 ms / 12 ms, 1 draw call |
 
 GPU time on a real desktop GPU and headset is UNVERIFIED (`docs/ai/STATE.md`).
+
+## The shared suite (decision 0100)
+
+Every session that changes speed runs the same suite before and after, on the same machine,
+and compares the two reports. Outputs are checked before timings.
+
+```bash
+cargo build --release -p marionette-cli
+target/release/marionette op perf_suite '{"label":"before"}'     # writes .marionette/perf/before.json
+# ... change code, rebuild ...
+target/release/marionette op perf_suite '{"label":"after"}'
+target/release/marionette op perf_compare '{"base":".marionette/perf/before.json","new":".marionette/perf/after.json"}'
+```
+
+- Cases (suite `core/1`, `crates/marionette-agent/src/perf_suite.rs`): `startup/*` (engine
+  build, a new process to its first tick), `sim/*` (examples, factory 4x and 32x, the six proof
+  games; the factory cases run only in `factory-bench` and are skipped by the plain CLI), `render/*` (1920x1080 mono and 2x2160x2160 headset, MSAA 4). Each case: load time,
+  tick or frame percentiles (frame split into sim, extract, record, GPU wait), allocations per
+  tick, counted heap, run-to-run noise, state hash, and SHA-256 of a fixed final image.
+- `perf_compare` says `outputs_identical: false` when any state hash differs, or any image hash
+  differs on the same GPU. A speed change that changes output must be opt-in and labelled.
+- Builds for players and numbers quoted against other engines: `cargo build --profile dist`
+  (fat LTO, one codegen unit; same outputs, decision 0101).
+- `length: "quick"` is a smoke test (a tenth of the ticks, one repeat). `only: ["sim/"]`
+  picks cases; `extra_scenes` adds a game's own scenes. `no_gpu` skips render cases.
+- Shared PC: build first (never while the bench lock exists), then pass `"lock"` (the PC's
+  `pc-bench.lock`), `"lock_owner"`, `"min_idle_s": 300`, `"wait_s": 3600`. The suite takes
+  and removes the lock and refuses while the CPU is busy or the desktop is in use.
+- Software rasterizers (lavapipe, WARP; `gpu_kind: "Cpu"`) say nothing about GPU time.
+- Results and the machine they came from go in [proofs/performance.md](proofs/performance.md), section "Shared performance suite (decision 0100)".
+
+## Realistic scene against Unity (decision 0284)
+
+```bash
+target/dist/marionette op perf_realistic_scene '{"out":"bench/realistic.scene.json"}'
+target/dist/marionette bench bench/realistic.scene.json --frames 1000   # second run: textures cached
+```
+
+17.9 million triangles, 257 materials, 99 2K textures (BC7), 3,200 moving models, 4 shadow
+cascades. `tools/unity-bench/README.md` builds the same scene in Unity and times it.
+Results go in [proofs/performance.md](proofs/performance.md).
 
 ## Saving
 

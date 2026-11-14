@@ -63,5 +63,6 @@ fn skin_vertex(in: VsIn, inst: InstIn, skin: SkinIn, vi: u32) -> VsOut {
     out.base_color = inst.base_color;
     out.params = inst.params;
     out.emissive = inst.emissive;
+    out.color = in.color;
     return out;
 }

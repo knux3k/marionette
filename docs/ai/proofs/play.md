@@ -92,3 +92,9 @@ Line 6 (input, physics, audio, UI):
   of a core per 10 ms, which is 2 to 3 ms per 10 ms but spikes past a 2 ms deadline). Not done:
   asking the device for a larger buffer (kira's `StreamConfig` allows it), which would give
   5x margin at 10 ms latency; nobody has listened to the output.
+
+Physics behaviour (decision 0273): `cargo test -p marionette-physics --test behaviour`
+(`free_fall_follows_gravity_and_its_scale`, `restitution_sets_how_high_a_ball_bounces`,
+`friction_holds_a_box_on_a_slope_or_lets_it_slide`,
+`a_sensor_reports_and_does_not_block_and_a_solid_does_both`,
+`a_kinematic_body_goes_where_it_is_put_and_pushes`, `locked_rotation_keeps_a_body_from_turning`).

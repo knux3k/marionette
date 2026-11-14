@@ -121,8 +121,11 @@ hooks. The other side is an `Entity`, not a Collision or hit result.
 - **Destroying** (`Destroy(obj, t)`, `K2_DestroyActor`): `engine.destroy(entity, seconds?)`;
   the entity is removed at the end of the script stage after its `onDestroy`.
   `Destroy(component)` has no equivalent yet.
-- **No hierarchy.** Parenting (`SetParent`, `SetupAttachment`) is a gap: use separate entities,
-  `Follow` or `LookAt`, or copy positions in `update`.
+- **Parenting** (`SetParent`, `SetupAttachment`, decision 0272): the child gets a `ChildOf`
+  component (`parent` id and local `translation`, `rotation`, `scale`); the engine writes its
+  world `Transform` every tick. `entity_attach` attaches an entity where it stands. Local
+  position is `self.get("ChildOf").translation`. Children are not listed, a script cannot
+  detach yet, and imported prefabs are still flattened to world transforms.
 
 ## Coordinates and units
 
@@ -167,7 +170,7 @@ Rust struct per job and per struct its fields use, the original code as comments
 | a 20 Hz job inside a 90 Hz frame | the scene's fixed step (`FixedStep`) set to the job's rate |
 | `math.min/max/clamp`, integer math | the same; exact everywhere |
 | `math.sin/cos/pow` | hazard: precompute |
-| instanced draws of job output | a `BulkDrawHooks` render hook (as `marionette-factory`) or `JobDraw` |
+| instanced draws of job output | a `BulkDrawHooks` render hook (as `examples/factory`) or `JobDraw` |
 
 Derive `Clone` and `Reflect` on the resource (registration requires `Clone`, decision 0073).
 Prove it with `perf_sim` on 1 and several threads (same state hash). Save with `Sim::capture`
@@ -180,7 +183,9 @@ instead (decision 0070); it has no structs and no 64-bit integers.
 `marionette op port_serde '{"source": "<Assets>", "out": "crates/<game>/src/serial.rs"}'`
 (decision 0240) writes serde types for every `[Serializable]` class and struct: the module
 reads and writes the JSON `JsonUtility` makes. Pass `roots: ["Name"]` for one type and what it
-reaches, `derives: ["Reflect"]` for extra derives, `dry_run: true` to get the code back.
+reaches, `derives: ["Reflect"]` for extra derives, `external: {"Vector3": "crate::Vec3"}` for types
+the project already has (hand-written, or its own vector types; never generated, decision 0241),
+`dry_run: true` to get the code back.
 Read `notes` before using it: `skipped` fields are not saved by Unity either (dictionaries,
 nested arrays, non-[Serializable] classes), `unresolved` fields are kept as raw JSON (type not
 in the scanned source), `initializer` means a default needed a method call and is zero.

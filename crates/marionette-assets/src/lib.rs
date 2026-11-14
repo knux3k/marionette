@@ -4,8 +4,11 @@
 
 pub use glam;
 
+#[cfg(feature = "compress")]
+pub mod compress;
 pub mod font;
 pub mod hdr;
+pub mod mips;
 pub mod rig;
 use glam::{Mat4, Vec2, Vec3};
 pub use hdr::{HdrImage, is_hdr_name, load_hdr_image};
@@ -38,6 +41,10 @@ pub struct MeshData {
     pub positions: Vec<[f32; 3]>,
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
+    /// Linear RGBA per vertex, multiplied into the base color. Empty means white (no
+    /// vertex colors). Filled for meshes a game builds in code (decision 0180); glTF
+    /// `COLOR_0` is not read yet.
+    pub colors: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
     /// Up to four joints per vertex (indices into the part's skin). Empty when not skinned.
     pub joints: Vec<[u16; 4]>,
@@ -70,6 +77,24 @@ pub struct MaterialData {
     pub emissive: [f32; 3],
     /// sRGB image multiplying `emissive`.
     pub emissive_texture: Option<usize>,
+    /// How alpha is used: ignored, cut out at a threshold, or blended (glTF `alphaMode`,
+    /// decision 0280).
+    pub alpha_mode: AlphaMode,
+    /// Both faces drawn (glTF `doubleSided`); single-sided materials cull back faces.
+    pub double_sided: bool,
+}
+
+/// How a material's alpha is used (glTF `alphaMode`, decision 0280).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum AlphaMode {
+    /// Alpha is ignored; the surface is fully opaque.
+    #[default]
+    Opaque,
+    /// Cut-out: fragments with alpha below `cutoff` are not drawn (leaves, fences, hair).
+    Mask { cutoff: f32 },
+    /// See-through: blended over what is behind it, drawn after opaque surfaces, back to
+    /// front (glass, water, smoke).
+    Blend,
 }
 
 impl Default for MaterialData {
@@ -84,6 +109,8 @@ impl Default for MaterialData {
             normal_scale: 1.0,
             emissive: [0.0; 3],
             emissive_texture: None,
+            alpha_mode: AlphaMode::Opaque,
+            double_sided: false,
         }
     }
 }
@@ -132,8 +159,9 @@ impl ModelData {
 /// Loads a model by its scene `asset` string (see `marionette_core::spatial::Model`).
 pub fn load_model(asset: &str, base_dir: &Path) -> Result<ModelData, String> {
     if let Some(shape) = asset.strip_prefix("primitive:") {
-        return primitive(shape)
-            .ok_or_else(|| format!("unknown primitive `{shape}`; built-in shapes are cube, sphere, plane"));
+        return primitive(shape).ok_or_else(|| {
+            format!("unknown primitive `{shape}`; built-in shapes are cube, sphere, plane, grid")
+        });
     }
     load_gltf(&base_dir.join(asset))
 }
@@ -144,6 +172,7 @@ pub fn primitive(name: &str) -> Option<ModelData> {
         "cube" => cube(),
         "sphere" => uv_sphere(32, 16),
         "plane" => plane(),
+        "grid" => grid(64),
         _ => return None,
     };
     Some(ModelData::single(mesh))
@@ -193,6 +222,29 @@ fn plane() -> MeshData {
         indices: vec![0, 1, 2, 0, 2, 3],
         ..Default::default()
     }
+}
+
+/// `plane` split into `cells` x `cells` squares, for shaders that move vertices (water,
+/// flags, wind). Same size, facing and UVs as `plane`.
+fn grid(cells: u32) -> MeshData {
+    let mut m = MeshData::default();
+    for j in 0..=cells {
+        for i in 0..=cells {
+            let (u, v) = (i as f32 / cells as f32, j as f32 / cells as f32);
+            m.positions.push([u - 0.5, 0.0, v - 0.5]);
+            m.normals.push([0.0, 1.0, 0.0]);
+            m.uvs.push([u, v]);
+        }
+    }
+    let row = cells + 1;
+    for j in 0..cells {
+        for i in 0..cells {
+            let a = j * row + i;
+            m.indices
+                .extend_from_slice(&[a, a + row, a + 1, a + 1, a + row, a + row + 1]);
+        }
+    }
+    m
 }
 
 fn uv_sphere(segments: u32, rings: u32) -> MeshData {
@@ -259,6 +311,14 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                 mat.emissive_factor().map(|c| c * strength)
             },
             emissive_texture: mat.emissive_texture().map(|t| t.texture().source().index()),
+            alpha_mode: match mat.alpha_mode() {
+                gltf::material::AlphaMode::Opaque => AlphaMode::Opaque,
+                gltf::material::AlphaMode::Mask => AlphaMode::Mask {
+                    cutoff: mat.alpha_cutoff().unwrap_or(0.5),
+                },
+                gltf::material::AlphaMode::Blend => AlphaMode::Blend,
+            },
+            double_sided: mat.double_sided(),
         });
     }
     let default_material = model.materials.len();
@@ -320,6 +380,7 @@ pub fn load_gltf(path: &Path) -> Result<ModelData, String> {
                         positions,
                         normals,
                         uvs,
+                        colors: Vec::new(),
                         indices,
                         joints,
                         weights,
@@ -437,7 +498,9 @@ pub fn load_image(name: &str, base_dir: &Path) -> Result<Image, String> {
     }
     if let Some(builtin) = name.strip_prefix("builtin:") {
         return builtin_image(builtin).ok_or_else(|| {
-            format!("unknown built-in image `{builtin}`; built-ins are white, circle, checker, atlas, font")
+            format!(
+                "unknown built-in image `{builtin}`; built-ins are white, circle, soft, checker, atlas, font"
+            )
         });
     }
     let path = base_dir.join(name);
@@ -510,6 +573,12 @@ pub fn builtin_image(name: &str) -> Option<Image> {
     Some(match name {
         "white" => Image::solid([255; 4], true),
         "circle" => make(64, 64, &|x, y| disc(x, y, 32.0, 31.0, [255, 255, 255])),
+        // White dot fading smoothly to clear at its edge (particles, glows).
+        "soft" => make(64, 64, &|x, y| {
+            let (dx, dy) = ((x as f32 + 0.5) / 32.0 - 1.0, (y as f32 + 0.5) / 32.0 - 1.0);
+            let t = (1.0 - (dx * dx + dy * dy).sqrt()).clamp(0.0, 1.0);
+            [255, 255, 255, (t * t * (3.0 - 2.0 * t) * 255.0).round() as u8]
+        }),
         "checker" => make(256, 256, &|x, y| {
             if (x / 32 + y / 32) % 2 == 0 {
                 [235, 235, 235, 255]

@@ -16,6 +16,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `entity_create` | yes | Add an entity (id defaults to the next free id) with optional name and components. Target: `scene` (file) or `session` (live world). |
 | `entity_update` | yes | Rename an entity and/or set and remove several components in one validated edit. |
 | `entity_delete` | yes | Remove an entity. Fails if other entities still refer to it. |
+| `entity_attach` | yes | Make an entity a child of another without moving it: adds `ChildOf` with the local placement that keeps it where it is. It then follows the parent. To detach, remove `ChildOf` (`component_remove`); to move a child, set its `ChildOf`. |
 | `component_set` | yes | Add or replace one component on an entity. |
 | `component_remove` | yes | Remove one component from an entity. |
 | `resource_set` | yes | Add or replace one scene resource (e.g. `PhysicsSettings`, `InputConfig`, `AmbientLight`, `FixedStep`). |
@@ -36,6 +37,7 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_stats` | no | Tick, entity count and step / render timings of a session. |
 | `observe_raycast` | no | Cast a ray through the physics scene; returns the first entity hit, distance, point and normal. |
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
+| `editor_view` | no | The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene). |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
 | `library_info` | no | Where the user's owned library is (operation input, MARIONETTE_LIBRARY, or the user config file) and how many assets it holds. |
 | `library_import` | yes | Imports owned assets from a .unitypackage, a Unity project folder, an Unreal project/plugin/content folder (exported FBX, glTF, images and T3D materials; .uasset packages are diagnosed, not read) or a plain file/folder into the owned library. Every asset needs a person-written declaration (*.license.json); engine content and undeclared or engine-locked licenses are refused, each listed in the report with its reason. |
@@ -43,8 +45,10 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `library_get` | no | Reads one owned asset's full record (license, source, files, notes). |
 | `license_check_text` | no | Checks license text a person pasted in for phrases that limit use to one engine. Finding none never grants permission; a declaration is still required. |
 | `pool_admission_check` | no | The owned-asset gate the CC0 pool must pass: refuses anything inside the owned library, carrying an owned record or declaration, or with the same content as an owned file. |
-| `perf_factory_scene` | yes | Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun. |
 | `perf_sim` | no | Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash. |
+| `perf_realistic_scene` | yes | Write the realistic render benchmark: 32 models with 8 materials each and their own 2K texture set, a textured ground, about 380 large static models and 3,200 moving ones (about 18 million triangles at scale 1), sun with cascaded shadows, BC7 textures. Also writes a manifest and plain mesh files so another engine can build the same scene. |
+| `perf_suite` | yes | Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`. |
+| `perf_compare` | no | Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first. |
 | `jobs_check` | no | Compile a job TypeScript file (`*.job.ts`: typed, numbers-only TypeScript compiled to WebAssembly) and report its functions or every error with line, column and a fix. |
 | `jobs_run` | no | Run one exported function of a job file on JSON arrays and numbers, in chunks, on 1 or more threads; returns the arrays it changed, per-chunk return values and the time. |
 | `jobs_reload` | yes | Recompile the changed job files of a live session (hot reload). A file that no longer compiles keeps running its last good version and its errors are returned. |
@@ -87,7 +91,14 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `port_scaffold` | yes | Writes one TypeScript script skeleton per Unity/Unreal gameplay class (exported start/update/onCollisionEnter/onCollisionExit/onTriggerEnter/onTriggerExit hooks, fields as self.state defaults, the original code as comments annotated with Marionette equivalents) plus PORT-NOTES.md. Never overwrites unless `overwrite` is set. |
 | `port_serde` | yes | Writes Rust serde types for C# [Serializable] classes that read and write Unity JsonUtility JSON; reports what it cannot map. Code is returned without `out`. |
 | `port_convert` | no | Converts a position, direction, velocity, quaternion, Euler rotation, scale or length from Unity or Unreal coordinates and units to Marionette's (right-handed, +Y up, -Z forward, meters). |
+| `save_write` | yes | Save a live session to a slot (crash-safe, keeps a backup). |
+| `save_load` | yes | Load a slot into a live session, migrating old saves. |
+| `save_list` | no | List save slots (headers only). |
+| `save_check` | no | Check that a slot would load into a session. |
+| `save_delete` | yes | Delete a slot and its backup. |
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
+| `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
+| `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
 | `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
 | `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
 | `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
@@ -306,6 +317,29 @@ Input:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
+| `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
+| `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `diff` | Diff | yes |  |
+| `id` | integer | yes | The entity the edit was about. |
+| `target` | string | yes | The scene file or session that was changed. |
+
+## `entity_attach`
+
+Make an entity a child of another without moving it: adds `ChildOf` with the local placement that keeps it where it is. It then follows the parent. To detach, remove `ChildOf` (`component_remove`); to move a child, set its `ChildOf`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer | yes | The entity that becomes the child. |
+| `parent` | integer | yes | The entity it follows from now on. |
 | `scene` | string \| null |  | Scene file to edit, e.g. `scenes/main.scene.json`. |
 | `session` | string \| null |  | Live session id (from session_start) to edit instead of a file. |
 
@@ -794,6 +828,46 @@ Output:
 | `tick` | integer | yes |  |
 | `total` | integer | yes |  |
 
+## `editor_view`
+
+The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `eye` | array \| null |  | Editor camera position. |
+| `frame` | boolean |  | Move the camera so the selection (or the whole scene) fills the view. |
+| `grid` | boolean \| null |  | Show the ground grid (default true). |
+| `image` | boolean \| null |  | Write the image (default true). With false only picks and the inspector come back. |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `look_at` | array \| null |  | Point the editor camera looks at (with `eye`; default: 1 m ahead along -Z). |
+| `msaa` | integer \| null |  | MSAA samples, 1 or 4 (default 4). |
+| `out` | string \| null |  | Output PNG path (default `.marionette/screenshots/<name>-editor.png`). |
+| `panels` | boolean \| null |  | Show the entity list and inspector panels (default true). |
+| `pick` | array of array of number |  | Pixels to pick at, `[x, y]` with y down. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `select` | integer \| null |  | Entity to select (highlighted, boxed and shown in the inspector). |
+| `session` | string \| null |  |  |
+| `size` | string \| null |  | Image size `WIDTHxHEIGHT` (default 1280x720; pick pixels use the same size). |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `camera` | array of array of number | yes | Where the editor camera ended up (useful after `frame`): position and look direction. |
+| `entities` | integer | yes |  |
+| `height` | integer | yes |  |
+| `path` | string \| null |  | PNG path, when an image was written. |
+| `picks` | array of Pick | yes |  |
+| `selected` | Selected \| null |  |  |
+| `tick` | integer | yes |  |
+| `width` | integer | yes |  |
+
 ## `test_run`
 
 Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data.
@@ -960,30 +1034,6 @@ Output:
 | `files_checked` | integer | yes |  |
 | `refusals` | array of PoolRefusal | yes |  |
 
-## `perf_factory_scene`
-
-Write a factory benchmark scene: `scale` x 34 production cells (7 machines, 6 belts, 128 belt slots each: miners, smelters, wire, circuits, a lab), plus a camera and a sun.
-
-Mutating: yes.
-
-Input:
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `out` | string | yes | Output scene file (relative to the project root). |
-| `scale` | integer |  | Size: 1 = 34 cells (238 machines, 204 belts, 4,352 slots). 1..=256. |
-
-Output:
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `belts` | integer | yes |  |
-| `cells` | integer | yes |  |
-| `entities` | integer | yes |  |
-| `machines` | integer | yes |  |
-| `scene` | string | yes |  |
-| `slots` | integer | yes |  |
-
 ## `perf_sim`
 
 Time the simulation tick of a scene: run `warmup` ticks, then `ticks` timed ticks; returns per-tick milliseconds (avg, p50, p99, max), the worker thread count and the state hash.
@@ -1013,6 +1063,102 @@ Output:
 | `state_hash` | string | yes |  |
 | `threads` | integer | yes |  |
 | `ticks` | integer | yes |  |
+
+## `perf_realistic_scene`
+
+Write the realistic render benchmark: 32 models with 8 materials each and their own 2K texture set, a textured ground, about 380 large static models and 3,200 moving ones (about 18 million triangles at scale 1), sun with cascaded shadows, BC7 textures. Also writes a manifest and plain mesh files so another engine can build the same scene.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `out` | string | yes | Output scene file, `<stem>.scene.json` (relative to the project root). Assets go in the folder `<stem>` beside it. |
+| `scale` | number |  | Multiplies the instance counts (0.01 to 8; default 1). |
+| `texture_size` | integer |  | Texture width and height in texels, a power of two from 16 to 4096 (default 2048). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `entities` | integer | yes |  |
+| `folder` | string | yes | Folder with textures, models, meshes and the manifest. |
+| `materials` | integer | yes |  |
+| `models` | integer | yes |  |
+| `moving_instances` | integer | yes |  |
+| `scene` | string | yes |  |
+| `static_instances` | integer | yes |  |
+| `texture_size` | integer | yes |  |
+| `textures` | integer | yes |  |
+| `triangles` | integer | yes | Triangles of every instance together (before culling). |
+
+## `perf_suite`
+
+Run the shared performance suite (decision 0100): fixed sim, render and startup cases; per case load time, tick and frame percentiles (CPU phases and GPU wait), heap, allocations per tick, state hash and image hash. Writes the full report as JSON (default .marionette/perf/<label>.json) and returns a one-line summary per case. Compare two reports with `perf_compare`.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extra_scenes` | array of string |  | Extra scenes of a game to run as sim cases (and render cases if `render_extra`). |
+| `label` | string \| null |  | Name of this run, e.g. `baseline` or `lto-fat`. Default `<commit>-<profile>`. |
+| `length` | string \| null |  | `full` (default) or `quick` (a tenth of the ticks, one repeat: a smoke test). |
+| `lock` | string \| null |  | Lock file shared by every benchmark on this machine (several agents share one PC). The suite creates it before measuring and removes it after, and refuses to start while another run holds it. Default: env `MARIONETTE_BENCH_LOCK`; none if unset. |
+| `lock_owner` | string \| null |  | Who holds the lock (an area name such as `raytracing`); written into the lock file. Default: the label. |
+| `max_busy_pct` | number \| null |  | Refuse to start when other processes keep more than this share of all cores busy (default 15 percent; 100 turns the check off). |
+| `min_case_s` | number \| null |  | After `repeats`, run a case again until this many seconds of timed ticks are pooled (at most 100 runs), so cases of a few microseconds per tick get a stable p99. Default 2 (`quick`: 0). |
+| `min_idle_s` | integer |  | Refuse to start unless nobody has used keyboard or mouse for this many seconds (Windows only; elsewhere not checked). Default 0. On a shared desktop use 300. |
+| `no_gpu` | boolean |  | Skip render cases (default: run them when a GPU adapter exists). |
+| `only` | array of string |  | Only cases whose name starts with one of these (`sim/`, `render/factory`). |
+| `out` | string \| null |  | Report file (relative to the project root). Default `.marionette/perf/<label>.json`. |
+| `render_extra` | boolean |  | Also render the extra scenes at 1920x1080. |
+| `repeats` | integer \| null |  | Runs of each case; timings pool all runs. Default 3 (`quick`: 1). |
+| `seed` | integer |  |  |
+| `wait_s` | integer |  | Wait up to this many seconds for a held lock or a busy CPU, checking every 30 s (default 0: refuse at once). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `build` | string | yes |  |
+| `cases` | array of string | yes | One line per case: name, then the main numbers (ms) and the short output hash. |
+| `conditions` | string | yes | Lock held and other processes' CPU load before and between cases. |
+| `errors` | integer | yes |  |
+| `machine` | string | yes |  |
+| `report` | string | yes |  |
+| `seconds` | number | yes |  |
+| `skipped` | integer | yes |  |
+
+## `perf_compare`
+
+Compare two `perf_suite` reports: first whether outputs are identical (state hashes; image hashes when the GPU is the same), then the timing and memory changes beyond `threshold_pct`, largest first.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `base` | Reports | yes | The earlier report, or several runs of the earlier build (relative to the project root). Several runs per side, ideally alternated A B A B, give a change only when the two sides' ranges do not overlap. |
+| `new` | Reports | yes | The later report, or several runs of the later build. |
+| `threshold_pct` | number \| null |  | Report changes larger than this, percent (default 5). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `changes` | array of Change | yes | Changes beyond the threshold (and outside the run-to-run range when several runs are given), largest first. |
+| `output_mismatches` | array of string | yes |  |
+| `outputs_identical` | boolean | yes | Every state hash equal, and every image hash equal when both ran on the same GPU. |
+| `runs` | array of any | yes | Runs read per side. |
+| `same_gpu` | boolean | yes |  |
+| `same_machine` | boolean | yes |  |
+| `unmatched` | array of string | yes | Cases only in one side. |
+| `warnings` | array of string | yes | Notes on things that make the comparison weaker (different suite, length, machine). |
+| `within_threshold` | integer | yes | Metrics compared that stayed within the threshold or the run-to-run range. |
 
 ## `jobs_check`
 
@@ -2034,6 +2180,7 @@ Input:
 | --- | --- | --- | --- |
 | `derives` | array of string |  | Extra derives for every type (for example `Reflect`). |
 | `dry_run` | boolean |  | Return the code without writing. |
+| `external` | object |  | C# type name -> Rust path of a type the project already has (hand-written, or its own vector type). Used as is, never generated. |
 | `out` | string \| null |  | The .rs file to write, relative to the project root. Omit to get the code back. |
 | `overwrite` | boolean |  | Replace an existing `out` file. |
 | `roots` | array of string |  | Only these types and the types their saved fields reach. Default: every [Serializable] type. |
@@ -2071,6 +2218,125 @@ Output:
 | `rule` | string | yes | The rule applied. |
 | `value` | any | yes | The Marionette value: {x, y, z}, {x, y, z, w} or a single length. |
 
+## `save_write`
+
+Save a live session to a slot (crash-safe, keeps a backup).
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  | Folder of slots, relative to the project root (default `saves`). |
+| `label` | string |  | Text for a slot menu. |
+| `meta` | any |  | Small JSON for a slot menu (at most 16 KB): play time, chapter. |
+| `session` | string | yes |  |
+| `slot` | string | yes | Slot name: 1 to 48 of a-z, 0-9, `_`, `-` (autosaves use `auto-N`). |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bytes` | integer | yes |  |
+| `capture_ms` | number | yes | Main-thread part: copying the state. |
+| `path` | string | yes |  |
+| `slot` | string | yes |  |
+| `tick` | integer | yes |  |
+| `version` | integer | yes |  |
+| `write_ms` | number | yes | The rest: scene text, checksum, file (a game does this on its save thread). |
+
+## `save_load`
+
+Load a slot into a live session, migrating old saves.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `exact` | boolean | yes | Module state (physics internals, held input) restored too: the game continues exactly as it would have. False after a migration. |
+| `from_version` | integer | yes |  |
+| `recovered` | string \| null |  | Why the slot's backup was loaded instead, if it was. |
+| `session` | string | yes |  |
+| `slot` | string | yes |  |
+| `state_hash` | string | yes |  |
+| `tick` | integer | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_list`
+
+List save slots (headers only).
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string | yes |  |
+| `slots` | array of SlotRow | yes |  |
+
+## `save_check`
+
+Check that a slot would load into a session.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `session` | string | yes | A live session of the game that would load the save (its format and migrations). |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `from_version` | integer \| null |  |  |
+| `ok` | boolean | yes | Loading would succeed. |
+| `problems` | array of any | yes | What would stop the load (empty when `ok`). |
+| `recovered` | string \| null |  |  |
+| `slot` | string | yes |  |
+| `to_version` | integer | yes |  |
+
+## `save_delete`
+
+Delete a slot and its backup.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `dir` | string |  |  |
+| `slot` | string | yes |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `deleted` | boolean | yes | False when the slot did not exist. |
+| `slot` | string | yes |  |
+
 ## `prefab_instantiate`
 
 Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set.
@@ -2099,6 +2365,50 @@ Output:
 | `inactive_left_out` | integer | yes | Objects left out because they were inactive in Unity. |
 | `notes` | array of string | yes | The prefab's own notes (what did not map, and why). |
 | `scene` | string | yes |  |
+
+## `package_targets`
+
+List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | string \| null |  | Game folder (holds marionette.json), relative to the project root. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `game` | Game \| null |  | With `game`: what a package would hold. |
+| `host` | string | yes |  |
+| `targets` | array of TargetRow | yes |  |
+
+## `package_build`
+
+Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes.
+
+Mutating: yes.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `archive` | boolean |  | Write a zip next to each folder (default true). |
+| `debug` | boolean |  | Debug build instead of release (faster to build, slow to play). |
+| `game` | string | yes | Game folder (holds marionette.json), relative to the project root. |
+| `out` | string |  | Output folder, relative to the project root. |
+| `smoke` | boolean |  | Run the packaged binary headless for a few ticks when this machine can (default true). |
+| `sysroots` | object |  | Link-time sysroots by architecture (`x86_64`, `aarch64`) for zigbuild builds (default: MARIONETTE_SYSROOT_X86_64 / MARIONETTE_SYSROOT_AARCH64; scripts/package-sysroots.sh makes them). |
+| `targets` | array of string |  | Targets, or `["all"]` for every target this machine can build. Default: this machine's own. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `packages` | array of Built | yes |  |
 
 ## `game_brief`
 

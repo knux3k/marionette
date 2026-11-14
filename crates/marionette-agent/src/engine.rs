@@ -1,5 +1,6 @@
-//! The engine as the agent runs it: core, the built-in modules (input, physics, audio,
-//! script, factory, animation, XR gameplay, job schedules) and the operation table, plus whatever a game adds.
+//! The engine as the agent runs it: core, the built-in modules (input, and those of the
+//! cargo features compiled in: physics, audio, script, animation, XR gameplay, job
+//! TypeScript, save, navigation, netplay) and the operation table, plus whatever a game adds.
 //!
 //! A game adds its own Rust modules and operations without editing the engine (decision
 //! 0062):
@@ -10,13 +11,9 @@
 //! ```
 
 use crate::{Agent, Op, codes, write_atomic};
-use marionette_anim::AnimModule;
-use marionette_audio::AudioModule;
 use marionette_core::module::{Module, Modules, registry_with};
 use marionette_core::{Diagnostic, Errors, Registry, Sim};
-use marionette_factory::FactoryModule;
 use marionette_input::{InputEvent, InputModule};
-use marionette_physics::PhysicsModule;
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
@@ -55,17 +52,22 @@ impl EngineBuilder {
         Self {
             parts: vec![
                 Part::Module(Box::new(InputModule)),
-                Part::Module(Box::new(PhysicsModule)),
-                Part::Module(Box::new(AudioModule)),
+                #[cfg(feature = "physics")]
+                Part::Module(Box::new(marionette_physics::PhysicsModule)),
+                #[cfg(feature = "audio")]
+                Part::Module(Box::new(marionette_audio::AudioModule)),
                 #[cfg(feature = "script")]
                 Part::Script,
-                Part::Module(Box::new(FactoryModule)),
-                Part::Module(Box::new(AnimModule)),
+                #[cfg(feature = "anim")]
+                Part::Module(Box::new(marionette_anim::AnimModule)),
+                #[cfg(feature = "xr")]
                 Part::Module(Box::new(marionette_xr::XrModule)),
                 #[cfg(feature = "ui3d")]
                 Part::Module(Box::new(marionette_ui3d::Ui3dModule)),
                 #[cfg(feature = "jobs-ts")]
                 Part::Module(Box::new(marionette_jobs_ts::JobsModule)),
+                #[cfg(feature = "save")]
+                Part::Module(Box::new(marionette_save::SaveModule::default())),
                 #[cfg(feature = "nav")]
                 Part::Module(Box::new(marionette_nav::NavModule)),
                 #[cfg(feature = "netplay")]
@@ -82,6 +84,21 @@ impl EngineBuilder {
     }
 
     /// Adds one operation (make it with [`crate::op`]).
+    /// Replaces the module that has the same [`Module::name`] (for example the standard
+    /// `save` module with `SaveModule::with(migrations)`); adds it if there is none.
+    pub fn replace(mut self, module: impl Module) -> Self {
+        let name = module.name();
+        let at = self
+            .parts
+            .iter()
+            .position(|p| matches!(p, Part::Module(m) if m.name() == name));
+        match at {
+            Some(i) => self.parts[i] = Part::Module(Box::new(module)),
+            None => self.parts.push(Part::Module(Box::new(module))),
+        }
+        self
+    }
+
     pub fn op(mut self, op: Op) -> Self {
         self.ops.push(op);
         self
@@ -241,9 +258,33 @@ pub(crate) fn write_recording(agent: &Agent, sim: &Sim, out: &str) -> Result<usi
 }
 
 /// Plays `sound` events through the default audio device (windowed mode only).
+#[cfg(feature = "audio")]
 pub use marionette_audio::Player as SoundPlayer;
 /// The synth host and the synth crate (decision 0220).
+#[cfg(feature = "audio")]
 pub use marionette_audio::{SynthHost, synth};
+
+/// A build without the `audio` feature has no sound device: [`SoundPlayer::new`] says so,
+/// as it would on a machine with no audio output, and windowed play runs silent.
+#[cfg(not(feature = "audio"))]
+pub struct SoundPlayer(std::convert::Infallible);
+
+#[cfg(not(feature = "audio"))]
+impl SoundPlayer {
+    /// Always an error: this build leaves audio out.
+    pub fn new(_base_dir: std::path::PathBuf) -> Result<Self, String> {
+        Err("this build leaves out audio (cargo feature `audio`)".into())
+    }
+    pub fn set_head(&mut self, _head: Option<([f32; 3], [f32; 4])>) {
+        match self.0 {}
+    }
+    pub fn play_new(&mut self, _log: &marionette_core::EventLog) -> Vec<String> {
+        match self.0 {}
+    }
+    pub fn update(&mut self, _world: &mut bevy_ecs::world::World, _dt: f32) -> Vec<String> {
+        match self.0 {}
+    }
+}
 
 /// Loads a scene file with the built-in engine ([`Engine::load_file`] for a game's engine).
 pub fn load_file(path: &Path, shown: &str, seed: u64) -> Result<Sim, Errors> {

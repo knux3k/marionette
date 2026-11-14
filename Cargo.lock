@@ -2072,10 +2072,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "intel_tex_2"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7980d359170e7da4bc2421aa74c49d338a3153313e006d732a3430f1af375a60"
+dependencies = [
+ "ispc_rt",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
+
+[[package]]
+name = "ispc_rt"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a396f76fd253fab9945bb4c6080f515d0c4036bc30219462d199b58886fd37b4"
+dependencies = [
+ "libc",
+ "num_cpus",
+]
 
 [[package]]
 name = "itertools"
@@ -2346,11 +2365,12 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
+ "glam 0.34.3",
  "marionette-anim",
  "marionette-assets",
  "marionette-audio",
  "marionette-core",
- "marionette-factory",
+ "marionette-editor",
  "marionette-generate",
  "marionette-host",
  "marionette-import",
@@ -2359,12 +2379,14 @@ dependencies = [
  "marionette-jobs-ts",
  "marionette-nav",
  "marionette-net",
+ "marionette-package",
  "marionette-physics",
  "marionette-platform",
  "marionette-pool",
  "marionette-port",
  "marionette-providers",
  "marionette-render",
+ "marionette-save",
  "marionette-script",
  "marionette-starter",
  "marionette-synth",
@@ -2396,7 +2418,10 @@ dependencies = [
  "exr",
  "glam 0.34.3",
  "gltf",
+ "intel_tex_2",
+ "marionette-host",
  "png",
+ "sha2 0.11.1",
 ]
 
 [[package]]
@@ -2420,6 +2445,7 @@ dependencies = [
  "glam 0.34.3",
  "marionette-agent",
  "marionette-core",
+ "marionette-editor",
  "marionette-gamepad",
  "marionette-generate",
  "marionette-host",
@@ -2427,10 +2453,13 @@ dependencies = [
  "marionette-jobs",
  "marionette-net",
  "marionette-openxr",
+ "marionette-package",
  "marionette-render",
+ "marionette-save",
  "marionette-xr",
  "serde",
  "serde_json",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2445,6 +2474,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-editor"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "glam 0.34.3",
+ "marionette-core",
+ "marionette-render",
+ "serde_json",
+ "winit",
+]
+
+[[package]]
+name = "marionette-example-factory"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-agent",
+ "marionette-cli",
+ "marionette-core",
+ "marionette-host",
+ "marionette-jobs",
+ "marionette-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "marionette-example-rust-module"
 version = "0.1.0"
 dependencies = [
@@ -2456,17 +2514,6 @@ dependencies = [
  "marionette-host",
  "schemars",
  "serde",
- "serde_json",
-]
-
-[[package]]
-name = "marionette-factory"
-version = "0.1.0"
-dependencies = [
- "bevy_ecs",
- "bevy_reflect",
- "marionette-core",
- "marionette-jobs",
  "serde_json",
 ]
 
@@ -2603,6 +2650,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "marionette-package"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "marionette-core",
+ "marionette-host",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "marionette-physics"
 version = "0.1.0"
 dependencies = [
@@ -2677,12 +2737,26 @@ dependencies = [
  "glam 0.34.3",
  "marionette-assets",
  "marionette-core",
+ "marionette-host",
  "meshopt",
+ "png",
  "pollster",
  "serde",
  "serde_json",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "marionette-save"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "marionette-core",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]
@@ -2696,6 +2770,7 @@ dependencies = [
  "marionette-core",
  "oxc",
  "rquickjs",
+ "serde",
  "serde_json",
 ]
 
@@ -3079,6 +3154,16 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91df4bbde75afed763b708b7eee1e8e7651e02d97f6d5dd763e89367e957b23b"
+dependencies = [
+ "hermit-abi",
+ "libc",
 ]
 
 [[package]]

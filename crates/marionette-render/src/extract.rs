@@ -7,9 +7,9 @@ use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
     AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, Foveation,
-    LevelOfDetail, LookAt, Material, Model, ModelPlacement, PointLight, Projection, RayTracing,
-    ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite, SpriteRegion,
-    ToneMapping, Transform,
+    LevelOfDetail, LookAt, Material, Model, ModelPlacement, ParticleEmitter, PointLight, Projection,
+    RayTracing, ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite,
+    SpriteRegion, TextureCompression, ToneMapping, Transform,
 };
 use marionette_core::spatial::{Color, Vec3 as CVec3};
 
@@ -44,6 +44,8 @@ pub struct FrameData {
     pub environment: Option<EnvironmentData>,
     /// Reduced levels of detail and hiding of small far things (decision 0080).
     pub lod: Option<crate::cull::Lod>,
+    /// Block-compressed model textures (decision 0283): `Some(normal maps too)`.
+    pub texture_compression: Option<bool>,
     /// Render scale and foveation (decisions 0081, 0082); `None` draws straight to the output.
     pub scale: Option<crate::scale::ScaleSettings>,
     /// Sun shadow cascades: count (2 to 4) and how far they reach (decision 0090).
@@ -52,6 +54,27 @@ pub struct FrameData {
     pub probes: Vec<ProbeData>,
     /// Ray-traced lighting, when the scene asks for it (decision 0093).
     pub ray_tracing: Option<RayTracing>,
+    /// Meshes the game built in code, drawn by `mesh:<name>` assets (decision 0180). One
+    /// shared copy: taking it costs a reference count.
+    pub game_meshes: marionette_core::mesh::MeshMap,
+    /// Shader sources stored by game code (decision 0181).
+    pub game_shaders: std::sync::Arc<std::collections::BTreeMap<String, std::sync::Arc<str>>>,
+    /// Distinct `ShaderMaterial`s of this frame's meshes (`MeshDraw::shader` indexes this).
+    pub shader_materials: Vec<marionette_core::shader::ShaderMaterial>,
+    /// Game time in seconds (ticks plus `alpha`, times the step), for animated shaders.
+    pub time: f32,
+    /// The same game time in double precision, for particles (decision 0282).
+    pub time_f64: f64,
+    /// Particle emitters, sorted by entity id (decision 0282).
+    pub particles: Vec<ParticleDraw>,
+}
+
+/// One particle emitter and where it is.
+#[derive(Debug, Clone)]
+pub struct ParticleDraw {
+    pub entity: u64,
+    pub world: Mat4,
+    pub emitter: ParticleEmitter,
 }
 
 /// A reflection probe: where its picture is taken and the box it applies to.
@@ -183,6 +206,8 @@ pub struct MeshDraw {
     pub emissive: Vec3,
     /// The entity also has `CastShadows` (a lamp): the model does not block its own light.
     pub lamp: bool,
+    /// Index into `FrameData::shader_materials` when the entity has a `ShaderMaterial`.
+    pub shader: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -216,8 +241,8 @@ fn rgba(c: Color) -> [f32; 4] {
     [c.r, c.g, c.b, c.a]
 }
 
-/// World matrix from `Position`/`Transform`/`LookAt`.
-fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
+/// World matrix from `Position`/`Transform`/`LookAt` (what the renderer draws an entity at).
+pub fn world_matrix(t: Option<&Transform>, p: Option<&Position>, look: Option<&LookAt>) -> Mat4 {
     let t = t.copied().unwrap_or_default();
     let translation = p.map_or(v3(t.translation), |p| Vec3::new(p.x, p.y, p.z));
     let mut rotation = Quat::from_xyzw(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w).normalize();
@@ -277,6 +302,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame.bloom = world
         .get_resource::<Bloom>()
         .map(|b| (b.threshold.max(0.0), b.intensity.max(0.0)));
+    frame.texture_compression = world.get_resource::<TextureCompression>().map(|t| t.normal_maps);
     frame.lod = world.get_resource::<LevelOfDetail>().map(|l| crate::cull::Lod {
         medium_below: l.medium_below.max(0.0),
         low_below: l.low_below.max(0.0),
@@ -355,7 +381,18 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         let emissives = world.components().component_id::<Emissive>().is_some();
         let placements = world.components().component_id::<ModelPlacement>().is_some();
         let lamps = world.components().component_id::<CastShadows>().is_some();
+        let shaders = world
+            .components()
+            .component_id::<marionette_core::shader::ShaderMaterial>()
+            .is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
+            let shader = if shaders {
+                world
+                    .get::<marionette_core::shader::ShaderMaterial>(e)
+                    .map(|s| shader_index(&mut frame.shader_materials, s))
+            } else {
+                None
+            };
             let emissive = if emissives {
                 world
                     .get::<Emissive>(e)
@@ -388,9 +425,20 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                 pose: pose.map(|p| std::sync::Arc::new(p.clone())),
                 emissive,
                 lamp: lamps && world.get::<CastShadows>(e).is_some(),
+                shader,
             });
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
+    }
+    if let Some(mut q) = world.try_query::<(&SceneId, &ParticleEmitter, Place)>() {
+        for (id, emitter, (t, p, l)) in q.iter(world) {
+            frame.particles.push(ParticleDraw {
+                entity: id.0,
+                world: world_matrix(t, p, l),
+                emitter: emitter.clone(),
+            });
+        }
+        frame.particles.sort_unstable_by_key(|p| p.entity);
     }
     if let Some(mut q) = world.try_query::<(&SceneId, &Sprite, Option<&SpriteRegion>, Place)>() {
         for (id, sprite, region, (t, p, l)) in q.iter(world) {
@@ -498,6 +546,22 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     }
     local.sort_by_key(|(id, _)| *id);
     frame.local_lights = local.into_iter().map(|(_, l)| l).collect();
+    if let Some(meshes) = world.get_resource::<marionette_core::mesh::GameMeshes>() {
+        frame.game_meshes = meshes.snapshot();
+    }
+    {
+        let tick = world
+            .get_resource::<marionette_core::builtin::SimClock>()
+            .map_or(0, |c| c.tick);
+        let dt = world
+            .get_resource::<marionette_core::builtin::FixedStep>()
+            .map_or(marionette_core::builtin::DEFAULT_DT, |s| s.dt);
+        frame.time_f64 = (tick as f64 + alpha.clamp(0.0, 1.0) as f64) * dt as f64;
+        frame.time = frame.time_f64 as f32;
+    }
+    if let Some(shaders) = world.get_resource::<marionette_core::shader::GameShaders>() {
+        frame.game_shaders = shaders.snapshot();
+    }
     if let Some(hooks) = world.get_resource::<marionette_core::spatial::BulkDrawHooks>() {
         let camera = frame.cameras.first().map(|c| c.world);
         let context = marionette_core::spatial::BulkDrawContext {
@@ -528,8 +592,24 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame
 }
 
+/// Index of `s` in `list`, adding it when new. Materials usually repeat, so the search
+/// starts at the last entry; past 64 distinct materials new ones are added without a
+/// search (the renderer still shares GPU data between equal ones).
+fn shader_index(
+    list: &mut Vec<marionette_core::shader::ShaderMaterial>,
+    s: &marionette_core::shader::ShaderMaterial,
+) -> u32 {
+    if list.len() <= 64
+        && let Some(i) = list.iter().rposition(|m| m == s)
+    {
+        return i as u32;
+    }
+    list.push(s.clone());
+    (list.len() - 1) as u32
+}
+
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 26] = [
+pub const READS: [(&str, Kind); 29] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -551,9 +631,12 @@ pub const READS: [(&str, Kind); 26] = [
     ("CastShadows", Kind::Component),
     ("Environment", Kind::Resource),
     ("LevelOfDetail", Kind::Resource),
+    ("TextureCompression", Kind::Resource),
     ("RenderScale", Kind::Resource),
     ("Foveation", Kind::Resource),
     ("ShadowCascades", Kind::Resource),
     ("ReflectionProbe", Kind::Component),
     ("RayTracing", Kind::Resource),
+    ("ShaderMaterial", Kind::Component),
+    ("ParticleEmitter", Kind::Component),
 ];

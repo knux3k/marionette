@@ -130,6 +130,19 @@ Rust type: `marionette_physics::components::CharacterState`.
 | `grounded` | boolean | yes |  |
 | `vertical_velocity` | number | yes |  |
 
+### `ChildOf`
+
+Places the entity relative to `parent`: the engine sets this entity's `Transform` to the parent's `Transform` (its `Position`, if it has one, as the translation) combined with `translation`, `rotation` and `scale` here, at load and every tick. Change these fields to move the entity; a `Transform` written directly is overwritten. Scales multiply per axis, so a turned child of a parent with unequal scales is not sheared. Not for dynamic bodies or characters, which physics moves. Use `entity_attach` to attach an entity where it is.
+
+Rust type: `marionette_core::hierarchy::ChildOf`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `parent` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
+| `rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
+| `scale` | object {x, y, z} | yes |  |
+| `translation` | object {x, y, z} | yes |  |
+
 ### `Collider`
 
 The shape and surface of a body. An entity with a `Collider` but no `RigidBody` is fixed.
@@ -176,30 +189,6 @@ Rust type: `marionette_core::spatial::Emissive`.
 | --- | --- | --- | --- |
 | `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
 | `intensity` | number | yes |  |
-
-### `FactoryBelt`
-
-A belt from one machine's output to another machine's input.
-
-Rust type: `marionette_factory::FactoryBelt`.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `from` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
-| `slots` | integer | yes | Number of item slots (one item each); at least 1. |
-| `step_milliticks` | integer | yes | Thousandths of a tick an item waits in a slot before it may hop to the next (1000 = one slot per tick, the fastest a belt can run). |
-| `to` | integer | yes | A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. |
-
-### `FactoryMachine`
-
-A machine running one recipe. Its position (for belts and drawing) is its `Transform`.
-
-Rust type: `marionette_factory::FactoryMachine`.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `buffer` | integer | yes | Most items held per input, and in the output. |
-| `recipe` | string | yes | Recipe id from `FactoryRecipes`. |
 
 ### `Follow`
 
@@ -294,7 +283,7 @@ Rust type: `marionette_core::spatial::LookAt`.
 
 ### `Material`
 
-Overrides the material of a `Model` (all of its parts) with simple PBR values.
+Overrides the material of a `Model` (all of its parts) with simple PBR values. A base color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness.
 
 Rust type: `marionette_core::spatial::Material`.
 
@@ -306,7 +295,7 @@ Rust type: `marionette_core::spatial::Material`.
 
 ### `Model`
 
-A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y).
+A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y), `primitive:grid` (the plane split into 64 x 64 squares, for shaders that move vertices). Meshes built in game code are `mesh:<name>` (decision 0180).
 
 Rust type: `marionette_core::spatial::Model`.
 
@@ -406,6 +395,28 @@ Rust type: `marionette_nav::NavSurface`.
 | `radius` | number | yes | Ground radius in metres where there is no terrain to probe. |
 | `resolution` | integer | yes | Cells per cube-face edge (6 × resolution² cells; 128 gives cells of about radius / 80 metres). 4 to 1024. |
 | `sea_level` | number | yes | Ground below this distance from the centre is water and not walkable (0 = none). |
+
+### `ParticleEmitter`
+
+Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game time alone (decision 0282): no particle state is stored or simulated, so they cost no tick time, never change the state hash, and the same tick always draws the same picture. Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive.
+
+Rust type: `marionette_core::spatial::ParticleEmitter`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `blend` | "Additive" \| "Alpha" | yes | How particles combine with what is behind them. |
+| `end_color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
+| `end_size` | number | yes |  |
+| `gravity` | number | yes | Acceleration toward world -Y in m/s² (9.8 falls like sparks; negative rises like smoke). |
+| `image` | string | yes | Image: a PNG relative to the scene or a built-in (`builtin:circle` is a soft dot). |
+| `lifetime` | number | yes | Seconds each particle lives. |
+| `radius` | number | yes | Radius in meters of the ball they start in. |
+| `rate` | number | yes | Particles started per second. |
+| `seed` | integer | yes | Changes the random pattern, so emitters side by side do not look alike. |
+| `speed` | number | yes | Start speed in m/s. |
+| `spread_degrees` | number | yes | Half-angle of the cone around the entity's +Y they leave in (180 = every direction). |
+| `start_color` | object {a, b, g, r} | yes | Linear color and opacity at birth and at death. Above 1 glows with `Bloom`. |
+| `start_size` | number | yes | Size in meters at birth and at death. |
 
 ### `PlanetCharacter`
 
@@ -530,6 +541,18 @@ Rust type: `marionette_script::ScriptTimers`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `data` | string | yes |  |
+
+### `ShaderMaterial`
+
+Draws the entity's `Model` with a game shader. `Material` (if present) still sets the base color, metallic and roughness the shader starts from.
+
+Rust type: `marionette_core::shader::ShaderMaterial`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `params` | array of number | yes | Up to 16 numbers, read in the shader as `game.params[i / 4][i % 4]`; missing ones are zero. |
+| `shader` | string | yes | A name stored in `GameShaders`, or a `.wgsl` file relative to the scene file. |
+| `textures` | array of string | yes | Up to 4 images (PNG paths relative to the scene file, or `builtin:` images), bound as `tex0` to `tex3`; missing ones are white. |
 
 ### `SoundSpatial`
 
@@ -804,33 +827,6 @@ Rust type: `marionette_core::spatial::Environment`.
 | `image` | string | yes |  |
 | `intensity` | number | yes | Strength of the light and reflections from the environment. |
 
-### `FactoryRecipes`
-
-Every recipe and item look of the scene.
-
-Rust type: `marionette_factory::FactoryRecipes`.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `looks` | array of object {color, item, model, scale} | yes | Optional looks; items without one are small grey cubes. |
-| `recipes` | array of object {id, inputs, output, ticks} | yes |  |
-
-### `FactoryState`
-
-The compiled factory: flat arrays stepped every tick. Saved in the scene and hashed.
-
-Rust type: `marionette_factory::FactoryState`.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `belts` | array of object {entity, first, from, len, step, to} | yes | Belts in scene-id order; their slots are consecutive in `slots`. |
-| `delivered` | integer | yes | Items delivered from belts into machines, ever. |
-| `layout` | integer | yes | Fingerprint of the authoring data these arrays were built from. A scene whose machines, belts or recipes changed gets fresh arrays at load. |
-| `machines` | array of object {buffer, entity, have, output, progress, recipe, running} | yes | Machines in scene-id order. |
-| `made` | integer | yes | Items finished by machines, ever. |
-| `now` | integer | yes | Ticks the factory has run. |
-| `slots` | array of object {arrived, item} | yes |  |
-
 ### `FixedStep`
 
 Length of one simulation tick in seconds.
@@ -942,6 +938,20 @@ Rust type: `marionette_core::spatial::RenderScale`.
 | `scale` | number | yes |  |
 | `sharpness` | number | yes |  |
 
+### `SaveFormat`
+
+How a game's saves are named and versioned. Put it in the game's scene; a world without it saves as game `""`, version 1, with autosave off.
+
+Rust type: `marionette_save::SaveFormat`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `autosave_every` | integer | yes | Autosave every this many ticks (0: only on `save_request` events). |
+| `autosave_slots` | integer | yes | Autosave slots `auto-0` .. `auto-(n-1)`, overwritten oldest first (at least 1). |
+| `game` | string | yes | Game id written in every save; a save of another game is refused on load. |
+| `migrations` | string | yes | Data migrations file (JSON, relative to the scene folder); empty for none. |
+| `version` | integer | yes | Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. |
+
 ### `ShadowCascades`
 
 Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map).
@@ -986,6 +996,16 @@ Rust type: `marionette_script::SpawnIds`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `next` | integer | yes |  |
+
+### `TextureCompression`
+
+Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed.
+
+Rust type: `marionette_core::spatial::TextureCompression`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `normal_maps` | boolean | yes | Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). |
 
 ### `ToneMapping`
 

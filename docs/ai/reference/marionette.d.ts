@@ -372,6 +372,29 @@ type CharacterState = {
   vertical_velocity: number;
 };
 
+/** Places the entity relative to `parent`: the engine sets this entity's `Transform` to the parent's `Transform` (its `Position`, if it has one, as the translation) combined with `translation`, `rotation` and `scale` here, at load and every tick. Change these fields to move the entity; a `Transform` written directly is overwritten. Scales multiply per axis, so a turned child of a parent with unequal scales is not sheared. Not for dynamic bodies or characters, which physics moves. Use `entity_attach` to attach an entity where it is. */
+type ChildOf = {
+  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
+  parent: number;
+  /** Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). */
+  rotation: {
+    w: number;
+    x: number;
+    y: number;
+    z: number;
+  };
+  scale: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  translation: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
 /** The shape and surface of a body. An entity with a `Collider` but no `RigidBody` is fixed. */
 type Collider = {
   density: number;
@@ -464,105 +487,6 @@ type Environment = {
   image: string;
   /** Strength of the light and reflections from the environment. */
   intensity: number;
-};
-
-/** A belt from one machine's output to another machine's input. */
-type FactoryBelt = {
-  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
-  from: number;
-  /** Number of item slots (one item each); at least 1. */
-  slots: number;
-  /** Thousandths of a tick an item waits in a slot before it may hop to the next (1000 = one slot per tick, the fastest a belt can run). */
-  step_milliticks: number;
-  /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
-  to: number;
-};
-
-/** A machine running one recipe. Its position (for belts and drawing) is its `Transform`. */
-type FactoryMachine = {
-  /** Most items held per input, and in the output. */
-  buffer: number;
-  /** Recipe id from `FactoryRecipes`. */
-  recipe: string;
-};
-
-/** Every recipe and item look of the scene. */
-type FactoryRecipes = {
-  /** Optional looks; items without one are small grey cubes. */
-  looks: Array<{
-    /** Linear RGBA color, each channel 0..1. */
-    color: {
-      a: number;
-      b: number;
-      g: number;
-      r: number;
-    };
-    item: string;
-    /** Model asset (default `primitive:cube`). */
-    model: string;
-    /** Uniform scale of the model. */
-    scale: number;
-  }>;
-  recipes: Array<{
-    id: string;
-    /** Up to four inputs, consumed when a cycle starts. */
-    inputs: Array<{
-      count: number;
-      item: string;
-    }>;
-    /** Produced when a cycle ends. A count of 0 makes a consumer (a lab, a sink): it uses its inputs and produces nothing, so its line never backs up. */
-    output: {
-      count: number;
-      item: string;
-    };
-    /** Length of one cycle in ticks (at least 1). */
-    ticks: number;
-  }>;
-};
-
-/** The compiled factory: flat arrays stepped every tick. Saved in the scene and hashed. */
-type FactoryState = {
-  /** Belts in scene-id order; their slots are consecutive in `slots`. */
-  belts: Array<{
-    entity: number;
-    /** First slot in `FactoryState::slots`. */
-    first: number;
-    /** Machine indices (into `FactoryState::machines`). */
-    from: number;
-    len: number;
-    step: number;
-    to: number;
-  }>;
-  /** Items delivered from belts into machines, ever. */
-  delivered: number;
-  /** Fingerprint of the authoring data these arrays were built from. A scene whose machines, belts or recipes changed gets fresh arrays at load. */
-  layout: number;
-  /** Machines in scene-id order. */
-  machines: Array<{
-    buffer: number;
-    /** Stable scene id of the machine entity. */
-    entity: number;
-    /** Items held per recipe input. */
-    have: Array<number>;
-    /** Finished items waiting to leave. */
-    output: number;
-    /** Ticks into the current cycle. */
-    progress: number;
-    /** Index into the recipe table. */
-    recipe: number;
-    /** 1 while a cycle runs. */
-    running: number;
-  }>;
-  /** Items finished by machines, ever. */
-  made: number;
-  /** Ticks the factory has run. */
-  now: number;
-  slots: Array<{
-    /** When the item arrived, in thousandths of a tick. */
-    arrived: number;
-    /** Item index, -1 when empty. */
-    item: number;
-  }>;
 };
 
 /** Length of one simulation tick in seconds. */
@@ -710,7 +634,7 @@ type LookAt = {
   };
 };
 
-/** Overrides the material of a `Model` (all of its parts) with simple PBR values. */
+/** Overrides the material of a `Model` (all of its parts) with simple PBR values. A base color alpha below 1 draws it see-through (decision 0281); the parts keep their sidedness. */
 type Material = {
   /** Linear RGBA color, each channel 0..1. */
   base_color: {
@@ -723,7 +647,7 @@ type Material = {
   roughness: number;
 };
 
-/** A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y). */
+/** A 3D model. `asset` is a glTF 2.0 file (`.gltf` or `.glb`) relative to the scene file, or a built-in shape: `primitive:cube` (1 m), `primitive:sphere` (1 m diameter), `primitive:plane` (1 m square, facing +Y), `primitive:grid` (the plane split into 64 x 64 squares, for shaders that move vertices). Meshes built in game code are `mesh:<name>` (decision 0180). */
 type Model = {
   asset: string;
 };
@@ -859,6 +783,45 @@ type NetPlayers = {
   slots: Array<number>;
 };
 
+/** Camera-facing particles (fire, sparks, smoke, dust, magic), computed on the GPU from game time alone (decision 0282): no particle state is stored or simulated, so they cost no tick time, never change the state hash, and the same tick always draws the same picture. Particles leave from the entity within `radius`, along its +Y within `spread_degrees`, and stay attached to it (they move when it moves). At most [`ParticleEmitter::MAX`] are alive. */
+type ParticleEmitter = {
+  /** How particles combine with what is behind them. */
+  blend: "Additive" | "Alpha";
+  /** Linear RGBA color, each channel 0..1. */
+  end_color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  end_size: number;
+  /** Acceleration toward world -Y in m/s² (9.8 falls like sparks; negative rises like smoke). */
+  gravity: number;
+  /** Image: a PNG relative to the scene or a built-in (`builtin:circle` is a soft dot). */
+  image: string;
+  /** Seconds each particle lives. */
+  lifetime: number;
+  /** Radius in meters of the ball they start in. */
+  radius: number;
+  /** Particles started per second. */
+  rate: number;
+  /** Changes the random pattern, so emitters side by side do not look alike. */
+  seed: number;
+  /** Start speed in m/s. */
+  speed: number;
+  /** Half-angle of the cone around the entity's +Y they leave in (180 = every direction). */
+  spread_degrees: number;
+  /** Linear color and opacity at birth and at death. Above 1 glows with `Bloom`. */
+  start_color: {
+    a: number;
+    b: number;
+    g: number;
+    r: number;
+  };
+  /** Size in meters at birth and at death. */
+  start_size: number;
+};
+
 /** Turns physics on for the scene and picks 3D or 2D. */
 type PhysicsSettings = {
   /** Acceleration in m/s² (2D uses x and y). */
@@ -966,6 +929,20 @@ type RigidBody = {
   lock_rotations: boolean;
 };
 
+/** How a game's saves are named and versioned. Put it in the game's scene; a world without it saves as game `""`, version 1, with autosave off. */
+type SaveFormat = {
+  /** Autosave every this many ticks (0: only on `save_request` events). */
+  autosave_every: number;
+  /** Autosave slots `auto-0` .. `auto-(n-1)`, overwritten oldest first (at least 1). */
+  autosave_slots: number;
+  /** Game id written in every save; a save of another game is refused on load. */
+  game: string;
+  /** Data migrations file (JSON, relative to the scene folder); empty for none. */
+  migrations: string;
+  /** Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. */
+  version: number;
+};
+
 /** Runs a TypeScript file every tick. `path` is relative to the scene file. The module must export `function update(self: Entity): void` (see the generated `marionette.d.ts`). */
 type Script = {
   path: string;
@@ -984,6 +961,16 @@ type ScriptState = {
 /** Pending timers of one entity (`engine.after`, `engine.every`), as JSON text. Written by the engine; present only on entities that ever scheduled a timer. Part of the state hash and of snapshots, so timers survive save and restore. */
 type ScriptTimers = {
   data: string;
+};
+
+/** Draws the entity's `Model` with a game shader. `Material` (if present) still sets the base color, metallic and roughness the shader starts from. */
+type ShaderMaterial = {
+  /** Up to 16 numbers, read in the shader as `game.params[i / 4][i % 4]`; missing ones are zero. */
+  params: Array<number>;
+  /** A name stored in `GameShaders`, or a `.wgsl` file relative to the scene file. */
+  shader: string;
+  /** Up to 4 images (PNG paths relative to the scene file, or `builtin:` images), bound as `tex0` to `tex3`; missing ones are white. */
+  textures: Array<string>;
 };
 
 /** Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map). */
@@ -1096,6 +1083,12 @@ type SpriteRegion = {
   width: number;
   x: number;
   y: number;
+};
+
+/** Stores model textures block-compressed on the GPU (BC7, decision 0283): a quarter of the memory and bandwidth of plain RGBA8, at a small loss of detail (mean error about one level in 255 on photos and normal maps). Each texture is encoded once on first load and kept in a bounded per-user disk cache. GPUs without BC formats, and textures whose size is not a multiple of 4, stay uncompressed. Sprites, UI and fonts are never compressed. */
+type TextureCompression = {
+  /** Also compress normal maps (false keeps them exact, for smooth mirror-like surfaces). */
+  normal_maps: boolean;
 };
 
 /** Turns on filmic tone mapping: lit colors are multiplied by `exposure`, then mapped so bright light rolls off smoothly instead of clipping at white. Without it, colors clamp at 1.0. */
@@ -1291,12 +1284,11 @@ interface Components {
   CharacterController: CharacterController;
   CharacterInput: CharacterInput;
   CharacterState: CharacterState;
+  ChildOf: ChildOf;
   Collider: Collider;
   DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;
   Emissive: Emissive;
-  FactoryBelt: FactoryBelt;
-  FactoryMachine: FactoryMachine;
   Follow: Follow;
   Grabbable: Grabbable;
   GravityWell: GravityWell;
@@ -1314,6 +1306,7 @@ interface Components {
   NavAgentState: NavAgentState;
   NavObstacle: NavObstacle;
   NavSurface: NavSurface;
+  ParticleEmitter: ParticleEmitter;
   PlanetCharacter: PlanetCharacter;
   PlanetState: PlanetState;
   PointLight: PointLight;
@@ -1325,6 +1318,7 @@ interface Components {
   ScriptInbox: ScriptInbox;
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
+  ShaderMaterial: ShaderMaterial;
   SoundSpatial: SoundSpatial;
   SphereFluid: SphereFluid;
   SpotLight: SpotLight;
@@ -1351,8 +1345,6 @@ interface Resources {
   AmbientLight: AmbientLight;
   Bloom: Bloom;
   Environment: Environment;
-  FactoryRecipes: FactoryRecipes;
-  FactoryState: FactoryState;
   FixedStep: FixedStep;
   Fog: Fog;
   Foveation: Foveation;
@@ -1363,9 +1355,11 @@ interface Resources {
   PhysicsSettings: PhysicsSettings;
   RayTracing: RayTracing;
   RenderScale: RenderScale;
+  SaveFormat: SaveFormat;
   ShadowCascades: ShadowCascades;
   Shadows: Shadows;
   SkyLight: SkyLight;
   SpawnIds: SpawnIds;
+  TextureCompression: TextureCompression;
   ToneMapping: ToneMapping;
 }

@@ -41,6 +41,8 @@ Anything that records history must have a bound:
   out counts). Systems must not rely on `RemovedComponents` across ticks.
 - The renderer's GPU asset cache grows with the assets drawn; call `Renderer::trim(frame)` (or
   `Offscreen::trim`) after switching scenes.
+- The BC7 texture cache (decision 0283, `marionette_assets::compress`) is on disk, bounded at
+  `CACHE_LIMIT` (2 GB) by least-recently-used eviction; files are written then renamed.
 - Kept on purpose, freed with their session: input recordings (one entry per action change),
   named snapshots (`session_snapshot`). Stopping the session frees them.
 

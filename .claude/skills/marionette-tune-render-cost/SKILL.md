@@ -16,9 +16,11 @@ Every control below except culling is off by default and set per scene with `res
 | --- | --- | --- |
 | Frustum culling | identical | always on; compare with `bench --no-cull` |
 | `LevelOfDetail` | far parts slightly simpler | many detailed models (64 triangles or more each) far from the camera |
+| `TextureCompression` | near identical (BC7) | many or large textures; a quarter of texture memory and bandwidth |
 | `RenderScale` below 1 | softer | GPU wait dominates and shading per pixel is heavy |
 | `RenderScale` above 1 | cleaner edges | spare GPU time and shimmering edges |
 | `Foveation` | edges of the view, headsets only | heavy shading in a headset |
+| Single-pass stereo | identical | automatic for two-eye renders where the device has multiview; compare with `MARIONETTE_SINGLE_PASS_STEREO=0`; bloom, render scale, UI and game shaders fall back to a pass per eye |
 | `--msaa 4` | anti-aliased edges | default; keep it |
 
 ## Steps
@@ -35,11 +37,15 @@ Every control below except culling is off by default and set per scene with `res
    scenes it can be slower. Measure.
 4. Headset mode with heavy shading: `Foveation` with `{"inner_radius": 0.7}`. Never on a flat
    screen (edges look stair-stepped up close).
-5. Re-run the bench with the same seed and frames; record both numbers.
+5. Many or large model textures (VRAM or bandwidth bound): `TextureCompression` with
+   `{"normal_maps": true}`. The first load encodes each texture (about 0.1 to 1 s per 2K
+   texture), later loads read a per-user cache.
+6. Re-run the bench with the same seed and frames; record both numbers.
 
 ## Traps
 
-- Turning `LevelOfDetail` on in a running scene reloads models once (a hitch).
+- Turning `LevelOfDetail` on, or `TextureCompression` on or off, in a running scene reloads
+  models once (a hitch).
 - Skinned and morphed models are not culled and keep full detail.
 - UI is never scaled or foveated.
 - A software GPU (lavapipe, WARP) says nothing about these controls' real cost.

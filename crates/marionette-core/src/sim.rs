@@ -15,6 +15,27 @@ use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// A copy of a simulation's whole state taken by [`Sim::capture_state`]. `Send`: turn it
+/// into a [`SimSnapshot`] on any thread.
+pub struct StateCapture {
+    pub capture: scene::Capture,
+    pub tick: u64,
+    pub rng: u64,
+    pub modules: std::collections::BTreeMap<&'static str, Vec<u8>>,
+}
+
+impl StateCapture {
+    /// The same snapshot [`Sim::save_state`] would have given at capture time.
+    pub fn into_snapshot(self, registry: &Registry) -> SimSnapshot {
+        SimSnapshot {
+            scene: self.capture.into_scene(registry).to_text(),
+            tick: self.tick,
+            rng: self.rng,
+            modules: self.modules,
+        }
+    }
+}
+
 pub struct Sim {
     pub world: World,
     schedule: Schedule,
@@ -60,9 +81,25 @@ impl Sim {
     }
 
     fn new_world(&self, text: &str, file: Option<&str>, rng: SimRng, clock: SimClock) -> Result<World> {
+        self.world_from(file, rng, clock, |world| {
+            scene::load(text, file, &self.registry, world)
+        })
+    }
+
+    fn world_from(
+        &self,
+        file: Option<&str>,
+        rng: SimRng,
+        clock: SimClock,
+        load: impl FnOnce(&mut World) -> Result<()>,
+    ) -> Result<World> {
         let mut world = World::new();
         self.registry.init_world(&mut world);
-        scene::load(text, file, &self.registry, &mut world)?;
+        load(&mut world)?;
+        crate::hierarchy::place_loaded(&mut world).map_err(|e| match file {
+            Some(f) => e.with_file(f),
+            None => e,
+        })?;
         world.insert_resource(rng);
         world.insert_resource(clock);
         world.insert_resource(SceneDir(self.scene_dir.clone()));
@@ -104,9 +141,22 @@ impl Sim {
     /// RNG state and the event log, so a live session can be edited and keep running
     /// deterministically. On error the current world is left unchanged.
     pub fn reload(&mut self, text: &str) -> Result<()> {
+        self.reload_with(|world, registry| scene::load(text, None, registry, world))
+    }
+
+    /// [`Sim::reload`] from a scene already in memory: the same world as reloading its text,
+    /// without writing and reading that text. Problems carry no line numbers.
+    pub fn reload_scene(&mut self, scene: &scene::Scene) -> Result<()> {
+        self.reload_with(|world, registry| {
+            scene::instantiate(scene::validate(scene, registry, None)?, world);
+            Ok(())
+        })
+    }
+
+    fn reload_with(&mut self, load: impl FnOnce(&mut World, &Registry) -> Result<()>) -> Result<()> {
         let rng = *self.world.resource::<SimRng>();
         let clock = *self.world.resource::<SimClock>();
-        let mut world = self.new_world(text, None, rng, clock)?;
+        let mut world = self.world_from(None, rng, clock, |world| load(world, &self.registry))?;
         world.insert_resource(self.world.resource::<EventLog>().clone());
         self.world = world;
         // Systems cache state per world, so a new world needs a fresh schedule.
@@ -191,6 +241,23 @@ impl Sim {
     /// a shared [`Registry`]. Gives the same scene as [`Sim::snapshot`].
     pub fn capture(&mut self) -> scene::Capture {
         scene::capture(&mut self.world, &self.registry)
+    }
+
+    /// Everything [`Sim::save_state`] keeps, copied cheaply on the main thread (component
+    /// and resource copies, tick, RNG, module bytes) so the slow part, scene text, can be
+    /// built elsewhere with [`StateCapture::into_snapshot`]. Used by saves (decision 0076).
+    pub fn capture_state(&mut self) -> StateCapture {
+        let modules = self
+            .modules
+            .iter()
+            .filter_map(|m| m.save(&self.world).map(|b| (m.name(), b)))
+            .collect();
+        StateCapture {
+            capture: self.capture(),
+            tick: self.tick(),
+            rng: self.world.resource::<SimRng>().state(),
+            modules,
+        }
     }
 
     /// SHA-256 (hex) of all simulation state: the canonical scene text plus the tick

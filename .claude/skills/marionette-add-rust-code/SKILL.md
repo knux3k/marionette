@@ -1,6 +1,6 @@
 ---
 name: marionette-add-rust-code
-description: Add a game's own Rust module (components, resources, systems) and its own operations to Marionette without forking or editing the engine, building the game as its own binary. Use when gameplay or simulation needs native speed, when porting Burst jobs, when a game needs a custom operation or MCP tool, or when trimming unused engine parts from a build.
+description: Add a game's own Rust module (components, resources, systems, operations) without forking the engine. Use when gameplay or simulation needs native speed, when porting Burst jobs, for a custom operation or MCP tool, meshes built in code or own WGSL shaders, or to trim unused engine parts from a build.
 ---
 
 # Add a game's own Rust code
@@ -14,8 +14,8 @@ the data needs structs, 64-bit integers, or the last factor of speed.
 ## Steps
 
 1. Make a crate that depends on `marionette-core`, `marionette-agent` and `marionette-cli`
-   with `default-features = false` and only the features the game uses: `script`, `import`,
-   `pool`, `generate`, `port`, `jobs-ts`.
+   with `default-features = false` and only the features the game uses: `physics`, `audio`,
+   `anim`, `xr`, `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`, `nav`.
 2. Components and resources: derive `Component` or `Resource`, plus `Reflect`, `Debug`,
    `Clone`, `PartialEq`, with a doc comment (it becomes the schema description). All fields
    are required in scene files. Entity references use the scene reference type so the
@@ -54,3 +54,15 @@ the data needs structs, 64-bit integers, or the last factor of speed.
 - A test runs a scene twice with the same seed and compares state hashes; `perf_sim` with 1
   and several threads gives the same hash.
 - Scenarios cover each operation (skill `marionette-test-game`).
+
+## Meshes and shaders from game code
+
+- Mesh: build a GameMesh (`marionette_core::mesh`; `GameMesh::grid` for height fields),
+  store it with `GameMeshes::set_in(world, "patch", mesh)`, draw `Model { asset:
+  "mesh:patch" }`. Storing again rewrites it (same sizes reuse GPU buffers); culling, level of
+  detail and shadows apply.
+- Shader: WGSL with `fn surface(s: ptr<function, Surface>, i: SurfaceIn)` and/or
+  `fn vertex(v: ptr<function, Vertex>)`, in a `.wgsl` file or stored with
+  `GameShaders::set_in`; add `ShaderMaterial { shader, params, textures }` next to the
+  `Model`. Engine lighting still applies. Errors are `render.shader` diagnostics. Full
+  contract: the engine's SHADERS guide.

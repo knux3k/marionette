@@ -13,6 +13,8 @@ when the task calls for it, and then only the section that matters.
 2. [FOCUSES.md](FOCUSES.md): the four standing focuses and the open gaps.
 3. [STATE.md](STATE.md): status per plan line and the UNVERIFIED list.
 
+Before building on a feature, look up its level (slice, usable, proven) in [STATUS.md](STATUS.md).
+
 ## Skills first
 
 For a task with a procedure, load its skill instead of a doc: `.claude/skills/<name>/SKILL.md`
@@ -35,8 +37,10 @@ table below is for everything else.
 | Budgets and measuring | [PERFORMANCE.md](PERFORMANCE.md) |
 | Culling, level of detail, anti-aliasing, frame cost controls | [RENDER-COST.md](RENDER-COST.md) |
 | Hot loops in TypeScript | [JOBS-TS.md](JOBS-TS.md) |
+| Game shaders (WGSL) | [SHADERS.md](SHADERS.md) |
 | Unity or Unreal code | [PORTING.md](PORTING.md) |
 | Stability modes | [STABILITY.md](STABILITY.md) |
+| Package a game (Windows, Linux, Steam Deck, Steam Frame) | [PACKAGING.md](PACKAGING.md) |
 | Generating images and models | [GENERATION.md](GENERATION.md) |
 | The six proof games and their gaps | [PROOF-SCENES.md](PROOF-SCENES.md) |
 | Add or update a skill | `.claude/skills/engine-add-skill/SKILL.md` |

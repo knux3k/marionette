@@ -1,0 +1,255 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "clear_color": {
+            "a": 1.0,
+            "b": 0.25,
+            "g": 0.15,
+            "r": 0.12
+          },
+          "projection": {
+            "Perspective": {
+              "far": 100.0,
+              "fov_y_degrees": 50.0,
+              "near": 0.1
+            }
+          }
+        },
+        "LookAt": {
+          "target": {
+            "x": 0.0,
+            "y": 0.6,
+            "z": 0.0
+          },
+          "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+          }
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 3.5,
+            "y": 3.2,
+            "z": 7.5
+          }
+        }
+      },
+      "id": 1,
+      "name": "camera"
+    },
+    {
+      "components": {
+        "DirectionalLight": {
+          "color": {
+            "a": 1.0,
+            "b": 0.85,
+            "g": 0.95,
+            "r": 1.0
+          },
+          "direction": {
+            "x": -0.5,
+            "y": -0.8,
+            "z": -0.4
+          },
+          "illuminance": 1.4
+        }
+      },
+      "id": 2,
+      "name": "sun"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "primitive:plane"
+        },
+        "ShaderMaterial": {
+          "params": [
+            0.9,
+            0.75,
+            0.55,
+            3.0
+          ],
+          "shader": "shaders/checker-tint.wgsl",
+          "textures": [
+            "builtin:checker"
+          ]
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 7.0,
+            "y": 1.0,
+            "z": 8.0
+          },
+          "translation": {
+            "x": -1.5,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 3,
+      "name": "tiled floor"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "primitive:grid"
+        },
+        "ShaderMaterial": {
+          "params": [
+            0.05,
+            2.0,
+            0.6,
+            0.1,
+            0.02,
+            0.07,
+            0.1
+          ],
+          "shader": "shaders/waves.wgsl",
+          "textures": []
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 4.0,
+            "y": 1.0,
+            "z": 8.0
+          },
+          "translation": {
+            "x": 4.5,
+            "y": 0.1,
+            "z": 0.0
+          }
+        }
+      },
+      "id": 4,
+      "name": "water"
+    },
+    {
+      "components": {
+        "Material": {
+          "base_color": {
+            "a": 1.0,
+            "b": 0.2,
+            "g": 0.25,
+            "r": 0.8
+          },
+          "metallic": 0.0,
+          "roughness": 0.4
+        },
+        "Model": {
+          "asset": "primitive:sphere"
+        },
+        "Transform": {
+          "rotation": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.5,
+            "y": 1.5,
+            "z": 1.5
+          },
+          "translation": {
+            "x": -1.0,
+            "y": 0.75,
+            "z": 0.5
+          }
+        }
+      },
+      "id": 5,
+      "name": "ball"
+    },
+    {
+      "components": {
+        "Model": {
+          "asset": "primitive:cube"
+        },
+        "ShaderMaterial": {
+          "params": [
+            0.2,
+            0.8,
+            1.0,
+            1.5
+          ],
+          "shader": "shaders/hologram.wgsl",
+          "textures": []
+        },
+        "Transform": {
+          "rotation": {
+            "w": 0.9239,
+            "x": 0.0,
+            "y": 0.3827,
+            "z": 0.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.8,
+            "z": 1.0
+          },
+          "translation": {
+            "x": 1.2,
+            "y": 0.9,
+            "z": -0.8
+          }
+        }
+      },
+      "id": 6,
+      "name": "hologram"
+    }
+  ],
+  "format": "marionette.scene",
+  "resources": {
+    "Shadows": {
+      "distance": 12.0,
+      "resolution": 2048,
+      "softness": 1.5
+    },
+    "SkyLight": {
+      "ground": {
+        "a": 1.0,
+        "b": 0.08,
+        "g": 0.09,
+        "r": 0.1
+      },
+      "intensity": 0.4,
+      "sky": {
+        "a": 1.0,
+        "b": 0.5,
+        "g": 0.32,
+        "r": 0.25
+      }
+    },
+    "ToneMapping": {
+      "exposure": 1.2
+    }
+  },
+  "version": 1
+}

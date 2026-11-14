@@ -11,6 +11,7 @@ mod environment;
 pub mod extract;
 pub mod frame_stats;
 pub mod gpu;
+pub mod particles;
 mod post;
 mod probes;
 mod raytrace;

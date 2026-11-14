@@ -49,7 +49,8 @@ There is no frame-rate update: everything runs in fixed ticks and must be determ
   `engine.rand()`.
 - Coroutines split at each wait into exported step functions chained with `engine.after`.
 - Component access returns copies: get, change, set.
-- No parenting: use separate entities with `Follow` or `LookAt`, or copy positions.
+- Parenting: give the child `ChildOf` (`entity_attach` keeps its place); local position is
+  `self.get("ChildOf").translation`. Children are not listed.
 - Pushing a dynamic body from a script is a gap: use a kinematic body or
   `CharacterController`.
 - Burst jobs become systems of the game's own Rust module (skill

@@ -1,0 +1,304 @@
+{
+ "format": "marionette.ops",
+ "version": 1,
+ "ops": [
+  {
+   "op": "scene_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json"
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "resource": "SkyLight",
+    "value": {
+     "sky": {
+      "r": 0.25,
+      "g": 0.32,
+      "b": 0.5,
+      "a": 1.0
+     },
+     "ground": {
+      "r": 0.1,
+      "g": 0.09,
+      "b": 0.08,
+      "a": 1.0
+     },
+     "intensity": 0.4
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "resource": "Shadows",
+    "value": {
+     "distance": 12.0,
+     "resolution": 2048,
+     "softness": 1.5
+    }
+   }
+  },
+  {
+   "op": "resource_set",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "resource": "ToneMapping",
+    "value": {
+     "exposure": 1.2
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "camera",
+    "components": {
+     "Camera": {
+      "clear_color": {
+       "r": 0.12,
+       "g": 0.15,
+       "b": 0.25,
+       "a": 1.0
+      },
+      "projection": {
+       "Perspective": {
+        "far": 100.0,
+        "fov_y_degrees": 50.0,
+        "near": 0.1
+       }
+      }
+     },
+     "LookAt": {
+      "target": {
+       "x": 0,
+       "y": 0.6,
+       "z": 0
+      },
+      "up": {
+       "x": 0,
+       "y": 1,
+       "z": 0
+      }
+     },
+     "Transform": {
+      "translation": {
+       "x": 3.5,
+       "y": 3.2,
+       "z": 7.5
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1,
+       "y": 1,
+       "z": 1
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "sun",
+    "components": {
+     "DirectionalLight": {
+      "color": {
+       "r": 1.0,
+       "g": 0.95,
+       "b": 0.85,
+       "a": 1.0
+      },
+      "direction": {
+       "x": -0.5,
+       "y": -0.8,
+       "z": -0.4
+      },
+      "illuminance": 1.4
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "tiled floor",
+    "components": {
+     "Model": {
+      "asset": "primitive:plane"
+     },
+     "ShaderMaterial": {
+      "shader": "shaders/checker-tint.wgsl",
+      "params": [
+       0.9,
+       0.75,
+       0.55,
+       3.0
+      ],
+      "textures": [
+       "builtin:checker"
+      ]
+     },
+     "Transform": {
+      "translation": {
+       "x": -1.5,
+       "y": 0,
+       "z": 0
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 7,
+       "y": 1,
+       "z": 8
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "water",
+    "components": {
+     "Model": {
+      "asset": "primitive:grid"
+     },
+     "ShaderMaterial": {
+      "shader": "shaders/waves.wgsl",
+      "params": [
+       0.05,
+       2.0,
+       0.6,
+       0.1,
+       0.02,
+       0.07,
+       0.1
+      ],
+      "textures": []
+     },
+     "Transform": {
+      "translation": {
+       "x": 4.5,
+       "y": 0.1,
+       "z": 0
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 4,
+       "y": 1,
+       "z": 8
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "ball",
+    "components": {
+     "Model": {
+      "asset": "primitive:sphere"
+     },
+     "Material": {
+      "base_color": {
+       "r": 0.8,
+       "g": 0.25,
+       "b": 0.2,
+       "a": 1.0
+      },
+      "metallic": 0.0,
+      "roughness": 0.4
+     },
+     "Transform": {
+      "translation": {
+       "x": -1.0,
+       "y": 0.75,
+       "z": 0.5
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0,
+       "z": 0,
+       "w": 1
+      },
+      "scale": {
+       "x": 1.5,
+       "y": 1.5,
+       "z": 1.5
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "entity_create",
+   "input": {
+    "scene": "examples/game-shader.scene.json",
+    "name": "hologram",
+    "components": {
+     "Model": {
+      "asset": "primitive:cube"
+     },
+     "ShaderMaterial": {
+      "shader": "shaders/hologram.wgsl",
+      "params": [
+       0.2,
+       0.8,
+       1.0,
+       1.5
+      ],
+      "textures": []
+     },
+     "Transform": {
+      "translation": {
+       "x": 1.2,
+       "y": 0.9,
+       "z": -0.8
+      },
+      "rotation": {
+       "x": 0,
+       "y": 0.3827,
+       "z": 0,
+       "w": 0.9239
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.8,
+       "z": 1.0
+      }
+     }
+    }
+   }
+  },
+  {
+   "op": "scene_validate",
+   "input": {
+    "scene": "examples/game-shader.scene.json"
+   }
+  }
+ ]
+}
