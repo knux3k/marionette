@@ -26,8 +26,9 @@ kept the older run going.
   cancelled, and passes when a job was skipped on purpose.
 - Dropped the separate `cargo build` step (the test step builds the same thing) and made the
   Rust cache save only on main, so pull requests read it without each uploading a new copy.
-- Turning the queue on is a repository setting (a ruleset on `main`: require a pull request,
-  require the `CI gate` check, require merge queue). It is not in the workflow files.
+- The queue is a repository ruleset on `main` (require a pull request, require the `CI gate`
+  check, require merge queue; no bypass), turned on 2026-11-14. It is not in the workflow files;
+  repository auto-merge is on so a pull request joins the queue with auto-merge.
 
 ## Consequences
 
