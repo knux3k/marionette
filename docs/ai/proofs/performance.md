@@ -2,10 +2,11 @@
 
 ## Performance (workstream WP)
 
-Proofs: `cargo test -p marionette-cli --test perf_proofs` (thread-independent factory hash,
+Proofs: `cargo test -p marionette-example-factory --test perf_proofs` (thread-independent factory hash,
 draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
-`cargo test -p marionette-factory`; timing budgets in release:
-`cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`.
+`cargo test -p marionette-example-factory` (also its stability modes and the `perf_suite`
+factory cases, decision 0270); timing budgets in release:
+`cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1`.
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 
 ## Porting Burst jobs (decision 0072)

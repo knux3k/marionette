@@ -1,16 +1,25 @@
 //! Timing budgets (decision 0023). Wall-clock numbers depend on the machine, so these run
 //! only when asked, in a release build, one test at a time:
 //!
-//! `cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1`
+//! `cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1`
 //!
 //! CI runs them on every push (job `perf`). Each budget is the per-frame share a large VR
 //! factory game can spend at 90 Hz (docs/ai/PERFORMANCE.md); the measured value is printed
 //! so a regression shows long before it fails.
 
-use marionette_agent::{Agent, engine};
+use marionette_agent::{Agent, Engine};
+use marionette_core::Sim;
 use marionette_render::{Gpu, Offscreen, extract};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
+
+fn factory_engine() -> Engine {
+    marionette_example_factory::engine().unwrap()
+}
+
+fn load(path: &Path, shown: &str, seed: u64) -> Result<Sim, marionette_core::Errors> {
+    factory_engine().load_file(path, shown, seed)
+}
 use std::time::Instant;
 
 /// Simulation tick of a 4x factory (952 machines, 15k belt slots), p99.
@@ -24,7 +33,6 @@ const LOAD_32X_MS: f64 = 5000.0;
 const SAVE_CAPTURE_4X_MS: f64 = 2.0;
 /// Main-thread part of a whole save game of a 4x factory (`save_write`: state copy plus
 /// module bytes); scene text, checksum and file go to the save thread (decision 0076).
-#[cfg(feature = "save")]
 const SAVE_GAME_4X_MS: f64 = 2.0;
 /// CPU side of a stereo frame of the 32x factory: extract plus record and submit, median.
 const RENDER_CPU_32X_STEREO_MS: f64 = 4.0;
@@ -73,7 +81,7 @@ fn check(name: &str, measured: f64, budget: f64) {
 #[ignore = "timing: release builds only, see the file header"]
 fn sim_tick_budgets() {
     let d = dir();
-    let mut agent = Agent::new(&d, false);
+    let mut agent = Agent::with_engine(&d, false, factory_engine());
     let s4 = factory(&mut agent, &d, 4);
     let r = call(
         &mut agent,
@@ -95,9 +103,9 @@ fn sim_tick_budgets() {
 #[ignore = "timing: release builds only, see the file header"]
 fn save_capture_budget() {
     let d = dir();
-    let mut agent = Agent::new(&d, false);
+    let mut agent = Agent::with_engine(&d, false, factory_engine());
     let s4 = factory(&mut agent, &d, 4);
-    let mut sim = engine::load_file(Path::new(&s4), "factory4", 0).unwrap();
+    let mut sim = load(Path::new(&s4), "factory4", 0).unwrap();
     sim.run(600);
     let mut best = f64::MAX;
     for _ in 0..5 {
@@ -117,11 +125,10 @@ fn save_capture_budget() {
 }
 
 #[test]
-#[cfg(feature = "save")]
 #[ignore = "timing: release builds only, see the file header"]
 fn save_game_budget() {
     let d = dir();
-    let mut agent = Agent::new(&d, false);
+    let mut agent = Agent::with_engine(&d, false, factory_engine());
     let s4 = factory(&mut agent, &d, 4);
     let s = call(&mut agent, "session_start", json!({ "scene": s4, "ticks": 600 }));
     let saves = d.join("saves").to_string_lossy().to_string();
@@ -159,9 +166,9 @@ fn render_cpu_budget() {
         Err(e) => panic!("GPU required but unavailable: {e}"),
     };
     let d = dir();
-    let mut agent = Agent::new(&d, false);
+    let mut agent = Agent::with_engine(&d, false, factory_engine());
     let s32 = factory(&mut agent, &d, 32);
-    let mut sim = engine::load_file(Path::new(&s32), "factory32", 0).unwrap();
+    let mut sim = load(Path::new(&s32), "factory32", 0).unwrap();
     sim.run(600);
     // A small target keeps GPU time out of the way: this budget is the CPU's part.
     let mut off = Offscreen::new(&gpu, 64, 64, 1, d.clone());

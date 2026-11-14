@@ -52,6 +52,7 @@ jobs:
       - name: Lean builds, a game with only the engine parts it uses (decision 0062)
         run: |
           cargo clippy --locked -p marionette-agent -p marionette-cli --no-default-features --all-targets -- -D warnings
+          cargo clippy --locked -p marionette-agent -p marionette-cli --no-default-features --features marionette-cli/audio,marionette-cli/xr --all-targets -- -D warnings
           cargo test --locked -p marionette-example-rust-module
           cargo clippy --locked -p marionette-agent -p marionette-cli --features marionette-agent/ui3d,marionette-cli/ui3d --all-targets -- -D warnings
           cargo test --locked -p marionette-agent --features ui3d --test ui3d_ops
@@ -105,15 +106,15 @@ jobs:
       - name: Software Vulkan, ALSA headers
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libasound2-dev libudev-dev
       - name: Timing budgets (decision 0021; docs/ai/PERFORMANCE.md)
-        run: cargo test --release --locked -p marionette-cli --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        run: cargo test --release --locked -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
         env:
           MARIONETTE_REQUIRE_GPU: "1"
           MARIONETTE_BUDGET_SCALE: "2"
           WGPU_BACKEND: vulkan
       - name: Factory benchmark numbers (for the log)
         run: |
-          cargo run --release --locked -q -p marionette-cli -- op perf_factory_scene '{"out":"target/factory4.scene.json","scale":4}'
-          cargo run --release --locked -q -p marionette-cli -- op perf_sim '{"scene":"target/factory4.scene.json","ticks":1200}'
+          cargo run --release --locked -q -p marionette-example-factory --bin factory-bench -- op perf_factory_scene '{"out":"target/factory4.scene.json","scale":4}'
+          cargo run --release --locked -q -p marionette-example-factory --bin factory-bench -- op perf_sim '{"scene":"target/factory4.scene.json","ticks":1200}'
 
   leaks:
     if: github.event_name != 'pull_request'

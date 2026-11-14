@@ -1,0 +1,28 @@
+[package]
+name = "marionette-example-factory"
+description = "Example game module: a factory simulation (machines, recipes, item belts as flat arrays on deterministic parallel jobs), its benchmark scene and its performance budgets. Not part of the engine (decision 0270)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "factory-bench"
+path = "src/main.rs"
+
+[dependencies]
+marionette-core.workspace = true
+marionette-host.workspace = true
+marionette-jobs.workspace = true
+# The whole default engine: the benchmark suite compares the factory against every other case.
+marionette-agent = { path = "../../crates/marionette-agent" }
+marionette-cli = { path = "../../crates/marionette-cli" }
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars = "1.2"
+
+[dev-dependencies]
+marionette-render = { path = "../../crates/marionette-render" }

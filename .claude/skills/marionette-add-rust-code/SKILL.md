@@ -14,8 +14,8 @@ the data needs structs, 64-bit integers, or the last factor of speed.
 ## Steps
 
 1. Make a crate that depends on `marionette-core`, `marionette-agent` and `marionette-cli`
-   with `default-features = false` and only the features the game uses: `script`, `import`,
-   `pool`, `generate`, `port`, `jobs-ts`.
+   with `default-features = false` and only the features the game uses: `physics`, `audio`,
+   `anim`, `xr`, `script`, `import`, `pool`, `generate`, `port`, `jobs-ts`, `save`, `nav`.
 2. Components and resources: derive `Component` or `Resource`, plus `Reflect`, `Debug`,
    `Clone`, `PartialEq`, with a doc comment (it becomes the schema description). All fields
    are required in scene files. Entity references use the scene reference type so the

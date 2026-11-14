@@ -23,14 +23,15 @@ CI multiplies timing budgets by `MARIONETTE_BUDGET_SCALE=2` (job `perf` in
 
 ```bash
 # Timing budgets (release, one test at a time)
-cargo test --release -p marionette-cli --test perf_budgets -- --ignored --test-threads=1 --nocapture
+cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
 
-# A factory of a given size, then its tick cost
-cargo run --release -q -p marionette-cli -- op perf_factory_scene '{"out":"target/f4.scene.json","scale":4}'
-cargo run --release -q -p marionette-cli -- op perf_sim '{"scene":"target/f4.scene.json","ticks":1200}'
+# A factory of a given size, then its tick cost. The factory is an example module, not part
+# of the engine (decision 0270): `factory-bench` is the CLI with it added.
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_factory_scene '{"out":"target/f4.scene.json","scale":4}'
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_sim '{"scene":"target/f4.scene.json","ticks":1200}'
 
 # Rendering with an emulated headset (2 eyes, 2160x2160 each, 64 mm IPD, head yaw)
-cargo run --release -q -p marionette-cli -- bench target/f4.scene.json --headset --frames 120
+cargo run --release -q -p marionette-example-factory --bin factory-bench -- bench target/f4.scene.json --headset --frames 120
 ```
 
 `perf_sim` reports average, p50, p99 and max per tick, load time, thread count and the state
@@ -67,7 +68,7 @@ target/release/marionette op perf_compare '{"base":".marionette/perf/before.json
 
 - Cases (suite `core/1`, `crates/marionette-agent/src/perf_suite.rs`): `startup/*` (engine
   build, a new process to its first tick), `sim/*` (examples, factory 4x and 32x, the six proof
-  games), `render/*` (1920x1080 mono and 2x2160x2160 headset, MSAA 4). Each case: load time,
+  games; the factory cases run only in `factory-bench` and are skipped by the plain CLI), `render/*` (1920x1080 mono and 2x2160x2160 headset, MSAA 4). Each case: load time,
   tick or frame percentiles (frame split into sim, extract, record, GPU wait), allocations per
   tick, counted heap, run-to-run noise, state hash, and SHA-256 of a fixed final image.
 - `perf_compare` says `outputs_identical: false` when any state hash differs, or any image hash
