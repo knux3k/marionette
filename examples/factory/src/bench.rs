@@ -1,7 +1,7 @@
 //! The factory benchmark scene and the `perf_factory_scene` operation (decision 0023): a
 //! grid of production cells (miners, smelters, wire, circuits, a lab) joined by belts. The
 //! engine's `perf_suite` runs it as `sim/factory-*` and `render/factory-*` when the engine it
-//! runs in has this operation (decision 0270).
+//! runs in has this operation (decision 0290).
 
 use marionette_agent::{Agent, Op, codes, op};
 use marionette_core::{Diagnostic, Errors, scene};

@@ -1,6 +1,6 @@
 [package]
 name = "marionette-example-factory"
-description = "Example game module: a factory simulation (machines, recipes, item belts as flat arrays on deterministic parallel jobs), its benchmark scene and its performance budgets. Not part of the engine (decision 0270)."
+description = "Example game module: a factory simulation (machines, recipes, item belts as flat arrays on deterministic parallel jobs), its benchmark scene and its performance budgets. Not part of the engine (decision 0290)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

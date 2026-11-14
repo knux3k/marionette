@@ -5,7 +5,7 @@
 Proofs: `cargo test -p marionette-example-factory --test perf_proofs` (thread-independent factory hash,
 draw calls and instances with 2 eyes); `cargo test -p marionette-jobs`;
 `cargo test -p marionette-example-factory` (also its stability modes and the `perf_suite`
-factory cases, decision 0270); timing budgets in release:
+factory cases, decision 0290); timing budgets in release:
 `cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1`.
 Numbers and budgets: `docs/ai/PERFORMANCE.md`.
 

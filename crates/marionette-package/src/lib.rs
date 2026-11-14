@@ -52,7 +52,7 @@ pub const FORMAT: &str = "marionette.package";
 /// Oldest glibc a Linux package may need: Steam Linux Runtime 3.0 (sniper) ships 2.31.
 pub const GLIBC_FLOOR: (u32, u32) = (2, 31);
 /// Engine features a packaged game may get when it has no binary of its own: gamepads,
-/// saving, physics, audio and animation always (decision 0270), scripts, job TypeScript and OpenXR only when the game uses them ([`detect_features`]). Import, pool,
+/// saving, physics, audio and animation always (decision 0290), scripts, job TypeScript and OpenXR only when the game uses them ([`detect_features`]). Import, pool,
 /// generation, porting and packaging are editor tools and stay out.
 pub const RUNTIME_FEATURES: &[&str] = &[
     "gamepad", "save", "physics", "audio", "anim", "script", "jobs-ts", "xr",
@@ -60,7 +60,7 @@ pub const RUNTIME_FEATURES: &[&str] = &[
 
 /// The runtime features a game's files use: `gamepad` always (Deck and Frame players hold one,
 /// decision 0172), `save` always (autosave, F5 and F9; decision 0076), `physics`, `audio` and
-/// `anim` always (scene components any scene or script may use; decision 0270), `script` when it has TypeScript files,
+/// `anim` always (scene components any scene or script may use; decision 0290), `script` when it has TypeScript files,
 /// `jobs-ts` when any text names `JobData`, `JobSchedule` or `engine.jobs` (job TypeScript
 /// brings wasmtime, about 12 MB of binary), `xr` when a scene has an `XrRig` (decision 0190).
 pub fn detect_features(dir: &Path, files: &[String]) -> Vec<String> {

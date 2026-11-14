@@ -26,7 +26,7 @@ CI multiplies timing budgets by `MARIONETTE_BUDGET_SCALE=2` (job `perf` in
 cargo test --release -p marionette-example-factory --test perf_budgets -- --ignored --test-threads=1 --nocapture
 
 # A factory of a given size, then its tick cost. The factory is an example module, not part
-# of the engine (decision 0270): `factory-bench` is the CLI with it added.
+# of the engine (decision 0290): `factory-bench` is the CLI with it added.
 cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_factory_scene '{"out":"target/f4.scene.json","scale":4}'
 cargo run --release -q -p marionette-example-factory --bin factory-bench -- op perf_sim '{"scene":"target/f4.scene.json","ticks":1200}'
 

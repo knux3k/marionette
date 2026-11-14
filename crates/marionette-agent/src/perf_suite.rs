@@ -55,7 +55,7 @@ enum Source {
     File(&'static str),
     /// A scene written by an operation that takes `{ "out": <path>, "scale": <n> }`. A game
     /// or example adds the operation (the factory example adds `perf_factory_scene`,
-    /// decision 0270); in an engine without it the case is skipped.
+    /// decision 0290); in an engine without it the case is skipped.
     Generated {
         op: &'static str,
         scale: u32,

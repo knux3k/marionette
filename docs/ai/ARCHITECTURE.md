@@ -30,11 +30,11 @@
 | `crates/marionette-net` | Co-op networking (decisions 0210, 0211): `Transport`/`Datagram` interfaces, reliability layer (`Endpoint`), loopback network with simulated latency and loss, UDP, host-stamped lockstep `Host`/`Client` with hash checks and late join, `NetModule` (`NetPlayers`), `Lobbies`, `simulate` | core, input, bevy_ecs, serde, schemars | render, physics, audio, agent, any store SDK |
 | `crates/marionette-platform` | Achievements and stats from a definitions file (`Tracker`), cloud files, three-way save-folder sync, `OfflinePlatform` (decision 0213) | serde, sha2, schemars | any marionette crate, any store SDK |
 | `crates/marionette-steam` | Optional Steam backend: `Transport`, `Lobbies`, `Achievements`, `CloudFiles` over the game's own steam_api library loaded at run time; no SDK files (decision 0212). Used by a game's binary only | net, platform, libloading | agent, cli (never in the `marionette` tool) |
-| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | core, host, input, render, jobs, assets; physics, audio, anim, xr, script, import, pool, generate, port, jobs-ts, netplay, nav, save, editor, ui3d behind cargo features (decisions 0062, 0270), rmcp, tokio, schemars | clap |
+| `crates/marionette-agent` | The operation table (project, edit, session, observe, test), `Engine`/`EngineBuilder` (built-in modules plus a game's own), generated docs, MCP server | core, host, input, render, jobs, assets; physics, audio, anim, xr, script, import, pool, generate, port, jobs-ts, netplay, nav, save, editor, ui3d behind cargo features (decisions 0062, 0290), rmcp, tokio, schemars | clap |
 | `crates/marionette-cli` | The `marionette` binary and `main_with(engine)` for a game's binary: argument parsing and printing only | agent, render, core, clap | anything new: add logic to an operation instead |
 
 Examples are games, not engine crates: `examples/rust-module` (template) and
-`examples/factory` (factory simulation, its benchmark scene and budgets, decision 0270).
+`examples/factory` (factory simulation, its benchmark scene and budgets, decision 0290).
 
 Planned crates (not created yet): marionette-ai-runtime (line 10).
 `marionette-assets` will grow the asset pipeline (line 8).

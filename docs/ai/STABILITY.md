@@ -40,7 +40,7 @@ apart, decision 0025). A mode with `setup` runs operations first, for example
 `perf_factory_scene` to generate a factory scene under `target/stability/`. A game or example
 keeps modes that need its own module in its own suite file, run with its own binary: the factory
 example's `examples/factory/stability.json` runs as
-`factory-bench stability --suite examples/factory/stability.json` (decision 0270).
+`factory-bench stability --suite examples/factory/stability.json` (decision 0290).
 
 ## Current suite (`stability/suite.json`)
 

@@ -1,5 +1,5 @@
 //! The engine's shared suites run the factory when the engine they run in has it (decision
-//! 0270): its stability modes pass, and `perf_suite` runs the `sim/factory-*` cases that a
+//! 0290): its stability modes pass, and `perf_suite` runs the `sim/factory-*` cases that a
 //! plain engine skips.
 
 use marionette_agent::Agent;

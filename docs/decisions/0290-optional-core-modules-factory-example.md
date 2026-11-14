@@ -1,4 +1,4 @@
-# 0270: Physics, audio, animation and XR are cargo features; the factory module is an example
+# 0290: Physics, audio, animation and XR are cargo features; the factory module is an example
 
 Date: 2026-11-14. Status: accepted. Extends 0062; moves the crate of 0026.
 

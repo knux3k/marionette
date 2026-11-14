@@ -48,7 +48,7 @@ tokio = { version = "1", features = ["rt"] }
 # `default-features = false, features = ["script"]`. Each feature adds its operations (and
 # for `script`, the script module).
 default = ["physics", "audio", "anim", "xr", "script", "import", "pool", "generate", "port", "jobs-ts", "package", "netplay", "nav", "starter", "save", "editor"]
-# Rigid bodies, colliders, character controllers and raycasts (Rapier; decision 0270).
+# Rigid bodies, colliders, character controllers and raycasts (Rapier; decision 0290).
 physics = ["dep:marionette-physics"]
 # Sound playback, spatial audio and the synth (kira; audio_*, synth_* operations).
 audio = ["dep:marionette-audio", "dep:marionette-synth"]

@@ -19,7 +19,7 @@
 //! snapshots and part of the state hash. Items on belts are drawn in bulk by a render hook
 //! (no entity per item).
 //!
-//! This is an example game module, not part of the engine (decision 0270): a game adds it
+//! This is an example game module, not part of the engine (decision 0290): a game adds it
 //! with `Engine::builder().module(FactoryModule)`, as [`engine`] does. It also carries the
 //! factory benchmark scene ([`bench`]), its timing budgets and its stability modes
 //! (`examples/factory/stability.json`); the `factory-bench` binary is the engine CLI with all

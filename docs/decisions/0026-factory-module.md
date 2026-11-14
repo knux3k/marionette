@@ -1,6 +1,6 @@
 # 0026: Factory simulation module
 
-Date: 2026-11-12. Status: accepted. Since decision 0270 the crate is `examples/factory`
+Date: 2026-11-12. Status: accepted. Since decision 0290 the crate is `examples/factory`
 (package `marionette-example-factory`): an example game module, not part of the engine.
 
 ## Decision

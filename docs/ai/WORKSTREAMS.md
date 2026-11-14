@@ -147,7 +147,7 @@ Status: done (decision 0020). Guide: PORTING.md.
 
 - Done: decisions 0023 to 0026, `docs/ai/PERFORMANCE.md`.
 - Owns: `crates/marionette-jobs`, `examples/factory` (module, benchmark, budgets, proofs;
-  decision 0270), `crates/marionette-agent/src/perf.rs`.
+  decision 0290), `crates/marionette-agent/src/perf.rs`.
 - Follow-ups: frustum culling, persistent instance buffers, leaner extract, separate sim rate;
   a typed TypeScript subset compiled to WASM for job bodies (now WJ).
 
