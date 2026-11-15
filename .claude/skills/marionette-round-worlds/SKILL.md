@@ -25,6 +25,7 @@ All opt-in components; set the scene's `PhysicsSettings` gravity to zero when we
    with `TriMesh { model: "mesh:<name>" }`. The body appears once the mesh is stored and
    follows it when the mesh is stored again after an edit.
 4. Scripts or AI steer it with `MoveIntent` (world velocity, `jump`) instead of actions.
+5. VR: put `XrCharacter` on the rig with this body (skill `marionette-make-vr`).
 
 ## Navigation
 

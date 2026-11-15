@@ -432,19 +432,40 @@ macro_rules! backend {
                             planet_state = Some(plan.state);
                             conv::vector(plan.translation)
                         } else {
-                            if cs.grounded && jump {
+                            // A `MoveIntent` (navigation, an XR rig riding the body) replaces
+                            // the walk input with a world velocity, capped at the speed.
+                            let intent = world.get::<MoveIntent>(e).copied();
+                            if intent.is_some_and(|i| i.jump)
+                                && let Some(mut i) = world.get_mut::<MoveIntent>(e)
+                            {
+                                i.jump = false;
+                            }
+                            if cs.grounded && (jump || intent.is_some_and(|i| i.jump)) {
                                 vy = cc.jump_speed;
                                 log.push(("jump", id, None));
                             }
                             conv::turn(&mut pw.bodies[h.body], q);
-                            conv::face(
-                                q,
-                                conv::walk(
-                                    move_x * cc.speed * dt,
-                                    move_forward * cc.speed * dt,
-                                    vy * dt,
+                            match intent {
+                                Some(i) => {
+                                    let x = i.velocity.x;
+                                    let z = if conv::DIM == 3 { i.velocity.z } else { 0.0 };
+                                    let l = (x * x + z * z).sqrt();
+                                    let k = if l > cc.speed && l > 0.0 {
+                                        cc.speed / l
+                                    } else {
+                                        1.0
+                                    };
+                                    conv::walk(x * k * dt, -z * k * dt, vy * dt)
+                                }
+                                None => conv::face(
+                                    q,
+                                    conv::walk(
+                                        move_x * cc.speed * dt,
+                                        move_forward * cc.speed * dt,
+                                        vy * dt,
+                                    ),
                                 ),
-                            )
+                            }
                         };
                         // The controller casts from the rotated pose so the collider is
                         // upright on round worlds.

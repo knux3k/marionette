@@ -32,3 +32,8 @@
 
 Grab reach (decision 0273): `a_hand_grabs_only_within_its_grab_radius` in
 `crates/marionette-cli/tests/xr.rs` (inside 0.15 m lifted, outside left on the table).
+
+Riding a character body (decision 0191): `a_rig_riding_a_body_walks_by_physics_and_is_stopped_by_the_table`,
+`walking_in_the_room_moves_the_body_under_the_head`, `a_rig_riding_a_body_stands_upright_around_a_round_world`
+(1 rad round a radius-20 world: rig up within 0.999 of the body's, floor within 5 cm) and
+`riding_replays_bit_for_bit` in `crates/marionette-cli/tests/xr.rs`.

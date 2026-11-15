@@ -47,7 +47,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Input, windowed play (0170 to 0173) | usable | Checked on a real screen | Gamepads on hardware, Linux and macOS screens |
 | Audio: files, 3D sound, music layers (0075) | slice | Numbers tested; never listened to | A person listening on speakers and a headset |
 | Synth and streamed audio (0220) | slice | Rendered to numbers; one device run | Listening; OGG |
-| Headsets through OpenXR, hands, grab (0190) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
+| Headsets through OpenXR, hands, grab, riding a character on round worlds (0190, 0191) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
 | Networking, Steam (0210 to 0213) | slice | Loopback only | Two machines; a Steam client |
 
 ## Content

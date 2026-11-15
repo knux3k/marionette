@@ -243,6 +243,159 @@ fn stick_movement_moves_the_rig_and_asks_for_a_vignette() {
     assert_eq!(sim.world.resource::<XrComfort>().vignette, 0.0);
 }
 
+/// The example with the rig riding a capsule body (decision 0191). `planet`: the floor and
+/// table give way to a round world of radius 20 centred 20 m below the origin.
+fn riding(planet: bool) -> Sim {
+    let text = std::fs::read_to_string(SCENE).expect("example reads");
+    let mut scene: serde_json::Value = serde_json::from_str(&text).expect("example parses");
+    let ents = scene["entities"].as_array_mut().expect("entities");
+    if planet {
+        ents.retain(|e| e["name"] != "floor" && e["name"] != "table");
+    }
+    for e in ents.iter_mut() {
+        if e["name"] == "rig" {
+            e["components"]["XrCharacter"] = serde_json::json!({"body": 50, "follow_head": true});
+            e["components"]["XrLocomotion"]["speed"] = serde_json::json!(4.0);
+        }
+    }
+    let transform = |x: f32, y: f32, z: f32| {
+        serde_json::json!({"translation": {"x": x, "y": y, "z": z},
+            "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+            "scale": {"x": 1.0, "y": 1.0, "z": 1.0}})
+    };
+    let mut body = serde_json::json!({"id": 50, "name": "body", "components": {
+        "Transform": transform(0.0, 0.95, 0.8),
+        "RigidBody": {"kind": "Kinematic", "linear_damping": 0.0, "angular_damping": 0.0,
+            "gravity_scale": 1.0, "lock_rotations": true},
+        "Collider": {"shape": {"Capsule": {"half_height": 0.6, "radius": 0.3}},
+            "friction": 0.7, "restitution": 0.0, "density": 1.0, "sensor": false},
+        "CharacterController": {"speed": 5.0, "jump_speed": 4.0, "gravity": 9.81, "mass": 70.0,
+            "move_x": "", "move_forward": "", "jump": ""}}});
+    if planet {
+        body["components"]["PlanetCharacter"] = serde_json::json!({"align_speed": 0.0,
+            "thrust": 0.0, "climb_speed": 0.0, "thrust_action": "", "face_movement": false});
+        ents.push(serde_json::json!({"id": 51, "name": "planet", "components": {
+            "Transform": transform(0.0, -20.0, 0.0),
+            "Collider": {"shape": {"Ball": {"radius": 20.0}}, "friction": 0.7,
+                "restitution": 0.0, "density": 1.0, "sensor": false},
+            "GravityWell": {"surface_gravity": 9.81, "radius": 20.0, "range": 0.0}}}));
+    }
+    ents.push(body);
+    let text = serde_json::to_string(&scene).expect("scene writes");
+    engine::Engine::standard()
+        .load_text(&text, Some("riding"), 1, Path::new("../../examples"))
+        .expect("riding scene loads")
+}
+
+fn flat_gap(a: Vec3, b: Vec3) -> f32 {
+    ((a.x - b.x).powi(2) + (a.z - b.z).powi(2)).sqrt()
+}
+
+#[test]
+fn a_rig_riding_a_body_walks_by_physics_and_is_stopped_by_the_table() {
+    let mut sim = riding(false);
+    let mut ev = pose_at(0, XrSource::Head, [0.2, 1.6, 0.1], Quat::default());
+    ev.push(input(5, "xr:left/thumbstick_y", 1.0));
+    ev.push(input(95, "xr:left/thumbstick_y", 0.0));
+    feed(&mut sim, ev);
+    run_to(&mut sim, 3);
+    let body = transform(&mut sim, 50).translation;
+    let head = transform(&mut sim, 2).translation;
+    assert!(
+        flat_gap(body, head) < 0.02,
+        "the head starts over the body: {body:?} {head:?}"
+    );
+    run_to(&mut sim, 110);
+    let body = transform(&mut sim, 50).translation;
+    let head = transform(&mut sim, 2).translation;
+    // 1.5 s at 4 m/s would reach z = -5.2; the table's front is at z = -0.3 and the capsule
+    // is 0.3 wide, so the body stops at about z = 0.
+    assert!(body.z > -0.1 && body.z < 0.2, "stopped by the table: {body:?}");
+    assert!(
+        flat_gap(body, head) < 0.05,
+        "the head stays over the body: {body:?} {head:?}"
+    );
+    assert!((head.y - 1.6).abs() < 0.05, "standing height: {head:?}");
+}
+
+#[test]
+fn walking_in_the_room_moves_the_body_under_the_head() {
+    let mut sim = riding(false);
+    let mut ev = Vec::new();
+    for k in 0..=30u64 {
+        ev.extend(pose_at(
+            k,
+            XrSource::Head,
+            [0.6 * k as f32 / 30.0, 1.6, 0.0],
+            Quat::default(),
+        ));
+    }
+    feed(&mut sim, ev);
+    run_to(&mut sim, 2);
+    let rig_before = transform(&mut sim, 1).translation;
+    run_to(&mut sim, 45);
+    let rig = transform(&mut sim, 1).translation;
+    let body = transform(&mut sim, 50).translation;
+    let head = transform(&mut sim, 2).translation;
+    assert!(
+        flat_gap(rig, rig_before) < 1e-3,
+        "the play space stays: {rig_before:?} -> {rig:?}"
+    );
+    assert!(
+        flat_gap(body, head) < 0.03,
+        "the body followed the head: {body:?} {head:?}"
+    );
+    assert!((body.x - 0.6).abs() < 0.03, "{body:?}");
+}
+
+#[test]
+fn a_rig_riding_a_body_stands_upright_around_a_round_world() {
+    let mut sim = riding(true);
+    let mut ev = pose_at(0, XrSource::Head, [0.0, 1.6, 0.0], Quat::default());
+    ev.push(input(30, "xr:left/thumbstick_y", 1.0));
+    ev.push(input(330, "xr:left/thumbstick_y", 0.0));
+    feed(&mut sim, ev);
+    run_to(&mut sim, 360);
+    let centre = Vec3::new(0.0, -20.0, 0.0);
+    let body = transform(&mut sim, 50).translation;
+    let rig = transform(&mut sim, 1);
+    let head = transform(&mut sim, 2).translation;
+    let up = marionette_xr::math::normalize(marionette_xr::math::sub(body, centre));
+    // 5 s at 4 m/s along a radius-20 world is about a radian of arc.
+    assert!(up.y < 0.75 && up.z < -0.6, "walked a long way round: {up:?}");
+    let rig_up = marionette_xr::math::rotate(rig.rotation, Vec3::new(0.0, 1.0, 0.0));
+    assert!(
+        marionette_xr::math::dot(rig_up, up) > 0.999,
+        "upright: {rig_up:?} vs {up:?}"
+    );
+    let floor = marionette_xr::math::length(marionette_xr::math::sub(rig.translation, centre));
+    assert!(
+        (floor - 20.0).abs() < 0.05,
+        "the play space floor is on the ground: {floor}"
+    );
+    let eye = marionette_xr::math::length(marionette_xr::math::sub(head, centre));
+    assert!(
+        (eye - 21.6).abs() < 0.05,
+        "standing height above the ground: {eye}"
+    );
+}
+
+#[test]
+fn riding_replays_bit_for_bit() {
+    let run = || {
+        let mut sim = riding(true);
+        let mut ev = pose_at(0, XrSource::Head, [0.1, 1.6, 0.0], Quat::default());
+        ev.push(input(10, "xr:left/thumbstick_y", 1.0));
+        ev.push(input(15, "xr:right/thumbstick_x", 1.0));
+        ev.push(input(30, "xr:right/thumbstick_x", 0.0));
+        ev.push(input(120, "xr:left/thumbstick_y", 0.0));
+        feed(&mut sim, ev);
+        run_to(&mut sim, 150);
+        sim.state_hash()
+    };
+    assert_eq!(run(), run());
+}
+
 #[test]
 fn example_runs_on_an_openxr_runtime() {
     if std::env::var("MARIONETTE_XR_RUNTIME").as_deref() != Ok("1") {
