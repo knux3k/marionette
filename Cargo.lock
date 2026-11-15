@@ -2743,6 +2743,7 @@ dependencies = [
  "meshopt",
  "png",
  "pollster",
+ "rayon",
  "serde",
  "serde_json",
  "wgpu",
