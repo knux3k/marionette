@@ -713,6 +713,31 @@ Rust type: `marionette_core::builtin::Velocity`.
 | `y` | number | yes |  |
 | `z` | number | yes |  |
 
+### `XrCharacter`
+
+Put on a rig with [`XrLocomotion`] to ride a character body instead of moving the play space freely (decision 0191). The body is an entity with a `CharacterController` (flat worlds) or a `CharacterController` and `PlanetCharacter` (round worlds, up follows gravity): physics then decides where the player can go, so walls, slopes, stairs and gravity apply in VR as on a flat screen. Each tick the stick and the room-scale step (the head walking away from the body) become a `MoveIntent` on the body; turning turns the rig and the body about the body's up through the head; teleport moves the body. After physics the rig follows how the body moved and tilted, so the play space stays upright on the body's ground wherever up points. Jumping and jetpacks stay the body's own (its actions or the game's code).
+
+Rust type: `marionette_xr::XrCharacter`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `body` | integer | yes | The body entity. |
+| `follow_head` | boolean | yes | Move the body under the head when the player walks in the room (on for standing play). Off: the body moves only by stick and teleport, and the head may leave it. |
+
+### `XrCharacterState`
+
+What the rig asked of its body this tick, so the rig can follow the body afterwards. Written by the XR module.
+
+Rust type: `marionette_xr::XrCharacterState`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `body_before` | object {x, y, z} | yes | The body's centre and up when the move was asked for. |
+| `head_step` | object {x, y, z} | yes |  |
+| `placed` | boolean | yes | The rig has been placed on the body once. |
+| `stick_step` | object {x, y, z} | yes | The asked stick step and room-scale step (metres along the ground this tick). |
+| `up_before` | object {x, y, z} | yes |  |
+
 ### `XrHand`
 
 A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`.

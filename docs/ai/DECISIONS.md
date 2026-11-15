@@ -96,6 +96,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0173 | Every windowed run measures frame pacing and input latency (`FrameStats`, `--frame-stats`) | accepted |
 | 0174 | Games control the cursor lock and closing the window (`WindowControl`); focus changes are the input `window:Focus` | accepted |
 | 0190 | Headsets through OpenXR: poses enter as recorded input, gameplay in `marionette-xr`, the runtime in `marionette-openxr` (Vulkan through wgpu-hal, one swapchain per eye) | accepted |
+| 0191 | An XR rig rides a character body (`XrCharacter`): stick and room-scale steps become a `MoveIntent`, turns about the body's up, the rig follows the body after physics (`XrSystems` to order game systems); flat controllers read `MoveIntent` | accepted |
 | 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
 | 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |
 | 0210 | Co-op networking is host-stamped lockstep over a pluggable transport (`marionette-net`): reliability layer, loopback with simulated loss, UDP, hash checks, late join by snapshot | accepted |

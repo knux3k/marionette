@@ -14,7 +14,9 @@
 //! - entities with [`XrTracked`] follow a tracked pose inside that rig: the head (put the
 //!   `Camera` and `AudioListener` here) and the two grips;
 //! - a grip entity with [`XrHand`] grabs entities with [`Grabbable`] and throws them on
-//!   release.
+//!   release;
+//! - with [`XrCharacter`] the rig rides a character body (flat or round worlds) and moves by
+//!   physics (decision 0191).
 //!
 //! Outputs for the presentation side (not simulation state, not hashed): [`XrHaptics`]
 //! (vibration requests) and [`XrComfort`] (vignette strength this tick).
@@ -150,6 +152,40 @@ pub struct XrLocomotionState {
     pub teleport_valid: bool,
 }
 
+/// Put on a rig with [`XrLocomotion`] to ride a character body instead of moving the play
+/// space freely (decision 0191). The body is an entity with a `CharacterController` (flat
+/// worlds) or a `CharacterController` and `PlanetCharacter` (round worlds, up follows gravity):
+/// physics then decides where the player can go, so walls, slopes, stairs and gravity apply
+/// in VR as on a flat screen.
+///
+/// Each tick the stick and the room-scale step (the head walking away from the body) become a
+/// `MoveIntent` on the body; turning turns the rig and the body about the body's up through
+/// the head; teleport moves the body. After physics the rig follows how the body moved and
+/// tilted, so the play space stays upright on the body's ground wherever up points. Jumping
+/// and jetpacks stay the body's own (its actions or the game's code).
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct XrCharacter {
+    /// The body entity.
+    pub body: SceneRef,
+    /// Move the body under the head when the player walks in the room (on for standing
+    /// play). Off: the body moves only by stick and teleport, and the head may leave it.
+    pub follow_head: bool,
+}
+
+/// What the rig asked of its body this tick, so the rig can follow the body afterwards.
+/// Written by the XR module.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct XrCharacterState {
+    /// The body's centre and up when the move was asked for.
+    pub body_before: Vec3,
+    pub up_before: Vec3,
+    /// The asked stick step and room-scale step (metres along the ground this tick).
+    pub stick_step: Vec3,
+    pub head_step: Vec3,
+    /// The rig has been placed on the body once.
+    pub placed: bool,
+}
+
 /// Which hand a haptic pulse is for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hand {
@@ -193,6 +229,16 @@ pub struct XrComfort {
     pub vignette: f32,
 }
 
+/// The XR module's systems, for games that must run before or after them (a game's hands
+/// reading grip poses after the rig followed its body: `.after(XrSystems::Follow)`).
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum XrSystems {
+    /// Locomotion, tracking, hand motion, grab and throw (`Stage::Logic`).
+    Tick,
+    /// A rig riding a body follows it; tracked entities placed again (`Stage::Effects`).
+    Follow,
+}
+
 /// The XR gameplay module. Add it to the engine (`Engine::builder().module(XrModule)`).
 pub struct XrModule;
 
@@ -210,11 +256,20 @@ impl Module for XrModule {
         r.register_component::<Held>();
         r.register_component::<XrLocomotion>();
         r.register_component::<XrLocomotionState>();
+        r.register_component::<XrCharacter>();
+        r.register_component::<XrCharacterState>();
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {
         // Logic runs before physics, so a throw's velocity is used by this tick's step.
-        schedule.add_systems(systems::xr_tick.in_set(Stage::Logic));
+        schedule.add_systems(systems::xr_tick.in_set(Stage::Logic).in_set(XrSystems::Tick));
+        // A rig riding a body follows it once physics has moved it, before anything reads the
+        // head and hands for the frame.
+        schedule.add_systems(
+            systems::xr_follow
+                .in_set(Stage::Effects)
+                .in_set(XrSystems::Follow),
+        );
     }
 
     fn init(&self, world: &mut World) -> marionette_core::Result<()> {

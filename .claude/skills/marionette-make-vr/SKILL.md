@@ -14,6 +14,10 @@ headset run records and replays like any other run, and tests need no headset.
    space in the world. Add `XrLocomotion` for movement: action names for `move_x`, `move_y`,
    `turn`, `teleport` (empty string turns a part off), `turn_mode` "Snap" (most comfortable),
    "Smooth" or "Off", `vignette` 0..1.
+   To walk by physics (walls, slopes, gravity, round worlds), add `XrCharacter` (`body`: an
+   entity with `CharacterController`, plus `PlanetCharacter` on round worlds; `follow_head`
+   true for standing play): the stick, room-scale steps and teleport then move the body and
+   the rig follows it, upright on the body's ground. Give the body empty move actions.
 2. The head: `XrTracked` with `source` "Head" and `rig` set to the rig's id, plus `Camera`
    (near about 0.05) and `AudioListener`.
 3. Hands: `XrTracked` with sources "LeftGrip" and "RightGrip", each with `XrHand` (`grab_action`,
@@ -24,8 +28,8 @@ headset run records and replays like any other run, and tests need no headset.
    `thumbstick_x`, `thumbstick_y`, `thumbstick_click`, `primary`, `secondary`, `menu`,
    `pinch` for hand tracking). Keep keyboard bindings too, for desktop runs.
 
-Use `project_schema` for exact fields of `XrRig`, `XrTracked`, `XrHand`, `Grabbable` and
-`XrLocomotion`.
+Use `project_schema` for exact fields of `XrRig`, `XrTracked`, `XrHand`, `Grabbable`,
+`XrLocomotion` and `XrCharacter`.
 
 ## Test without a headset
 
