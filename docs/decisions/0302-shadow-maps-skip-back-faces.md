@@ -31,6 +31,11 @@ Realistic scene, cloud container, lavapipe, alternated runs: far cascade 1358 / 
 927 / 883 ms after (about 33 percent less), cascade 2 about 40 percent less. Render tests pass
 with their reference images unchanged; the drift hash is unchanged.
 
+Reference PC (RTX 2080, 1080p, MSAA 4, alternated A B A B): far cascade 2.53 to 1.69 ms, cascade
+2 0.255 to 0.180 ms, all sun maps 2.83 to 1.91 ms, main pass unchanged. Two frames in flight,
+1000 frames: 6.61 / 8.77 ms (p50 / p99) before, 5.98 / 7.72 ms after; the GPU wait is now
+0.01 ms, so recording (about 5 ms) bounds the frame again.
+
 ## Rejected
 
 - Culling back faces for every material: open double-sided surfaces would lose their shadow
