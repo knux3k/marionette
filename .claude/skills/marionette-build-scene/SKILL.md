@@ -49,6 +49,7 @@ edit of a live session builds its world again each time, so batch those too.
 | Controls | resource `InputConfig` naming an action map file (`*.actions.json`); scripts read actions, never keys; gamepads bind as `pad:South`, `axis:LeftStickX` (up and right +) |
 | Sound | `AudioSource` (heard through an `AudioListener`) |
 | Screen UI | `UiNode` with `UiRect`, `UiText`, `UiImage`, `UiButton` |
+| Mouse look, pause menu, Quit | resource `WindowControl` (`lock_cursor` frees or locks the mouse, `close` quits); bind `window:Focus` to pause on focus loss |
 | Behaviour | `Script` (skill `marionette-write-script`) |
 
 Paths inside components are relative to the scene file.

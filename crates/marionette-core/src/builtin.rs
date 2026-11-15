@@ -128,6 +128,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<ui::UiText>();
     registry.register_component::<ui::UiImage>();
     registry.register_component::<ui::UiButton>();
+    registry.register_resource::<ui::WindowControl>();
 }
 
 /// Adds the built-in systems to `schedule`, in a fixed order.

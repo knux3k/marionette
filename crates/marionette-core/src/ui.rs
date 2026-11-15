@@ -77,6 +77,18 @@ pub struct UiButton {
     pub action: String,
 }
 
+/// What a game asks of the window it runs in (decision 0174). The window reads it after every
+/// frame's ticks; without it the window's own options decide. Headless runs ignore it, so it
+/// never changes what a tick computes.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct WindowControl {
+    /// Hide and lock the cursor while the window has focus (mouse look). False frees it, for
+    /// example while a pause menu is open.
+    pub lock_cursor: bool,
+    /// Close the window after this frame (a menu's Quit).
+    pub close: bool,
+}
+
 /// Screen rectangle (x, y, width, height in pixels, y down) of a node on a `w` x `h` screen.
 pub fn layout(node: &UiNode, w: f32, h: f32) -> (f32, f32, f32, f32) {
     let (fx, fy) = node.anchor.fraction();

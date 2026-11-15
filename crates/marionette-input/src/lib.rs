@@ -19,6 +19,8 @@
 //! `mouse:Left|Right|Middle`, `pad:<Button>`, `axis:<Axis>`. The window feeds mouse movement as
 //! `axis:MouseX` (right +) and `axis:MouseY` (down +): pixels moved / 100, clamped to -1..1,
 //! for the one tick after the movement, then 0 (scripted tests use the same two axes).
+//! `window:Focus` is 1 while the window has focus and 0 after it lost it (decision 0174), so
+//! a game can pause or show a "click to play" card; it changes only on a focus change.
 //!
 //! Headset controllers (fed by `marionette-openxr`, decision 0190) are `xr:<hand>/<input>`
 //! with hand `left` or `right` and input one of [`XR_INPUTS`]: `trigger`, `squeeze` (grip)
@@ -185,7 +187,7 @@ pub fn parse_map(text: &str, file: &str) -> Result<ActionMap> {
     }
     for (name, def) in &map.actions {
         for b in &def.bindings {
-            if !["key:", "mouse:", "pad:", "axis:", "xr:"]
+            if !["key:", "mouse:", "pad:", "axis:", "xr:", "window:"]
                 .iter()
                 .any(|p| b.input.starts_with(p))
             {
@@ -193,7 +195,7 @@ pub fn parse_map(text: &str, file: &str) -> Result<ActionMap> {
                     codes::MAP,
                     file,
                     format!("action `{name}`: unknown input `{}`", b.input),
-                    "inputs start with key:, mouse:, pad:, axis: or xr:",
+                    "inputs start with key:, mouse:, pad:, axis:, xr: or window:",
                 ));
             }
             if let Some(rest) = b.input.strip_prefix("xr:") {
@@ -489,6 +491,15 @@ mod tests {
             "{}",
             d.message
         );
+    }
+
+    #[test]
+    fn window_focus_is_a_bindable_input() {
+        let map = parse_map(
+            r#"{"format":"marionette.input-map","version":1,"actions":{"focused":{"bindings":[{"input":"window:Focus"}]}}}"#,
+            "t",
+        );
+        assert!(map.is_ok());
     }
 
     #[test]
