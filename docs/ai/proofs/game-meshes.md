@@ -1,4 +1,4 @@
-# Proofs: game meshes and shaders (decisions 0180, 0181)
+# Proofs: game meshes and shaders (decisions 0180, 0181, 0183)
 
 ## Meshes (0180)
 
@@ -11,6 +11,13 @@
   (131,072 triangles).
 - `cargo test -p marionette-core mesh` (checks, normals, grid, versions).
 - Reference images unchanged (`matches_reference_images`) with the new vertex color attribute.
+
+## Colliders from game meshes (0183)
+
+- `cargo test -p marionette-physics --test game_mesh_collider`: a body waits for its mesh and
+  then stands on it, storing the mesh again rebuilds the collider (raised and lowered ground),
+  a restored snapshot continues with the same state hash, missing model files still fail.
+- Drift hash unchanged.
 
 ## Shaders (0181)
 
