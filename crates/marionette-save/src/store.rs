@@ -1,7 +1,7 @@
 //! Save slots in one folder, written so a crash or power loss never leaves a slot
 //! unloadable.
 //!
-//! Writing `<slot>`: the bytes go to `.<slot>.<pid>-<n>.tmp` and are flushed to disk; the current
+//! Writing `<slot>` (`marionette_host::write_replacing`): the bytes go to `.<slot>.msave.<pid>.tmp` and are flushed to disk; the current
 //! `<slot>.msave` (if any) is renamed to `<slot>.msave.bak`; the temporary file is renamed
 //! to `<slot>.msave`; on Unix the folder is flushed too. A crash at any point leaves either
 //! the new file, or the old file, or (between the two renames) the old file as the backup.
@@ -14,7 +14,7 @@ use crate::codes;
 use crate::format::{HEADER_MAX, SaveFile, SaveHeader, parse_header};
 use marionette_core::{Diagnostic, Errors};
 use serde::Serialize;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -115,24 +115,9 @@ impl SaveStore {
         check_slot(slot)?;
         let bytes = file.to_bytes()?;
         let target = self.path(slot);
-        let tmp = self.dir.join(format!(".{slot}.{}.tmp", std::process::id()));
         let shown = target.display().to_string();
-        let result = (|| {
-            let mut f = std::fs::File::create(&tmp)?;
-            f.write_all(&bytes)?;
-            f.sync_all()?;
-            drop(f);
-            if target.exists() {
-                std::fs::rename(&target, self.backup_path(slot))?;
-            }
-            std::fs::rename(&tmp, &target)?;
-            sync_dir(&self.dir);
-            Ok(())
-        })();
-        if result.is_err() {
-            let _ = std::fs::remove_file(&tmp);
-        }
-        result.map_err(io(format!("cannot write save {shown}")))?;
+        marionette_host::write_replacing(&target, &bytes, Some(&self.backup_path(slot)))
+            .map_err(io(format!("cannot write save {shown}")))?;
         Ok(bytes.len() as u64)
     }
 
@@ -249,15 +234,4 @@ fn read_header(path: &Path) -> Result<SaveHeader, Problem> {
         code: codes::CORRUPT,
         message: e.0.into_iter().next().map_or_else(String::new, |d| d.message),
     })
-}
-
-/// Flushes a folder's entries (the renames) to disk. Unix only; Windows has no folder
-/// handle flush and commits renames with the file system journal.
-fn sync_dir(dir: &Path) {
-    #[cfg(unix)]
-    if let Ok(d) = std::fs::File::open(dir) {
-        let _ = d.sync_all();
-    }
-    #[cfg(not(unix))]
-    let _ = dir;
 }

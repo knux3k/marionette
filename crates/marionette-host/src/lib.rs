@@ -17,6 +17,9 @@
 //!   engine does not create any; new code must not either without a decision record. See
 //!   `docs/ai/MEMORY-AND-CRASHES.md`.
 //!
+//! Files a crash must never leave half-written (saves, settings) are replaced with
+//! [`write_replacing`]: temporary file beside the target, flush, optional backup, rename.
+//!
 //! [`alloc::Counting`] is an opt-in global allocator that counts live bytes, used by the
 //! leak tests and by anything that wants a cheap heap probe.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -24,10 +27,12 @@
 
 pub mod alloc;
 mod child;
+mod file;
 pub mod machine;
 mod run;
 
 pub use child::{contained, output, spawn};
+pub use file::{sync_dir, write_replacing};
 pub use run::{RUN_ROOT_ENV, TempDir, run_dir, runs_root, shutdown, sweep_stale, sweep_stale_in, temp_dir};
 
 use std::path::PathBuf;

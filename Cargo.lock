@@ -2757,6 +2757,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_reflect",
  "marionette-core",
+ "marionette-host",
  "serde",
  "serde_json",
  "sha2 0.11.1",
