@@ -168,7 +168,11 @@ pub fn sphere(segments: u32, rings: u32) -> Mesh {
         for s in 0..=segments {
             let u = s as f32 / segments as f32;
             let phi = u * std::f32::consts::TAU;
-            let n = Vec3::new(theta.sin() * phi.cos(), theta.cos(), -theta.sin() * phi.sin());
+            // `libm`, not the platform's math library: Windows and Linux round `sin` and `cos`
+            // differently, and the committed models must match their generator everywhere.
+            let (st, ct) = (libm::sinf(theta), libm::cosf(theta));
+            let (sp, cp) = (libm::sinf(phi), libm::cosf(phi));
+            let n = Vec3::new(st * cp, ct, -st * sp);
             m.pos.push((n * 0.5).to_array());
             m.nrm.push(n.to_array());
             m.uv.push([u, v]);

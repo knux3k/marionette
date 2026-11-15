@@ -183,9 +183,11 @@ enum Phase {
 /// Pipelines of one pass over the models.
 #[derive(Clone, Copy)]
 enum Pipes<'a> {
-    /// Depth only: static parts, cut-out static parts (`None`: leave them out), skinned parts.
+    /// Depth only: static parts, one-sided static parts (`None`: as static parts, decision
+    /// 0302), cut-out static parts (`None`: leave them out), skinned parts.
     Depth(
         &'a wgpu::RenderPipeline,
+        Option<&'a wgpu::RenderPipeline>,
         Option<&'a wgpu::RenderPipeline>,
         &'a wgpu::RenderPipeline,
     ),
@@ -224,21 +226,24 @@ impl MeshCalls<'_> {
             &wgpu::RenderPipeline,
             &wgpu::RenderPipeline,
             &wgpu::RenderPipeline,
+            &wgpu::RenderPipeline,
         ),
         view_group: &wgpu::BindGroup,
         offset: u32,
         sun_map: Option<usize>,
         stats: &mut RenderStats,
     ) {
-        let (plain, masked, skinned) = pipelines;
+        let (plain, one_sided, masked, skinned) = pipelines;
         // Local light maps skip lamps' own models; sun maps draw only the casters inside them.
-        let (skip_lamps, casters) = match sun_map {
-            Some(k) => (false, Casters::SunMap(k)),
-            None => (true, Casters::All),
+        // Only sun maps skip back faces (decision 0302): they hold most casters, while lamps'
+        // maps are small and close, where a contact shadow shows most.
+        let (skip_lamps, casters, one_sided) = match sun_map {
+            Some(k) => (false, Casters::SunMap(k), Some(one_sided)),
+            None => (true, Casters::All, None),
         };
         self.draw(
             pass,
-            Pipes::Depth(plain, Some(masked), skinned),
+            Pipes::Depth(plain, one_sided, Some(masked), skinned),
             (view_group, offset),
             (None, skip_lamps, casters, Phase::Opaque),
             stats,
@@ -257,7 +262,7 @@ impl MeshCalls<'_> {
     ) {
         self.draw(
             pass,
-            Pipes::Depth(plain, None, skinned),
+            Pipes::Depth(plain, None, None, skinned),
             (view_group, offset),
             (None, false, Casters::InView, Phase::Opaque),
             stats,
@@ -323,8 +328,16 @@ impl MeshCalls<'_> {
                 // The standard pipeline for this call's material, or none (left out).
                 let standard = match pipes {
                     Pipes::Lit(pbr, _, target) => Some(pbr.get(call.look.variant as usize, target)),
-                    Pipes::Depth(_, masked, _) if call.look.masked && call.game.is_none() => masked,
-                    Pipes::Depth(plain, _, _) => Some(plain),
+                    Pipes::Depth(_, _, masked, _) if call.look.masked && call.game.is_none() => masked,
+                    // Shadow maps skip the back faces of one-sided materials, as the lit pass
+                    // does (decision 0302).
+                    Pipes::Depth(_, Some(one_sided), _, _)
+                        if call.game.is_none()
+                            && call.look.variant as usize & variants::DOUBLE_SIDED == 0 =>
+                    {
+                        Some(one_sided)
+                    }
+                    Pipes::Depth(plain, ..) => Some(plain),
                 };
                 // Game shaders (decision 0181): their own pipelines; blended or
                 // `no_shadows` ones do not cast.
@@ -391,7 +404,7 @@ impl MeshCalls<'_> {
             .zip(self.deform_groups)
             .filter(|(c, _)| c.look.blended() == (phase == Phase::Blended))
             // The prepass leaves cut-outs to the lit pass.
-            .filter(|(c, _)| !(c.look.masked && matches!(pipes, Pipes::Depth(_, None, _))));
+            .filter(|(c, _)| !(c.look.masked && matches!(pipes, Pipes::Depth(_, _, None, _))));
         if let (Some(ib), false) = (self.skinned_instances, self.skinned.is_empty()) {
             let mut current: *const wgpu::RenderPipeline = std::ptr::null();
             let mut started = false;
@@ -401,7 +414,7 @@ impl MeshCalls<'_> {
                 };
                 let pipeline = match pipes {
                     Pipes::Lit(_, skinned, target) => skinned.get(call.look.variant as usize, target),
-                    Pipes::Depth(_, _, skinned) => skinned,
+                    Pipes::Depth(.., skinned) => skinned,
                 };
                 if !started {
                     pass.set_bind_group(0, view_group, &[offset]);
@@ -622,6 +635,8 @@ pub struct Renderer {
     shadow_map: LocalShadowMaps,
     shadow_sampler: wgpu::Sampler,
     shadow_pipeline: wgpu::RenderPipeline,
+    /// Shadow maps of one-sided materials: back faces skipped (decision 0302).
+    shadow_one_sided: wgpu::RenderPipeline,
     /// Shadows of cut-out parts (alpha tested against the material) and the empty group 1
     /// their layout skips (decision 0280).
     masked_shadow: (wgpu::RenderPipeline, wgpu::BindGroup),
@@ -1054,6 +1069,15 @@ impl Renderer {
             wgpu::MultisampleState::default(),
             (None, None), // both faces cast shadows; no color target
         );
+        let shadow_one_sided = depth_pipeline(
+            device,
+            &pbr_shader,
+            &view_layout,
+            "vs_shadow",
+            shadow_depth_state(),
+            wgpu::MultisampleState::default(),
+            (Some(wgpu::Face::Back), None),
+        );
         let masked_shadow = masked_shadow_pipeline(device, &pbr_shader, &view_layout, &material_layout);
 
         let skinning = crate::skinning::Skinning::new(
@@ -1209,6 +1233,7 @@ impl Renderer {
             shadow_map,
             shadow_sampler,
             shadow_pipeline,
+            shadow_one_sided,
             masked_shadow,
             local_shadows,
             environment: None,
@@ -2745,6 +2770,7 @@ impl Renderer {
         };
         let depth_pipelines = (
             &self.shadow_pipeline,
+            &self.shadow_one_sided,
             &self.masked_shadow.0,
             &self.skinning.shadow_pipeline,
         );

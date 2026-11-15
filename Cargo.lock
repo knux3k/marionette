@@ -2736,6 +2736,7 @@ dependencies = [
  "bevy_ecs",
  "bytemuck",
  "glam 0.34.3",
+ "libm",
  "marionette-assets",
  "marionette-core",
  "marionette-host",
