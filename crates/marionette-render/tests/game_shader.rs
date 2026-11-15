@@ -172,6 +172,26 @@ fn surface(s: ptr<function, Surface>, i: SurfaceIn) {
 }
 
 #[test]
+fn no_fog_shaders_keep_their_color_in_thick_fog() {
+    let Some(gpu) = gpu() else { return };
+    // Thick blue fog: at 12 m everything without `// @no_fog` is the fog color.
+    let fog = r#", "Fog": {"color": {"r": 0, "g": 0, "b": 1, "a": 1}, "density": 0.5}"#;
+    let body = "fn surface(s: ptr<function, Surface>, i: SurfaceIn) {\n    (*s).base_color = vec4<f32>(0.5, 0.0, 0.0, 1.0);\n    (*s).unlit = 1.0;\n}\n";
+    let mat = r#"{"shader": "dome", "params": [], "textures": []}"#;
+    let mut fogged = stage(Some(mat), fog);
+    with_shader(&mut fogged, "dome", body);
+    let c = rgb(&render(&gpu, &fogged).unwrap(), col(5.0), H / 2);
+    assert!(c[0] < 10 && c[2] > 240, "fogged without the option: {c:?}");
+    let mut clear = stage(Some(mat), fog);
+    with_shader(&mut clear, "dome", &format!("// @no_fog\n{body}"));
+    let c = rgb(&render(&gpu, &clear).unwrap(), col(5.0), H / 2);
+    assert!(
+        (c[0] - 188).abs() <= 3 && c[2] < 10,
+        "no_fog keeps linear 0.5 red: {c:?}"
+    );
+}
+
+#[test]
 fn shader_problems_are_errors_as_data() {
     let Some(gpu) = gpu() else { return };
     // Unknown name.

@@ -185,9 +185,10 @@ pub(crate) fn compose(source: &str, o: &ShaderOptions) -> Result<(String, usize)
     };
     let end = end + HOOKS_END.len();
     let hooks = format!(
-        "fn vertex_hook(v: ptr<function, Vertex>) {{ {} }}\nfn surface_hook(s: ptr<function, Surface>, i: SurfaceIn) {{ {} }}",
+        "fn vertex_hook(v: ptr<function, Vertex>) {{ {} }}\nfn surface_hook(s: ptr<function, Surface>, i: SurfaceIn) {{ {} }}\nconst GAME_FOG: f32 = {};",
         if o.has_vertex { "vertex(v);" } else { "" },
         if o.has_surface { "surface(s, i);" } else { "" },
+        if o.no_fog { "0.0" } else { "1.0" },
     );
     let head = format!("{}{hooks}{}{PRELUDE}", &PBR[..begin], &PBR[end..]);
     let line = head.lines().count() + 1;

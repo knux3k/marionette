@@ -88,6 +88,9 @@ pub struct ShaderOptions {
     pub double_sided: bool,
     /// `// @no_shadows`: does not cast shadows. Blended shaders never cast.
     pub no_shadows: bool,
+    /// `// @no_fog`: distance fog leaves it alone (sky domes and far backdrops that paint
+    /// their own horizon, decision 0182).
+    pub no_fog: bool,
     /// The source has a `vertex` function (found by name).
     pub has_vertex: bool,
     /// The source has a `surface` function.
@@ -110,9 +113,10 @@ impl ShaderOptions {
                 (Some("blend"), Some("additive")) => o.blend = ShaderBlend::Additive,
                 (Some("double_sided"), None) => o.double_sided = true,
                 (Some("no_shadows"), None) => o.no_shadows = true,
+                (Some("no_fog"), None) => o.no_fog = true,
                 _ => {
                     return Err(format!(
-                        "line {}: unknown option `// @{rest}` (use blend opaque|alpha|additive, double_sided, no_shadows)",
+                        "line {}: unknown option `// @{rest}` (use blend opaque|alpha|additive, double_sided, no_shadows, no_fog)",
                         n + 1
                     ));
                 }
@@ -165,7 +169,9 @@ mod tests {
         assert!(ShaderOptions::parse("// @blend glass\nfn surface() {}").is_err());
         assert!(ShaderOptions::parse("fn other() {}").is_err());
         let v = ShaderOptions::parse("fn vertex (v: ptr<function, Vertex>) {}").unwrap();
-        assert!(v.has_vertex && v.casts_shadows());
+        assert!(v.has_vertex && v.casts_shadows() && !v.no_fog);
+        let f = ShaderOptions::parse("// @no_fog\nfn surface() {}").unwrap();
+        assert!(f.no_fog && f.casts_shadows());
         assert!(!has_fn("// fn surface(\nfn my_surface() {}", "surface"));
     }
 
