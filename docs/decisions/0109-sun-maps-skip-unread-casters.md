@@ -25,6 +25,12 @@ down to 742. Screenshots at 160x90 (4x MSAA) and 1280x720 are byte-identical bef
 and the render tests pass with the same reference images. `cull` unit tests cover the hull and a
 caster beside the view. The GPU saving needs the PC run (lavapipe cannot time passes).
 
+## Later
+
+Decision 0300 runs the receiver test only for casters outside every view, and reuses one
+projection of the center for all maps. As first merged, the test cost more recording time in
+the cloud than it saved.
+
 ## Rejected
 
 - Lower detail or fewer casters in the far cascade by size: changes shadow edges.

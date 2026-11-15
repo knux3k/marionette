@@ -651,6 +651,8 @@ pub struct Renderer {
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<u32>),
     /// Instances by group, gathered only for ray-traced frames, which read them on the CPU.
     scratch_rt: Vec<InstanceData>,
+    /// Per-chunk results of preparing mesh instances in parallel, reused across frames.
+    scratch_chunks: Vec<Prepared>,
     /// Reused per-frame array: the culling class of each instance in `scratch.0`.
     /// With each class, the sun shadow maps the instance touches (bit per map, decision 0102).
     scratch_class: Vec<(crate::cull::Class, u8)>,
@@ -1242,6 +1244,7 @@ impl Renderer {
             bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
             scratch_rt: Vec::new(),
+            scratch_chunks: Vec::new(),
             pass_timer: None,
         }
     }
@@ -2140,7 +2143,7 @@ impl Renderer {
         // Lookup by model address (no string compares or hashing per instance); `keys[g]` keeps
         // each group's full key, and groups are put in key order after the loop, so draw order
         // is the same as before and the same on every run.
-        type Fast = (usize, usize, bool, bool, usize, Option<u32>, variants::Look);
+        type Fast = FastKey;
         let mut group_of: HashMap<Fast, u32, BuildFast> = HashMap::default();
         let mut keys: Vec<Key> = Vec::new();
         let culler = {
@@ -2171,80 +2174,128 @@ impl Renderer {
         let (mut raw, mut gid, mut src_of) = std::mem::take(&mut self.scratch);
         raw.clear();
         gid.clear();
-        let mut last_model: Option<(&str, &GpuModel)> = None;
-        let mut last_key: Option<(Key, u32)> = None;
-        for draw in &frame.meshes {
-            let model = match last_model {
-                Some((name, m))
-                    if std::ptr::eq(name.as_ptr(), draw.asset.as_ptr()) || name == &*draw.asset =>
-                {
-                    m
-                }
-                _ => match self.models.get(&*draw.asset) {
-                    Some(Ok(m)) => {
-                        last_model = Some((&*draw.asset, m));
+        // Mesh instances are prepared in parallel (decision 0300): each chunk of draws is culled,
+        // transformed, given its material and grouped on its own thread into its own reused
+        // arrays; then the chunks are appended in order and their groups mapped to the frame's
+        // on this thread, so the result is the same as one pass in draw order.
+        let mut chunks = std::mem::take(&mut self.scratch_chunks);
+        let chunk_len = frame.meshes.len().div_ceil(PREPARE_CHUNKS).max(PREPARE_MIN_DRAWS);
+        let wanted = frame.meshes.len().div_ceil(chunk_len);
+        chunks.resize_with(wanted.max(chunks.len()), Prepared::default);
+        let models = &self.models;
+        let prepare = |chunk: &mut Prepared, draws: &[crate::extract::MeshDraw]| {
+            // Work on a local copy and store it back at the end: the chunks sit next to each
+            // other in memory, and pushing through `chunk` from several threads would make them
+            // fight over the same cache lines.
+            let mut out = std::mem::take(chunk);
+            out.clear();
+            let mut last: Option<(Fast, u32)> = None;
+            let mut last_model: Option<(&str, &GpuModel)> = None;
+            for (d, draw) in draws.iter().enumerate() {
+                let model = match last_model {
+                    Some((name, m))
+                        if std::ptr::eq(name.as_ptr(), draw.asset.as_ptr()) || name == &*draw.asset =>
+                    {
                         m
                     }
-                    _ => continue,
-                },
-            };
-            for (p, part) in model.parts.iter().enumerate() {
-                if part.deform.is_some() {
-                    continue; // skinned or morphed: drawn by the deforming pass
-                }
-                // An animated pose moves parts hanging from animated nodes (props on bones).
-                let local = match (&draw.pose, part.node) {
-                    (Some(pose), Some(n)) if n < pose.nodes.len() => Mat4::from_cols_array(&pose.nodes[n]),
-                    _ => part.transform,
+                    _ => match models.get(&*draw.asset) {
+                        Some(Ok(m)) => {
+                            last_model = Some((&*draw.asset, m));
+                            m
+                        }
+                        _ => continue,
+                    },
                 };
-                let model_m = draw.world * local;
-                let sphere = part.bounds.transformed(&model_m);
-                let (class, level) = culler.classify(&sphere, 1 + part.lods.len());
-                if class == crate::cull::Class::Hidden {
-                    stats.culled += 1;
-                    continue;
-                }
-                let (base_color, params) = instance_material(model, part, draw.material);
-                let key = (
-                    &*draw.asset,
-                    p,
-                    draw.material.is_some(),
-                    draw.lamp,
-                    level,
-                    game_slot(draw.shader),
-                    part_look(model, part, draw.material.as_ref()),
-                );
-                let g = match last_key {
-                    Some((k, g)) if k == key => g,
-                    _ => {
-                        let fast = (
-                            std::ptr::from_ref(model) as usize,
-                            key.1,
-                            key.2,
-                            key.3,
-                            key.4,
-                            key.5,
-                            key.6,
-                        );
-                        let n = group_of.len() as u32;
-                        let g = *group_of.entry(fast).or_insert_with(|| {
-                            keys.push(key);
-                            n
-                        });
-                        last_key = Some((key, g));
-                        g
+                let shader = game_slot(draw.shader);
+                for (p, part) in model.parts.iter().enumerate() {
+                    if part.deform.is_some() {
+                        continue; // skinned or morphed: drawn by the deforming pass
                     }
-                };
-                raw.push(InstanceData {
-                    model: mat(model_m),
-                    base_color,
-                    params,
-                    emissive: draw.emissive.extend(0.0).to_array(),
-                });
-                gid.push(g);
-                class_of.push((class, culler.shadow_maps(&sphere)));
+                    // An animated pose moves parts hanging from animated nodes (props on bones).
+                    let local = match (&draw.pose, part.node) {
+                        (Some(pose), Some(n)) if n < pose.nodes.len() => {
+                            Mat4::from_cols_array(&pose.nodes[n])
+                        }
+                        _ => part.transform,
+                    };
+                    let model_m = draw.world * local;
+                    let sphere = part.bounds.transformed(&model_m);
+                    let (class, level) = culler.classify(&sphere, 1 + part.lods.len());
+                    if class == crate::cull::Class::Hidden {
+                        out.culled += 1;
+                        continue;
+                    }
+                    let (base_color, params) = instance_material(model, part, draw.material);
+                    out.insts.push(InstanceData {
+                        model: mat(model_m),
+                        base_color,
+                        params,
+                        emissive: draw.emissive.extend(0.0).to_array(),
+                    });
+                    let fast = (
+                        std::ptr::from_ref(model) as usize,
+                        p,
+                        draw.material.is_some(),
+                        draw.lamp,
+                        level,
+                        shader,
+                        part_look(model, part, draw.material.as_ref()),
+                    );
+                    // Groups numbered within the chunk; the merge maps them to frame groups.
+                    let local = match last {
+                        Some((f, g)) if f == fast => g,
+                        _ => {
+                            let n = out.groups.len() as u32;
+                            let g = *out.group_of.entry(fast).or_insert_with(|| {
+                                out.groups.push((fast, d as u32));
+                                n
+                            });
+                            last = Some((fast, g));
+                            g
+                        }
+                    };
+                    out.meta.push(PreparedMeta {
+                        group: local,
+                        class,
+                        maps: culler.shadow_maps(&sphere, class == crate::cull::Class::Seen),
+                    });
+                }
             }
+            *chunk = out;
+        };
+        let parts = &mut chunks[..wanted];
+        if wanted > 1 {
+            std::thread::scope(|scope| {
+                let mut rest = parts.iter_mut().zip(frame.meshes.chunks(chunk_len));
+                let first = rest.next();
+                for (out, draws) in rest {
+                    scope.spawn(|| prepare(out, draws));
+                }
+                if let Some((out, draws)) = first {
+                    prepare(out, draws);
+                }
+            });
+        } else if let Some(out) = parts.first_mut() {
+            prepare(out, &frame.meshes);
         }
+        let mut to_frame: Vec<u32> = Vec::new();
+        for (c, chunk) in chunks[..wanted].iter().enumerate() {
+            stats.culled += chunk.culled;
+            to_frame.clear();
+            for &(fast, d) in &chunk.groups {
+                let n = group_of.len() as u32;
+                to_frame.push(*group_of.entry(fast).or_insert_with(|| {
+                    let asset = &*frame.meshes[c * chunk_len + d as usize].asset;
+                    let (_, p, o, l, lv, sl, lk) = fast;
+                    keys.push((asset, p, o, l, lv, sl, lk));
+                    n
+                }));
+            }
+            raw.extend_from_slice(&chunk.insts);
+            gid.extend(chunk.meta.iter().map(|m| to_frame[m.group as usize]));
+            class_of.extend(chunk.meta.iter().map(|m| (m.class, m.maps)));
+        }
+        self.scratch_chunks = chunks;
         for (bi, bulk) in frame.bulk.iter().enumerate() {
             let Some(Ok(model)) = self.models.get(&bulk.asset) else {
                 continue;
@@ -2308,7 +2359,10 @@ impl Renderer {
                         emissive: [0.0; 4],
                     });
                     gid.push(g);
-                    class_of.push((class, culler.shadow_maps(&sphere)));
+                    class_of.push((
+                        class,
+                        culler.shadow_maps(&sphere, class == crate::cull::Class::Seen),
+                    ));
                 }
             }
         }
@@ -3446,6 +3500,45 @@ pub(crate) fn write_growable<T: Pod>(
     let bytes: &[u8] = bytemuck::cast_slice(data);
     let buffer = growable(device, slot, bytes.len() as u64, usage);
     queue.write_buffer(buffer, 0, bytes);
+}
+
+/// Mesh draws are split into about this many chunks, prepared on as many threads.
+const PREPARE_CHUNKS: usize = 8;
+/// ... but never fewer draws per chunk than this: below it a thread costs more than it saves.
+const PREPARE_MIN_DRAWS: usize = 256;
+
+/// Draw group lookup key: model address, part, material overridden, lamp, level of detail,
+/// game shader slot, look (decision 0107).
+type FastKey = (usize, usize, bool, bool, usize, Option<u32>, variants::Look);
+
+/// One chunk of prepared mesh instances, in draw order, with the chunk's own group numbers.
+#[derive(Default)]
+struct Prepared {
+    insts: Vec<InstanceData>,
+    meta: Vec<PreparedMeta>,
+    /// The chunk's groups in first-seen order: key, and the draw (within the chunk) that
+    /// first used it, for the asset name.
+    groups: Vec<(FastKey, u32)>,
+    group_of: HashMap<FastKey, u32, BuildFast>,
+    culled: u32,
+}
+
+impl Prepared {
+    fn clear(&mut self) {
+        self.insts.clear();
+        self.meta.clear();
+        self.groups.clear();
+        self.group_of.clear();
+        self.culled = 0;
+    }
+}
+
+/// Grouping and culling facts of one prepared instance.
+struct PreparedMeta {
+    /// Index into the chunk's `groups`.
+    group: u32,
+    class: crate::cull::Class,
+    maps: u8,
 }
 
 /// `slot`'s buffer, replaced by one twice as large as needed when it holds fewer than `len`
