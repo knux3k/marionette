@@ -118,3 +118,37 @@ frames after 30 warm-up; Unity players unchanged, rerun the same way.
   (far to near), about 6.5 in all (was 7.0). Unity's GPU needs about 4.3: GPU time is the
   next gap, the far sun map first.
 - Still not like for like: Marionette renders offscreen, Unity presents to a window.
+
+### Windowed, after 0301-0303
+
+2026-11-15, main at `dafb741`, same PC; both present to a 1920x1080 window, vsync off
+(`run --present immediate --frame-latency 2 --frame-stats`), MSAA 4, three runs each.
+
+| | Frame p50 / p99 ms |
+| --- | --- |
+| Marionette, windowed | 6.45 / 8.40, 6.45 / 8.45, 6.95 / 11.10 |
+| Marionette, offscreen, 2 in flight | 6.30 / 8.53 (recording 4.60, GPU wait 0.38) |
+| Unity, windowed | 13.43 / 19.92, 14.02 / 21.68, 11.90 / 17.31 |
+| Unity, static batching | 13.35 / 19.31, 12.12 / 17.57, 13.31 / 19.04 |
+
+- Like for like now: Marionette about 2x faster at the median (about 155 against 75 frames
+  per second). Unity's GPU needs about 4.4 ms; its main thread bounds it.
+- Sun maps 2.83 to 1.91 ms on the GPU (0302) and vertex reuse 3.69 to 3.25 ms in the main pass
+  (0301) leave recording (about 4.6 ms) as Marionette's limit.
+
+### Recording copies cut (0304)
+
+Cloud container, lavapipe, realistic scene, 20 frames per run, runs alternated, median
+recording ms:
+
+| | Runs | Median |
+| --- | --- | --- |
+| main (after 0303) | 4.69, 4.60, 4.77, 4.55, 4.59, 4.61 | 4.60 |
+| no merge copy | 4.40, 4.22, 4.25, 4.45, 4.05, 4.16 | 4.23 |
+| no merge copy, then compact shadow copies | 4.01, 4.08, 4.19, 4.17, 4.10, 4.39 | 4.14 |
+
+- No merge copy: 8 percent less recording, faster in all 6 pairs.
+- Compact copies against no merge copy alone (4.24, 4.17, 4.17, 4.13, 4.34, 4.38; median 4.21):
+  about 0.07 ms, inside the cloud's noise. They cut about 0.6 MB a frame from the upload,
+  which counts for more on a discrete GPU's upload path; the next PC run confirms or drops them.
+- 1280x720 screenshot byte-identical to main; draws and shadow instances unchanged.

@@ -155,6 +155,9 @@ pub(crate) struct DrawCall<'a> {
     /// Copies of the casters each sun shadow map touches (decision 0102), placed after every
     /// group's `instances` in the instance buffer; map `k` draws only `cascades[k]`.
     pub cascades: [std::ops::Range<u32>; MAX_CASCADES],
+    /// Bit `k` set: `cascades[k]` is in the compact shadow copies, not the instance buffer
+    /// (decision 0304).
+    pub compact: u8,
     /// A game shader and its material group (decision 0181).
     pub game: Option<game_shader::GameDraw<'a>>,
     /// Sides, blending and cut-out of the material (decision 0280).
@@ -214,6 +217,13 @@ struct MeshCalls<'a> {
     game_lights: Option<&'a wgpu::BindGroup>,
     /// Empty group 1 of the cut-out shadow pipeline (decision 0280).
     masked_empty: &'a wgpu::BindGroup,
+    /// Compact copies of sun shadow casters and the pipelines that read them, both faces and
+    /// one-sided (decision 0304).
+    copies: Option<(
+        &'a wgpu::Buffer,
+        &'a wgpu::RenderPipeline,
+        &'a wgpu::RenderPipeline,
+    )>,
 }
 
 impl MeshCalls<'_> {
@@ -316,6 +326,7 @@ impl MeshCalls<'_> {
                 bound_lights = l;
             }
             pass.set_vertex_buffer(1, ib.slice(..));
+            let mut on_copies = false;
             for call in calls.iter().filter(|c| !(skip_lamps && c.lamp)) {
                 let range = match casters {
                     Casters::InView => call.instances.start..call.instances.start + call.seen,
@@ -325,18 +336,30 @@ impl MeshCalls<'_> {
                 if range.is_empty() {
                     continue;
                 }
+                // Compact copies (decision 0304) are only made for static, opaque, standard
+                // draws, which the plain or one-sided depth pipelines draw.
+                let copies = match (casters, self.copies) {
+                    (Casters::SunMap(k), Some(c)) if call.compact & (1 << k) != 0 => Some(c),
+                    _ => None,
+                };
+                if on_copies != copies.is_some() {
+                    match copies {
+                        Some((buffer, ..)) => pass.set_vertex_buffer(1, buffer.slice(..)),
+                        None => pass.set_vertex_buffer(1, ib.slice(..)),
+                    }
+                    on_copies = copies.is_some();
+                }
+                let one_sided = call.look.variant as usize & variants::DOUBLE_SIDED == 0;
                 // The standard pipeline for this call's material, or none (left out).
                 let standard = match pipes {
+                    Pipes::Depth(..) if copies.is_some() => {
+                        copies.map(|(_, both, single)| if one_sided { single } else { both })
+                    }
                     Pipes::Lit(pbr, _, target) => Some(pbr.get(call.look.variant as usize, target)),
                     Pipes::Depth(_, _, masked, _) if call.look.masked && call.game.is_none() => masked,
                     // Shadow maps skip the back faces of one-sided materials, as the lit pass
                     // does (decision 0302).
-                    Pipes::Depth(_, Some(one_sided), _, _)
-                        if call.game.is_none()
-                            && call.look.variant as usize & variants::DOUBLE_SIDED == 0 =>
-                    {
-                        Some(one_sided)
-                    }
+                    Pipes::Depth(_, Some(single), _, _) if call.game.is_none() && one_sided => Some(single),
                     Pipes::Depth(plain, ..) => Some(plain),
                 };
                 // Game shaders (decision 0181): their own pipelines; blended or
@@ -637,6 +660,10 @@ pub struct Renderer {
     shadow_pipeline: wgpu::RenderPipeline,
     /// Shadow maps of one-sided materials: back faces skipped (decision 0302).
     shadow_one_sided: wgpu::RenderPipeline,
+    /// Sun shadow pipelines over the compact copies, both faces and one-sided (decision 0304).
+    shadow_compact: (wgpu::RenderPipeline, wgpu::RenderPipeline),
+    /// Compact copies of sun shadow casters: one world matrix each (decision 0304).
+    shadow_copies: Option<wgpu::Buffer>,
     /// Shadows of cut-out parts (alpha tested against the material) and the empty group 1
     /// their layout skips (decision 0280).
     masked_shadow: (wgpu::RenderPipeline, wgpu::BindGroup),
@@ -666,6 +693,8 @@ pub struct Renderer {
     scratch: (Vec<InstanceData>, Vec<u32>, Vec<u32>),
     /// Instances by group, gathered only for ray-traced frames, which read them on the CPU.
     scratch_rt: Vec<InstanceData>,
+    /// Compact shadow copies' sources, kept across frames (decision 0304).
+    scratch_copies: Vec<u32>,
     /// Per-chunk results of preparing mesh instances in parallel, reused across frames.
     scratch_chunks: Vec<Prepared>,
     /// Reused per-frame array: the culling class of each instance in `scratch.0`.
@@ -1078,6 +1107,21 @@ impl Renderer {
             wgpu::MultisampleState::default(),
             (Some(wgpu::Face::Back), None),
         );
+        let compact = |cull| {
+            depth_pipeline_with(
+                device,
+                &pbr_shader,
+                &view_layout,
+                (
+                    "vs_shadow_compact",
+                    (size_of::<[[f32; 4]; 4]>() as u64, &MODEL_ATTRS),
+                ),
+                shadow_depth_state(),
+                wgpu::MultisampleState::default(),
+                (cull, None),
+            )
+        };
+        let shadow_compact = (compact(None), compact(Some(wgpu::Face::Back)));
         let masked_shadow = masked_shadow_pipeline(device, &pbr_shader, &view_layout, &material_layout);
 
         let skinning = crate::skinning::Skinning::new(
@@ -1234,6 +1278,8 @@ impl Renderer {
             shadow_sampler,
             shadow_pipeline,
             shadow_one_sided,
+            shadow_compact,
+            shadow_copies: None,
             masked_shadow,
             local_shadows,
             environment: None,
@@ -1273,6 +1319,7 @@ impl Renderer {
             bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
             scratch_rt: Vec::new(),
+            scratch_copies: Vec::new(),
             scratch_chunks: Vec::new(),
             pass_timer: None,
         }
@@ -2316,11 +2363,9 @@ impl Renderer {
                     n
                 }));
             }
-            raw.extend_from_slice(&chunk.insts);
             gid.extend(chunk.meta.iter().map(|m| to_frame[m.group as usize]));
             class_of.extend(chunk.meta.iter().map(|m| (m.class, m.maps)));
         }
-        self.scratch_chunks = chunks;
         for (bi, bulk) in frame.bulk.iter().enumerate() {
             let Some(Ok(model)) = self.models.get(&bulk.asset) else {
                 continue;
@@ -2437,26 +2482,42 @@ impl Renderer {
                 instances: at..at + n,
                 seen,
                 cascades: Default::default(),
+                compact: 0,
                 game: slot.and_then(|s| game.and_then(|gs| gs.draw(s))),
                 look,
             });
             at += n;
         }
-        // Only indices move here (decision 0108): `src_of[place]` names the frame-order instance
-        // for each place in the buffer, and the instances themselves are copied once, in buffer
-        // order, straight into the upload memory below. The shadow map bits follow their
-        // instance into its final place.
+        // Only indices move here (decision 0108): `src_of[place]` names the instance for each
+        // place in the buffer, and the instances themselves are copied once, in buffer order,
+        // straight into the upload memory below. The shadow map bits follow their instance into
+        // its final place. The instances stay where they were made (decision 0304): each chunk's
+        // own array, then `raw` for bulk draws; a `src_of` entry is a source number and an index
+        // in it (`Sources`), so nothing is gathered into one array first.
+        let sources = Sources(
+            chunks[..wanted]
+                .iter()
+                .map(|c| c.insts.as_slice())
+                .chain(std::iter::once(raw.as_slice()))
+                .collect(),
+        );
         src_of.clear();
-        src_of.resize(raw.len(), 0);
-        let mut maps_at = vec![0u8; raw.len()];
+        src_of.resize(gid.len(), 0);
+        let mut maps_at = vec![0u8; gid.len()];
         let (mut next, mut next_shadow) = (start_of, shadow_start_of);
+        // Frame order runs through the sources in turn; `source` and `base` follow it.
+        let (mut source, mut base) = (0usize, 0usize);
         for (i, (&g, &(c, maps))) in gid.iter().zip(&class_of).enumerate() {
+            while i - base >= sources.0.get(source).map_or(usize::MAX, |s| s.len()) {
+                base += sources.0[source].len();
+                source += 1;
+            }
             let slot = if c == crate::cull::Class::Seen {
                 &mut next[g as usize]
             } else {
                 &mut next_shadow[g as usize]
             };
-            src_of[*slot as usize] = i as u32;
+            src_of[*slot as usize] = Sources::tag(source, i - base);
             maps_at[*slot as usize] = maps;
             *slot += 1;
         }
@@ -2472,6 +2533,8 @@ impl Renderer {
             }
             None => !c.look.blended(),
         };
+        let mut copy_of = std::mem::take(&mut self.scratch_copies);
+        copy_of.clear();
         for k in 0..cascades.len().min(MAX_CASCADES) {
             for call in calls.iter_mut().filter(|c| casts(c)) {
                 if !culler.culls_shadow_maps() {
@@ -2494,6 +2557,17 @@ impl Renderer {
                     call.cascades[k] = 0..0;
                 } else if last - first + 1 == count {
                     call.cascades[k] = first..last + 1;
+                } else if call.game.is_none() && !call.look.masked {
+                    // The plain and one-sided depth pipelines read only the world matrix, so
+                    // their copies go to the compact stream (decision 0304): 64 bytes, not 112.
+                    let start = copy_of.len() as u32;
+                    for i in first..last + 1 {
+                        if maps_at[i as usize] & bit != 0 {
+                            copy_of.push(src_of[i as usize]);
+                        }
+                    }
+                    call.cascades[k] = start..copy_of.len() as u32;
+                    call.compact |= bit;
                 } else {
                     let start = src_of.len() as u32;
                     for i in first..last + 1 {
@@ -2516,7 +2590,7 @@ impl Renderer {
         let mut sorted: Vec<(f32, DrawCall)> = Vec::new();
         for c in blended.drain(..) {
             for k in c.instances.start..c.instances.start + c.seen {
-                let m = &raw[src_of[k as usize] as usize].model;
+                let m = &sources.get(src_of[k as usize]).model;
                 let d = Vec3::new(m[3][0], m[3][1], m[3][2]).distance_squared(eye);
                 sorted.push((
                     d,
@@ -2545,19 +2619,32 @@ impl Renderer {
         let mut instances = std::mem::take(&mut self.scratch_rt);
         instances.clear();
         if rt_cfg.is_some() {
-            instances.extend(src_of.iter().map(|&i| raw[i as usize]));
+            instances.extend(src_of.iter().map(|&i| *sources.get(i)));
         }
         if !src_of.is_empty() {
             write_gathered(
                 &self.device,
                 &self.queue,
                 &mut self.instance_buffer,
-                &raw,
-                &src_of,
+                (&src_of, |i| {
+                    bytemuck::cast::<_, [u8; size_of::<InstanceData>()]>(*sources.get(i))
+                }),
                 // Storage too: ray-traced hits read the hit instance's material (decision 0093).
                 wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
             );
         }
+        if !copy_of.is_empty() {
+            write_gathered(
+                &self.device,
+                &self.queue,
+                &mut self.shadow_copies,
+                (&copy_of, |i| bytemuck::cast::<_, [u8; 64]>(sources.get(i).model)),
+                wgpu::BufferUsages::VERTEX,
+            );
+        }
+        self.scratch_copies = copy_of;
+        drop(sources);
+        self.scratch_chunks = chunks;
 
         // Skinned parts: their own instanced draws, one joint palette per character.
         let built = crate::skinning::build(frame, &self.models, &self.plain_material);
@@ -2780,6 +2867,10 @@ impl Renderer {
             empty_group: self.game.as_ref().map(|g| &g.empty_group),
             game_lights: Some(&self.lights_group),
             masked_empty: &self.masked_shadow.1,
+            copies: self
+                .shadow_copies
+                .as_ref()
+                .map(|b| (b, &self.shadow_compact.0, &self.shadow_compact.1)),
             first_blended,
         };
         let depth_pipelines = (
@@ -3556,6 +3647,30 @@ const PREPARE_MIN_DRAWS: usize = 128;
 /// game shader slot, look (decision 0107).
 type FastKey = (usize, usize, bool, bool, usize, Option<u32>, variants::Look);
 
+/// Where a frame's static instances live (decision 0304): each prepare chunk's own array, then
+/// the bulk draws' array. An instance is named by one `u32`, the source number in the top
+/// [`Sources::SOURCE_BITS`] bits and the index in that source below them.
+struct Sources<'a>(Vec<&'a [InstanceData]>);
+
+impl Sources<'_> {
+    /// Bits for the source number: room for `PREPARE_CHUNKS` chunks and the bulk array.
+    const SOURCE_BITS: u32 = 5;
+    const INDEX_BITS: u32 = 32 - Self::SOURCE_BITS;
+    const INDEX_MASK: u32 = (1 << Self::INDEX_BITS) - 1;
+
+    /// The name of instance `index` of source `source`. An index needs at most 27 bits: 2^27
+    /// instances of 112 bytes would be a 15 GB buffer, past every device's buffer limit.
+    fn tag(source: usize, index: usize) -> u32 {
+        ((source as u32) << Self::INDEX_BITS) | (index as u32 & Self::INDEX_MASK)
+    }
+
+    fn get(&self, tag: u32) -> &InstanceData {
+        &self.0[(tag >> Self::INDEX_BITS) as usize][(tag & Self::INDEX_MASK) as usize]
+    }
+}
+
+const _: () = assert!(PREPARE_CHUNKS < 1 << Sources::SOURCE_BITS);
+
 /// One chunk of prepared mesh instances, in draw order, with the chunk's own group numbers.
 #[derive(Default)]
 struct Prepared {
@@ -3611,28 +3726,26 @@ fn growable<'b>(
 /// [`write_growable`] does), copying each element once, in order, into the upload memory
 /// (decision 0108). Equivalent to gathering into a vector and writing that, without the
 /// vector or the second copy.
-fn write_gathered(
+fn write_gathered<const SIZE: usize>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     slot: &mut Option<wgpu::Buffer>,
-    data: &[InstanceData],
-    order: &[u32],
+    (order, bytes): (&[u32], impl Fn(u32) -> [u8; SIZE]),
     usage: wgpu::BufferUsages,
 ) {
-    const SIZE: usize = size_of::<InstanceData>();
     let len = (order.len() * SIZE) as u64;
     let buffer = growable(device, slot, len, usage);
     let Some(mut view) = wgpu::BufferSize::new(len).and_then(|n| queue.write_buffer_with(buffer, 0, n))
     else {
         // Not expected (the buffer was just sized for it); writing a gathered copy instead
         // keeps the frame right.
-        let gathered: Vec<InstanceData> = order.iter().map(|&i| data[i as usize]).collect();
-        queue.write_buffer(buffer, 0, bytemuck::cast_slice(&gathered));
+        let gathered: Vec<[u8; SIZE]> = order.iter().map(|&i| bytes(i)).collect();
+        queue.write_buffer(buffer, 0, gathered.as_flattened());
         return;
     };
     let (chunks, _) = view.slice(..).into_chunks::<SIZE>();
     for (dst, &i) in chunks.into_iter().zip(order) {
-        dst.write(bytemuck::cast(data[i as usize]));
+        dst.write(bytes(i));
     }
 }
 
@@ -3828,6 +3941,32 @@ pub(crate) fn depth_pipeline(
     entry: &str,
     depth: wgpu::DepthStencilState,
     multisample: wgpu::MultisampleState,
+    faces_color: (Option<wgpu::Face>, Option<wgpu::TextureFormat>),
+) -> wgpu::RenderPipeline {
+    let instance = (size_of::<InstanceData>() as u64, &INSTANCE_ATTRS[..]);
+    depth_pipeline_with(
+        device,
+        shader,
+        view_layout,
+        (entry, instance),
+        depth,
+        multisample,
+        faces_color,
+    )
+}
+
+/// World matrix only: the compact copies of sun shadow casters (decision 0304).
+const MODEL_ATTRS: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4];
+
+/// [`depth_pipeline`] with its own vertex entry and instance stride and attributes.
+fn depth_pipeline_with(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    view_layout: &wgpu::BindGroupLayout,
+    (entry, (stride, instance_attrs)): (&str, (u64, &[wgpu::VertexAttribute])),
+    depth: wgpu::DepthStencilState,
+    multisample: wgpu::MultisampleState,
     (cull_mode, color): (Option<wgpu::Face>, Option<wgpu::TextureFormat>),
 ) -> wgpu::RenderPipeline {
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -3851,9 +3990,9 @@ pub(crate) fn depth_pipeline(
                     attributes: &mesh_attrs,
                 }),
                 Some(wgpu::VertexBufferLayout {
-                    array_stride: size_of::<InstanceData>() as u64,
+                    array_stride: stride,
                     step_mode: wgpu::VertexStepMode::Instance,
-                    attributes: &INSTANCE_ATTRS,
+                    attributes: instance_attrs,
                 }),
             ],
         },
