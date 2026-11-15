@@ -430,31 +430,22 @@ fn axis_angle(axis: Vec3, angle: f32) -> Quat {
     }
 }
 
+fn arr(v: Vec3) -> [f32; 3] {
+    [v.x, v.y, v.z]
+}
+
+fn quat(q: [f32; 4]) -> Quat {
+    Quat {
+        x: q[0],
+        y: q[1],
+        z: q[2],
+        w: q[3],
+    }
+}
+
 /// The shortest rotation turning unit `a` onto unit `b`.
 fn arc(a: Vec3, b: Vec3) -> Quat {
-    let d = dot(a, b);
-    if d < -0.9999 {
-        // Opposite: half a turn about any axis square to `a`.
-        let side = if a.x.abs() < 0.9 {
-            Vec3::new(1.0, 0.0, 0.0)
-        } else {
-            Vec3::new(0.0, 0.0, 1.0)
-        };
-        let axis = normalize(cross(a, side));
-        return Quat {
-            x: axis.x,
-            y: axis.y,
-            z: axis.z,
-            w: 0.0,
-        };
-    }
-    let c = cross(a, b);
-    qnormalize(Quat {
-        x: c.x,
-        y: c.y,
-        z: c.z,
-        w: 1.0 + d,
-    })
+    quat(marionette_core::vmath::arc(arr(a), arr(b)))
 }
 
 /// `v` without its part along unit `up`.
@@ -464,50 +455,7 @@ fn flatten(v: Vec3, up: Vec3) -> Vec3 {
 
 /// A rotation whose +Y is `up` and whose -Z points along `forward` (flattened).
 fn upright(up: Vec3, forward: Vec3) -> Option<Quat> {
-    let f = normalize(flatten(forward, up));
-    if length(f) < 0.5 {
-        return None;
-    }
-    let r = cross(f, up);
-    // Columns x = r, y = up, z = -f, as a quaternion.
-    let (m00, m01, m02) = (r.x, up.x, -f.x);
-    let (m10, m11, m12) = (r.y, up.y, -f.y);
-    let (m20, m21, m22) = (r.z, up.z, -f.z);
-    let trace = m00 + m11 + m22;
-    let q = if trace > 0.0 {
-        let s = libm::sqrtf(trace + 1.0) * 2.0;
-        Quat {
-            w: 0.25 * s,
-            x: (m21 - m12) / s,
-            y: (m02 - m20) / s,
-            z: (m10 - m01) / s,
-        }
-    } else if m00 > m11 && m00 > m22 {
-        let s = libm::sqrtf(1.0 + m00 - m11 - m22) * 2.0;
-        Quat {
-            w: (m21 - m12) / s,
-            x: 0.25 * s,
-            y: (m01 + m10) / s,
-            z: (m02 + m20) / s,
-        }
-    } else if m11 > m22 {
-        let s = libm::sqrtf(1.0 + m11 - m00 - m22) * 2.0;
-        Quat {
-            w: (m02 - m20) / s,
-            x: (m01 + m10) / s,
-            y: 0.25 * s,
-            z: (m12 + m21) / s,
-        }
-    } else {
-        let s = libm::sqrtf(1.0 + m22 - m00 - m11) * 2.0;
-        Quat {
-            w: (m10 - m01) / s,
-            x: (m02 + m20) / s,
-            y: (m12 + m21) / s,
-            z: 0.25 * s,
-        }
-    };
-    Some(qnormalize(q))
+    marionette_core::vmath::basis(arr(up), arr(forward)).map(quat)
 }
 
 /// The head in the world for a rig at `t`.
