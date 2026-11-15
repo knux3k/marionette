@@ -136,6 +136,21 @@ fn vs_shadow(in: VsIn, inst: InstIn) -> @builtin(position) vec4<f32> {
     return view.view_proj * model * vec4<f32>(in.position, 1.0);
 }
 
+// The same, reading the compact copies of sun shadow casters (decision 0304): only the world
+// matrix per instance.
+struct ModelIn {
+    @location(3) model0: vec4<f32>,
+    @location(4) model1: vec4<f32>,
+    @location(5) model2: vec4<f32>,
+    @location(6) model3: vec4<f32>,
+};
+
+@vertex
+fn vs_shadow_compact(in: VsIn, inst: ModelIn) -> @builtin(position) vec4<f32> {
+    let model = mat4x4<f32>(inst.model0, inst.model1, inst.model2, inst.model3);
+    return view.view_proj * model * vec4<f32>(in.position, 1.0);
+}
+
 // Shadows of cut-out materials (decision 0280): texels under the cutoff cast nothing.
 struct MaskedShadowOut {
     @builtin(position) clip: vec4<f32>,
