@@ -646,8 +646,11 @@ pub struct Renderer {
     /// Render scale and foveation (decisions 0081, 0082).
     scale: crate::scale::Scale,
     instance_buffer: Option<wgpu::Buffer>,
-    /// Reused per-frame arrays: instances in frame order, their group, instances by group.
-    scratch: (Vec<InstanceData>, Vec<u32>, Vec<InstanceData>),
+    /// Reused per-frame arrays: instances in frame order, their group, and for each place in
+    /// the instance buffer the frame-order instance that goes there (decision 0108).
+    scratch: (Vec<InstanceData>, Vec<u32>, Vec<u32>),
+    /// Instances by group, gathered only for ray-traced frames, which read them on the CPU.
+    scratch_rt: Vec<InstanceData>,
     /// Reused per-frame array: the culling class of each instance in `scratch.0`.
     /// With each class, the sun shadow maps the instance touches (bit per map, decision 0102).
     scratch_class: Vec<(crate::cull::Class, u8)>,
@@ -1238,6 +1241,7 @@ impl Renderer {
             compress_wanted: None,
             bc_supported: device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_BC),
             scratch_class: Vec::new(),
+            scratch_rt: Vec::new(),
             pass_timer: None,
         }
     }
@@ -2158,7 +2162,7 @@ impl Renderer {
         class_of.clear();
         // Scratch arrays live across frames: fresh multi-megabyte allocations every frame
         // cost more in page faults than filling them does.
-        let (mut raw, mut gid, mut instances) = std::mem::take(&mut self.scratch);
+        let (mut raw, mut gid, mut src_of) = std::mem::take(&mut self.scratch);
         raw.clear();
         gid.clear();
         let mut last_model: Option<(&str, &GpuModel)> = None;
@@ -2353,18 +2357,21 @@ impl Renderer {
             });
             at += n;
         }
-        instances.clear();
-        instances.resize(raw.len(), InstanceData::zeroed());
-        // The shadow map bits follow their instance into its final place.
+        // Only indices move here (decision 0108): `src_of[place]` names the frame-order instance
+        // for each place in the buffer, and the instances themselves are copied once, in buffer
+        // order, straight into the upload memory below. The shadow map bits follow their
+        // instance into its final place.
+        src_of.clear();
+        src_of.resize(raw.len(), 0);
         let mut maps_at = vec![0u8; raw.len()];
         let (mut next, mut next_shadow) = (start_of, shadow_start_of);
-        for ((inst, &g), &(c, maps)) in raw.iter().zip(&gid).zip(&class_of) {
+        for (i, (&g, &(c, maps))) in gid.iter().zip(&class_of).enumerate() {
             let slot = if c == crate::cull::Class::Seen {
                 &mut next[g as usize]
             } else {
                 &mut next_shadow[g as usize]
             };
-            instances[*slot as usize] = *inst;
+            src_of[*slot as usize] = i as u32;
             maps_at[*slot as usize] = maps;
             *slot += 1;
         }
@@ -2386,14 +2393,13 @@ impl Renderer {
                     call.cascades[k] = call.instances.clone();
                     continue;
                 }
-                let start = instances.len() as u32;
+                let start = src_of.len() as u32;
                 for i in call.instances.clone() {
                     if maps_at[i as usize] & (1 << k) != 0 {
-                        let copy = instances[i as usize];
-                        instances.push(copy);
+                        src_of.push(src_of[i as usize]);
                     }
                 }
-                call.cascades[k] = start..instances.len() as u32;
+                call.cascades[k] = start..src_of.len() as u32;
             }
         }
         // See-through materials (decision 0280) draw after everything opaque, one instance per
@@ -2407,7 +2413,7 @@ impl Renderer {
         let mut sorted: Vec<(f32, DrawCall)> = Vec::new();
         for c in blended.drain(..) {
             for k in c.instances.start..c.instances.start + c.seen {
-                let m = &instances[k as usize].model;
+                let m = &raw[src_of[k as usize] as usize].model;
                 let d = Vec3::new(m[3][0], m[3][1], m[3][2]).distance_squared(eye);
                 sorted.push((
                     d,
@@ -2432,12 +2438,19 @@ impl Renderer {
         let mut calls = opaque;
         calls.extend(sorted.into_iter().map(|(_, c)| c));
         calls.extend(game_tail);
-        if !instances.is_empty() {
-            write_growable(
+        // Ray-traced frames also read the instances on the CPU, so they keep a gathered copy.
+        let mut instances = std::mem::take(&mut self.scratch_rt);
+        instances.clear();
+        if rt_cfg.is_some() {
+            instances.extend(src_of.iter().map(|&i| raw[i as usize]));
+        }
+        if !src_of.is_empty() {
+            write_gathered(
                 &self.device,
                 &self.queue,
                 &mut self.instance_buffer,
-                &instances,
+                &raw,
+                &src_of,
                 // Storage too: ray-traced hits read the hit instance's material (decision 0093).
                 wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
             );
@@ -3056,7 +3069,8 @@ impl Renderer {
         if rt_cfg.is_some() {
             crate::raytrace::RayTracer::built(&mut self.models);
         }
-        self.scratch = (raw, gid, instances);
+        self.scratch = (raw, gid, src_of);
+        self.scratch_rt = instances;
         if let Some(t) = &self.pass_timer {
             t.resolve(encoder);
         }
@@ -3424,19 +3438,58 @@ pub(crate) fn write_growable<T: Pod>(
     usage: wgpu::BufferUsages,
 ) {
     let bytes: &[u8] = bytemuck::cast_slice(data);
-    let needed = (bytes.len() as u64).next_power_of_two().max(1024);
-    if slot.as_ref().is_none_or(|b| b.size() < bytes.len() as u64) {
+    let buffer = growable(device, slot, bytes.len() as u64, usage);
+    queue.write_buffer(buffer, 0, bytes);
+}
+
+/// `slot`'s buffer, replaced by one twice as large as needed when it holds fewer than `len`
+/// bytes.
+fn growable<'b>(
+    device: &wgpu::Device,
+    slot: &'b mut Option<wgpu::Buffer>,
+    len: u64,
+    usage: wgpu::BufferUsages,
+) -> &'b wgpu::Buffer {
+    if slot.as_ref().is_none_or(|b| b.size() < len) {
         *slot = None;
     }
-    let buffer = slot.get_or_insert_with(|| {
+    slot.get_or_insert_with(|| {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("sprite batch"),
-            size: needed,
+            size: len.next_power_of_two().max(1024),
             usage: usage | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
-    });
-    queue.write_buffer(buffer, 0, bytes);
+    })
+}
+
+/// Writes `data[order[0]], data[order[1]], ...` to the start of `slot`'s buffer (grown as
+/// [`write_growable`] does), copying each element once, in order, into the upload memory
+/// (decision 0108). Equivalent to gathering into a vector and writing that, without the
+/// vector or the second copy.
+fn write_gathered(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    slot: &mut Option<wgpu::Buffer>,
+    data: &[InstanceData],
+    order: &[u32],
+    usage: wgpu::BufferUsages,
+) {
+    const SIZE: usize = size_of::<InstanceData>();
+    let len = (order.len() * SIZE) as u64;
+    let buffer = growable(device, slot, len, usage);
+    let Some(mut view) = wgpu::BufferSize::new(len).and_then(|n| queue.write_buffer_with(buffer, 0, n))
+    else {
+        // Not expected (the buffer was just sized for it); writing a gathered copy instead
+        // keeps the frame right.
+        let gathered: Vec<InstanceData> = order.iter().map(|&i| data[i as usize]).collect();
+        queue.write_buffer(buffer, 0, bytemuck::cast_slice(&gathered));
+        return;
+    };
+    let (chunks, _) = view.slice(..).into_chunks::<SIZE>();
+    for (dst, &i) in chunks.into_iter().zip(order) {
+        dst.write(bytemuck::cast(data[i as usize]));
+    }
 }
 
 /// Rest-pose bounding box of a model: every part's positions through its node transform.
