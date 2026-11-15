@@ -2153,7 +2153,13 @@ impl Renderer {
                 .map(|l| (l.position, l.range))
                 .collect();
             let lod = frame.lod.filter(|_| self.lod_wanted);
+            // Filter taps (softness texels), the normal offset (1.5 texels), the 3x3 filter's
+            // own texel and a margin, in clip units (2 per map width).
+            let pad = frame.shadows.map_or(0.0, |s| {
+                (2.0 * s.softness.clamp(0.0, 4.0) + 8.0) / s.resolution.clamp(256, 4096) as f32
+            });
             crate::cull::Culler::new(self.culling, &vps, &shadow_vps, lamps, lod)
+                .with_shadow_receivers(&vps, &shadow_vps, pad)
                 .keeping_all(rt_cfg.is_some())
                 .with_projection_scale(views.first().map_or(1.0, |(v, _)| v.proj.y_axis.y))
         };

@@ -13,7 +13,7 @@
 //! The tests are conservative (a sphere that touches a plane counts as inside), so culling
 //! never changes a pixel; the reference images prove that.
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 
 /// A bounding sphere in the space of the vertices it was made from.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -134,6 +134,99 @@ pub struct Culler {
     /// Screen-size measure from the first view: (view-projection, vertical scale).
     first_view: Option<(Mat4, f32)>,
     lod: Option<Lod>,
+    /// Per sun shadow map, where the views' pixels can read it (decision 0109); `None` tests
+    /// only the map's volume.
+    receivers: Vec<Option<Receivers>>,
+}
+
+/// The part of an orthographic sun shadow map that the views' pixels can read (decision
+/// 0109): the views' frustums seen along the light, as a convex polygon in the map's clip xy,
+/// widened by `pad` for the filter taps and the normal offset. A caster whose circle misses it
+/// writes only texels no pixel reads.
+#[derive(Debug, Clone)]
+pub struct Receivers {
+    /// Edge lines `n.x * x + n.y * y + d >= 0` inside, `n` of unit length.
+    edges: Vec<Vec3>,
+    /// The map's view-projection: clip xy of a world point, and world radius to clip.
+    map: Mat4,
+    radius_scale: f32,
+    pad: f32,
+}
+
+impl Receivers {
+    /// `None` when the map is not orthographic or the views give no area.
+    pub fn new(map: &Mat4, views: &[Mat4], pad: f32) -> Option<Self> {
+        if map.row(3) != Vec4::W {
+            return None;
+        }
+        let mut points = Vec::with_capacity(views.len() * 8);
+        for vp in views {
+            let inv = vp.inverse();
+            for &z in &[0.0, 1.0] {
+                for &(x, y) in &[(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                    let world = inv.project_point3(Vec3::new(x, y, z));
+                    if !world.is_finite() {
+                        return None;
+                    }
+                    points.push(map.transform_point3(world).truncate());
+                }
+            }
+        }
+        let hull = convex_hull(points);
+        if hull.len() < 3 {
+            return None;
+        }
+        let edges = (0..hull.len())
+            .map(|i| {
+                let (a, b) = (hull[i], hull[(i + 1) % hull.len()]);
+                let n = Vec2::new(a.y - b.y, b.x - a.x).normalize_or_zero();
+                n.extend(-n.dot(a))
+            })
+            .collect();
+        Some(Self {
+            edges,
+            map: *map,
+            radius_scale: map.row(0).truncate().length().max(map.row(1).truncate().length()),
+            pad,
+        })
+    }
+
+    /// The sphere's shadow can land where a pixel reads the map (conservative).
+    pub fn touches(&self, s: &Sphere) -> bool {
+        let c = self.map.transform_point3(s.center).truncate();
+        let reach = s.radius * self.radius_scale + self.pad;
+        self.edges.iter().all(|e| e.x * c.x + e.y * c.y + e.z >= -reach)
+    }
+}
+
+/// Convex hull, counter-clockwise, of a few points (Andrew's monotone chain).
+fn convex_hull(mut points: Vec<Vec2>) -> Vec<Vec2> {
+    points.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
+    points.dedup();
+    if points.len() < 3 {
+        return points;
+    }
+    let mut hull: Vec<Vec2> = Vec::with_capacity(points.len() * 2);
+    // Lower half left to right, then upper half right to left; each drops its last point,
+    // which starts the other half.
+    let add = |hull: &mut Vec<Vec2>, start: usize, p: Vec2| {
+        while hull.len() >= start + 2
+            && (hull[hull.len() - 1] - hull[hull.len() - 2]).perp_dot(p - hull[hull.len() - 2]) <= 0.0
+        {
+            hull.pop();
+        }
+        hull.push(p);
+    };
+    for &p in &points {
+        add(&mut hull, 0, p);
+    }
+    hull.pop();
+    let start = hull.len();
+    for &p in points.iter().rev() {
+        add(&mut hull, start, p);
+    }
+    hull.pop();
+    hull
 }
 
 impl Culler {
@@ -152,7 +245,15 @@ impl Culler {
             lamps,
             first_view: views.first().map(|vp| (*vp, 1.0)),
             lod,
+            receivers: Vec::new(),
         }
+    }
+
+    /// Leaves casters out of a sun shadow map when no pixel of `views` can read their shadow
+    /// there (decision 0109). `pad` is in the maps' clip units.
+    pub fn with_shadow_receivers(mut self, views: &[Mat4], shadow: &[Mat4], pad: f32) -> Self {
+        self.receivers = shadow.iter().map(|m| Receivers::new(m, views, pad)).collect();
+        self
     }
 
     /// Keeps every instance at least for shadows (never `Hidden`): ray-traced shadows and
@@ -180,10 +281,14 @@ impl Culler {
         if !self.culls_shadow_maps() {
             return u8::MAX;
         }
-        self.shadow
-            .iter()
-            .enumerate()
-            .fold(0, |mask, (k, f)| if f.touches(s) { mask | 1 << k } else { mask })
+        self.shadow.iter().enumerate().fold(0, |mask, (k, f)| {
+            let read = self
+                .receivers
+                .get(k)
+                .and_then(Option::as_ref)
+                .is_none_or(|r| r.touches(s));
+            if read && f.touches(s) { mask | 1 << k } else { mask }
+        })
     }
 
     /// Whether [`Self::shadow_maps`] can leave casters out (culling on, not keeping all).
@@ -333,6 +438,50 @@ mod tests {
         assert_eq!(
             lamp.classify(&sphere(0.0, 0.0, 500.0, 0.5), 1).0,
             Class::ShadowOnly
+        );
+    }
+
+    #[test]
+    fn hull_keeps_only_the_outside_points_counter_clockwise() {
+        let pts = [
+            (0.0, 0.0),
+            (2.0, 0.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+            (0.0, 2.0),
+            (1.0, 0.0),
+        ];
+        let hull = convex_hull(pts.iter().map(|&(x, y)| Vec2::new(x, y)).collect());
+        assert_eq!(hull.len(), 4, "{hull:?}");
+        let area: f32 = (0..4).map(|i| hull[i].perp_dot(hull[(i + 1) % 4])).sum::<f32>() / 2.0;
+        assert_eq!(area, 4.0, "counter-clockwise, full square");
+    }
+
+    #[test]
+    fn sun_maps_skip_casters_whose_shadow_no_pixel_reads() {
+        // Sun straight down over a camera looking along -z: pixels read the map only under the
+        // view's wedge.
+        let shadow = glam::camera::rh::proj::directx::orthographic(-200.0, 200.0, -200.0, 200.0, -50.0, 50.0)
+            * glam::camera::rh::view::look_at_mat4(Vec3::new(0.0, 10.0, 0.0), Vec3::ZERO, Vec3::NEG_Z);
+        let c = Culler::new(true, &[persp()], &[shadow], vec![], None).with_shadow_receivers(
+            &[persp()],
+            &[shadow],
+            0.01,
+        );
+        assert_eq!(c.shadow_maps(&sphere(0.0, 0.0, -20.0, 1.0)), 1, "under the view");
+        assert_eq!(
+            c.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0)),
+            0,
+            "in the map, beside the view"
+        );
+        // Just outside the wedge's edge but within the radius: kept.
+        let edge = 20.0 * 30f32.to_radians().tan();
+        assert_eq!(c.shadow_maps(&sphere(edge + 0.5, 0.0, -20.0, 1.0)), 1);
+        let plain = Culler::new(true, &[persp()], &[shadow], vec![], None);
+        assert_eq!(
+            plain.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0)),
+            1,
+            "volume test only"
         );
     }
 
