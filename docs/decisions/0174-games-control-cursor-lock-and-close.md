@@ -27,4 +27,4 @@ Headless runs ignore `WindowControl`, so it changes no state hash and no test re
 drift hash is unchanged. A game writes the resource from a system (or a scene sets it), so
 menus stay ordinary game code. Mouse movement still feeds `axis:MouseX/Y` while the cursor is
 free; a game that should not turn the camera in a menu ignores the axes while paused.
-Not yet seen on a real screen (listed with the window checks in STATE.md).
+Not yet seen on a real screen; check it with the other window checks (proofs/window.md).
