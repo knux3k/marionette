@@ -412,7 +412,7 @@ pub fn reduced_levels(indices: &[u32], positions: &[[f32; 3]]) -> Vec<Vec<u32>> 
             break;
         }
         last = reduced.len();
-        out.push(reduced);
+        out.push(meshopt::optimize_vertex_cache(&reduced, positions.len()));
     }
     out
 }
@@ -421,6 +421,21 @@ pub fn reduced_levels(indices: &[u32], positions: &[[f32; 3]]) -> Vec<Vec<u32>> 
 pub fn reduced_levels(_indices: &[u32], _positions: &[[f32; 3]]) -> Vec<Vec<u32>> {
     Vec::new()
 }
+
+/// The same triangles reordered so the GPU reuses transformed vertices (meshoptimizer's
+/// vertex cache order, decision 0301): every pass runs the vertex shader fewer times. Depth
+/// is the same whatever the order, so shadow maps are unchanged; colors could differ only
+/// where two triangles of one mesh are exactly coplanar and overlap. Unchanged when the `lod`
+/// feature is off.
+#[cfg(feature = "lod")]
+pub fn cache_order(indices: &mut Vec<u32>, vertex_count: usize) {
+    if indices.len() >= 3 && indices.iter().all(|&i| (i as usize) < vertex_count) {
+        *indices = meshopt::optimize_vertex_cache(indices, vertex_count);
+    }
+}
+
+#[cfg(not(feature = "lod"))]
+pub fn cache_order(_indices: &mut Vec<u32>, _vertex_count: usize) {}
 
 #[cfg(test)]
 mod tests {

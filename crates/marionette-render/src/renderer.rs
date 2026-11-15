@@ -869,7 +869,11 @@ fn texture_mips(model: &ModelData) -> Vec<Vec<Vec<u8>>> {
 }
 
 fn decode_model(asset: &str, base: &std::path::Path, want: Want) -> Result<Decoded, String> {
-    let model = assets::load_model(asset, base)?;
+    let mut model = assets::load_model(asset, base)?;
+    for p in &mut model.parts {
+        let count = p.mesh.positions.len();
+        crate::cull::cache_order(&mut p.mesh.indices, count);
+    }
     let lods = if want.lod {
         model
             .parts

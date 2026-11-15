@@ -23,8 +23,10 @@ engine is.
   components or CLI flags change.
 - No names, identifying details or machine details in any file or commit message
   (`docs/ai/RULES.md`, decision 0016).
-- Ask the owner before pushing, publishing, spending, deleting outside the repository, or
-  opening windows or sound on a user's machine.
+- Standing approval from the owner: threads may commit, push their own `claude/` branches as
+  Marionette Contributors, open PRs and merge them when CI passes, without asking each time.
+- Ask the owner before pushing to main, publishing, spending, deleting outside the repository,
+  or opening windows or sound on a user's machine.
 - A task with a procedure has a skill in `.claude/skills/` (index below); a feature an agent
   would use gets one (`engine-add-skill`).
 - Weigh every change against the four focuses in `docs/ai/FOCUSES.md`: modularity (including
