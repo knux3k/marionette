@@ -60,6 +60,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0074 | Blend spaces (gradient band weights, phase sync) and masked or additive overlays as optional components | accepted |
 | 0075 | 3D sound through one `hear` formula (distance curves, rear muffle, Doppler, head pose), live voices, layered `Music` | accepted |
 | 0076 | Save games: `marionette-save` with slots, crash-safe `.msave` files and backups, versioned saves with data and Rust migrations, background writer, autosave | accepted |
+| 0077 | Crash-safe replace for any file: `marionette_host::write_replacing` (temp beside target, flush, optional backup, rename); `SaveStore::write` uses it | accepted |
 | 0180 | Meshes built in game code: `GameMeshes` resource, `mesh:<name>` assets, in-place updates, vertex colors for every mesh | accepted |
 | 0181 | Game shaders: WGSL `surface`/`vertex` hooks spliced into the PBR shader (`ShaderMaterial`, `GameShaders`, `.wgsl` files), blend options, game time, `primitive:grid` | accepted |
 | 0182 | Game shader option `// @no_fog`: fog distance times a composed constant, for sky domes and backdrops | accepted |
