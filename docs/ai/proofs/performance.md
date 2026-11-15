@@ -98,3 +98,23 @@ Unity on Direct3D 12, a window, vertical sync off.
   (decision 0285) until the fix that followed it.
 - Next: the deferred optimization pass (decision 0100) starts from these two gaps, GPU time
   per frame and CPU time per draw.
+
+### After the optimization pass (decisions 0102-0109, 0300)
+
+2026-11-15, main at `bd5e0fd`, same PC, scene and settings (driver 595.97). Marionette 1,000
+frames after 30 warm-up; Unity players unchanged, rerun the same way.
+
+| | Frame p50 / p99 ms | Where the time goes (p50 ms) |
+| --- | --- | --- |
+| Marionette, 2 frames in flight | 6.56 / 6.96 | recording 4.75, GPU wait 0.89, extract 0.69, sim 0.23 |
+| Marionette, 1 frame in flight | 12.32 / 13.14 | GPU wait 6.68, recording 4.73, extract 0.68, sim 0.22 |
+| Unity | 11.23 / 16.04 | main thread 11.22, render thread 1.40, GPU 4.33 |
+| Unity, static batching | 11.27 / 16.76 | the same |
+
+- Marionette is 1.7x faster than Unity at the median and 2.3x at p99 (2 frames in flight,
+  `--in-flight 2`, decision 0103). Recording fell from 9.5 to 4.7 ms; 742 draws (was 786),
+  26,745 sun shadow instances (was 30,496).
+- GPU time per pass (`--gpu-passes`, p50 ms): main 3.71, sun maps 2.53 / 0.25 / 0.04 / 0.00
+  (far to near), about 6.5 in all (was 7.0). Unity's GPU needs about 4.3: GPU time is the
+  next gap, the far sun map first.
+- Still not like for like: Marionette renders offscreen, Unity presents to a window.
