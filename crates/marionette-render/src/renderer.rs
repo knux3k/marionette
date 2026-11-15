@@ -2204,9 +2204,10 @@ impl Renderer {
         raw.clear();
         gid.clear();
         // Mesh instances are prepared in parallel (decision 0300): each chunk of draws is culled,
-        // transformed, given its material and grouped on its own thread into its own reused
-        // arrays; then the chunks are appended in order and their groups mapped to the frame's
-        // on this thread, so the result is the same as one pass in draw order.
+        // transformed, given its material and grouped on rayon's pool of long-lived threads
+        // (decision 0303: starting threads every frame cost more than the work) into its own
+        // reused arrays; then the chunks are appended in order and their groups mapped to the
+        // frame's on this thread, so the result is the same as one pass in draw order.
         let mut chunks = std::mem::take(&mut self.scratch_chunks);
         let chunk_len = frame.meshes.len().div_ceil(PREPARE_CHUNKS).max(PREPARE_MIN_DRAWS);
         let wanted = frame.meshes.len().div_ceil(chunk_len);
@@ -2294,16 +2295,11 @@ impl Renderer {
         };
         let parts = &mut chunks[..wanted];
         if wanted > 1 {
-            std::thread::scope(|scope| {
-                let mut rest = parts.iter_mut().zip(frame.meshes.chunks(chunk_len));
-                let first = rest.next();
-                for (out, draws) in rest {
-                    scope.spawn(|| prepare(out, draws));
-                }
-                if let Some((out, draws)) = first {
-                    prepare(out, draws);
-                }
-            });
+            use rayon::prelude::*;
+            parts
+                .par_iter_mut()
+                .zip(frame.meshes.par_chunks(chunk_len))
+                .for_each(|(out, draws)| prepare(out, draws));
         } else if let Some(out) = parts.first_mut() {
             prepare(out, &frame.meshes);
         }
@@ -2482,13 +2478,31 @@ impl Renderer {
                     call.cascades[k] = call.instances.clone();
                     continue;
                 }
-                let start = src_of.len() as u32;
+                // A map whose casters in this draw are one unbroken run of its instances draws
+                // that run where it already is (decision 0303); otherwise they are copied after
+                // the main ones. Same instances in the same order either way.
+                let bit = 1u8 << k;
+                let (mut first, mut last, mut count) = (u32::MAX, 0u32, 0u32);
                 for i in call.instances.clone() {
-                    if maps_at[i as usize] & (1 << k) != 0 {
-                        src_of.push(src_of[i as usize]);
+                    if maps_at[i as usize] & bit != 0 {
+                        first = first.min(i);
+                        last = i;
+                        count += 1;
                     }
                 }
-                call.cascades[k] = start..src_of.len() as u32;
+                if count == 0 {
+                    call.cascades[k] = 0..0;
+                } else if last - first + 1 == count {
+                    call.cascades[k] = first..last + 1;
+                } else {
+                    let start = src_of.len() as u32;
+                    for i in first..last + 1 {
+                        if maps_at[i as usize] & bit != 0 {
+                            src_of.push(src_of[i as usize]);
+                        }
+                    }
+                    call.cascades[k] = start..src_of.len() as u32;
+                }
             }
         }
         // See-through materials (decision 0280) draw after everything opaque, one instance per
@@ -3532,10 +3546,11 @@ pub(crate) fn write_growable<T: Pod>(
     queue.write_buffer(buffer, 0, bytes);
 }
 
-/// Mesh draws are split into about this many chunks, prepared on as many threads.
-const PREPARE_CHUNKS: usize = 8;
-/// ... but never fewer draws per chunk than this: below it a thread costs more than it saves.
-const PREPARE_MIN_DRAWS: usize = 256;
+/// Mesh draws are split into about this many chunks, shared out over the thread pool.
+const PREPARE_CHUNKS: usize = 16;
+/// ... but never fewer draws per chunk than this: below it handing a chunk over costs more
+/// than it saves.
+const PREPARE_MIN_DRAWS: usize = 128;
 
 /// Draw group lookup key: model address, part, material overridden, lamp, level of detail,
 /// game shader slot, look (decision 0107).
