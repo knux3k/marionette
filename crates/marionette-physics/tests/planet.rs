@@ -48,7 +48,7 @@ fn walker(at: [f32; 3], forward: f32) -> Value {
         "CharacterController": { "speed": 4.0, "jump_speed": 5.0, "gravity": 9.81, "mass": 70.0,
                                  "move_x": "", "move_forward": "", "jump": "" },
         "CharacterInput": { "move_x": 0.0, "move_forward": forward, "jump": false },
-        "PlanetCharacter": { "align_speed": 0.0, "thrust": 0.0, "thrust_action": "", "face_movement": false }
+        "PlanetCharacter": { "align_speed": 0.0, "thrust": 0.0, "climb_speed": 0.0, "thrust_action": "", "face_movement": false }
     })
 }
 

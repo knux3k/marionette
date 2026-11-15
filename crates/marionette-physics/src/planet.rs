@@ -5,6 +5,8 @@
 //! - [`GravityWell`] on a body's entity (centre = its `Transform` translation) pulls every
 //!   dynamic body and every [`PlanetCharacter`]. Wells add up, so a craft between two moons
 //!   feels both and a character crossing from one to the other turns smoothly.
+//! - [`GravityZone`] is uniform gravity inside a sphere (a flat landing area on a small
+//!   world, a room on a station). Inside a zone the wells are ignored.
 //! - [`SphereFluid`] on a well's entity is an ocean or atmosphere around the same centre:
 //!   inside it gravity is reduced by `buoyancy` and motion is damped by `drag`.
 //! - [`PlanetCharacter`] next to a `CharacterController` makes the character walk on the
@@ -32,6 +34,17 @@ pub struct GravityWell {
     pub range: f32,
 }
 
+/// Uniform gravity inside a sphere of `radius` around the entity's `Transform` translation:
+/// a flat area on a small world (the ground near a landing site, where things should stand
+/// straight up), a room or a ship deck. Inside a zone every `GravityWell` is ignored; where
+/// zones overlap, the lowest scene id wins. Characters turn their up to minus `gravity`.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct GravityZone {
+    pub radius: f32,
+    /// Acceleration in m/s² (for example 0, -12, 0).
+    pub gravity: Vec3,
+}
+
 /// A spherical fluid (ocean, thick atmosphere) around the centre of the entity's `Transform`.
 /// Bodies and characters closer to the centre than `radius` are inside it.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
@@ -53,6 +66,10 @@ pub struct PlanetCharacter {
     /// Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none.
     /// Inside a `SphereFluid` it is the swim-up acceleration.
     pub thrust: f32,
+    /// Jetpack climb speed in m/s. 0: `thrust` adds to the vertical speed on top of gravity.
+    /// Above 0: while thrusting, gravity is off and the vertical speed moves toward this
+    /// speed by `thrust` m/s² (a hover pack that eases up to a steady climb).
+    pub climb_speed: f32,
     /// Action that fires `thrust` (empty = none).
     pub thrust_action: String,
     /// Turn to face the walking direction (AI characters); off for player-turned characters.
@@ -77,20 +94,26 @@ pub(crate) struct Well {
     pub radius: f32,
     pub range: f32,
     pub fluid: Option<SphereFluid>,
+    pub zone: Option<GravityZone>,
 }
 
 /// Every well of the scene, in scene id order (empty when the scene has none).
 pub(crate) fn wells(world: &mut World) -> Vec<Well> {
     use marionette_core::scene::SceneId;
     use marionette_core::spatial::Transform;
-    let Some(mut q) = world.try_query::<(&SceneId, &Transform, Option<&GravityWell>, Option<&SphereFluid>)>()
-    else {
+    let Some(mut q) = world.try_query::<(
+        &SceneId,
+        &Transform,
+        Option<&GravityWell>,
+        Option<&SphereFluid>,
+        Option<&GravityZone>,
+    )>() else {
         return Vec::new();
     };
     let mut out: Vec<(u64, Well)> = q
         .iter(world)
-        .filter(|(_, _, g, f)| g.is_some() || f.is_some())
-        .map(|(id, t, g, f)| {
+        .filter(|(_, _, g, f, z)| g.is_some() || f.is_some() || z.is_some())
+        .map(|(id, t, g, f, z)| {
             let t = t.translation;
             let g = g.copied().unwrap_or(GravityWell {
                 surface_gravity: 0.0,
@@ -105,6 +128,7 @@ pub(crate) fn wells(world: &mut World) -> Vec<Well> {
                     radius: g.radius.max(1e-3),
                     range: g.range,
                     fluid: f.copied(),
+                    zone: z.copied(),
                 },
             )
         })
@@ -117,10 +141,17 @@ pub(crate) fn wells(world: &mut World) -> Vec<Well> {
 pub(crate) fn field(wells: &[Well], p: [f32; 3]) -> ([f32; 3], Option<SphereFluid>) {
     let mut g = [0.0f32; 3];
     let mut fluid = None;
+    let mut zone: Option<[f32; 3]> = None;
     for w in wells {
         let d = sub(w.centre, p);
         let r2 = dot(d, d);
         let r = r2.sqrt();
+        if let Some(z) = w.zone
+            && zone.is_none()
+            && r < z.radius
+        {
+            zone = Some([z.gravity.x, z.gravity.y, z.gravity.z]);
+        }
         if let Some(f) = w.fluid
             && fluid.is_none()
             && r < f.radius
@@ -138,7 +169,7 @@ pub(crate) fn field(wells: &[Well], p: [f32; 3]) -> ([f32; 3], Option<SphereFlui
         };
         g = add(g, scale(d, k));
     }
-    (g, fluid)
+    (zone.unwrap_or(g), fluid)
 }
 
 /// Turns unit `from` toward unit `to` by at most `max` radians (chord approximation: exact
@@ -234,7 +265,14 @@ pub(crate) fn plan(pc: &PlanetCharacter, wells: &[Well], s: &Step) -> Plan {
                 jumped = true;
             }
             if s.thrust_held && pc.thrust > 0.0 {
-                vy += pc.thrust * s.dt;
+                if pc.climb_speed > 0.0 {
+                    // Hover pack: gravity is off while it lifts; ease toward the climb speed.
+                    let step = pc.thrust * s.dt;
+                    let gap = pc.climb_speed - s.vertical_velocity;
+                    vy = s.vertical_velocity + gap.clamp(-step, step);
+                } else {
+                    vy += pc.thrust * s.dt;
+                }
             }
         }
     }
@@ -282,6 +320,7 @@ mod tests {
             radius: r,
             range: 0.0,
             fluid: None,
+            zone: None,
         }
     }
 
@@ -294,6 +333,22 @@ mod tests {
         assert!((g2[0] + 9.81 / 4.0).abs() < 1e-4);
         let (g3, _) = field(&w, [0.0, 0.0, 50.0]);
         assert!((g3[2] + 9.81 / 2.0).abs() < 1e-4, "linear inside");
+    }
+
+    #[test]
+    fn a_zone_overrides_wells_inside_it_only() {
+        let mut z = well(100.0);
+        z.centre = [0.0, 100.0, 0.0];
+        z.g = 0.0;
+        z.zone = Some(GravityZone {
+            radius: 18.0,
+            gravity: Vec3::new(0.0, -12.0, 0.0),
+        });
+        let w = [well(100.0), z];
+        let (g, _) = field(&w, [10.0, 101.0, 0.0]);
+        assert_eq!(g, [0.0, -12.0, 0.0]);
+        let (g, _) = field(&w, [30.0, 96.0, 0.0]);
+        assert!(g[0] < -1.0, "outside: toward the centre {g:?}");
     }
 
     #[test]
@@ -324,6 +379,7 @@ mod tests {
         let pc = PlanetCharacter {
             align_speed: 0.0,
             thrust: 0.0,
+            climb_speed: 0.0,
             thrust_action: String::new(),
             face_movement: false,
         };
@@ -370,9 +426,21 @@ mod tests {
         PlanetCharacter {
             align_speed: 0.0,
             thrust,
+            climb_speed: 0.0,
             thrust_action: "t".into(),
             face_movement: false,
         }
+    }
+
+    #[test]
+    fn a_hover_pack_eases_to_its_climb_speed_without_gravity() {
+        let mut p = pc(20.0);
+        p.climb_speed = 3.0;
+        let s = step(-1.0, false, true);
+        let plan_a = plan(&p, &[well(100.0)], &s);
+        assert!((plan_a.vertical_velocity - (-1.0 + 20.0 * s.dt)).abs() < 1e-5);
+        let plan_b = plan(&p, &[well(100.0)], &step(2.9, false, true));
+        assert_eq!(plan_b.vertical_velocity, 3.0);
     }
 
     #[test]

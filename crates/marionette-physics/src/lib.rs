@@ -22,7 +22,7 @@ use marionette_core::module::{EventLog, Module, RayCaster, SceneDir, Stage};
 pub use marionette_core::module::{RayFilter, RayHit};
 use marionette_core::scene::SceneId;
 use marionette_core::{Diagnostic, Errors, Registry, Result};
-pub use planet::{GravityWell, PlanetCharacter, PlanetState, SphereFluid};
+pub use planet::{GravityWell, GravityZone, PlanetCharacter, PlanetState, SphereFluid};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -44,10 +44,18 @@ pub enum Physics {
 
 pub struct PhysicsModule;
 
-/// Spawned entities whose body could not be built (reported once as a `physics_error`
-/// event). Not simulation state: rebuilt empty on load and restore.
+/// What physics remembers about bodies beside the simulation state. Not saved: rebuilt on
+/// load, and on restore (with `adopt` set).
 #[derive(Resource, Default)]
-struct FailedBodies(std::collections::BTreeSet<u64>);
+pub(crate) struct BodyTracking {
+    /// Spawned entities whose body could not be built (reported once as a `physics_error`
+    /// event).
+    pub failed: std::collections::BTreeSet<u64>,
+    /// Bodies whose collider is built from a game mesh: the mesh version it was built at.
+    pub meshes: BTreeMap<u64, u64>,
+    /// Restored from a snapshot: take the game meshes' current versions as built.
+    pub adopt: bool,
+}
 
 fn scene_ids(world: &mut World) -> BTreeMap<u64, Entity> {
     let mut q = world.query::<(Entity, &SceneId)>();
@@ -69,6 +77,7 @@ impl Module for PhysicsModule {
         r.register_component::<CharacterInput>();
         r.register_component::<planet::GravityWell>();
         r.register_component::<planet::SphereFluid>();
+        r.register_component::<planet::GravityZone>();
         r.register_component::<planet::PlanetCharacter>();
         r.register_component::<planet::PlanetState>();
     }
@@ -78,7 +87,7 @@ impl Module for PhysicsModule {
     }
 
     fn init(&self, world: &mut World) -> Result<()> {
-        world.remove_resource::<FailedBodies>();
+        world.remove_resource::<BodyTracking>();
         world.insert_resource(RayCaster(raycast));
         let Some(settings) = world.get_resource::<PhysicsSettings>().copied() else {
             world.remove_resource::<Physics>();
@@ -89,11 +98,13 @@ impl Module for PhysicsModule {
             .map(|d| d.0.clone())
             .unwrap_or_default();
         let ids = scene_ids(world);
+        let mut track = BodyTracking::default();
         let physics = match settings.mode {
-            PhysicsMode::Dim3 => Physics::D3(Box::new(dims::d3::build(world, &ids, &dir)?)),
-            PhysicsMode::Dim2 => Physics::D2(Box::new(dims::d2::build(world, &ids, &dir)?)),
+            PhysicsMode::Dim3 => Physics::D3(Box::new(dims::d3::build(world, &ids, &dir, &mut track)?)),
+            PhysicsMode::Dim2 => Physics::D2(Box::new(dims::d2::build(world, &ids, &dir, &mut track)?)),
         };
         world.insert_resource(physics);
+        world.insert_resource(track);
         Ok(())
     }
 
@@ -110,7 +121,10 @@ impl Module for PhysicsModule {
             ))
         })?;
         world.insert_resource(p);
-        world.remove_resource::<FailedBodies>();
+        world.insert_resource(BodyTracking {
+            adopt: true,
+            ..Default::default()
+        });
         Ok(())
     }
 }
@@ -132,12 +146,12 @@ fn physics_tick(world: &mut World) {
         .get_resource::<SceneDir>()
         .map(|d| d.0.clone())
         .unwrap_or_default();
-    let mut failed = world.remove_resource::<FailedBodies>().unwrap_or_default();
+    let mut track = world.remove_resource::<BodyTracking>().unwrap_or_default();
     let errors = match &mut physics {
-        Physics::D3(s) => dims::d3::sync(s, world, &ids, &dir, &mut failed.0),
-        Physics::D2(s) => dims::d2::sync(s, world, &ids, &dir, &mut failed.0),
+        Physics::D3(s) => dims::d3::sync(s, world, &ids, &dir, &mut track),
+        Physics::D2(s) => dims::d2::sync(s, world, &ids, &dir, &mut track),
     };
-    world.insert_resource(failed);
+    world.insert_resource(track);
     if !errors.is_empty()
         && let Some(mut log) = world.get_resource_mut::<EventLog>()
     {

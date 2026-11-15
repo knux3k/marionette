@@ -63,6 +63,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0180 | Meshes built in game code: `GameMeshes` resource, `mesh:<name>` assets, in-place updates, vertex colors for every mesh | accepted |
 | 0181 | Game shaders: WGSL `surface`/`vertex` hooks spliced into the PBR shader (`ShaderMaterial`, `GameShaders`, `.wgsl` files), blend options, game time, `primitive:grid` | accepted |
 | 0182 | Game shader option `// @no_fog`: fog distance times a composed constant, for sky domes and backdrops | accepted |
+| 0183 | Colliders from game meshes: `TriMesh`/`ConvexHull` accept `mesh:<name>`, wait for the mesh, rebuild when it is stored again; `main_with_args` | accepted |
 | 0080 | Frustum culling always on (pixel-identical, shadow casters kept); level of detail opt-in (`LevelOfDetail`, generated levels) | accepted |
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
@@ -104,6 +105,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
 | 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
 | 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |
+| 0233 | `GravityZone` (uniform gravity in a sphere, overrides wells) and `PlanetCharacter.climb_speed` (hover pack) | accepted |
 | 0240 | `port_serde`: Rust serde types from C# [Serializable] classes and structs, following JsonUtility's rules | accepted |
 | 0241 | `port_serde` on a real project: const and static initializers, expression-bodied properties, `external` types (also Unity value types) | accepted |
 | 0260 | Fast Linux check on pull requests, full suite on main, `CI gate` required, no up-to-date rule; merge queue not available on a personal repository | accepted |
@@ -118,6 +120,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0300 | Mesh instances prepared on up to 8 scoped threads, chunk results merged in draw order; 0109 receiver test only for casters outside the views | accepted |
 | 0301 | Mesh triangles put in vertex cache order at load (meshoptimizer, `lod` feature): same triangles, 12 percent less main pass GPU time | accepted |
 | 0302 | Shadow maps skip back faces of one-sided materials, as the lit pass does; not byte-identical (thin slivers in contact shadows), chosen by the owner | accepted |
+| 0303 | Mesh instance chunks prepared on rayon's long-lived pool; a sun map whose casters form one unbroken run of a draw's instances draws them in place instead of copying | accepted |
 | 0271 | Scripts pass component values directly instead of JSON text (`convert`: read plans, `patch`, text path as fallback and reference); turns skip unused work; script budgets | accepted |
 | 0272 | Parent and child transforms: `ChildOf` (local placement, `Transform` stays world), placed at load and before and after physics, cycles refused, `entity_attach` | accepted |
 | 0273 | Tests that pin what a value means (job operators against the interpreter, normal and metallic-roughness textures on pixels, grab reach, physics behaviour); normal maps were inverted and are fixed | accepted |

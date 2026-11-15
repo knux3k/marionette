@@ -535,6 +535,17 @@ type GravityWell = {
   surface_gravity: number;
 };
 
+/** Uniform gravity inside a sphere of `radius` around the entity's `Transform` translation: a flat area on a small world (the ground near a landing site, where things should stand straight up), a room or a ship deck. Inside a zone every `GravityWell` is ignored; where zones overlap, the lowest scene id wins. Characters turn their up to minus `gravity`. */
+type GravityZone = {
+  /** Acceleration in m/s² (for example 0, -12, 0). */
+  gravity: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  radius: number;
+};
+
 /** On an object while a hand holds it. Written by the XR module. */
 type Held = {
   /** A reference to another entity by its stable scene id. Serialized as a bare number. The validator reports a `scene.dangling_ref` error if the id does not exist. */
@@ -837,6 +848,8 @@ type PhysicsSettings = {
 type PlanetCharacter = {
   /** How fast up turns toward minus gravity, in radians per second (0 = at once). */
   align_speed: number;
+  /** Jetpack climb speed in m/s. 0: `thrust` adds to the vertical speed on top of gravity. Above 0: while thrusting, gravity is off and the vertical speed moves toward this speed by `thrust` m/s² (a hover pack that eases up to a steady climb). */
+  climb_speed: number;
   /** Turn to face the walking direction (AI characters); off for player-turned characters. */
   face_movement: boolean;
   /** Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none. Inside a `SphereFluid` it is the swim-up acceleration. */
@@ -1300,6 +1313,7 @@ interface Components {
   Follow: Follow;
   Grabbable: Grabbable;
   GravityWell: GravityWell;
+  GravityZone: GravityZone;
   Held: Held;
   JobData: JobData;
   JobDraw: JobDraw;

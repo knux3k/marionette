@@ -3,6 +3,7 @@
 
 macro_rules! backend {
     () => {
+        use crate::BodyTracking;
         use crate::components::{
             AngularVelocity, BodyKind, CharacterController, CharacterInput, CharacterState,
             Collider as ColliderComp, RigidBody as BodyComp,
@@ -13,6 +14,7 @@ macro_rules! backend {
         use marionette_core::actions::ActionState;
         use marionette_core::builtin::MoveIntent;
         use marionette_core::builtin::{Position, Velocity};
+        use marionette_core::mesh::GameMeshes;
         use marionette_core::module::EventLog;
         use marionette_core::spatial::Transform;
         use marionette_core::{Diagnostic, Errors};
@@ -42,32 +44,35 @@ macro_rules! backend {
                 .into()
         }
 
-        /// Builds the physics world from the scene's components (bodies in id order).
+        /// Builds the physics world from the scene's components (bodies in id order). Bodies
+        /// whose collider names a game mesh that does not exist yet wait for it (`sync`).
         pub fn build(
             world: &mut World,
             ids: &BTreeMap<u64, Entity>,
             scene_dir: &Path,
+            track: &mut BodyTracking,
         ) -> Result<State, Errors> {
             let mut state = State {
                 world: PhysicsWorld::default(),
                 entities: BTreeMap::new(),
             };
             for (&id, &e) in ids {
-                add(&mut state, world, id, e, scene_dir)?;
+                add(&mut state, world, id, e, scene_dir, track)?;
             }
             Ok(state)
         }
 
         /// Follows entities spawned or despawned since the last tick (scripts do this):
         /// bodies of entities that are gone are removed, new entities with a `Collider` get
-        /// a body, both in id order. Returns the diagnostics of new entities that cannot get
-        /// a body; `failed` keeps them from being retried every tick.
+        /// a body, both in id order, and colliders built from a game mesh that was stored
+        /// again get the new shape. Returns the diagnostics of new entities that cannot get
+        /// a body; `track.failed` keeps them from being retried every tick.
         pub fn sync(
             state: &mut State,
             world: &World,
             ids: &BTreeMap<u64, Entity>,
             scene_dir: &Path,
-            failed: &mut std::collections::BTreeSet<u64>,
+            track: &mut BodyTracking,
         ) -> Vec<Errors> {
             let gone: Vec<u64> = state
                 .entities
@@ -79,26 +84,102 @@ macro_rules! backend {
                 if let Some(h) = state.entities.remove(&id) {
                     state.world.remove_body(h.body);
                 }
+                track.meshes.remove(&id);
             }
-            failed.retain(|id| ids.contains_key(id));
+            track.failed.retain(|id| ids.contains_key(id));
             let mut errors = Vec::new();
             for (&id, &e) in ids {
-                if state.entities.contains_key(&id) || failed.contains(&id) {
+                if state.entities.contains_key(&id) || track.failed.contains(&id) {
                     continue;
                 }
                 if world.get::<ColliderComp>(e).is_none() && world.get::<BodyComp>(e).is_none() {
                     continue;
                 }
-                if let Err(err) = add(state, world, id, e, scene_dir) {
-                    failed.insert(id);
+                if let Err(err) = add(state, world, id, e, scene_dir, track) {
+                    track.failed.insert(id);
                     errors.push(err);
                 }
+            }
+            if let Some(meshes) = world.get_resource::<GameMeshes>() {
+                remesh(state, world, ids, scene_dir, meshes, track, &mut errors);
             }
             errors
         }
 
-        /// Adds the body and collider of one entity, if it has a `Collider`.
-        fn add(state: &mut State, world: &World, id: u64, e: Entity, scene_dir: &Path) -> Result<(), Errors> {
+        /// Gives colliders built from a game mesh the mesh's current shape when it was stored
+        /// again since they were built. A removed mesh leaves the last shape in place.
+        fn remesh(
+            state: &mut State,
+            world: &World,
+            ids: &BTreeMap<u64, Entity>,
+            scene_dir: &Path,
+            meshes: &GameMeshes,
+            track: &mut BodyTracking,
+            errors: &mut Vec<Errors>,
+        ) {
+            let current = |id: &u64| {
+                let e = *ids.get(id)?;
+                let c = world.get::<ColliderComp>(e)?;
+                Some((e, c, meshes.version(c.shape.game_mesh()?)?))
+            };
+            // After a snapshot restore the saved shapes are the built ones: take the versions
+            // as they are now instead of rebuilding (a rebuild could reorder contact pairs).
+            if track.adopt {
+                track.adopt = false;
+                for id in state.entities.keys() {
+                    if let Some((_, _, v)) = current(id) {
+                        track.meshes.insert(*id, v);
+                    }
+                }
+                return;
+            }
+            let mut changed = false;
+            for (id, built) in track.meshes.iter_mut() {
+                let (Some((e, c, v)), Some(h)) = (current(id), state.entities.get(id)) else {
+                    continue;
+                };
+                if v == *built {
+                    continue;
+                }
+                *built = v;
+                let t = world.get::<Transform>(e).copied().unwrap_or_default();
+                match conv::shape(
+                    &c.shape,
+                    [t.scale.x, t.scale.y, t.scale.z],
+                    scene_dir,
+                    Some(meshes),
+                ) {
+                    Ok(b) => {
+                        if let Some(col) = state.world.colliders.get_mut(h.collider) {
+                            col.set_shape(b.shape);
+                            changed = true;
+                        }
+                    }
+                    Err(m) => errors.push(
+                        Diagnostic::error(crate::codes::SHAPE, m)
+                            .entity(*id)
+                            .component("Collider")
+                            .into(),
+                    ),
+                }
+            }
+            // Bodies asleep on the old surface would float over a dug hole: wake them all
+            // once (mesh changes are rare, edits to terrain at most).
+            if changed {
+                state.world.wake_up_all(true);
+            }
+        }
+
+        /// Adds the body and collider of one entity, if it has a `Collider` (and, for a game
+        /// mesh shape, once the mesh exists).
+        fn add(
+            state: &mut State,
+            world: &World,
+            id: u64,
+            e: Entity,
+            scene_dir: &Path,
+            track: &mut BodyTracking,
+        ) -> Result<(), Errors> {
             {
                 let Some(collider) = world.get::<ColliderComp>(e).cloned() else {
                     if world.get::<BodyComp>(e).is_some() {
@@ -119,6 +200,16 @@ macro_rules! backend {
                         "remove Position: physics moves the entity's Transform",
                     ));
                 }
+                let meshes = world.get_resource::<GameMeshes>();
+                let mesh_version = match collider.shape.game_mesh() {
+                    Some(name) if conv::DIM == 3 => match meshes.and_then(|m| m.version(name)) {
+                        Some(v) => Some(v),
+                        // A module often stores its meshes after physics has loaded: wait,
+                        // and try again next tick.
+                        None => return Ok(()),
+                    },
+                    _ => None,
+                };
                 let t = world.get::<Transform>(e).copied().unwrap_or_default();
                 let tr = [t.translation.x, t.translation.y, t.translation.z];
                 let rot = [t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w];
@@ -167,7 +258,7 @@ macro_rules! backend {
                 if let Some(w) = world.get::<AngularVelocity>(e) {
                     b = b.angvel(conv::angular([w.x, w.y, w.z]));
                 }
-                let shape = conv::shape(&collider.shape, scale, scene_dir).map_err(|m| {
+                let shape = conv::shape(&collider.shape, scale, scene_dir, meshes).map_err(|m| {
                     Errors::from(
                         Diagnostic::error(crate::codes::SHAPE, m)
                             .entity(id)
@@ -187,6 +278,9 @@ macro_rules! backend {
                     c = c.active_collision_types(ActiveCollisionTypes::all());
                 }
                 let (body, collider) = state.world.insert(b, c);
+                if let Some(v) = mesh_version {
+                    track.meshes.insert(id, v);
+                }
                 state.entities.insert(
                     id,
                     Handles {

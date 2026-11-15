@@ -899,6 +899,7 @@
         },
         "PlanetCharacter": {
           "align_speed": 6.0,
+          "climb_speed": 0.0,
           "face_movement": false,
           "thrust": 14.0,
           "thrust_action": "thrust"
@@ -2521,6 +2522,7 @@
         },
         "PlanetCharacter": {
           "align_speed": 8.0,
+          "climb_speed": 0.0,
           "face_movement": true,
           "thrust": 0.0,
           "thrust_action": ""
@@ -2619,6 +2621,7 @@
         },
         "PlanetCharacter": {
           "align_speed": 8.0,
+          "climb_speed": 0.0,
           "face_movement": true,
           "thrust": 0.0,
           "thrust_action": ""
@@ -2717,6 +2720,7 @@
         },
         "PlanetCharacter": {
           "align_speed": 8.0,
+          "climb_speed": 0.0,
           "face_movement": true,
           "thrust": 0.0,
           "thrust_action": ""

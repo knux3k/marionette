@@ -18,7 +18,7 @@ check a feature there before building on it, and update its row when your work m
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0302): realistic scene 6.14 ms vs Unity 11.2 on an RTX 2080 (proofs/performance.md). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
-| 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0174), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
+| 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0174), colliders from game meshes (0183), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
 | 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
 | 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |
@@ -67,7 +67,7 @@ check a feature there before building on it, and update its row when your work m
   container measured; the full test suite passes on ARM64 in CI, decision 0140). Job schedules, `engine.jobs` and the swarm hash on Windows: first seen
   in the CI run of decision 0070; `JobDraw` drawn only on Mesa lavapipe so far.
 - Window (proofs/window.md; editor too): gamepads on hardware, high-refresh screens, clicks, speakers,
-  Linux and macOS screens, `WindowControl` cursor relock (0174).
+  Linux and macOS screens, cursor relock (0174).
 - MCP over the handshake-free protocol revision 2026-07-28 (the SDK handles it; tests use the
   2025-11-25 handshake). No real Claude Code client has connected; the `claude mcp add` line in
   `README.md` is unchecked.

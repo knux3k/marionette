@@ -223,6 +223,17 @@ Rust type: `marionette_physics::planet::GravityWell`.
 | `range` | number | yes | No pull beyond this distance from the centre (sphere of influence); 0 = everywhere. |
 | `surface_gravity` | number | yes | Acceleration in m/s² at `radius`. |
 
+### `GravityZone`
+
+Uniform gravity inside a sphere of `radius` around the entity's `Transform` translation: a flat area on a small world (the ground near a landing site, where things should stand straight up), a room or a ship deck. Inside a zone every `GravityWell` is ignored; where zones overlap, the lowest scene id wins. Characters turn their up to minus `gravity`.
+
+Rust type: `marionette_physics::planet::GravityZone`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `gravity` | object {x, y, z} | yes | Acceleration in m/s² (for example 0, -12, 0). |
+| `radius` | number | yes |  |
+
 ### `Held`
 
 On an object while a hand holds it. Written by the XR module.
@@ -427,6 +438,7 @@ Rust type: `marionette_physics::planet::PlanetCharacter`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `align_speed` | number | yes | How fast up turns toward minus gravity, in radians per second (0 = at once). |
+| `climb_speed` | number | yes | Jetpack climb speed in m/s. 0: `thrust` adds to the vertical speed on top of gravity. Above 0: while thrusting, gravity is off and the vertical speed moves toward this speed by `thrust` m/s² (a hover pack that eases up to a steady climb). |
 | `face_movement` | boolean | yes | Turn to face the walking direction (AI characters); off for player-turned characters. |
 | `thrust` | number | yes | Upward acceleration in m/s² while `thrust_action` is held (jetpack); 0 = none. Inside a `SphereFluid` it is the swim-up acceleration. |
 | `thrust_action` | string | yes | Action that fires `thrust` (empty = none). |
