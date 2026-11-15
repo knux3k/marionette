@@ -12,8 +12,9 @@ leaving out casters per cascade (tried: 59 fewer instances, no gain) did not mov
 
 ## Decision
 
-Sun and local shadow maps draw static parts of one-sided materials with back faces culled
-(`shadow_one_sided`), as the lit pass already does. Double-sided materials, cut-outs, skinned
+Sun shadow maps (every cascade) draw static parts of one-sided materials with back faces
+culled (`shadow_one_sided`), as the lit pass already does. Point and spot light maps keep both
+faces: they are small and close to their casters, where a contact shadow shows most. Double-sided materials, cut-outs, skinned
 parts and game shaders still cast from both faces. This is also what Unity does by default.
 
 ## Cost

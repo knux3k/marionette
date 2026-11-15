@@ -235,13 +235,15 @@ impl MeshCalls<'_> {
     ) {
         let (plain, one_sided, masked, skinned) = pipelines;
         // Local light maps skip lamps' own models; sun maps draw only the casters inside them.
-        let (skip_lamps, casters) = match sun_map {
-            Some(k) => (false, Casters::SunMap(k)),
-            None => (true, Casters::All),
+        // Only sun maps skip back faces (decision 0302): they hold most casters, while lamps'
+        // maps are small and close, where a contact shadow shows most.
+        let (skip_lamps, casters, one_sided) = match sun_map {
+            Some(k) => (false, Casters::SunMap(k), Some(one_sided)),
+            None => (true, Casters::All, None),
         };
         self.draw(
             pass,
-            Pipes::Depth(plain, Some(one_sided), Some(masked), skinned),
+            Pipes::Depth(plain, one_sided, Some(masked), skinned),
             (view_group, offset),
             (None, skip_lamps, casters, Phase::Opaque),
             stats,
