@@ -127,6 +127,8 @@ pub struct Culler {
     views: Vec<Frustum>,
     /// Sun shadow volumes (one per cascade).
     shadow: Vec<Frustum>,
+    /// Their view-projections.
+    shadow_mats: Vec<Mat4>,
     /// Ray-traced frames (decision 0093) keep everything: rays see behind the camera.
     keep_all: bool,
     /// Shadow-casting point and spot lights: (position, range).
@@ -137,6 +139,9 @@ pub struct Culler {
     /// Per sun shadow map, where the views' pixels can read it (decision 0109); `None` tests
     /// only the map's volume.
     receivers: Vec<Option<Receivers>>,
+    /// Per sun map, the rows taking the first map's clip position to this map's clip x and y
+    /// (both maps orthographic): one matrix product per caster, then two dot products per map.
+    from_first: Vec<Option<(Vec4, Vec4)>>,
 }
 
 /// The part of an orthographic sun shadow map that the views' pixels can read (decision
@@ -193,8 +198,12 @@ impl Receivers {
 
     /// The sphere's shadow can land where a pixel reads the map (conservative).
     pub fn touches(&self, s: &Sphere) -> bool {
-        let c = self.map.transform_point3(s.center).truncate();
-        let reach = s.radius * self.radius_scale + self.pad;
+        self.touches_at(self.map.transform_point3(s.center).truncate(), s.radius)
+    }
+
+    /// [`Self::touches`] with the sphere's center already in the map's clip xy.
+    fn touches_at(&self, c: Vec2, radius: f32) -> bool {
+        let reach = radius * self.radius_scale + self.pad;
         self.edges.iter().all(|e| e.x * c.x + e.y * c.y + e.z >= -reach)
     }
 }
@@ -241,11 +250,13 @@ impl Culler {
             enabled,
             views: views.iter().map(Frustum::from_view_proj).collect(),
             shadow: shadow.iter().map(Frustum::from_view_proj).collect(),
+            shadow_mats: shadow.to_vec(),
             keep_all: false,
             lamps,
             first_view: views.first().map(|vp| (*vp, 1.0)),
             lod,
             receivers: Vec::new(),
+            from_first: Vec::new(),
         }
     }
 
@@ -253,6 +264,20 @@ impl Culler {
     /// there (decision 0109). `pad` is in the maps' clip units.
     pub fn with_shadow_receivers(mut self, views: &[Mat4], shadow: &[Mat4], pad: f32) -> Self {
         self.receivers = shadow.iter().map(|m| Receivers::new(m, views, pad)).collect();
+        self.from_first = match shadow.first() {
+            Some(first) => {
+                let inv = first.inverse();
+                let orthographic = |m: &Mat4| m.row(3) == Vec4::W;
+                shadow
+                    .iter()
+                    .map(|m| {
+                        let rel = *m * inv;
+                        (orthographic(first) && orthographic(m)).then(|| (rel.row(0), rel.row(1)))
+                    })
+                    .collect()
+            }
+            None => Vec::new(),
+        };
         self
     }
 
@@ -277,18 +302,42 @@ impl Culler {
     /// [`Self::classify`] against the map's own clip volume, so leaving a caster out of a map it
     /// does not touch never changes a texel. Every bit when culling is off or the frame keeps
     /// everything.
-    pub fn shadow_maps(&self, s: &Sphere) -> u8 {
+    ///
+    /// `seen` says the sphere is in a view ([`Class::Seen`]): its shadow then falls where that
+    /// view reads the map, so the receiver test (decision 0109) is skipped. Skipping it only
+    /// ever keeps a caster.
+    pub fn shadow_maps(&self, s: &Sphere, seen: bool) -> u8 {
         if !self.culls_shadow_maps() {
             return u8::MAX;
         }
+        // The volume test first: it rejects most maps for most casters, and the receiver test
+        // reuses one projection of the center.
+        let mut first: Option<Vec4> = None;
         self.shadow.iter().enumerate().fold(0, |mask, (k, f)| {
-            let read = self
-                .receivers
-                .get(k)
-                .and_then(Option::as_ref)
-                .is_none_or(|r| r.touches(s));
-            if read && f.touches(s) { mask | 1 << k } else { mask }
+            if !f.touches(s) {
+                return mask;
+            }
+            let read = match (
+                self.receivers.get(k).and_then(Option::as_ref),
+                self.from_first.get(k),
+            ) {
+                _ if seen => true,
+                (None, _) => true,
+                (Some(r), Some(Some((rx, ry)))) => {
+                    let c0 = *first.get_or_insert_with(|| self.shadow_first_clip(s.center));
+                    r.touches_at(Vec2::new(rx.dot(c0), ry.dot(c0)), s.radius)
+                }
+                (Some(r), _) => r.touches(s),
+            };
+            if read { mask | 1 << k } else { mask }
         })
+    }
+
+    /// Clip position (w = 1) of a world point in the first sun map.
+    fn shadow_first_clip(&self, p: Vec3) -> Vec4 {
+        self.shadow_mats
+            .first()
+            .map_or(Vec4::W, |m| m.transform_point3(p).extend(1.0))
     }
 
     /// Whether [`Self::shadow_maps`] can leave casters out (culling on, not keeping all).
@@ -468,18 +517,22 @@ mod tests {
             &[shadow],
             0.01,
         );
-        assert_eq!(c.shadow_maps(&sphere(0.0, 0.0, -20.0, 1.0)), 1, "under the view");
         assert_eq!(
-            c.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0)),
+            c.shadow_maps(&sphere(0.0, 0.0, -20.0, 1.0), false),
+            1,
+            "under the view"
+        );
+        assert_eq!(
+            c.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0), false),
             0,
             "in the map, beside the view"
         );
         // Just outside the wedge's edge but within the radius: kept.
         let edge = 20.0 * 30f32.to_radians().tan();
-        assert_eq!(c.shadow_maps(&sphere(edge + 0.5, 0.0, -20.0, 1.0)), 1);
+        assert_eq!(c.shadow_maps(&sphere(edge + 0.5, 0.0, -20.0, 1.0), false), 1);
         let plain = Culler::new(true, &[persp()], &[shadow], vec![], None);
         assert_eq!(
-            plain.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0)),
+            plain.shadow_maps(&sphere(150.0, 0.0, 50.0, 1.0), false),
             1,
             "volume test only"
         );

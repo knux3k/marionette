@@ -113,6 +113,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0284 | Realistic render benchmark (`perf_realistic_scene`): 18M triangles, 257 materials, 99 2K textures, 3,200 movers; same scene buildable in Unity (`tools/unity-bench`) | accepted |
 | 0285 | Single-pass stereo: both eyes in one multiview pass, shader multiview forms made from the normal sources, a pass per eye where not covered | accepted |
 | 0290 | Physics, audio, animation and XR are cargo features of `marionette-agent`; the factory module moves to `examples/factory` with its benchmark, budgets and stability modes | accepted |
+| 0300 | Mesh instances prepared on up to 8 scoped threads, chunk results merged in draw order; 0109 receiver test only for casters outside the views | accepted |
 | 0271 | Scripts pass component values directly instead of JSON text (`convert`: read plans, `patch`, text path as fallback and reference); turns skip unused work; script budgets | accepted |
 | 0272 | Parent and child transforms: `ChildOf` (local placement, `Transform` stays world), placed at load and before and after physics, cycles refused, `entity_attach` | accepted |
 | 0273 | Tests that pin what a value means (job operators against the interpreter, normal and metallic-roughness textures on pixels, grab reach, physics behaviour); normal maps were inverted and are fixed | accepted |
