@@ -72,14 +72,29 @@ pub enum ColliderShape {
         half_height: f32,
         radius: f32,
     },
-    /// Convex hull of a model's vertices (`primitive:...` or a glTF path; 3D only).
+    /// Convex hull of a model's vertices (`primitive:...`, a glTF path, or `mesh:<name>` for
+    /// a game mesh made in code; 3D only).
     ConvexHull {
         model: String,
     },
-    /// Exact triangle mesh of a model (for fixed geometry; 3D only).
+    /// Exact triangle mesh of a model (for fixed geometry; 3D only). `mesh:<name>` builds it
+    /// from a game mesh (`GameMeshes`, decision 0180): the body waits until the mesh exists
+    /// and its shape is rebuilt whenever the mesh is stored again (terrain edits).
     TriMesh {
         model: String,
     },
+}
+
+impl ColliderShape {
+    /// The game mesh (`mesh:<name>`) a `ConvexHull` or `TriMesh` is built from, if any.
+    pub fn game_mesh(&self) -> Option<&str> {
+        match self {
+            ColliderShape::ConvexHull { model } | ColliderShape::TriMesh { model } => {
+                marionette_core::mesh::mesh_name(model)
+            }
+            _ => None,
+        }
+    }
 }
 
 /// The shape and surface of a body. An entity with a `Collider` but no `RigidBody` is fixed.

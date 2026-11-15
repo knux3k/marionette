@@ -437,8 +437,15 @@ pub fn main_with(engine: Engine) -> ExitCode {
     {
         return packaged::play(&engine, &game);
     }
+    main_with_args(engine, std::env::args_os().collect())
+}
+
+/// [`main_with`] with the arguments given instead of the process's own (the first is the
+/// program name). A game's binary uses it for commands of its own that end in an engine
+/// command, such as one that writes a scene for a save and then runs it in a window.
+pub fn main_with_args(engine: Engine, args: Vec<std::ffi::OsString>) -> ExitCode {
     // Parsing may print help and exit; nothing is held yet at that point.
-    let cli = Cli::parse();
+    let cli = Cli::parse_from(args);
     // Tie child processes to this process and remove what crashed engine processes left
     // behind; this process's own run folder is removed on the way out (decision 0032). A
     // panic or kill skips `shutdown`; the next start's sweep covers that.
