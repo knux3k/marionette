@@ -149,6 +149,18 @@ recording ms:
 
 - No merge copy: 8 percent less recording, faster in all 6 pairs.
 - Compact copies against no merge copy alone (4.24, 4.17, 4.17, 4.13, 4.34, 4.38; median 4.21):
-  about 0.07 ms, inside the cloud's noise. They cut about 0.6 MB a frame from the upload,
-  which counts for more on a discrete GPU's upload path; the next PC run confirms or drops them.
+  about 0.07 ms, inside the cloud's noise; nothing on the PC either (below), so removed.
 - 1280x720 screenshot byte-identical to main; draws and shadow instances unchanged.
+
+RTX 2080, 1920x1080, MSAA 4, `bench --frames 1000 --warmup 30 --in-flight 2`, runs alternated
+(A main before 0304, B both cuts, C no merge copy only):
+
+| | Frame p50 / p99 ms | Record / GPU wait ms |
+| --- | --- | --- |
+| A | 5.73 / 8.25, 5.74 / 7.97, 5.69 / 6.79 | 4.23 / 0.36, 4.13 / 0.49, 4.08 / 0.52 |
+| B | 5.60 / 6.67, 5.62 / 6.68, 5.61 / 6.68 | 3.63 / 1.02, 3.59 / 1.03, 3.61 / 1.06 |
+| C | 5.53 / 6.69, 5.65 / 6.67, 5.65 / 6.71 | 3.62 / 0.99, 3.63 / 1.02, 3.65 / 1.01 |
+
+- No merge copy: recording 0.5 ms less, p99 steadier. The frame is now bound by the GPU (main
+  pass about 3.3-3.5 ms, sun maps 1.9 ms), so the saving shows up as GPU wait.
+- B and C match: compact copies removed.
