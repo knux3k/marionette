@@ -1017,3 +1017,14 @@ Rust type: `marionette_core::spatial::ToneMapping`.
 | --- | --- | --- | --- |
 | `exposure` | number | yes |  |
 
+### `WindowControl`
+
+What a game asks of the window it runs in (decision 0174). The window reads it after every frame's ticks; without it the window's own options decide. Headless runs ignore it, so it never changes what a tick computes.
+
+Rust type: `marionette_core::ui::WindowControl`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `close` | boolean | yes | Close the window after this frame (a menu's Quit). |
+| `lock_cursor` | boolean | yes | Hide and lock the cursor while the window has focus (mouse look). False frees it, for example while a pause menu is open. |
+

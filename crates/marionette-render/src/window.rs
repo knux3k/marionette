@@ -20,7 +20,7 @@ use crate::gpu::{Gpu, pick_camera};
 use crate::renderer::{self, DEPTH_FORMAT, RenderStats, Renderer, Target};
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};
 use marionette_core::scene::SceneId;
-use marionette_core::ui::{UiButton, UiNode, layout};
+use marionette_core::ui::{UiButton, UiNode, WindowControl, layout};
 use marionette_core::{Diagnostic, Errors, Sim};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -96,7 +96,8 @@ pub struct WindowOptions {
     /// Escape closes the window. A game with its own pause menu turns this off and binds
     /// `key:Escape`.
     pub escape_exits: bool,
-    /// Hide and lock the cursor while the window has focus (mouse look).
+    /// Hide and lock the cursor while the window has focus (mouse look). A scene's
+    /// `WindowControl` resource overrides it (decision 0174).
     pub grab_cursor: bool,
     /// Keep simulating while minimized or hidden (no frames are drawn then).
     pub run_in_background: bool,
@@ -217,6 +218,8 @@ struct App<'h> {
     /// Mouse movement in pixels since it was last fed to the simulation (only while focused).
     mouse: (f32, f32),
     focused: bool,
+    /// The cursor is hidden and locked right now.
+    locked: bool,
     /// Minimized or fully hidden: no frames are drawn.
     hidden: bool,
     /// The OS said the window is fully covered (`Occluded`).
@@ -256,6 +259,7 @@ pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) 
         cursor: (0.0, 0.0),
         mouse: (0.0, 0.0),
         focused: true,
+        locked: false,
         hidden: false,
         occluded: false,
         zero_size: false,
@@ -385,9 +389,6 @@ impl App<'_> {
         self.stats.refresh_hz = refresh;
         self.stats.size = (config.width, config.height);
         self.stats.fullscreen = self.opts.fullscreen;
-        if self.opts.grab_cursor {
-            grab(&window, true);
-        }
         Ok(Running {
             window,
             surface,
@@ -471,6 +472,9 @@ impl App<'_> {
         self.stats.ticks(ran);
         let input_at = if ran > 0 { self.pending_input.take() } else { None };
         self.hooks.after_ticks(&mut self.sim);
+        if self.apply_control(event_loop) {
+            return;
+        }
 
         let frame = extract(&self.sim.world);
         let Some(r) = self.running.as_mut() else { return };
@@ -567,10 +571,34 @@ impl App<'_> {
             }
         }
         self.hooks.focus(&mut self.sim, focused);
-        if self.opts.grab_cursor
+        // A focus change is an input like any other, so it is recorded and replays exactly.
+        self.hooks
+            .device(&mut self.sim, FOCUS_INPUT, if focused { 1.0 } else { 0.0 });
+        self.input_now();
+        self.sync_cursor();
+    }
+
+    /// Applies the scene's `WindowControl`: the cursor lock it asks for, and a close request.
+    /// Returns true when the window is closing.
+    fn apply_control(&mut self, event_loop: &ActiveEventLoop) -> bool {
+        let control = self.sim.world.get_resource::<WindowControl>().copied();
+        if control.is_some_and(|c| c.close) {
+            event_loop.exit();
+            return true;
+        }
+        self.sync_cursor();
+        false
+    }
+
+    /// Locks or frees the cursor when what is wanted differs from what is applied.
+    fn sync_cursor(&mut self) {
+        let control = self.sim.world.get_resource::<WindowControl>();
+        let want = cursor_locked(control, self.opts.grab_cursor, self.focused);
+        if want != self.locked
             && let Some(r) = &self.running
         {
-            grab(&r.window, focused);
+            grab(&r.window, want);
+            self.locked = want;
         }
     }
 
@@ -595,6 +623,15 @@ impl App<'_> {
     }
 }
 
+/// Input name of the window's focus: 1 while focused, 0 after focus is lost (decision 0174).
+pub const FOCUS_INPUT: &str = "window:Focus";
+
+/// Whether the cursor should be hidden and locked: the scene's `WindowControl` decides when
+/// it has one, else the window option; never while another window has focus.
+pub fn cursor_locked(control: Option<&WindowControl>, option: bool, focused: bool) -> bool {
+    focused && control.map_or(option, |c| c.lock_cursor)
+}
+
 /// Hides and locks (or confines, where locking is unsupported) the cursor, or frees it.
 fn grab(window: &Window, on: bool) {
     if on {
@@ -611,7 +648,10 @@ impl ApplicationHandler for App<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.running.is_none() {
             match self.start(event_loop) {
-                Ok(r) => self.running = Some(r),
+                Ok(r) => {
+                    self.running = Some(r);
+                    self.apply_control(event_loop);
+                }
                 Err(e) => self.fail(event_loop, e),
             }
         }
@@ -664,8 +704,10 @@ impl ApplicationHandler for App<'_> {
                 if let Some(name) = mouse_name(button) {
                     let pressed = state == ElementState::Pressed;
                     self.device(name, pressed);
+                    // A locked cursor has no screen position: clicks are not button presses.
                     if pressed
                         && button == MouseButton::Left
+                        && !self.locked
                         && let Some(r) = self.running.as_ref()
                     {
                         let (w, h) = (r.config.width as f32, r.config.height as f32);
@@ -856,6 +898,24 @@ mod tests {
     use marionette_core::spatial::Vec2;
     use marionette_core::ui::Anchor;
     use winit::keyboard::KeyCode;
+
+    #[test]
+    fn the_scene_decides_the_cursor_lock_but_never_without_focus() {
+        let lock = WindowControl {
+            lock_cursor: true,
+            close: false,
+        };
+        let free = WindowControl::default();
+        // No resource: the window option decides.
+        assert!(cursor_locked(None, true, true));
+        assert!(!cursor_locked(None, false, true));
+        // The resource wins over the option, both ways (a pause menu frees the mouse).
+        assert!(cursor_locked(Some(&lock), false, true));
+        assert!(!cursor_locked(Some(&free), true, true));
+        // Another window has focus: never locked.
+        assert!(!cursor_locked(Some(&lock), true, false));
+        assert!(!cursor_locked(None, true, false));
+    }
 
     #[test]
     fn device_names_match_the_action_map_format() {

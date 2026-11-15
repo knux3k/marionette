@@ -1180,6 +1180,14 @@ type Velocity = {
   z: number;
 };
 
+/** What a game asks of the window it runs in (decision 0174). The window reads it after every frame's ticks; without it the window's own options decide. Headless runs ignore it, so it never changes what a tick computes. */
+type WindowControl = {
+  /** Close the window after this frame (a menu's Quit). */
+  close: boolean;
+  /** Hide and lock the cursor while the window has focus (mouse look). False frees it, for example while a pause menu is open. */
+  lock_cursor: boolean;
+};
+
 /** A hand that grabs: put it on a grip entity (`XrTracked` with `LeftGrip` or `RightGrip`). Pressing `grab_action` picks up the nearest [`Grabbable`] whose centre is within `grab_radius`; releasing throws it with the hand's velocity times `throw_scale`. */
 type XrHand = {
   grab_action: string;
@@ -1362,4 +1370,5 @@ interface Resources {
   SpawnIds: SpawnIds;
   TextureCompression: TextureCompression;
   ToneMapping: ToneMapping;
+  WindowControl: WindowControl;
 }

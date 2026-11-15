@@ -92,6 +92,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0171 | Focus loss releases held input; hidden windows sleep; vsync frame times snap to the refresh | accepted |
 | 0172 | Gamepads through gilrs in `marionette-gamepad`, polled by window hooks | accepted |
 | 0173 | Every windowed run measures frame pacing and input latency (`FrameStats`, `--frame-stats`) | accepted |
+| 0174 | Games control the cursor lock and closing the window (`WindowControl`); focus changes are the input `window:Focus` | accepted |
 | 0190 | Headsets through OpenXR: poses enter as recorded input, gameplay in `marionette-xr`, the runtime in `marionette-openxr` (Vulkan through wgpu-hal, one swapchain per eye) | accepted |
 | 0200 | World-space UI: one entity per panel, distance-field quads through a generic `QuadDrawHooks`, optional crate `marionette-ui3d` (feature `ui3d`), no shipped font | accepted |
 | 0201 | UI input is a `UiPointers` hook (rays and touch) any source fills; events and item values change in `Stage::Logic` | accepted |
