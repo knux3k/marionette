@@ -249,6 +249,12 @@ impl GameMeshes {
         self.map.get(name).map(|e| &e.mesh)
     }
 
+    /// The version a mesh was last stored at; it grows on every `set`, so a reader (physics
+    /// colliders, a renderer) rebuilds its copy when the number it holds differs.
+    pub fn version(&self, name: &str) -> Option<u64> {
+        self.map.get(name).map(|e| e.version)
+    }
+
     /// Names in order.
     pub fn names(&self) -> impl Iterator<Item = &str> {
         self.map.keys().map(String::as_str)
@@ -332,6 +338,7 @@ mod tests {
         meshes.set("a", tri()).unwrap();
         let before = meshes.snapshot();
         let v1 = before["a"].version;
+        assert_eq!(meshes.version("a"), Some(v1));
         meshes.set("a", tri()).unwrap();
         assert!(meshes.snapshot()["a"].version > v1);
         assert_eq!(before["a"].version, v1, "a frame's copy does not change");

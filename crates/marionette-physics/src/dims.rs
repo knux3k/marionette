@@ -7,6 +7,7 @@ pub mod d3 {
 
     pub(crate) mod conv {
         use crate::components::ColliderShape;
+        use marionette_core::mesh::GameMeshes;
         use rapier3d::prelude::*;
         use std::path::Path;
 
@@ -53,7 +54,12 @@ pub mod d3 {
             body.set_next_kinematic_rotation(Rotation::from_xyzw(q[0], q[1], q[2], q[3]).normalize());
         }
 
-        pub fn shape(s: &ColliderShape, k: [f32; 3], dir: &Path) -> Result<ColliderBuilder, String> {
+        pub fn shape(
+            s: &ColliderShape,
+            k: [f32; 3],
+            dir: &Path,
+            meshes: Option<&GameMeshes>,
+        ) -> Result<ColliderBuilder, String> {
             Ok(match s {
                 ColliderShape::Cuboid { half_extents: h } => {
                     ColliderBuilder::cuboid(h.x * k[0], h.y * k[1], h.z * k[2])
@@ -74,20 +80,39 @@ pub mod d3 {
                     ColliderBuilder::cylinder(half_height * k[1], radius * k[0].max(k[2]))
                 }
                 ColliderShape::ConvexHull { model } => {
-                    let (points, _) = mesh(model, k, dir)?;
+                    let (points, _) = mesh(model, k, dir, meshes)?;
                     ColliderBuilder::convex_hull(&points)
                         .ok_or_else(|| format!("cannot build a convex hull of `{model}`"))?
                 }
                 ColliderShape::TriMesh { model } => {
-                    let (points, tris) = mesh(model, k, dir)?;
+                    let (points, tris) = mesh(model, k, dir, meshes)?;
                     ColliderBuilder::trimesh(points, tris)
                         .map_err(|e| format!("bad triangle mesh `{model}`: {e:?}"))?
                 }
             })
         }
 
-        /// All triangles of a model, scaled, in model space.
-        fn mesh(model: &str, k: [f32; 3], dir: &Path) -> Result<(Vec<Vector>, Vec<[u32; 3]>), String> {
+        /// All triangles of a model or game mesh, scaled, in model space.
+        fn mesh(
+            model: &str,
+            k: [f32; 3],
+            dir: &Path,
+            meshes: Option<&GameMeshes>,
+        ) -> Result<(Vec<Vector>, Vec<[u32; 3]>), String> {
+            if let Some(name) = marionette_core::mesh::mesh_name(model) {
+                // Borrowed from the shared map: Rapier needs its own vertex arrays anyway, so
+                // the only copy is the scaled one it keeps.
+                let m = meshes
+                    .and_then(|g| g.get(name))
+                    .ok_or_else(|| format!("no game mesh `{name}` (store it in GameMeshes first)"))?;
+                let points = m
+                    .positions
+                    .iter()
+                    .map(|p| Vector::new(p[0] * k[0], p[1] * k[1], p[2] * k[2]))
+                    .collect();
+                let tris = m.indices.as_chunks::<3>().0.to_vec();
+                return Ok((points, tris));
+            }
             let m = marionette_assets::load_model(model, dir)?;
             let (mut points, mut tris) = (Vec::new(), Vec::new());
             for part in &m.parts {
@@ -116,6 +141,7 @@ pub mod d2 {
 
     pub(crate) mod conv {
         use crate::components::ColliderShape;
+        use marionette_core::mesh::GameMeshes;
         use rapier2d::prelude::*;
         use std::path::Path;
 
@@ -156,7 +182,12 @@ pub mod d2 {
         /// 2D character bodies keep their rotation.
         pub fn turn(_body: &mut RigidBody, _q: [f32; 4]) {}
 
-        pub fn shape(s: &ColliderShape, k: [f32; 3], _dir: &Path) -> Result<ColliderBuilder, String> {
+        pub fn shape(
+            s: &ColliderShape,
+            k: [f32; 3],
+            _dir: &Path,
+            _meshes: Option<&GameMeshes>,
+        ) -> Result<ColliderBuilder, String> {
             Ok(match s {
                 ColliderShape::Cuboid { half_extents: h } => ColliderBuilder::cuboid(h.x * k[0], h.y * k[1]),
                 ColliderShape::RoundCuboid {

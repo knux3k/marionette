@@ -9,6 +9,8 @@
 - `cargo test -p marionette-physics --lib planet`: gravity falls with distance and is linear
   inside, `range` cuts a well off, quaternion helpers, jetpack thrust and jumps, a neutral
   fluid floats and damps, up turns at `align_speed`.
+- Gravity zones and hover packs (decision 0233): `a_zone_overrides_wells_inside_it_only`,
+  `a_hover_pack_eases_to_its_climb_speed_without_gravity` (`--lib planet`).
 
 ## Navigation (decisions 0231, 0232)
 

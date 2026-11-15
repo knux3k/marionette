@@ -13,11 +13,17 @@ All opt-in components; set the scene's `PhysicsSettings` gravity to zero when we
    `GravityWell` (`surface_gravity`, `radius`, `range`; 0 range pulls everywhere). Wells add
    up, so crossing from one body to another just works. Dynamic bodies fall toward them.
 2. Optional `SphereFluid` on the same entity: an ocean (`radius`, `buoyancy`, `drag`).
+   Optional `GravityZone` (`radius`, `gravity`): uniform gravity inside a sphere, for a flat
+   area round a landing site where things stand straight up; wells are ignored inside it.
 3. A walking character: `CharacterController` plus `PlanetCharacter` (`align_speed` in rad/s,
-   `thrust` for a jetpack with `thrust_action`, `face_movement` for AI). It walks in its own
+   `thrust` for a jetpack with `thrust_action`, `climb_speed` above 0 for a hover pack that
+   eases to a steady climb with gravity off, `face_movement` for AI). It walks in its own
    tangent plane, jumps along up, swims inside a fluid. Turn the player by yawing its
    `Transform` rotation about its up; read `PlanetState` (`up`, `gravity`, `swimming`) for the
    camera.
+3a. Ground made in code (a game mesh, `mesh:<name>`): give the planet entity a `Collider`
+   with `TriMesh { model: "mesh:<name>" }`. The body appears once the mesh is stored and
+   follows it when the mesh is stored again after an edit.
 4. Scripts or AI steer it with `MoveIntent` (world velocity, `jump`) instead of actions.
 
 ## Navigation
