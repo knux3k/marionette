@@ -231,6 +231,8 @@ struct SurfaceIn {
 // @hooks-begin (replaced for game shaders)
 fn vertex_hook(v: ptr<function, Vertex>) {}
 fn surface_hook(s: ptr<function, Surface>, i: SurfaceIn) {}
+// Fog distance multiplier: 0 for game shaders marked `// @no_fog` (decision 0182).
+const GAME_FOG: f32 = 1.0;
 // @hooks-end
 
 const PI: f32 = 3.14159265;
@@ -463,7 +465,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     let roughness = clamp(s.roughness, 0.045, 1.0);
     let n = s.normal;
     if (s.unlit > 0.5) {
-        return finish(base.rgb + s.emissive, length(view.eye.xyz - in.world_pos), base.a);
+        return finish(base.rgb + s.emissive, GAME_FOG * length(view.eye.xyz - in.world_pos), base.a);
     }
 
     let v = normalize(view.eye.xyz - in.world_pos);
@@ -569,7 +571,7 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         color += ambient_light * (base.rgb * (1.0 - metallic) + f0 * (1.0 - 0.5 * roughness));
     }
     color += s.emissive;
-    return finish(color, length(view.eye.xyz - in.world_pos), base.a);
+    return finish(color, GAME_FOG * length(view.eye.xyz - in.world_pos), base.a);
 }
 
 // Tone mapping and fog, or (for bloom) fog only, in linear light: `fog.rgb` then holds the

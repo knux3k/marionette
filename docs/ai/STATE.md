@@ -45,7 +45,7 @@ check a feature there before building on it, and update its row when your work m
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Game meshes, shaders, 0280-0285 renderer work (0180-0181): lavapipe only.
+- Game meshes, shaders, 0280-0285 renderer work (0180-0182): lavapipe only.
 - Opt-in looks (0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment, glTF emissive (0064-0067): checked
