@@ -39,6 +39,24 @@ The owner set rules for engine code: no `unsafe` without their review (C FFI onl
 5. `unwrap`/`expect` and clone cleanup of older code goes crate by crate in separate changes;
    when a crate is clean it turns on `clippy::unwrap_used` and `clippy::expect_used`.
 
+## Owner review of the QuickJS typed array copy (2026-11-15)
+
+The one `unsafe` left in `marionette-script` (`copy_in`/`copy_out`) was reviewed with the owner,
+who chose to keep it. It is one byte copy between a script's typed array buffer (QuickJS memory,
+pointer and length from rquickjs `TypedArray::as_raw`) and a Rust `Vec`.
+
+- Why safe Rust cannot do it: rquickjs 0.14 has no safe bulk accessor; `as_bytes` and
+  `as_slice` are `unsafe` themselves. The safe route is one JavaScript property read per
+  element (`Object::get(i)`).
+- Measured (cloud container, release, `f32`): read 10,000 elements 2.75 us vs 421 us safe
+  (153x); 100,000 elements 36 us vs 3.9 ms safe (109x). Write: a safe version exists (new typed
+  array copy, then the target's JavaScript `set`), 16 us vs 48 us at 100,000 elements (about 3x).
+- Invariants: the pointer is valid only while no JavaScript runs (JavaScript may write, detach
+  or reallocate the buffer). Both copies run with the script paused and call back into nothing
+  while the slice lives; a detached buffer gives `None` and copies nothing; `bytemuck` checks
+  sizes, so no length or alignment is taken on trust; the write clamps to the shorter length.
+- Any change to these functions, or a new QuickJS memory access, needs the owner's review again.
+
 ## Rejected
 
 - `#![forbid(unsafe_code)]` per crate file: the workspace lint covers every target of a crate

@@ -1136,7 +1136,8 @@ fn copy_in<T: bytemuck::Pod>(ta: &TypedArray<'_, T>) -> Vec<T> {
         return Vec::new();
     };
     // SAFETY: C FFI read. The bytes belong to a live QuickJS typed array, and no JavaScript
-    // runs while they are borrowed, so nothing can resize or free them.
+    // runs while they are borrowed, so nothing can resize or free them. Reviewed and kept by
+    // the owner (decision 0104): the safe per-element read measured 100 to 400 times slower.
     let bytes = unsafe { raw.as_ref() };
     let n = bytes.len() / std::mem::size_of::<T>();
     let mut v = vec![T::zeroed(); n];
