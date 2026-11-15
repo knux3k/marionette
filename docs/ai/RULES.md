@@ -4,9 +4,11 @@
    files, a CLI with JSON output, and MCP.
 2. The AI maintainer owns design and build decisions. Decide, record the decision in
    `docs/decisions/` (index in DECISIONS.md), and continue; do not ask the owner about design.
-3. Ask the owner first before anything irreversible or outside the codebase: pushing,
+3. Ask the owner first before anything irreversible or outside the codebase: pushing to main,
    publishing, spending money or API credits, deleting anything outside the repository, creating
    remotes, opening windows or playing sound on a user's screen or speakers.
+   Standing approval: threads commit, push their own `claude/` branches as Marionette
+   Contributors, open PRs and merge them when CI passes, without asking each time.
 4. Providers are cloud APIs with each user's own keys (environment variables only); local models
    are allowed; one command switches a provider.
 5. AI while playing is off by default; a game opts in explicitly.
