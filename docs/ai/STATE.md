@@ -18,7 +18,7 @@ check a feature there before building on it, and update its row when your work m
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
-| 6 | Input, physics, audio, UI | Landed: joints (0310, 0311), windowed play (0170-0175), game-mesh colliders (0183), 3D sound and music (0075), world UI (0200, 0201), synth (0220). |
+| 6 | Input, physics, audio, UI | Landed: joints (0310, 0311), windowed play (0170-0175), game-mesh colliders (0183), 3D sound and music (0075), world UI (0200, 0201), synth (0220), game-made sounds (0221). |
 | 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
 | 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |
@@ -34,8 +34,7 @@ check a feature there before building on it, and update its row when your work m
 - Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
 - Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
-  device twice (64 and 128 voices clean on a 96-frame buffer, 256 and up miss deadlines; see
-  proofs/play.md); no one has listened; the device buffer size is not configurable yet. OGG streaming untested (WAV is).
+  device twice (proofs/play.md); no one has listened; the device buffer size is not configurable yet. OGG streaming untested (WAV is).
 - World-space UI (decisions 0200, 0201): checked offscreen on Mesa lavapipe and by CPU timing only;
   not on the RTX 2080, in a headset, with a TrueType font, or with hand-tracked touch.
 - Game handoffs (decision 0161): tested with two claims in one working tree; no game has

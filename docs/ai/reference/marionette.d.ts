@@ -1119,6 +1119,11 @@ type SkyLight = {
   };
 };
 
+/** Playback rate of the `AudioSource` on the same entity (1 = as recorded, 2 = an octave up), multiplied with any Doppler shift. Changed every tick, a looping sound follows it. */
+type SoundPitch = {
+  rate: number;
+};
+
 /** 3D settings for the `AudioSource` on the same entity. */
 type SoundSpatial = {
   /** Doppler pitch shift: 0 off, 1 real speed of sound. Player only (needs velocities). */
@@ -1498,6 +1503,7 @@ interface Components {
   ScriptState: ScriptState;
   ScriptTimers: ScriptTimers;
   ShaderMaterial: ShaderMaterial;
+  SoundPitch: SoundPitch;
   SoundSpatial: SoundSpatial;
   SphereFluid: SphereFluid;
   SpotLight: SpotLight;

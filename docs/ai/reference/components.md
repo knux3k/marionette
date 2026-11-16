@@ -623,6 +623,16 @@ Rust type: `marionette_core::shader::ShaderMaterial`.
 | `shader` | string | yes | A name stored in `GameShaders`, or a `.wgsl` file relative to the scene file. |
 | `textures` | array of string | yes | Up to 4 images (PNG paths relative to the scene file, or `builtin:` images), bound as `tex0` to `tex3`; missing ones are white. |
 
+### `SoundPitch`
+
+Playback rate of the `AudioSource` on the same entity (1 = as recorded, 2 = an octave up), multiplied with any Doppler shift. Changed every tick, a looping sound follows it.
+
+Rust type: `marionette_audio::SoundPitch`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rate` | number | yes |  |
+
 ### `SoundSpatial`
 
 3D settings for the `AudioSource` on the same entity.

@@ -294,6 +294,9 @@ impl SoundPlayer {
     pub fn update(&mut self, _world: &mut bevy_ecs::world::World, _dt: f32) -> Vec<String> {
         match self.0 {}
     }
+    pub fn frame(&mut self, _world: &mut bevy_ecs::world::World, _dt: f32) -> Vec<String> {
+        match self.0 {}
+    }
 }
 
 /// Loads a scene file with the built-in engine ([`Engine::load_file`] for a game's engine).
