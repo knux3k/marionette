@@ -1,15 +1,22 @@
 //! The two expansions of the backend and their dimension-specific conversions.
 
+/// How hard a joint motor pulls toward its target speed per unit of speed error (Rapier's
+/// velocity "factor"); `motor_force` caps it. High enough to reach the speed within a few
+/// ticks, as Unity's motors do.
+pub(crate) const MOTOR_GAIN: f32 = 100.0;
+
 /// Rapier 3D.
 pub mod d3 {
     use rapier3d::control::KinematicCharacterController;
     use rapier3d::prelude::*;
 
     pub(crate) mod conv {
-        use crate::components::ColliderShape;
+        use crate::components::{ColliderShape, JointKind};
         use marionette_core::mesh::GameMeshes;
         use rapier3d::prelude::*;
         use std::path::Path;
+
+        pub use rapier3d::parry::query::ShapeCastOptions;
 
         pub const DIM: u32 = 3;
 
@@ -52,6 +59,106 @@ pub mod d3 {
         /// A character's body takes its rotation from `Transform` (scripts turn it).
         pub fn turn(body: &mut RigidBody, q: [f32; 4]) {
             body.set_next_kinematic_rotation(Rotation::from_xyzw(q[0], q[1], q[2], q[3]).normalize());
+        }
+
+        /// Adds a torque (newton-metres) to the body's accumulated forces.
+        pub fn add_torque(b: &mut RigidBody, t: [f32; 3]) {
+            b.add_torque(vector(t), true);
+        }
+        pub fn torque_impulse(b: &mut RigidBody, t: [f32; 3]) {
+            if t != [0.0; 3] {
+                b.apply_torque_impulse(vector(t), true);
+            }
+        }
+
+        /// A unit axis, or +Y when the given one has no length.
+        fn axis(a: [f32; 3]) -> Vector {
+            let v = vector(a).normalize_or_zero();
+            if v == Vector::ZERO { Vector::Y } else { v }
+        }
+
+        /// The Rapier joint of a `JointKind` (decision 0310).
+        pub fn joint(
+            k: &JointKind,
+            a1: [f32; 3],
+            a2: [f32; 3],
+            contacts: bool,
+            rel: Rotation,
+        ) -> GenericJoint {
+            let (a1, a2) = (vector(a1), vector(a2));
+            let mut j: GenericJoint = match *k {
+                JointKind::Fixed => FixedJointBuilder::new()
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Ball => SphericalJointBuilder::new()
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Hinge {
+                    axis: x,
+                    min,
+                    max,
+                    motor_speed,
+                    motor_force,
+                } => {
+                    let mut b = RevoluteJointBuilder::new(axis([x.x, x.y, x.z]))
+                        .local_anchor1(a1)
+                        .local_anchor2(a2);
+                    if min < max {
+                        b = b.limits([min, max]);
+                    }
+                    if motor_force > 0.0 {
+                        b = b
+                            .motor_velocity(motor_speed, crate::dims::MOTOR_GAIN)
+                            .motor_max_force(motor_force);
+                    }
+                    b.build().into()
+                }
+                JointKind::Slider {
+                    axis: x,
+                    min,
+                    max,
+                    motor_speed,
+                    motor_force,
+                } => {
+                    let mut b = PrismaticJointBuilder::new(axis([x.x, x.y, x.z]))
+                        .local_anchor1(a1)
+                        .local_anchor2(a2);
+                    if min < max {
+                        b = b.limits([min, max]);
+                    }
+                    if motor_force > 0.0 {
+                        b = b
+                            .motor_velocity(motor_speed, crate::dims::MOTOR_GAIN)
+                            .motor_max_force(motor_force);
+                    }
+                    b.build().into()
+                }
+                JointKind::Rope { max_length } => RopeJointBuilder::new(max_length)
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Spring {
+                    rest_length,
+                    stiffness,
+                    damping,
+                } => SpringJointBuilder::new(rest_length, stiffness, damping)
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+            };
+            j.set_contacts_enabled(contacts);
+            // The kind's frame on the second body is in that body's space; the first body's
+            // frame is the same frame seen from the first body at build time.
+            let mut f1 = j.local_frame1;
+            f1.rotation = rel * j.local_frame2.rotation;
+            j.set_local_frame1(f1);
+            j
         }
 
         pub fn shape(
@@ -140,10 +247,12 @@ pub mod d2 {
     use rapier2d::prelude::*;
 
     pub(crate) mod conv {
-        use crate::components::ColliderShape;
+        use crate::components::{ColliderShape, JointKind};
         use marionette_core::mesh::GameMeshes;
         use rapier2d::prelude::*;
         use std::path::Path;
+
+        pub use rapier2d::parry::query::ShapeCastOptions;
 
         pub const DIM: u32 = 2;
 
@@ -181,6 +290,104 @@ pub mod d2 {
         }
         /// 2D character bodies keep their rotation.
         pub fn turn(_body: &mut RigidBody, _q: [f32; 4]) {}
+
+        /// Adds a torque about z to the body's accumulated forces.
+        pub fn add_torque(b: &mut RigidBody, t: [f32; 3]) {
+            b.add_torque(t[2], true);
+        }
+        pub fn torque_impulse(b: &mut RigidBody, t: [f32; 3]) {
+            if t[2] != 0.0 {
+                b.apply_torque_impulse(t[2], true);
+            }
+        }
+
+        /// A unit axis in the plane, or +Y when the given one has no length there.
+        fn axis(a: [f32; 3]) -> Vector {
+            let v = vector(a).normalize_or_zero();
+            if v == Vector::ZERO { Vector::Y } else { v }
+        }
+
+        /// The Rapier joint of a `JointKind` (decision 0310). Hinges and balls turn about z.
+        pub fn joint(
+            k: &JointKind,
+            a1: [f32; 3],
+            a2: [f32; 3],
+            contacts: bool,
+            rel: Rotation,
+        ) -> GenericJoint {
+            let (a1, a2) = (vector(a1), vector(a2));
+            let mut j: GenericJoint = match *k {
+                JointKind::Fixed => FixedJointBuilder::new()
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Ball => RevoluteJointBuilder::new()
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Hinge {
+                    min,
+                    max,
+                    motor_speed,
+                    motor_force,
+                    ..
+                } => {
+                    let mut b = RevoluteJointBuilder::new().local_anchor1(a1).local_anchor2(a2);
+                    if min < max {
+                        b = b.limits([min, max]);
+                    }
+                    if motor_force > 0.0 {
+                        b = b
+                            .motor_velocity(motor_speed, crate::dims::MOTOR_GAIN)
+                            .motor_max_force(motor_force);
+                    }
+                    b.build().into()
+                }
+                JointKind::Slider {
+                    axis: x,
+                    min,
+                    max,
+                    motor_speed,
+                    motor_force,
+                } => {
+                    let mut b = PrismaticJointBuilder::new(axis([x.x, x.y, x.z]))
+                        .local_anchor1(a1)
+                        .local_anchor2(a2);
+                    if min < max {
+                        b = b.limits([min, max]);
+                    }
+                    if motor_force > 0.0 {
+                        b = b
+                            .motor_velocity(motor_speed, crate::dims::MOTOR_GAIN)
+                            .motor_max_force(motor_force);
+                    }
+                    b.build().into()
+                }
+                JointKind::Rope { max_length } => RopeJointBuilder::new(max_length)
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+                JointKind::Spring {
+                    rest_length,
+                    stiffness,
+                    damping,
+                } => SpringJointBuilder::new(rest_length, stiffness, damping)
+                    .local_anchor1(a1)
+                    .local_anchor2(a2)
+                    .build()
+                    .into(),
+            };
+            j.set_contacts_enabled(contacts);
+            // The kind's frame on the second body is in that body's space; the first body's
+            // frame is the same frame seen from the first body at build time.
+            let mut f1 = j.local_frame1;
+            f1.rotation = rel * j.local_frame2.rotation;
+            j.set_local_frame1(f1);
+            j
+        }
 
         pub fn shape(
             s: &ColliderShape,

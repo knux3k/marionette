@@ -153,3 +153,95 @@ pub struct CharacterState {
     pub vertical_velocity: f32,
     pub grounded: bool,
 }
+
+/// Which collision layers a body is on and which it touches (Unity's layers and collision
+/// matrix, PhysX filter groups). Two colliders touch only when each one's `member` shares a
+/// bit with the other's `collides_with`. Queries take a layer mask too. Without this
+/// component a collider is on layer 1 (bit 0, Unity's Default layer) and touches every layer.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CollisionLayers {
+    /// Bits of the layers this collider is on (32 layers).
+    pub member: u32,
+    /// Bits of the layers it touches.
+    pub collides_with: u32,
+}
+
+/// Continuous collision detection for a fast dynamic body (Unity's `ContinuousDynamic`):
+/// it sweeps from its old to its new pose each step, so it cannot pass through a thin wall
+/// between two steps. Costs a little per body, so use it for thrown or shot things only.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContinuousCollision {
+    pub enabled: bool,
+}
+
+/// A force and torque applied to a dynamic body every tick while the component is there
+/// (Unity's `AddForce` in `FixedUpdate`, `ForceMode.Force`). World space, newtons and
+/// newton-metres (2D uses x and y for the force and z for the torque).
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct ExternalForce {
+    pub force: Vec3,
+    pub torque: Vec3,
+}
+
+/// A one-off push (Unity's `ForceMode.Impulse`): applied at the next step, then physics sets
+/// both values back to zero. World space, newton-seconds.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct ExternalImpulse {
+    pub linear: Vec3,
+    pub angular: Vec3,
+}
+
+/// What a [`Joint`] allows between its two bodies.
+#[derive(Reflect, Debug, Clone, Copy, PartialEq)]
+pub enum JointKind {
+    /// Welded: no relative motion (Unity's FixedJoint).
+    Fixed,
+    /// Turns freely about the anchor (CharacterJoint without limits; 2D: same as `Hinge`).
+    Ball,
+    /// Turns about `axis` (in this body's space; ignored in 2D, which turns about z). Angles
+    /// are this body's turn relative to the other body, 0 where they were when the joint was
+    /// built. Within
+    /// `min` to `max` radians when `min < max`. A motor drives it toward `motor_speed`
+    /// radians per second with at most `motor_force` (0 = no motor). Unity's HingeJoint.
+    Hinge {
+        axis: Vec3,
+        min: f32,
+        max: f32,
+        motor_speed: f32,
+        motor_force: f32,
+    },
+    /// Slides along `axis` (this body's space), within `min` to `max` metres when
+    /// `min < max`, with an optional motor as `Hinge` (metres per second, newtons).
+    /// Unity's ConfigurableJoint with one free linear axis.
+    Slider {
+        axis: Vec3,
+        min: f32,
+        max: f32,
+        motor_speed: f32,
+        motor_force: f32,
+    },
+    /// The anchors stay at most `max_length` apart (a rope or chain link).
+    Rope { max_length: f32 },
+    /// The anchors are pulled toward `rest_length` apart (Unity's SpringJoint).
+    Spring {
+        rest_length: f32,
+        stiffness: f32,
+        damping: f32,
+    },
+}
+
+/// Joins this entity's body to another body (or to a fixed point in the world). Both need
+/// a `RigidBody` or `Collider`; the joint waits until both bodies exist and goes away with
+/// either of them or with this component.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct Joint {
+    /// Scene id of the other entity; 0 joins to the world at `other_anchor` (world space).
+    pub other: u64,
+    pub kind: JointKind,
+    /// Where the joint sits, in this body's space (before scale).
+    pub anchor: Vec3,
+    /// Where it sits in the other body's space (world space when `other` is 0).
+    pub other_anchor: Vec3,
+    /// Let the two joined bodies collide with each other (Unity's `enableCollision`).
+    pub collide_connected: bool,
+}

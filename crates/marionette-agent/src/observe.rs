@@ -54,6 +54,20 @@ pub(crate) fn ops() -> Vec<Op> {
             false,
             raycast,
         ),
+        #[cfg(feature = "physics")]
+        op(
+            "observe_overlap",
+            "Every entity and game body overlapping a shape (Ball, Cuboid, Capsule, Cylinder) at a pose, sorted; optional layer mask.",
+            false,
+            overlap,
+        ),
+        #[cfg(feature = "physics")]
+        op(
+            "observe_shape_cast",
+            "Sweep a shape along a direction; returns the first entity or game body hit, distance, point and normal.",
+            false,
+            shape_cast,
+        ),
         op(
             "observe_events",
             "Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. \
@@ -598,6 +612,144 @@ fn raycast(agent: &mut Agent, input: RaycastInput) -> Result<RaycastOutput, Erro
             normal: h.normal,
         });
         Ok(RaycastOutput {
+            tick: sim.tick(),
+            hit,
+        })
+    })
+}
+
+/// A query shape, sizes in metres: `{"Ball": {"radius": 0.5}}`,
+/// `{"Cuboid": {"half_extents": [0.5, 0.5, 0.5]}}`, `{"Capsule": {"half_height": 0.5, "radius": 0.3}}`
+/// or `{"Cylinder": {...}}` (capsules and cylinders along Y).
+#[derive(Deserialize, JsonSchema, Clone, Copy)]
+pub enum QueryShape {
+    Ball { radius: f32 },
+    Cuboid { half_extents: [f32; 3] },
+    Capsule { half_height: f32, radius: f32 },
+    Cylinder { half_height: f32, radius: f32 },
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ShapeQueryInput {
+    #[serde(flatten)]
+    pub target: WorldTarget,
+    pub shape: QueryShape,
+    pub position: [f32; 3],
+    /// Quaternion x, y, z, w; default upright.
+    pub rotation: Option<[f32; 4]>,
+    /// Only colliders on these layers (`CollisionLayers.member` bits); default every layer.
+    pub layers: Option<u32>,
+    /// Shape cast only: direction (need not be unit length) and distance (default 1000).
+    pub direction: Option<[f32; 3]>,
+    pub max_distance: Option<f32>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct QueryTarget {
+    /// Scene id, when the hit is an entity.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entity: Option<u64>,
+    /// Game body key (decision 0311), when the hit is a body a game module owns.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<u64>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct OverlapOutput {
+    pub tick: u64,
+    pub hits: Vec<QueryTarget>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct ShapeCastOutput {
+    pub tick: u64,
+    pub hit: Option<ShapeCastHit>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct ShapeCastHit {
+    #[serde(flatten)]
+    pub target: QueryTarget,
+    pub distance: f32,
+    pub point: [f32; 3],
+    pub normal: [f32; 3],
+}
+
+#[cfg(feature = "physics")]
+fn query_target(t: marionette_physics::Target) -> QueryTarget {
+    match t {
+        marionette_physics::Target::Entity(e) => QueryTarget {
+            entity: Some(e),
+            body: None,
+        },
+        marionette_physics::Target::Body(b) => QueryTarget {
+            entity: None,
+            body: Some(b),
+        },
+    }
+}
+
+#[cfg(feature = "physics")]
+fn query_shape(input: &ShapeQueryInput) -> marionette_physics::components::ColliderShape {
+    use marionette_physics::components::ColliderShape as C;
+    match input.shape {
+        QueryShape::Ball { radius } => C::Ball { radius },
+        QueryShape::Cuboid { half_extents: h } => C::Cuboid {
+            half_extents: marionette_core::spatial::Vec3::new(h[0], h[1], h[2]),
+        },
+        QueryShape::Capsule { half_height, radius } => C::Capsule { half_height, radius },
+        QueryShape::Cylinder { half_height, radius } => C::Cylinder { half_height, radius },
+    }
+}
+
+#[cfg(feature = "physics")]
+fn query_options(input: &ShapeQueryInput) -> marionette_physics::QueryOptions {
+    marionette_physics::QueryOptions {
+        layers: input.layers.unwrap_or(0),
+        ..Default::default()
+    }
+}
+
+#[cfg(feature = "physics")]
+fn overlap(agent: &mut Agent, input: ShapeQueryInput) -> Result<OverlapOutput, Errors> {
+    let shape = query_shape(&input);
+    with_world(agent, &input.target, |_, sim, _| {
+        let hits = marionette_physics::overlap(
+            &sim.world,
+            &shape,
+            input.position,
+            input.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+            query_options(&input),
+        )
+        .map_err(|m| Errors::from(marionette_core::Diagnostic::error("observe.shape", m)))?;
+        Ok(OverlapOutput {
+            tick: sim.tick(),
+            hits: hits.into_iter().map(query_target).collect(),
+        })
+    })
+}
+
+#[cfg(feature = "physics")]
+fn shape_cast(agent: &mut Agent, input: ShapeQueryInput) -> Result<ShapeCastOutput, Errors> {
+    let shape = query_shape(&input);
+    with_world(agent, &input.target, |_, sim, _| {
+        let hit = marionette_physics::shape_cast(
+            &sim.world,
+            &shape,
+            input.position,
+            input.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+            input.direction.unwrap_or([0.0, -1.0, 0.0]),
+            input.max_distance.unwrap_or(1000.0),
+            query_options(&input),
+        )
+        .map_err(|m| Errors::from(marionette_core::Diagnostic::error("observe.shape", m)))?
+        .map(|h| ShapeCastHit {
+            target: query_target(h.target),
+            distance: h.distance,
+            point: h.point,
+            normal: h.normal,
+        });
+        Ok(ShapeCastOutput {
             tick: sim.tick(),
             hit,
         })
