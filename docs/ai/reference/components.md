@@ -1068,6 +1068,16 @@ Rust type: `marionette_save::SaveFormat`.
 | `migrations` | string | yes | Data migrations file (JSON, relative to the scene folder); empty for none. |
 | `version` | integer | yes | Save version, starting at 1. Raise it when saved data changes shape and add a migration step from the old version. |
 
+### `SceneChange`
+
+A game's request to replace the running scene with another scene file (decision 0176): a title screen's Continue, Load or New game. The simulation honours it after the tick that set it, in headless and windowed runs alike, keeping the tick count, RNG and event log. A relative path resolves against the current [`SceneDir`]. Not saved with the scene beyond the tick it is set in, since the change empties it.
+
+Rust type: `marionette_core::module::SceneChange`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes |  |
+
 ### `ShadowCascades`
 
 Splits the sun's shadow (`Shadows`) into `count` cascades (2 to 4) reaching `far` meters from the camera: near cascades are small and sharp, far ones large, so shadows stay crisp up close and still reach the horizon (decision 0090). Each cascade is a `Shadows.resolution` map; `Shadows.distance` is ignored while cascades are on. Perspective cameras only (an orthographic camera keeps one map).

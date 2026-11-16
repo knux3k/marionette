@@ -1053,6 +1053,11 @@ type SaveFormat = {
   version: number;
 };
 
+/** A game's request to replace the running scene with another scene file (decision 0176): a title screen's Continue, Load or New game. The simulation honours it after the tick that set it, in headless and windowed runs alike, keeping the tick count, RNG and event log. A relative path resolves against the current [`SceneDir`]. Not saved with the scene beyond the tick it is set in, since the change empties it. */
+type SceneChange = {
+  path: string;
+};
+
 /** Runs a TypeScript file every tick. `path` is relative to the scene file. The module must export `function update(self: Entity): void` (see the generated `marionette.d.ts`). */
 type Script = {
   path: string;
@@ -1539,6 +1544,7 @@ interface Resources {
   RayTracing: RayTracing;
   RenderScale: RenderScale;
   SaveFormat: SaveFormat;
+  SceneChange: SceneChange;
   ShadowCascades: ShadowCascades;
   Shadows: Shadows;
   SkyLight: SkyLight;
