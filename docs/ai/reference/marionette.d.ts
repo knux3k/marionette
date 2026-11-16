@@ -366,6 +366,9 @@ type CharacterInput = {
   move_x: number;
 };
 
+/** Game code places this character itself while the component is there (Unity's `CharacterController.enabled = false` while a script moves the transform: a climb, a grapple swing, a cutscene). Each step physics moves the body to the entity's `Transform` (translation and rotation) and does not walk it, apply gravity or look for ground; `CharacterState` and `PlanetState` keep their last values. Remove the component to hand the body back to the controller (set `CharacterState.vertical_velocity` first if the character should keep falling or rising). */
+type CharacterPlaced = Record<string, never>;
+
 /** Runtime state of a character controller. Written by physics. */
 type CharacterState = {
   grounded: boolean;
@@ -1462,6 +1465,7 @@ interface Components {
   CastShadows: CastShadows;
   CharacterController: CharacterController;
   CharacterInput: CharacterInput;
+  CharacterPlaced: CharacterPlaced;
   CharacterState: CharacterState;
   ChildOf: ChildOf;
   Collider: Collider;
