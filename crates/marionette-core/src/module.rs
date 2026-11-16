@@ -60,6 +60,16 @@ pub type Modules = Arc<Vec<Box<dyn Module>>>;
 #[derive(Resource, Debug, Clone, Default)]
 pub struct SceneDir(pub PathBuf);
 
+/// A game's request to replace the running scene with another scene file (decision 0176): a
+/// title screen's Continue, Load or New game. The simulation honours it after the tick that
+/// set it, in headless and windowed runs alike, keeping the tick count, RNG and event log.
+/// A relative path resolves against the current [`SceneDir`]. Not saved with the scene
+/// beyond the tick it is set in, since the change empties it.
+#[derive(Resource, bevy_reflect::Reflect, Debug, Clone, Default, PartialEq, Eq)]
+pub struct SceneChange {
+    pub path: String,
+}
+
 /// A ray hit: the entity, distance along the ray, hit point and surface normal.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct RayHit {
