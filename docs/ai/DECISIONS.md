@@ -126,6 +126,8 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0283 | Opt-in BC7 model textures (`TextureCompression`): ISPC encoder, every mip level, bounded per-user disk cache; RGBA8 where BC is missing | accepted |
 | 0284 | Realistic render benchmark (`perf_realistic_scene`): 18M triangles, 257 materials, 99 2K textures, 3,200 movers; same scene buildable in Unity (`tools/unity-bench`) | accepted |
 | 0285 | Single-pass stereo: both eyes in one multiview pass, shader multiview forms made from the normal sources, a pass per eye where not covered | accepted |
+| 0286 | Camera shots during play: `Shots` requests (pose, size), read back without waiting or kept as `shot:<name>` screen images; drawn after the frame's views in one call, no screen UI; bounded at 8 | accepted |
+| 0287 | `ScreenUiCutoff`: screen UI under a layer is neither drawn nor clicked while on (photo modes, cutscenes) | accepted |
 | 0290 | Physics, audio, animation and XR are cargo features of `marionette-agent`; the factory module moves to `examples/factory` with its benchmark, budgets and stability modes | accepted |
 | 0300 | Mesh instances prepared on up to 8 scoped threads, chunk results merged in draw order; 0109 receiver test only for casters outside the views | accepted |
 | 0301 | Mesh triangles put in vertex cache order at load (meshoptimizer, `lod` feature): same triangles, 12 percent less main pass GPU time | accepted |

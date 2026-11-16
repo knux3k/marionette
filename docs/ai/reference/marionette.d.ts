@@ -1061,6 +1061,12 @@ type SceneChange = {
   path: string;
 };
 
+/** Hides screen UI under a layer (decision 0287): with `on`, screen nodes whose `layer` is below `min_layer` are neither drawn nor clicked. A photo mode hides the game's interface while its own overlay (a higher layer) stays; nodes on world canvases are not affected. */
+type ScreenUiCutoff = {
+  min_layer: number;
+  on: boolean;
+};
+
 /** Runs a TypeScript file every tick. `path` is relative to the scene file. The module must export `function update(self: Entity): void` (see the generated `marionette.d.ts`). */
 type Script = {
   path: string;
@@ -1555,6 +1561,7 @@ interface Resources {
   RenderScale: RenderScale;
   SaveFormat: SaveFormat;
   SceneChange: SceneChange;
+  ScreenUiCutoff: ScreenUiCutoff;
   ShadowCascades: ShadowCascades;
   Shadows: Shadows;
   SkyLight: SkyLight;

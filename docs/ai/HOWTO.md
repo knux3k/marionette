@@ -116,6 +116,14 @@ Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` 
 `.wgsl` file next to the scene, or `GameShaders::set_in` from Rust) and add
 `ShaderMaterial { shader, params, textures }` to the entity.
 
+## Take a picture from a game camera (decision 0286)
+
+Insert `marionette_core::shots::Shots` and call `ask(ShotRequest { .. })` with a pose, field of
+view and size (0 by 0: the screen's). An empty `image` reads the picture back: drain `take_done()` on later ticks
+(RGBA8 sRGB rows; save it off the main thread). `image: "cam"` draws a live camera screen that a
+`UiImage` or `Sprite` shows as `shot:cam`; ask again each time it should change. Never let
+`done` change hashed state. Tests: `marionette_render::shots::take_now` on an offscreen renderer.
+
 ## Add a game mode, example or proof scene
 
 1. Add the scene (and its action map and input file) under `examples/` or the proof folder.

@@ -131,6 +131,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<ui::UiClip>();
     registry.register_component::<ui::UiOnCanvas>();
     registry.register_resource::<ui::WindowControl>();
+    registry.register_resource::<ui::ScreenUiCutoff>();
     registry.register_resource::<crate::module::SceneChange>();
 }
 

@@ -23,6 +23,7 @@ pub mod scene;
 pub mod scene_index;
 pub mod schema;
 pub mod shader;
+pub mod shots;
 pub mod sim;
 pub mod spatial;
 pub mod ui;

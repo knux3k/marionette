@@ -144,6 +144,22 @@ pub struct WindowControl {
     pub close: bool,
 }
 
+/// Hides screen UI under a layer (decision 0287): with `on`, screen nodes whose `layer` is below
+/// `min_layer` are neither drawn nor clicked. A photo mode hides the game's interface while its
+/// own overlay (a higher layer) stays; nodes on world canvases are not affected.
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct ScreenUiCutoff {
+    pub on: bool,
+    pub min_layer: i32,
+}
+
+impl ScreenUiCutoff {
+    /// True when a screen node on `layer` is shown.
+    pub fn shows(cutoff: Option<&Self>, layer: i32) -> bool {
+        cutoff.is_none_or(|c| !c.on || layer >= c.min_layer)
+    }
+}
+
 /// Whether screen point (`x`, `y`) is on `node`, and inside `clip` when it has one.
 pub fn hit(node: &UiNode, clip: Option<&UiClip>, x: f32, y: f32, w: f32, h: f32) -> bool {
     let inside = |(bx, by, bw, bh): (f32, f32, f32, f32)| x >= bx && x < bx + bw && y >= by && y < by + bh;

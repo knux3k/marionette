@@ -469,7 +469,11 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         Option<&UiClip>,
     ), bevy_ecs::query::Without<UiOnCanvas>>()
     {
+        let cutoff = world.get_resource::<marionette_core::ui::ScreenUiCutoff>();
         for (id, node, r, t, i, clip) in q.iter(world) {
+            if !marionette_core::ui::ScreenUiCutoff::shows(cutoff, node.layer) {
+                continue;
+            }
             let look = if let Some(r) = r {
                 Some(UiLook::Rect { color: rgba(r.color) })
             } else if let Some(t) = t {

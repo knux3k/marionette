@@ -34,13 +34,15 @@ pub(crate) struct PostTargets {
     read_hdr: wgpu::BindGroup,
     read_level: Vec<wgpu::BindGroup>,
     composite: wgpu::BindGroup,
+    /// This size's settings: the intensity is divided by its own level count, so views of
+    /// different sizes in one frame each get theirs (decision 0286).
+    uniform: wgpu::Buffer,
     used: bool,
 }
 
 pub(crate) struct Post {
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    uniform: wgpu::Buffer,
     prefilter: wgpu::RenderPipeline,
     down: wgpu::RenderPipeline,
     up: wgpu::RenderPipeline,
@@ -181,12 +183,6 @@ impl Post {
                 min_filter: wgpu::FilterMode::Linear,
                 ..Default::default()
             }),
-            uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("post"),
-                size: size_of::<PostUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
             dummy: texture(device, "post dummy", (1, 1), 1, 1).create_view(&Default::default()),
             layout,
             sample_count,
@@ -233,6 +229,12 @@ impl Post {
             .into_iter()
             .map(|s| texture(device, "glow", s, 1, 1).create_view(&Default::default()))
             .collect();
+        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("post"),
+            size: size_of::<PostUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let group = |src: &wgpu::TextureView, glow: &wgpu::TextureView| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("post"),
@@ -248,7 +250,7 @@ impl Post {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: self.uniform.as_entire_binding(),
+                        resource: uniform.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
@@ -264,6 +266,7 @@ impl Post {
             msaa,
             hdr,
             levels,
+            uniform,
             used: true,
         }
     }
@@ -276,6 +279,7 @@ impl Post {
     pub fn write(
         &self,
         queue: &wgpu::Queue,
+        t: &PostTargets,
         threshold: f32,
         intensity: f32,
         exposure: Option<f32>,
@@ -290,7 +294,7 @@ impl Post {
                 if exposure.is_some() { 1.0 } else { 0.0 },
             ],
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        queue.write_buffer(&t.uniform, 0, bytemuck::bytes_of(&u));
     }
 
     /// Records the glow chain for `t` (after the HDR pass, before the composite). Returns
