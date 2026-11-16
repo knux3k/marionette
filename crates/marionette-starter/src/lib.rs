@@ -17,6 +17,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![deny(clippy::clone_on_ref_ptr)]
 
+pub mod interview;
 pub mod level;
 pub mod prompt;
 pub mod template;
@@ -33,6 +34,10 @@ pub mod codes {
     pub const UNWINNABLE: &str = "starter.unwinnable";
     /// A refresh found a script without its config markers.
     pub const NO_CONFIG_BLOCK: &str = "starter.no_config_block";
+    /// An interview answer names no question, or is not one of its choices.
+    pub const BAD_ANSWER: &str = "starter.bad_answer";
+    /// A game was asked for from a bare prompt without interviewing the person first.
+    pub const INTERVIEW_NEEDED: &str = "starter.interview_needed";
 }
 
 pub const BRIEF_FORMAT: &str = "marionette.brief/1";

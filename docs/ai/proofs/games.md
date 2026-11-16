@@ -33,3 +33,8 @@ Line 9, proof scenes (W8, decision 0050, `docs/ai/PROOF-SCENES.md`):
   art).
 - First-try autopilot wins on sampled seeds (container, 2026-11-13): mazes 32 of 32; platformer
   about 90% (spikes, edges and walking enemies cause the rest); `game_make` tries further seeds.
+- Interview (decision 0151): `cargo test -p marionette-cli --test starter
+  a_bare_prompt_needs_the_interview` (refused without answers, open questions shrink as they are
+  answered, answers shape the brief, bad choices refused); `refresh_keeps_edits_outside_the_config_block`
+  checks `interview.json` and `wishes`; `cargo test -p marionette-starter interview` and
+  `cargo test -p marionette-cli --lib interview` (terminal replies by number, name or Enter).

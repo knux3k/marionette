@@ -70,5 +70,5 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Realistic render benchmark with a Unity twin (0284) | usable | Ran beside Unity on an RTX 2080: Marionette 19.3 ms, Unity 11.1 ms per frame (proofs/performance.md) | Marionette as fast as Unity on it |
 | Stability and performance harness (0023, 0260) | proven | All fast modes within budget on a hardware GPU; runs in CI | The long soak on a hardware GPU |
 | Editor (0130) | slice | Offscreen view and edit tests | A person using the window on a real scene |
-| Game starter (0150) | slice | Made games pass their tests; not played | A person playing one |
+| Game starter (0150) | slice | Made games pass their tests; interview before a prompt build (0151, tested, asked on a pseudo-terminal); not played | A person playing one |
 | Packaging (0140) | slice | Built in CI; binaries ran headless on generic ARM64 | A run on a Deck, a Frame or a clean desktop |

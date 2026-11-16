@@ -1,6 +1,6 @@
 ---
 name: marionette-make-game
-description: Make a playable, tested Marionette game (maze or platformer) from one idea or brief, then add art. Use when asked to make or prototype a new game, or to change a made game's brief or art.
+description: Interview the person, then make a playable, tested Marionette game (maze or platformer) from an idea or brief and add art. Use when asked to make a game, or change a made game's brief or art.
 ---
 
 # Make a game from an idea
@@ -11,17 +11,24 @@ rerolled, so a made game is always winnable.
 
 ## Steps
 
-1. Draft the design: `game_brief` with `prompt` (and `template` `maze` | `platformer`, `view`
-   `2d` | `3d`). It writes nothing and returns a brief plus its art slots.
-2. Improve the brief before making: title, pitch, `style`, one `describe` per slot, `words`,
+1. Interview the person before building: `game_interview` with `prompt` returns the open
+   questions (genre, view, setting, player, pickups, enemy, goal, style, difficulty, length,
+   title, extra), each with choices or examples and the guess used if unanswered. Ask them in
+   your own words, several at once, offering the guess as the default. Raise its `notes` (an
+   idea no template fits). Only if the person says to just build it, set `skip_interview`.
+2. Draft the design: `game_brief` with `prompt` and `answers` (replies by question id). It
+   writes nothing and returns a brief plus its art slots.
+3. Improve the brief if needed: title, pitch, `style`, one `describe` per slot, `words`,
    `colors`. Point a slot at existing art with `use` (a project path or `pool:<id>`) or give it
    `search` words for the lookup.
-3. Make it: `game_make` with `path` and `brief` (or `prompt`). CLI: `marionette make "<idea>"`.
-   Read the output: `autopilot.won`, `tests_passed`, `tests_failed`, `pending` recipes.
-4. Art: slots without art get placeholders and recipes. Generating spends money, so follow
+4. Make it: `game_make` with `path` and `brief` (or `prompt` plus `answers`). CLI:
+   `marionette make "<idea>"` asks on a terminal; else `--answer id=value` or `--yes`.
+   Read the output: `autopilot.won`, `tests_passed`, `tests_failed`, `pending` recipes, and
+   `wishes` (the person's `extra`: build it next with `marionette-write-script`).
+5. Art: slots without art get placeholders and recipes. Generating spends money, so follow
    `marionette-generate-assets`; then `game_make` with `path` and `refresh` (or `generate`
    to do both in one call).
-5. Play: `marionette run scenes/main.scene.json --project <path>`.
+6. Play: `marionette run scenes/main.scene.json --project <path>`.
 
 ## Changing a made game
 
@@ -33,7 +40,9 @@ rerolled, so a made game is always winnable.
 
 ## Traps
 
-- `game_make` refuses an existing folder unless `refresh` is set.
+- `game_make` refuses an existing folder unless `refresh` is set, and a bare prompt with no
+  `answers` (`starter.interview_needed`).
+- `interview.json` in the game holds what the person asked for; check later changes against it.
 - Refresh refuses a script whose CONFIG markers were removed.
 - A level the autopilot cannot win after `tries` seeds fails with `starter.unwinnable`: change
   difficulty or size.
