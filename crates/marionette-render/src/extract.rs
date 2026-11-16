@@ -7,7 +7,7 @@ use marionette_core::builtin::Position;
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{
     AmbientLight, Bloom, Camera, CastShadows, DirectionalLight, Emissive, Environment, Fog, Foveation,
-    LevelOfDetail, LookAt, Material, Model, ModelPlacement, ParticleEmitter, PointLight, Projection,
+    Hidden, LevelOfDetail, LookAt, Material, Model, ModelPlacement, ParticleEmitter, PointLight, Projection,
     RayTracing, ReflectionProbe, RenderScale, ShadowCascades, Shadows, SkyLight, SpotLight, Sprite,
     SpriteRegion, TextureCompression, ToneMapping, Transform,
 };
@@ -373,6 +373,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         .components()
         .component_id::<marionette_core::spatial::Pose>()
         .is_some();
+    // `Hidden` entities are skipped (decision 0320); looked up per entity only once a world has one.
+    let hides = world.components().component_id::<Hidden>().is_some();
+    let hidden = |e: bevy_ecs::entity::Entity| hides && world.get::<Hidden>(e).is_some();
     if let Some(mut q) = world.try_query::<(
         bevy_ecs::entity::Entity,
         &SceneId,
@@ -391,6 +394,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
             .component_id::<marionette_core::shader::ShaderMaterial>()
             .is_some();
         for (e, id, model, material, (t, p, l)) in q.iter(world) {
+            if hidden(e) {
+                continue;
+            }
             let shader = if shaders {
                 world
                     .get::<marionette_core::shader::ShaderMaterial>(e)
@@ -436,8 +442,11 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         }
         frame.meshes.sort_unstable_by_key(|m| m.entity);
     }
-    if let Some(mut q) = world.try_query::<(&SceneId, &ParticleEmitter, Place)>() {
-        for (id, emitter, (t, p, l)) in q.iter(world) {
+    if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId, &ParticleEmitter, Place)>() {
+        for (e, id, emitter, (t, p, l)) in q.iter(world) {
+            if hidden(e) {
+                continue;
+            }
             frame.particles.push(ParticleDraw {
                 entity: id.0,
                 world: world_matrix(t, p, l),
@@ -446,8 +455,17 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         }
         frame.particles.sort_unstable_by_key(|p| p.entity);
     }
-    if let Some(mut q) = world.try_query::<(&SceneId, &Sprite, Option<&SpriteRegion>, Place)>() {
-        for (id, sprite, region, (t, p, l)) in q.iter(world) {
+    if let Some(mut q) = world.try_query::<(
+        bevy_ecs::entity::Entity,
+        &SceneId,
+        &Sprite,
+        Option<&SpriteRegion>,
+        Place,
+    )>() {
+        for (e, id, sprite, region, (t, p, l)) in q.iter(world) {
+            if hidden(e) {
+                continue;
+            }
             frame.sprites.push(SpriteDraw {
                 entity: id.0,
                 image: sprite.image.clone(),
@@ -526,6 +544,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     };
     if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId, &PointLight, Place)>() {
         for (e, id, light, (t, p, l)) in q.iter(world) {
+            if hidden(e) {
+                continue;
+            }
             local.push((
                 id.0,
                 LocalLightData {
@@ -542,6 +563,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     }
     if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &SceneId, &SpotLight, Place)>() {
         for (e, id, light, (t, p, l)) in q.iter(world) {
+            if hidden(e) {
+                continue;
+            }
             let outer = light.outer_angle_degrees.clamp(0.1, 89.9);
             let inner = light.inner_angle_degrees.clamp(0.0, outer - 0.05);
             local.push((
@@ -626,7 +650,7 @@ fn shader_index(
 }
 
 /// Names of the core types this module reads, for documentation and tests.
-pub const READS: [(&str, Kind); 29] = [
+pub const READS: [(&str, Kind); 30] = [
     ("Transform", Kind::Component),
     ("LookAt", Kind::Component),
     ("Camera", Kind::Component),
@@ -646,6 +670,7 @@ pub const READS: [(&str, Kind); 29] = [
     ("SkyLight", Kind::Resource),
     ("Bloom", Kind::Resource),
     ("CastShadows", Kind::Component),
+    ("Hidden", Kind::Component),
     ("Environment", Kind::Resource),
     ("LevelOfDetail", Kind::Resource),
     ("TextureCompression", Kind::Resource),

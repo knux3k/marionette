@@ -609,6 +609,9 @@ type Held = {
   };
 };
 
+/** Put on an entity to stop drawing it without removing it: its model, sprite, particles and lights are skipped until the component is taken off again (decision 0320). Physics, scripts and children are untouched; a child is hidden only if it has its own `Hidden`. */
+type Hidden = Record<string, never>;
+
 /** Turns input on for a scene: the action map file, relative to the scene file. */
 type InputConfig = {
   action_map: string;
@@ -1491,6 +1494,7 @@ interface Components {
   GravityWell: GravityWell;
   GravityZone: GravityZone;
   Held: Held;
+  Hidden: Hidden;
   JobData: JobData;
   JobDraw: JobDraw;
   JobSchedule: JobSchedule;

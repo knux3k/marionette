@@ -113,6 +113,7 @@ pub fn register_builtins(registry: &mut Registry) {
     // More opt-in looks (decisions 0064 to 0066).
     registry.register_resource::<spatial::Bloom>();
     registry.register_component::<spatial::CastShadows>();
+    registry.register_component::<spatial::Hidden>();
     registry.register_resource::<spatial::Environment>();
     // Rendering cost controls (decision 0080).
     registry.register_resource::<spatial::LevelOfDetail>();
