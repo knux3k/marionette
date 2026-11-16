@@ -119,6 +119,15 @@ Rust type: `marionette_physics::components::CharacterInput`.
 | `move_forward` | number | yes |  |
 | `move_x` | number | yes |  |
 
+### `CharacterPlaced`
+
+Game code places this character itself while the component is there (Unity's `CharacterController.enabled = false` while a script moves the transform: a climb, a grapple swing, a cutscene). Each step physics moves the body to the entity's `Transform` (translation and rotation) and does not walk it, apply gravity or look for ground; `CharacterState` and `PlanetState` keep their last values. Remove the component to hand the body back to the controller (set `CharacterState.vertical_velocity` first if the character should keep falling or rising).
+
+Rust type: `marionette_physics::components::CharacterPlaced`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+
 ### `CharacterState`
 
 Runtime state of a character controller. Written by physics.

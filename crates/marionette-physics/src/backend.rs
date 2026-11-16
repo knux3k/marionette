@@ -5,7 +5,7 @@ macro_rules! backend {
     () => {
         use crate::BodyTracking;
         use crate::components::{
-            AngularVelocity, BodyKind, CharacterController, CharacterInput, CharacterState,
+            AngularVelocity, BodyKind, CharacterController, CharacterInput, CharacterPlaced, CharacterState,
             Collider as ColliderComp, ColliderShape, CollisionLayers, ContinuousCollision, Joint,
             RigidBody as BodyComp,
         };
@@ -422,6 +422,17 @@ macro_rules! backend {
                         let Some(cc) = world.get::<CharacterController>(e).cloned() else {
                             continue;
                         };
+                        // Placed by game code this step (decision 0312): the body goes where
+                        // the Transform says, turned as it says, and is not walked.
+                        if world.get::<CharacterPlaced>(e).is_some() {
+                            let t = world.get::<Transform>(e).copied().unwrap_or_default();
+                            let p = conv::pose(
+                                [t.translation.x, t.translation.y, t.translation.z],
+                                [t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w],
+                            );
+                            pw.bodies[h.body].set_next_kinematic_position(p);
+                            continue;
+                        }
                         let mut cs = world.get::<CharacterState>(e).copied().unwrap_or_default();
                         let mut planet_state: Option<crate::planet::PlanetState> = None;
                         let mut vy = cs.vertical_velocity - cc.gravity * dt;

@@ -1,6 +1,6 @@
 # Proofs: co-op networking, Steam, achievements, cloud saves
 
-Decisions 0210 to 0213. All run in CI with no Steam and no second machine.
+Decisions 0210 to 0215. All run in CI with no Steam and no second machine.
 
 - Reliability: `crates/marionette-net/src/reliable.rs` tests (`reliable_survives_loss_reorder_and_duplicates`:
   40 messages plus 50 KB over 25% loss, 30 ms jitter, 10% duplicates arrive once and in order;
@@ -21,4 +21,13 @@ Decisions 0210 to 0213. All run in CI with no Steam and no second machine.
   unlocks with clamping and persistence, two-machine save sync with conflict kept, cloud off).
 - Steam backend: `crates/marionette-steam` tests (missing library and a non-Steam library give
   `steam.library`; callback struct size per platform). Not run against a Steam client.
+- Hosted sessions (0214), `crates/marionette-net/src/hosted.rs` tests: join, messages both ways
+  and leave over 10% loss; wrong protocol and a full game refused; keep-alives hold a quiet link
+  and a vanished peer times out on both sides; the host's close reaches the guest; strangers and
+  bad bytes ignored. `reliable.rs`: an oversize message is dropped while the next one arrives and
+  the sender is not left resending; `forget` drops a peer's queue. `lan.rs`: a beacon is found
+  on 127.0.0.1, another game's tag is ignored, and it is forgotten after 4 s.
+- Leaderboards and presence (0215), `crates/marionette-platform/tests/platform.rs`
+  (`offline_leaderboards_keep_best_and_answer_every_request`): missing, created and too-long
+  boards, keep-best on an ascending board, details capped at 64, rows kept on disk, presence.
 - Stability mode `coop-netplay` (`stability/suite.json`).

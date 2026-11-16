@@ -31,7 +31,7 @@ check a feature there before building on it, and update its row when your work m
 - Game packages (decision 0140): never run on a Deck, a Frame, a headset or a screen; Frame binaries
   ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
 - Starter (0150): made games not played by a person.
-- Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
+- Networking and Steam (0210-0215): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
 - Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
   device twice (64 and 128 voices clean on a 96-frame buffer, 256 and up miss deadlines; see

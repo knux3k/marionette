@@ -43,12 +43,12 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 
 | Feature | Level | Evidence | Next level needs |
 | --- | --- | --- | --- |
-| Physics (Rapier) | usable | Proof games; behaviour tests for gravity, bounce, friction, sensors (0273); joints, layers, forces, game bodies and queries (`crates/marionette-physics/tests/full_physics.rs`, 0310, 0311) | A game with joints, stacking or vehicles; a PC timing of many game bodies |
+| Physics (Rapier) | usable | Proof games; behaviour tests for gravity, bounce, friction, sensors (0273); joints, layers, forces, game bodies and queries (`crates/marionette-physics/tests/full_physics.rs`, 0310, 0311); characters placed by game code (`character_placed.rs`, 0312) | A game with joints, stacking or vehicles; a PC timing of many game bodies |
 | Input, windowed play (0170 to 0173) | usable | Checked on a real screen | Gamepads on hardware, Linux and macOS screens |
 | Audio: files, 3D sound, music layers (0075) | slice | Numbers tested; never listened to | A person listening on speakers and a headset |
 | Synth and streamed audio (0220) | slice | Rendered to numbers; one device run | Listening; OGG |
 | Headsets through OpenXR, hands, grab, riding a character on round worlds (0190, 0191) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
-| Networking, Steam (0210 to 0213) | slice | Loopback only | Two machines; a Steam client |
+| Networking, Steam (0210 to 0215) | slice | Loopback and 127.0.0.1 UDP: lockstep and hosted sessions, LAN beacon; offline leaderboards and presence | Two machines; a Steam client |
 
 ## Content
 
