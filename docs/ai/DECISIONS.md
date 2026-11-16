@@ -129,6 +129,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0304 | Static instances are uploaded from their prepare chunks with no merge copy (compact sun shadow copies tried, no gain on the PC, removed) | accepted |
 | 0310 | Full physics stays on Rapier behind our own components: `Joint` (fixed, ball, hinge, slider, rope, spring; limits, motors), `CollisionLayers`, `ContinuousCollision`, `ExternalForce`, `ExternalImpulse` | accepted |
 | 0311 | Game-owned physics bodies keyed by the game (`add_body`, `body_state`, ...) in the scene's Rapier world; `overlap`, `shape_cast`, `raycast_all` with layer masks, sorted results; `observe_overlap`, `observe_shape_cast` | accepted |
+| 0312 | `CharacterPlaced`: game code places a character body for a while (Unity's controller switched off); each step moves the body to its `Transform`, no walking or gravity | accepted |
 | 0271 | Scripts pass component values directly instead of JSON text (`convert`: read plans, `patch`, text path as fallback and reference); turns skip unused work; script budgets | accepted |
 | 0272 | Parent and child transforms: `ChildOf` (local placement, `Transform` stays world), placed at load and before and after physics, cycles refused, `entity_attach` | accepted |
 | 0273 | Tests that pin what a value means (job operators against the interpreter, normal and metallic-roughness textures on pixels, grab reach, physics behaviour); normal maps were inverted and are fixed | accepted |
