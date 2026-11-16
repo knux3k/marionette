@@ -20,14 +20,14 @@ use crate::gpu::{Gpu, pick_camera};
 use crate::renderer::{self, DEPTH_FORMAT, RenderStats, Renderer, Target};
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};
 use marionette_core::scene::SceneId;
-use marionette_core::ui::{UiButton, UiNode, WindowControl, layout};
+use marionette_core::ui::{UiButton, UiClip, UiNode, WindowControl, hit};
 use marionette_core::{Diagnostic, Errors, Sim};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
-use winit::event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent};
+use winit::event::{DeviceEvent, DeviceId, ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 use winit::window::{CursorGrabMode, Fullscreen, Window, WindowId};
@@ -176,6 +176,15 @@ pub fn mouse_axes(pixels: (f32, f32)) -> (f32, f32) {
     (f(pixels.0), f(pixels.1))
 }
 
+/// Touchpad pixels that count as one wheel notch.
+pub const WHEEL_PIXELS_PER_NOTCH: f32 = 40.0;
+
+/// `axis:MouseWheel` for wheel notches since the last tick: up is positive, one notch is 1,
+/// clamped to -4..4 so a flung touchpad stays sane.
+pub fn wheel_axis(notches: f32) -> f32 {
+    notches.clamp(-4.0, 4.0)
+}
+
 /// Input name of a mouse button: `mouse:Left`, `mouse:Right`, `mouse:Middle`.
 pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
     match button {
@@ -189,14 +198,11 @@ pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
 /// The action of the top-most `UiButton` under screen point (`x`, `y`) on a `w` x `h` screen.
 /// Ties on layer go to the higher scene id (drawn later, so on top).
 pub fn button_at(world: &mut bevy_ecs::world::World, x: f32, y: f32, w: f32, h: f32) -> Option<String> {
-    let mut q = world.query::<(&SceneId, &UiNode, &UiButton)>();
+    let mut q = world.query::<(&SceneId, &UiNode, &UiButton, Option<&UiClip>)>();
     q.iter(world)
-        .filter(|(_, n, _)| {
-            let (bx, by, bw, bh) = layout(n, w, h);
-            x >= bx && x < bx + bw && y >= by && y < by + bh
-        })
-        .max_by_key(|(id, n, _)| (n.layer, id.0))
-        .map(|(_, _, b)| b.action.clone())
+        .filter(|(_, n, _, clip)| hit(n, *clip, x, y, w, h))
+        .max_by_key(|(id, n, _, _)| (n.layer, id.0))
+        .map(|(_, _, b, _)| b.action.clone())
 }
 
 struct Running {
@@ -217,6 +223,8 @@ struct App<'h> {
     cursor: (f32, f32),
     /// Mouse movement in pixels since it was last fed to the simulation (only while focused).
     mouse: (f32, f32),
+    /// Wheel notches (up positive) since they were last fed to the simulation.
+    wheel: f32,
     focused: bool,
     /// The cursor is hidden and locked right now.
     locked: bool,
@@ -258,6 +266,7 @@ pub fn run_windowed(sim: Sim, opts: WindowOptions, hooks: &mut dyn WindowHooks) 
         hooks,
         cursor: (0.0, 0.0),
         mouse: (0.0, 0.0),
+        wheel: 0.0,
         focused: true,
         locked: false,
         hidden: false,
@@ -440,6 +449,13 @@ impl App<'_> {
                 self.mouse = (0.0, 0.0);
                 moved = true;
             }
+            // Wheel notches since the last tick drive `axis:MouseWheel` for one tick (0175).
+            let wheeled = self.wheel != 0.0;
+            if wheeled {
+                self.hooks
+                    .device(&mut self.sim, "axis:MouseWheel", wheel_axis(self.wheel));
+                self.wheel = 0.0;
+            }
             self.sim.step();
             ran += 1;
             self.accumulator -= dt;
@@ -447,6 +463,9 @@ impl App<'_> {
                 self.hooks.device(&mut self.sim, "axis:MouseX", 0.0);
                 self.hooks.device(&mut self.sim, "axis:MouseY", 0.0);
                 moved = false;
+            }
+            if wheeled {
+                self.hooks.device(&mut self.sim, "axis:MouseWheel", 0.0);
             }
         }
         Some(ran)
@@ -563,6 +582,7 @@ impl App<'_> {
     fn set_focus(&mut self, focused: bool) {
         self.focused = focused;
         self.mouse = (0.0, 0.0);
+        self.wheel = 0.0;
         if !focused {
             self.stats.focus_losses += 1;
             // Keys released while another window had focus never arrive: release them now.
@@ -699,6 +719,13 @@ impl ApplicationHandler for App<'_> {
             WindowEvent::Focused(focused) => self.set_focus(focused),
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor = (position.x as f32, position.y as f32);
+            }
+            WindowEvent::MouseWheel { delta, .. } if self.focused => {
+                self.wheel += match delta {
+                    MouseScrollDelta::LineDelta(_, y) => y,
+                    MouseScrollDelta::PixelDelta(p) => p.y as f32 / WHEEL_PIXELS_PER_NOTCH,
+                };
+                self.input_now();
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 if let Some(name) = mouse_name(button) {
@@ -1000,5 +1027,29 @@ mod tests {
         assert_eq!(at(&mut world, 350.0, 320.0).as_deref(), Some("quit"));
         assert_eq!(at(&mut world, 5.0, 5.0), None);
         assert_eq!(at(&mut world, 110.0, 10.0), None, "right edge is exclusive");
+    }
+
+    #[test]
+    fn a_clipped_button_takes_clicks_only_inside_its_clip() {
+        let mut world = World::new();
+        button(&mut world, 1, (10.0, 10.0), 0, "card");
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &UiButton)>();
+        let card = q.iter(&world).map(|(e, _)| e).next().unwrap();
+        world.entity_mut(card).insert(marionette_core::ui::UiClip {
+            anchor: Anchor::TopLeft,
+            offset: Vec2 { x: 60.0, y: 0.0 },
+            size: Vec2 { x: 200.0, y: 200.0 },
+        });
+        assert_eq!(button_at(&mut world, 20.0, 20.0, 800.0, 600.0), None);
+        assert_eq!(
+            button_at(&mut world, 80.0, 20.0, 800.0, 600.0).as_deref(),
+            Some("card")
+        );
+    }
+
+    #[test]
+    fn wheel_notches_are_clamped() {
+        assert_eq!(wheel_axis(1.0), 1.0);
+        assert_eq!(wheel_axis(-12.0), -4.0);
     }
 }

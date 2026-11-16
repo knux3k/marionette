@@ -18,7 +18,7 @@ check a feature there before building on it, and update its row when your work m
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
-| 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0174), colliders from game meshes (0183), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
+| 6 | Input, physics, audio, UI | Landed: windowed play (0170 to 0175), colliders from game meshes (0183), 3D sound and music layers (0075), world-space UI (0200, 0201), synth (0220). |
 | 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
 | 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
 | 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |

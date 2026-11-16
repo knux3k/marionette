@@ -110,7 +110,12 @@ impl Ui {
     fn push(&mut self, node: UiNode, look: UiLook) {
         // Entity ids above any scene's keep editor draws last within the layer.
         let entity = u64::MAX - 1_000_000 + self.draws.len() as u64;
-        self.draws.push(UiDraw { entity, node, look });
+        self.draws.push(UiDraw {
+            entity,
+            node,
+            look,
+            clip: None,
+        });
     }
     pub fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: [f32; 4]) {
         let n = self.node(x, y, w, h);
