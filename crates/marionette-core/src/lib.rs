@@ -11,6 +11,7 @@ pub mod actions;
 pub mod builtin;
 pub mod error;
 pub mod hierarchy;
+pub mod image;
 pub mod jobdata;
 pub mod json_span;
 pub mod mesh;

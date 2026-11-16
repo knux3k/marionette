@@ -13,7 +13,7 @@ check a feature there before building on it, and update its row when your work m
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Landed: fast check on pull requests, full suite on main, no merge queue on a personal repository (0260); code rules enforced: `unsafe` only in listed FFI files (0104, QuickJS copy reviewed), no `unwrap`/`expect`/`panic!` outside tests (0105). reference counts cloned with `Arc::clone` (0106). |
+| 1 | Workspace, CI | Landed: fast check on PRs, full suite on main, no merge queue on a personal repository (0260); code rules enforced: `unsafe` only in listed FFI files (0104, QuickJS copy reviewed), no `unwrap`/`expect`/`panic!` outside tests (0105). `Arc::clone` for reference counts (0106). |
 | 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
@@ -31,7 +31,7 @@ check a feature there before building on it, and update its row when your work m
 - Game packages (decision 0140): never run on a Deck, a Frame, a headset or a screen; Frame binaries
   ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
 - Starter (0150): made games not played by a person.
-- Networking and Steam (0210-0213): loopback and 127.0.0.1 UDP only; the Steam backend has
+- Networking and Steam (0210-0215): loopback and 127.0.0.1 UDP only; the Steam backend has
   never run against a Steam client (first check: `steam_check`, app id 480, owner login).
 - Synth and streamed audio (decision 0220): rendered and checked as numbers only; played through a real
   device twice (64 and 128 voices clean on a 96-frame buffer, 256 and up miss deadlines; see
@@ -45,7 +45,7 @@ check a feature there before building on it, and update its row when your work m
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Game meshes, shaders, 0280-0285 renderer work (0180-0182): lavapipe only.
+- Game meshes, shaders, 0280-0285 renderer work and images (0180-0182, 0184): lavapipe only.
 - Opt-in looks (0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment, glTF emissive (0064-0067): checked

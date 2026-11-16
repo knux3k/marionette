@@ -36,7 +36,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Camera shots during play: read-back photos and live camera screens (0286) | slice | GPU tests on a software adapter (`tests/shots.rs`); the window and OpenXR loops call the same steps | A window or headset run taking photos; timing at 4K |
 | Ray tracing (0093) | slice | Lavapipe and one desktop GPU; skinned models not traced | A scene that needs it, on more than one GPU |
 | Skeletal animation (0028, 0074) | slice | Numeric pose tests on a generated puppet | A real rigged character on a hardware GPU |
-| Game meshes and shaders (0180, 0181) | slice | Lavapipe only | A hardware GPU and a game using them |
+| Game meshes, images and shaders (0180, 0181, 0184) | slice | Lavapipe only | A hardware GPU and a game using them |
 | Sprites and screen UI | usable | 2D proof games | A game with a large interface; text input |
 | World-space UI (0200-0202) | slice | Offscreen only | A headset, a TrueType font, touch |
 
@@ -49,7 +49,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Audio: files, 3D sound, music layers (0075) | slice | Numbers tested; never listened to | A person listening on speakers and a headset |
 | Synth and streamed audio (0220) | slice | Rendered to numbers; one device run | Listening; OGG |
 | Headsets through OpenXR, hands, grab, riding a character on round worlds (0190, 0191) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
-| Networking, Steam (0210 to 0213) | slice | Loopback only | Two machines; a Steam client |
+| Networking, Steam (0210 to 0215) | slice | Loopback and 127.0.0.1 UDP: lockstep and hosted sessions, LAN beacon; offline leaderboards and presence | Two machines; a Steam client |
 
 ## Content
 

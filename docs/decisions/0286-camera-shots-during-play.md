@@ -34,11 +34,10 @@ camera into the window or headset, and a picture from elsewhere needed a second 
 5. **Bloom per size.** The bloom settings uniform moved into each size's targets, since its
    intensity is divided by that size's level count and a shot can differ in size from the
    screen.
-6. **Run-time images.** The `generated:` image registry holds 32 images instead of 8, so a
-   game can show a few dozen small pictures (photo prints) it decodes itself. When the
-   renderer loads a new `generated:` image it drops its GPU copies of the ones the registry
-   has already let go, so the GPU cache stays within the same bound. A game that changes a
-   picture puts it under a new key (the renderer keeps a key's first texture).
+6. **Run-time images.** When the renderer loads a new `generated:` image it drops its GPU
+   copies of the ones the registry (8 images) has already let go, so the GPU cache stays
+   within the same bound. Pictures a game decodes itself (photo prints) are game images
+   (decision 0184, `game:<name>`), which it sets and removes.
 
 ## Rejected
 

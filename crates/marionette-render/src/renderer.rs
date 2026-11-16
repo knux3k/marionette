@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+mod game_image;
 mod game_mesh;
 mod game_shader;
 pub(crate) mod multiview;
@@ -678,6 +679,9 @@ pub struct Renderer {
     models: BTreeMap<String, Result<GpuModel, String>>,
     /// Version of each uploaded game mesh (`mesh:<name>` assets, decision 0180).
     game_mesh_versions: BTreeMap<String, u64>,
+    /// This frame's game images and their GPU copies (`game:<name>`, decision 0184).
+    game_images: marionette_core::image::ImageMap,
+    live_images: BTreeMap<String, game_image::LiveImage>,
     /// Background model decoding while streaming (decision 0068); `None` until first used.
     loader: Option<ModelLoader>,
     /// Models first needed after the first prepared frame decode in the background.
@@ -1248,6 +1252,8 @@ impl Renderer {
             defaults,
             models: BTreeMap::new(),
             game_mesh_versions: BTreeMap::new(),
+            game_images: Default::default(),
+            live_images: BTreeMap::new(),
             loader: None,
             streaming: false,
             prepared_once: false,
@@ -1299,7 +1305,6 @@ impl Renderer {
         self.culling = on;
     }
 
-    /// Loads an image (once) as a sprite/UI texture.
     /// Shows `view` (a texture this renderer can sample, `width` x `height`) wherever the
     /// image `name` is used: camera screens drawn by shots (decision 0286).
     pub fn set_image_view(&mut self, name: &str, view: &wgpu::TextureView, width: u32, height: u32) {
@@ -1327,14 +1332,11 @@ impl Renderer {
         );
     }
 
+    /// Loads an image (once) as a sprite/UI texture. A `game:<name>` image comes from the
+    /// frame's `GameImages` and is kept current by `sync_game_images`.
     fn ensure_texture(&mut self, image: &str) -> Option<&String> {
         const GENERATED: &str = "generated:";
         if !self.sprite_textures.contains_key(image) {
-            let sampler = if image == "builtin:font" {
-                &self.nearest_sampler
-            } else {
-                &self.sprite_sampler
-            };
             // A new run-time image: GPU copies of generated images the registry has dropped go
             // too, so the cache stays within the registry's bound (decision 0286).
             if image.starts_with(GENERATED) {
@@ -1342,13 +1344,25 @@ impl Renderer {
                     .retain(|k, _| k.strip_prefix(GENERATED).is_none_or(assets::generated::contains));
             }
             // A camera screen (decision 0286) is black until its first shot is drawn.
-            let loaded = if image.starts_with(marionette_core::shots::Shots::IMAGE_PREFIX) {
-                Ok(Image::solid([0, 0, 0, 255], true))
-            } else {
-                assets::load_image(image, &self.base_dir)
+            let shot = image.starts_with(marionette_core::shots::Shots::IMAGE_PREFIX);
+            let loaded = match self.game_image_view(image) {
+                Some(found) => found,
+                None if shot => {
+                    let img = Image::solid([0, 0, 0, 255], true);
+                    let view = create_texture_view(&self.device, &self.queue, &img);
+                    Ok((view, img.width, img.height, false))
+                }
+                None => assets::load_image(image, &self.base_dir).map(|img| {
+                    let view = create_texture_view(&self.device, &self.queue, &img);
+                    (view, img.width, img.height, image == "builtin:font")
+                }),
             };
-            let loaded = loaded.map(|img| {
-                let view = create_texture_view(&self.device, &self.queue, &img);
+            let loaded = loaded.map(|(view, width, height, nearest)| {
+                let sampler = if nearest {
+                    &self.nearest_sampler
+                } else {
+                    &self.sprite_sampler
+                };
                 GpuTexture {
                     bind_group: self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("sprite texture"),
@@ -1364,8 +1378,8 @@ impl Renderer {
                             },
                         ],
                     }),
-                    width: img.width,
-                    height: img.height,
+                    width,
+                    height,
                 }
             });
             self.sprite_textures.insert(image.to_string(), loaded);
@@ -1420,6 +1434,7 @@ impl Renderer {
             self.compress_wanted = compress;
         }
         self.sync_game_meshes(frame);
+        self.sync_game_images(frame);
         for (shader, msg) in self.sync_game_shaders(frame) {
             errors.push(
                 Diagnostic::error(codes::SHADER, format!("{shader}: {msg}"))

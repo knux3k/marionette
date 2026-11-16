@@ -45,6 +45,9 @@ pub enum LobbyEvent {
     List(Vec<LobbyId>),
     /// Members, owner or data changed.
     Changed(LobbyId),
+    /// The player accepted an invite (or chose "join game" on a friend) outside the game,
+    /// for example in the store's overlay. Join it with [`Lobbies::join`].
+    InviteAccepted(LobbyId),
 }
 
 pub trait Lobbies {
@@ -58,6 +61,11 @@ pub trait Lobbies {
     fn set_data(&mut self, lobby: LobbyId, key: &str, value: &str) -> Result<(), NetError>;
     fn info(&self, lobby: LobbyId) -> Option<LobbyInfo>;
     fn poll(&mut self) -> Vec<LobbyEvent>;
+    /// Opens the platform's own invite dialog for a lobby (the Steam overlay's friend list).
+    /// Backends without one refuse; the game then shows the lobby id or its address instead.
+    fn open_invite_dialog(&mut self, _lobby: LobbyId) -> Result<(), NetError> {
+        Err(NetError::new(codes::LOBBY, "this platform has no invite dialog"))
+    }
 }
 
 struct Entry {

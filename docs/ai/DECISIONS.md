@@ -65,6 +65,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0181 | Game shaders: WGSL `surface`/`vertex` hooks spliced into the PBR shader (`ShaderMaterial`, `GameShaders`, `.wgsl` files), blend options, game time, `primitive:grid` | accepted |
 | 0182 | Game shader option `// @no_fog`: fog distance times a composed constant, for sky domes and backdrops | accepted |
 | 0183 | Colliders from game meshes: `TriMesh`/`ConvexHull` accept `mesh:<name>`, wait for the mesh, rebuild when it is stored again; `main_with_args` | accepted |
+| 0184 | Images made in game code: `GameImages` resource, `game:<name>` images for sprites, UI, world quads and shader textures, rewritten in place each frame | accepted |
 | 0080 | Frustum culling always on (pixel-identical, shadow casters kept); level of detail opt-in (`LevelOfDetail`, generated levels) | accepted |
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |
@@ -106,6 +107,8 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0211 | Networked input is per-player actions `p<slot>.<action>` and a `NetPlayers` resource | accepted |
 | 0212 | Steam is an optional backend that loads the game's own steam_api library at run time (no SDK files) | accepted |
 | 0213 | Achievements, stats and cloud files behind interfaces, offline backend, three-way save-folder sync (`marionette-platform`) | accepted |
+| 0214 | Hosted sessions (host owns the world, guests connect), LAN discovery, received-message cap, `Transport::forget`, lobby invites | accepted |
+| 0215 | Leaderboards and rich presence behind interfaces, offline backend (`marionette-platform`) | accepted |
 | 0220 | Real-time synth crate (lock-free commands, sample-accurate notes, generators, disk streaming), offline render with numeric checks, `audio-check` device run | accepted |
 | 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
 | 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |

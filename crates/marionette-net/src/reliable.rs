@@ -28,6 +28,8 @@ const RTO_MIN: Micros = 40_000;
 const RTO_MAX: Micros = 2_000_000;
 /// Reliable bytes buffered per peer before `send` refuses (a peer that never acks).
 const MAX_QUEUED: usize = 64 << 20;
+/// Default largest reliable message a peer may send us, rebuilt (see [`Endpoint::set_max_message`]).
+pub const DEFAULT_MAX_MESSAGE: usize = 64 << 20;
 
 struct Unacked {
     datagram: Vec<u8>,
@@ -48,6 +50,8 @@ struct Peer {
     expected: u32,
     out_of_order: BTreeMap<u32, (u8, u8, Vec<u8>)>,
     partial: Vec<u8>,
+    /// The message being rebuilt went over the size limit: drop fragments until its last one.
+    discarding: bool,
     ack_owed: bool,
     last_heard: Option<Micros>,
 }
@@ -67,6 +71,8 @@ pub struct Endpoint<D: Datagram> {
     received: VecDeque<Packet>,
     now: Micros,
     stats: TransportStats,
+    max_message: usize,
+    oversize_dropped: u64,
 }
 
 impl<D: Datagram> Endpoint<D> {
@@ -77,7 +83,22 @@ impl<D: Datagram> Endpoint<D> {
             received: VecDeque::new(),
             now: 0,
             stats: TransportStats::default(),
+            max_message: DEFAULT_MAX_MESSAGE,
+            oversize_dropped: 0,
         }
+    }
+
+    /// The largest reliable message a peer may send this endpoint. A longer one is dropped
+    /// while it arrives (its fragments are still acknowledged, so the sender moves on), and
+    /// counted in [`Endpoint::oversize_dropped`]. Without a limit a peer could make us buffer
+    /// without bound.
+    pub fn set_max_message(&mut self, bytes: usize) {
+        self.max_message = bytes.max(FRAGMENT_PAYLOAD);
+    }
+
+    /// Reliable messages dropped for being over [`Endpoint::set_max_message`].
+    pub fn oversize_dropped(&self) -> u64 {
+        self.oversize_dropped
     }
 
     pub fn socket(&self) -> &D {
@@ -183,10 +204,23 @@ impl<D: Datagram> Endpoint<D> {
         p.out_of_order
             .entry(seq)
             .or_insert((channel, flags, payload.to_vec()));
+        let max = self.max_message;
         while let Some((channel, flags, data)) = p.out_of_order.remove(&p.expected) {
             p.expected = p.expected.wrapping_add(1);
+            let last = flags & 1 == 0;
+            if !p.discarding && p.partial.len() + data.len() > max {
+                p.discarding = true;
+                p.partial = Vec::new();
+                self.oversize_dropped += 1;
+            }
+            if p.discarding {
+                if last {
+                    p.discarding = false;
+                }
+                continue;
+            }
             p.partial.extend_from_slice(&data);
-            if flags & 1 == 0 {
+            if last {
                 let data = std::mem::take(&mut p.partial);
                 self.received.push_back(Packet {
                     from,
@@ -328,6 +362,10 @@ impl<D: Datagram> Transport for Endpoint<D> {
         self.received.pop_front()
     }
 
+    fn forget(&mut self, peer: PeerId) {
+        self.peers.remove(&peer);
+    }
+
     fn stats(&self) -> TransportStats {
         self.stats
     }
@@ -384,6 +422,47 @@ mod tests {
             a.poll(now);
             b.poll(now);
         }
+        assert_eq!(a.pending_reliable(b.local()), 0);
+    }
+
+    #[test]
+    fn oversize_reliable_is_dropped_and_the_next_arrives() {
+        let net = LoopbackNet::new(5, LinkConditions::default());
+        let mut a = Endpoint::new(net.endpoint());
+        let mut b = Endpoint::new(net.endpoint());
+        b.set_max_message(10_000);
+        a.send(b.local(), Delivery::Reliable, 1, &vec![1; 50_000])
+            .unwrap();
+        a.send(b.local(), Delivery::Reliable, 1, &vec![2; 9_000]).unwrap();
+        let mut got = Vec::new();
+        for _ in 0..200 {
+            net.advance(10_000);
+            let now = net.now();
+            a.poll(now);
+            b.poll(now);
+            while let Some(p) = b.receive() {
+                got.push(p);
+            }
+        }
+        assert_eq!(got.len(), 1, "only the message under the limit arrives");
+        assert_eq!(got[0].data, vec![2; 9_000]);
+        assert_eq!(b.oversize_dropped(), 1);
+        assert_eq!(
+            a.pending_reliable(b.local()),
+            0,
+            "the sender is not left resending"
+        );
+    }
+
+    #[test]
+    fn forget_drops_a_peers_queue() {
+        let net = LoopbackNet::new(6, LinkConditions::default());
+        let mut a = Endpoint::new(net.endpoint());
+        let b = net.endpoint();
+        a.send(b.local(), Delivery::Reliable, 1, &vec![0; 100_000])
+            .unwrap();
+        assert!(a.pending_reliable(b.local()) > 0);
+        a.forget(b.local());
         assert_eq!(a.pending_reliable(b.local()), 0);
     }
 

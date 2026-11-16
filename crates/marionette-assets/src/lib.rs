@@ -468,8 +468,7 @@ pub mod generated {
     use super::Image;
     use std::sync::{Arc, Mutex};
 
-    /// 32: room for a font atlas and a few dozen small pictures (decision 0286: photo prints).
-    pub const LIMIT: usize = 32;
+    pub const LIMIT: usize = 8;
     static IMAGES: Mutex<Vec<(String, Arc<Image>)>> = Mutex::new(Vec::new());
 
     /// Stores `image` under `key` (replacing an older one with that key).
