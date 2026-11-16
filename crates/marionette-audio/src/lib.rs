@@ -14,6 +14,10 @@
 //! - [`music::Music`]: stems that start together and fade in and out by an intensity value.
 //! - The player keeps a voice per playing sound and stops looping sounds whose entity or
 //!   `AudioSource` is gone.
+//!
+//! Decision 0221 adds sounds made in game code ([`SoundBank`], played as `bank:<name>`), synth
+//! commands from game systems ([`SynthOutbox`]), [`SoundPitch`] on a source and a `pitch` in a
+//! `sound` event's detail, and [`Player::frame`], the one call a windowed runner makes.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![deny(clippy::clone_on_ref_ptr)]
 
@@ -28,10 +32,12 @@ use marionette_core::spatial::Transform;
 use serde_json::json;
 use std::path::Path;
 
+mod bank;
 pub mod music;
 mod player;
 mod synth_host;
 
+pub use bank::{BANK_SAMPLES, BankSound, OUTBOX, SoundBank, SynthOutbox};
 pub use marionette_synth as synth;
 pub use music::{Music, MusicLayer};
 pub use player::{MAX_VOICES, Player};
@@ -106,6 +112,19 @@ impl Default for SoundSpatial {
             rear_muffle: 0.5,
             doppler: 0.0,
         }
+    }
+}
+
+/// Playback rate of the `AudioSource` on the same entity (1 = as recorded, 2 = an octave up),
+/// multiplied with any Doppler shift. Changed every tick, a looping sound follows it.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct SoundPitch {
+    pub rate: f32,
+}
+
+impl Default for SoundPitch {
+    fn default() -> Self {
+        Self { rate: 1.0 }
     }
 }
 
@@ -242,6 +261,7 @@ impl Module for AudioModule {
         r.register_component::<AudioSource>();
         r.register_component::<AudioListener>();
         r.register_component::<SoundSpatial>();
+        r.register_component::<SoundPitch>();
         r.register_component::<Music>();
     }
     fn add_systems(&self, schedule: &mut Schedule) {
@@ -302,15 +322,23 @@ pub fn listener_ear(world: &mut World) -> Option<Ear> {
 
 fn play_sounds(world: &mut World) {
     let tick = world.resource::<SimClock>().tick;
-    let mut q = world.query::<(Entity, &SceneId, &AudioSource, Option<&SoundSpatial>)>();
-    let mut sources: Vec<(u64, Entity, AudioSource, Option<SoundSpatial>)> = q
+    let mut q = world.query::<(
+        Entity,
+        &SceneId,
+        &AudioSource,
+        Option<&SoundSpatial>,
+        Option<&SoundPitch>,
+    )>();
+    #[allow(clippy::type_complexity)]
+    let mut sources: Vec<(u64, Entity, AudioSource, Option<SoundSpatial>, Option<SoundPitch>)> = q
         .iter(world)
-        .map(|(e, id, s, sp)| (id.0, e, s.clone(), sp.copied()))
+        // Owned copies: the world is borrowed again below to read places and the log.
+        .map(|(e, id, s, sp, pi)| (id.0, e, s.clone(), sp.copied(), pi.copied()))
         .collect();
     if sources.is_empty() {
         return;
     }
-    sources.sort_by_key(|(id, _, _, _)| *id);
+    sources.sort_by_key(|(id, _, _, _, _)| *id);
     let ear = listener_ear(world);
     let this_tick: Vec<(String, u64, Option<u64>)> = world
         .resource::<EventLog>()
@@ -324,7 +352,7 @@ fn play_sounds(world: &mut World) {
     };
     let actions = world.get_resource::<ActionState>().cloned().unwrap_or_default();
     let mut played = Vec::new();
-    for (id, e, s, spatial) in &sources {
+    for (id, e, s, spatial, pitch) in &sources {
         let fire = match &s.trigger {
             SoundTrigger::OnStart => tick == 0,
             SoundTrigger::OnCollision => involved("collision_started", *id),
@@ -337,6 +365,9 @@ fn play_sounds(world: &mut World) {
             let mut detail = json!({ "sound": s.sound, "gain": h.gain, "pan": h.pan, "looping": s.looping });
             if spatial.is_some() {
                 detail["lowpass_hz"] = json!(h.lowpass_hz);
+            }
+            if let Some(p) = pitch {
+                detail["pitch"] = json!(p.rate);
             }
             played.push((*id, detail));
         }
@@ -405,6 +436,9 @@ pub fn load_sound(
     base_dir: &Path,
 ) -> Result<kira::sound::static_sound::StaticSoundData, String> {
     use kira::sound::static_sound::StaticSoundData;
+    if let Some(name) = sound.strip_prefix("bank:") {
+        return Err(format!("no sound `{name}` in the game's SoundBank"));
+    }
     if let Some(name) = sound.strip_prefix("builtin:") {
         let samples = builtin_samples(name)
             .or_else(|| music::builtin_stem(name))
@@ -535,6 +569,42 @@ mod tests {
             Some(&SoundSpatial::default()),
         );
         assert_eq!(off.pitch, 1.0);
+    }
+
+    #[test]
+    fn bank_sounds_convert_and_unknown_bank_names_explain() {
+        let sound = BankSound {
+            rate: 22_050,
+            samples: std::sync::Arc::from(vec![0.5, -0.25]),
+        };
+        let d = player::bank_data(&sound);
+        assert_eq!(d.sample_rate, 22_050);
+        assert_eq!(d.frames.len(), 2);
+        assert_eq!((d.frames[1].left, d.frames[1].right), (-0.25, -0.25));
+        let e = load_sound("bank:wind", Path::new(".")).err().unwrap();
+        assert!(e.contains("SoundBank"), "{e}");
+    }
+
+    #[test]
+    fn sound_pitch_reaches_the_log() {
+        let mut world = World::new();
+        world.insert_resource(SimClock::default());
+        world.insert_resource(EventLog::default());
+        world.spawn((
+            SceneId(7),
+            AudioSource {
+                sound: "bank:wind".into(),
+                volume: 0.5,
+                looping: true,
+                trigger: SoundTrigger::OnStart,
+            },
+            SoundPitch { rate: 1.25 },
+        ));
+        play_sounds(&mut world);
+        let log = world.resource::<EventLog>();
+        let e = log.since(0).find(|e| e.kind == "sound").unwrap();
+        assert_eq!(e.detail["sound"], "bank:wind");
+        assert_eq!(e.detail["pitch"], 1.25);
     }
 
     #[test]

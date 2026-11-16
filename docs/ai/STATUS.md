@@ -48,6 +48,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Input, windowed play (0170 to 0173) | usable | Checked on a real screen | Gamepads on hardware, Linux and macOS screens |
 | Audio: files, 3D sound, music layers (0075) | slice | Numbers tested; never listened to | A person listening on speakers and a headset |
 | Synth and streamed audio (0220) | slice | Rendered to numbers; one device run | Listening; OGG |
+| Game-made sounds and synth from game systems (0221) | slice | Unit tests (bank, outbox, pitch in the log, conversion); used by a large factory game's port | A device run with a bank; listening |
 | Headsets through OpenXR, hands, grab, riding a character on round worlds (0190, 0191) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
 | Networking, Steam (0210 to 0215) | slice | Loopback and 127.0.0.1 UDP: lockstep and hosted sessions, LAN beacon; offline leaderboards and presence | Two machines; a Steam client |
 

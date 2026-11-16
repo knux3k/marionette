@@ -37,8 +37,7 @@ impl XrHooks for Sound {
         let now = std::time::Instant::now();
         let dt = self.last.map_or(0.0, |t| (now - t).as_secs_f32());
         self.last = Some(now);
-        let mut problems = p.play_new(sim.events());
-        problems.extend(p.update(&mut sim.world, dt));
+        let problems = p.frame(&mut sim.world, dt);
         for m in problems {
             if self.problems.len() < 20 && !self.problems.contains(&m) {
                 self.problems.push(m);
