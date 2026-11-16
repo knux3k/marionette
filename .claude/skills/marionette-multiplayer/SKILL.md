@@ -36,12 +36,10 @@ input into a frame, clients run frames in order, state hashes are compared every
 
 ## Host-owned worlds (hosted sessions)
 
-When the host runs the world (physics items, big factories) and streams it, use
-`marionette_net::{HostedHost, HostedGuest}` instead of lockstep (decision 0214): set a
-`HostedConfig.protocol` that changes with the wire format, poll the transport then the
-session each frame, act on `HostedEvent`s, keep game messages off channel 255. Cap big
-messages with `Endpoint::set_max_message` and check each kind's size after receipt. LAN
-listing: `LanBeacon::broadcast` on the host, `LanBrowser::listen` on the join page.
+Host runs the world and streams it: `marionette_net::HostedHost` and `marionette_net::HostedGuest`, not
+lockstep (0214). Protocol text changes with the wire format; poll transport then session each
+frame; game messages off channel 255; `marionette_net::Endpoint::set_max_message` caps size.
+LAN: `marionette_net::LanBeacon` (host), `marionette_net::LanBrowser` (join page).
 
 ## Achievements, stats, cloud saves
 
