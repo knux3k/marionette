@@ -103,6 +103,13 @@ Decision 0180. In a module (or any code with `&mut World`):
 4. Change it by calling `set` again with the same name (same sizes: written in place);
    `remove` frees it. Meshes are not saved: rebuild them from your own state on load.
 
+## Show an image made in code
+
+Decision 0184. Store RGBA8 pixels (sRGB, row 0 at the top, `nearest` for pixel art) with
+`GameImages::set_in(world, "screen", GameImage { .. })?`, then name it `game:screen` in a
+`Sprite`, `UiImage`, world quad or `ShaderMaterial::textures`. Each frame, rewrite the pixels
+with `update("screen", |px| ..)`: same size, same GPU texture, nothing allocated.
+
 ## Give a model a game shader
 
 Read [SHADERS.md](SHADERS.md) (decision 0181): write `fn surface` / `fn vertex` in WGSL (a

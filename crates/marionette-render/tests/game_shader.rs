@@ -288,3 +288,65 @@ fn bulk_draws_take_a_game_shader() {
     let c = rgb(&off.read_pixels(&gpu).unwrap(), col(4.0), H / 2);
     assert!(c[1] > 100 && c[0] < 60 && c[0] == c[2], "green bulk cube: {c:?}");
 }
+
+#[test]
+fn a_game_image_binds_as_a_shader_texture_and_follows_updates() {
+    use marionette_core::image::GameImage;
+    let Some(gpu) = gpu() else { return };
+    let mut sim = stage(
+        Some(r#"{"shader": "screen", "params": [], "textures": ["game:screen"]}"#),
+        "",
+    );
+    with_shader(
+        &mut sim,
+        "screen",
+        "fn surface(s: ptr<function, Surface>, i: SurfaceIn) {\n    (*s).base_color = textureSampleLevel(tex0, game_samp, i.uv, 0.0);\n    (*s).unlit = 1.0;\n}\n",
+    );
+    let solid = |c: [u8; 4]| GameImage {
+        width: 4,
+        height: 4,
+        rgba: c.repeat(16),
+        nearest: false,
+    };
+    game_images(&mut sim)
+        .set("screen", solid([255, 0, 0, 255]))
+        .unwrap();
+    let mut off = Offscreen::new(&gpu, W, H, 4, repo().join("examples"));
+    off.render(&gpu, &extract(&sim.world), None).unwrap();
+    let [r, g, _] = rgb(&off.read_pixels(&gpu).unwrap(), col(4.0), 45);
+    assert!(r > 200 && g < 40, "the floor shows the red image: {r} {g}");
+    game_images(&mut sim)
+        .update("screen", |px| px.copy_from_slice(&[0, 255, 0, 255].repeat(16)))
+        .unwrap();
+    off.render(&gpu, &extract(&sim.world), None).unwrap();
+    let [r, g, _] = rgb(&off.read_pixels(&gpu).unwrap(), col(4.0), 45);
+    assert!(
+        g > 200 && r < 40,
+        "and then the green one, same bind group: {r} {g}"
+    );
+    // A size that does not match its pixels is refused.
+    game_images(&mut sim)
+        .set(
+            "screen",
+            GameImage {
+                width: 2,
+                ..solid([0, 0, 255, 255])
+            },
+        )
+        .unwrap_err();
+    let mut blue = solid([0, 0, 255, 255]);
+    blue.width = 2;
+    blue.rgba.truncate(2 * 4 * 4);
+    game_images(&mut sim).set("screen", blue).unwrap();
+    off.render(&gpu, &extract(&sim.world), None).unwrap();
+    let [r, _, b] = rgb(&off.read_pixels(&gpu).unwrap(), col(4.0), 45);
+    assert!(
+        b > 200 && r < 40,
+        "resized: a new texture and bind group: {r} {b}"
+    );
+}
+
+fn game_images(sim: &mut Sim) -> bevy_ecs::world::Mut<'_, marionette_core::image::GameImages> {
+    sim.world
+        .get_resource_or_insert_with(marionette_core::image::GameImages::default)
+}
