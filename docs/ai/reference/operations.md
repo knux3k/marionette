@@ -99,8 +99,9 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `prefab_instantiate` | yes | Places an imported prefab (an owned-library asset of kind prefab, from a Unity .prefab) into a scene file: one entity per prefab object at `at`, with fresh ids. Library models and materials it uses are copied beside the scene (default folder `library/`). Inactive objects are left out unless `include_inactive` is set. |
 | `package_targets` | no | List package targets (windows-x64, linux-x64, steamdeck, steam-frame) and whether this machine can build each; with `game`, also the files a package of it would hold. |
 | `package_build` | yes | Package a game: build its binary for each target (release, glibc 2.31 floor on Linux), copy its runtime files, licenses and a game.package.json, then write <out>/<game>-<target>/ and a zip. The binary plays the entry scene when started with no arguments. Takes minutes. |
-| `game_brief` | no | Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
-| `game_make` | yes | Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
+| `game_interview` | no | Step one of making a game from an idea: returns the questions to ask the person (genre, view, setting, player, pickups, enemy, goal, art style, difficulty, length, title, anything else), each with choices or examples and the guess used if unanswered. Ask the person the open ones, call again with `answers` to see the guesses follow, then pass the same `answers` to game_brief or game_make. Writes nothing. |
+| `game_brief` | no | Turns a one-line game idea (plus game_interview `answers`) into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make. |
+| `game_make` | yes | Makes a playable game project from a brief or from a prompt plus the person's game_interview `answers` (a bare prompt is refused unless `skip_interview` says the person declined the questions): level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first. |
 | `net_simulate` | no | Run a co-op lockstep session in one process: a host and `players`-1 clients, each with its own copy of `scene`, over a simulated network (`link`: latency_ms, jitter_ms, loss, duplicate), seeded random input on the scene's actions, optional `late_join_at` and `drop_slot`/`drop_at`. Reports `all_equal` (every peer ended in the host's state), desyncs the session caught by hash checks, stalls, lag in ticks and bytes. |
 | `achievements_check` | no | Validate an achievements and stats definitions file (format marionette.achievements): ids are store-safe and unique, stat-driven achievements name a defined stat. Returns the counts and ids. |
 | `batch_run` | yes | Run a list of operations in order, from a `*.ops.json` file (`file`) or inline (`ops`). Stops at the first error and reports which step failed; earlier steps stay applied. |
@@ -2410,9 +2411,9 @@ Output:
 | --- | --- | --- | --- |
 | `packages` | array of Built | yes |  |
 
-## `game_brief`
+## `game_interview`
 
-Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.
+Step one of making a game from an idea: returns the questions to ask the person (genre, view, setting, player, pickups, enemy, goal, art style, difficulty, length, title, anything else), each with choices or examples and the guess used if unanswered. Ask the person the open ones, call again with `answers` to see the guesses follow, then pass the same `answers` to game_brief or game_make. Writes nothing.
 
 Mutating: no.
 
@@ -2420,6 +2421,32 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `all` | boolean |  | Also list answered questions (default: only the open ones). |
+| `answers` | object |  | Replies so far, by question id. |
+| `prompt` | string | yes | The game idea in the person's words. |
+| `template` | Template \| null |  | A template already decided (its question is then not asked). |
+| `view` | View \| null |  | A view already decided. |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `answered` | integer | yes | Questions answered so far. |
+| `next` | string | yes | What to do next. |
+| `notes` | array of string | yes | What the starter cannot do for this idea, to raise with the person. |
+| `questions` | array of Question | yes | Questions to ask, in order (open ones only unless `all`). |
+
+## `game_brief`
+
+Turns a one-line game idea (plus game_interview `answers`) into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `answers` | object |  | The person's replies to game_interview, by question id. |
 | `brief` | Brief \| null |  | Check this brief instead of reading a prompt. |
 | `prompt` | string \| null |  | The game idea in plain words ("a cozy 3d maze where a moth collects lanterns"). |
 | `template` | Template \| null |  | Force a template (`maze` or `platformer`). |
@@ -2434,7 +2461,7 @@ Output:
 
 ## `game_make`
 
-Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.
+Makes a playable game project from a brief or from a prompt plus the person's game_interview `answers` (a bare prompt is refused unless `skip_interview` says the person declined the questions): level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.
 
 Mutating: yes.
 
@@ -2442,11 +2469,13 @@ Input:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `answers` | object |  | The person's replies to game_interview, by question id. Needed with a `prompt` (or `skip_interview`); recorded in the project's interview.json. |
 | `brief` | Brief \| null |  |  |
 | `generate` | boolean |  | Run generate_run for slots still waiting for art (paid providers follow the project's providers.json, keys and spend caps), then use what was built. |
 | `path` | string | yes | Project folder to create (must not exist or be empty), or to refresh. |
 | `prompt` | string \| null |  |  |
 | `refresh` | boolean |  | Re-make an existing starter project from its brief.json (or from `brief`). |
+| `skip_interview` | boolean |  | The person asked to build from the prompt without questions: every question takes its guess. |
 | `template` | Template \| null |  |  |
 | `tries` | integer \| null |  | Seeds to try when the autopilot cannot win a level (default 8). |
 | `view` | View \| null |  |  |
@@ -2467,6 +2496,7 @@ Output:
 | `tests_passed` | integer | yes |  |
 | `title` | string | yes |  |
 | `view` | View | yes |  |
+| `wishes` | string \| null |  | What the person asked for beyond the template (interview question `extra`): build it as game code next. |
 
 ## `net_simulate`
 
