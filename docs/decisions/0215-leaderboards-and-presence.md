@@ -21,6 +21,10 @@ keep its own local best. Like achievements (0213), the same game code must run w
 - `OfflinePlatform` implements both: boards in `<dir>/leaderboards.json` with the player as the
   only row-holder (`set_player`), presence in memory (readable for tests).
 
+- `CloudFiles::modified(name)`: when a cloud file was last written (seconds since 1970),
+  default `None`, so a game can prefer a newer copy from another machine. Offline returns the
+  file's time.
+
 ## Alternatives
 
 - **Callbacks per request**: closures held across frames need boxed trait objects and make

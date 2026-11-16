@@ -103,6 +103,14 @@ fn save_folder_sync_two_machines() {
     std::fs::write(deck.join("slot2.save"), b"x").unwrap();
     let r = sync_dir(&deck, &[".save"], &mut cloud).unwrap();
     assert_eq!(r.deleted_cloud, vec!["slot1.save"]);
+    // A cloud copy says when it was written; a missing one says nothing.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let at = cloud.modified("slot2.save").unwrap().unwrap();
+    assert!(at + 60 >= now && at <= now + 60);
+    assert_eq!(cloud.modified("slot1.save").unwrap(), None);
     // Cloud off: sync does nothing.
     cloud.set_cloud_enabled(false);
     assert_eq!(

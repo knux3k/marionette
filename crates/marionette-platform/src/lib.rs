@@ -110,6 +110,11 @@ pub trait CloudFiles {
     fn delete(&mut self, name: &str) -> Result<()>;
     /// (name, size in bytes), sorted by name.
     fn list(&self) -> Result<Vec<(String, u64)>>;
+    /// When a file was last written, in seconds since 1970 (UTC); `None` when missing or
+    /// when the store does not say. Lets a game prefer a newer copy from another machine.
+    fn modified(&self, _name: &str) -> Result<Option<u64>> {
+        Ok(None)
+    }
 }
 
 /// Refuses names a store or a file system would treat badly.

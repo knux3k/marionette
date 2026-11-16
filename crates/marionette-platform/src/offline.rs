@@ -170,6 +170,17 @@ impl CloudFiles for OfflinePlatform {
             Err(e) => Err(io(&p, e)),
         }
     }
+    fn modified(&self, name: &str) -> Result<Option<u64>> {
+        self.need_cloud()?;
+        let p = self.cloud_path(name)?;
+        let meta = match std::fs::metadata(&p) {
+            Ok(m) => m,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(io(&p, e)),
+        };
+        let at = meta.modified().map_err(|e| io(&p, e))?;
+        Ok(at.duration_since(std::time::UNIX_EPOCH).ok().map(|d| d.as_secs()))
+    }
     fn list(&self) -> Result<Vec<(String, u64)>> {
         self.need_cloud()?;
         let dir = self.dir.join("cloud");
