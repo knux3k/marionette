@@ -122,6 +122,16 @@ pub struct UiButton {
     pub action: String,
 }
 
+/// Draws the node on a world canvas instead of the screen (decision 0202): the canvas entity
+/// with scene id `canvas` (a `UiCanvas` of the `ui3d` module) gives the pixel size the node's
+/// anchor and offset are measured in, and a world pointer on the canvas presses its
+/// [`UiButton`]. The screen renderer and the window's mouse leave such nodes alone, so the same
+/// HUD or menu code can draw on a screen or, unchanged, in the world (a VR menu).
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UiOnCanvas {
+    pub canvas: u64,
+}
+
 /// What a game asks of the window it runs in (decision 0174). The window reads it after every
 /// frame's ticks; without it the window's own options decide. Headless runs ignore it, so it
 /// never changes what a tick computes.

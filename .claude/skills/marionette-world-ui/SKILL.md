@@ -21,6 +21,15 @@ turns toward the viewer) or `Camera`. `UiAnchor` follows another entity by Scene
 (`relative` to its axes, `smoothing` seconds of lag), e.g. a panel on a wrist or in front of
 the head.
 
+## A screen menu in the world: `UiCanvas`
+
+Give an entity `UiCanvas` (`size` in meters, `pixels` it stands for, `max_distance`,
+`interactive`) and a `Transform`, then add `UiOnCanvas { canvas: <its scene id> }` to screen UI
+nodes (`UiNode` + `UiRect`/`UiText`/`UiClip`/`UiButton`). They are laid out in the canvas's
+pixels, drawn on it in the world, skipped by the screen and the mouse, and a pointer press
+clicks the top-most `UiButton` under it (sets its action). Images are not drawn there yet.
+Use it to show an existing HUD or menu in VR without a second layout.
+
 ## Size
 
 `text_size` is the letter height in meters. 0.03 to 0.04 reads comfortably at 0.6 m. The text

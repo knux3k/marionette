@@ -1176,6 +1176,11 @@ type UiNode = {
   };
 };
 
+/** Draws the node on a world canvas instead of the screen (decision 0202): the canvas entity with scene id `canvas` (a `UiCanvas` of the `ui3d` module) gives the pixel size the node's anchor and offset are measured in, and a world pointer on the canvas presses its [`UiButton`]. The screen renderer and the window's mouse leave such nodes alone, so the same HUD or menu code can draw on a screen or, unchanged, in the world (a VR menu). */
+type UiOnCanvas = {
+  canvas: number;
+};
+
 /** A filled rectangle. */
 type UiRect = {
   /** Linear RGBA color, each channel 0..1. */
@@ -1401,6 +1406,7 @@ interface Components {
   UiClip: UiClip;
   UiImage: UiImage;
   UiNode: UiNode;
+  UiOnCanvas: UiOnCanvas;
   UiRect: UiRect;
   UiText: UiText;
   Velocity: Velocity;

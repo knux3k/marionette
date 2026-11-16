@@ -20,7 +20,7 @@ use crate::gpu::{Gpu, pick_camera};
 use crate::renderer::{self, DEPTH_FORMAT, RenderStats, Renderer, Target};
 use marionette_core::builtin::{DEFAULT_DT, FixedStep};
 use marionette_core::scene::SceneId;
-use marionette_core::ui::{UiButton, UiClip, UiNode, WindowControl, hit};
+use marionette_core::ui::{UiButton, UiClip, UiNode, UiOnCanvas, WindowControl, hit};
 use marionette_core::{Diagnostic, Errors, Sim};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -198,7 +198,8 @@ pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
 /// The action of the top-most `UiButton` under screen point (`x`, `y`) on a `w` x `h` screen.
 /// Ties on layer go to the higher scene id (drawn later, so on top).
 pub fn button_at(world: &mut bevy_ecs::world::World, x: f32, y: f32, w: f32, h: f32) -> Option<String> {
-    let mut q = world.query::<(&SceneId, &UiNode, &UiButton, Option<&UiClip>)>();
+    // Buttons on a world canvas take world pointers, not the mouse.
+    let mut q = world.query_filtered::<(&SceneId, &UiNode, &UiButton, Option<&UiClip>), bevy_ecs::query::Without<UiOnCanvas>>();
     q.iter(world)
         .filter(|(_, n, _, clip)| hit(n, *clip, x, y, w, h))
         .max_by_key(|(id, n, _, _)| (n.layer, id.0))

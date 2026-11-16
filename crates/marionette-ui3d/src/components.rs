@@ -163,6 +163,34 @@ pub struct UiContent {
     pub items: Vec<UiItem>,
 }
 
+/// A world canvas (decision 0202): a flat rectangle in the world that screen UI nodes are drawn
+/// on instead of the screen. Nodes join it with `marionette_core::ui::UiOnCanvas`; their
+/// anchors and offsets are measured in `pixels`, so a menu built for a screen of that size is
+/// drawn here unchanged. A world pointer on the canvas presses the top-most `UiButton` under it.
+/// The entity's `Transform` (or `Position`) places the centre; the front faces local +Z.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+pub struct UiCanvas {
+    /// Width and height in meters.
+    pub size: Vec2,
+    /// The screen size its nodes are laid out for, in pixels.
+    pub pixels: Vec2,
+    /// Beyond this distance from the viewer it is not drawn (0: always drawn).
+    pub max_distance: f32,
+    /// Pointers can press its buttons.
+    pub interactive: bool,
+}
+
+impl Default for UiCanvas {
+    fn default() -> Self {
+        Self {
+            size: Vec2 { x: 1.6, y: 0.9 },
+            pixels: Vec2 { x: 1280.0, y: 720.0 },
+            max_distance: 0.0,
+            interactive: true,
+        }
+    }
+}
+
 /// Places the panel relative to another entity each tick (a wrist panel, a panel that
 /// follows the head). `offset` is in the target's own axes when `relative`, else in world
 /// axes. `smoothing` is a time constant in seconds (0: no lag).

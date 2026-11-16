@@ -37,7 +37,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Skeletal animation (0028, 0074) | slice | Numeric pose tests on a generated puppet | A real rigged character on a hardware GPU |
 | Game meshes and shaders (0180, 0181) | slice | Lavapipe only | A hardware GPU and a game using them |
 | Sprites and screen UI | usable | 2D proof games | A game with a large interface; text input |
-| World-space UI (0200, 0201) | slice | Offscreen only | A headset, a TrueType font, touch |
+| World-space UI (0200-0202) | slice | Offscreen only | A headset, a TrueType font, touch |
 
 ## Play
 
