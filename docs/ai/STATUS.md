@@ -48,7 +48,7 @@ Proof commands are in [PROOFS.md](PROOFS.md).
 | Audio: files, 3D sound, music layers (0075) | slice | Numbers tested; never listened to | A person listening on speakers and a headset |
 | Synth and streamed audio (0220) | slice | Rendered to numbers; one device run | Listening; OGG |
 | Headsets through OpenXR, hands, grab, riding a character on round worlds (0190, 0191) | slice | Simulated headset and scripted poses only | A worn headset at 90 Hz |
-| Networking, Steam (0210 to 0213) | slice | Loopback only | Two machines; a Steam client |
+| Networking, Steam (0210 to 0215) | slice | Loopback and 127.0.0.1 UDP: lockstep and hosted sessions, LAN beacon; offline leaderboards and presence | Two machines; a Steam client |
 
 ## Content
 

@@ -6,6 +6,9 @@
 //!   or a backend with its own reliability (the optional `marionette-steam` crate).
 //! - [`lockstep`]: host-stamped lockstep sessions with state hash checks, late join by
 //!   snapshot and resync.
+//! - [`hosted`]: host-owned sessions (the host runs the world and streams it; guests send
+//!   their pose and requests): handshake, keep-alives, time-outs, who is connected.
+//! - [`lan`]: finding games on the local network (a beacon and a browser).
 //! - [`sim`]: frames onto a [`marionette_core::Sim`] (per-player actions `p<slot>.<action>`,
 //!   the `NetPlayers` resource, snapshots as bytes).
 //! - [`Lobbies`]: gathering players; [`LocalLobbies`] in process.
@@ -16,6 +19,8 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![deny(clippy::clone_on_ref_ptr)]
 
+pub mod hosted;
+pub mod lan;
 pub mod lobby;
 pub mod lockstep;
 pub mod loopback;
@@ -26,10 +31,12 @@ pub mod transport;
 pub mod udp;
 pub mod wire;
 
+pub use hosted::{HostedConfig, HostedEvent, HostedGuest, HostedHost, LeaveReason};
+pub use lan::{LanBeacon, LanBrowser, LanGame};
 pub use lobby::{Lobbies, LobbyEvent, LobbyId, LobbyInfo, LocalLobbies, Visibility};
 pub use lockstep::{Client, Frame, Host, LockstepConfig, RosterEvent, SessionEvent};
 pub use loopback::{LinkConditions, LoopbackNet, LoopbackSocket};
-pub use reliable::Endpoint;
+pub use reliable::{DEFAULT_MAX_MESSAGE, Endpoint};
 pub use sim::{NetModule, NetPlayers, apply_frame, encode_snapshot, player_action, restore_snapshot};
 pub use simulate::{PeerReport, SimulateOptions, SimulateReport, simulate};
 pub use transport::{

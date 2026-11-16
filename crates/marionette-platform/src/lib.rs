@@ -2,17 +2,24 @@
 //! - [`Achievements`]: unlocks and stats, checked against a definitions file by [`Tracker`];
 //! - [`CloudFiles`]: small files kept by the platform, and [`sync_dir`] to keep a save
 //!   folder in step with them (conflicts are kept, never overwritten);
-//! - [`OfflinePlatform`]: both, stored in a local folder. The default for tests, builds
+//! - [`Leaderboards`] and [`Presence`]: score boards answered later through `poll`, and
+//!   what friends see the player doing;
+//! - [`OfflinePlatform`]: all of them, stored in a local folder. The default for tests, builds
 //!   without a store, and a store that is not running.
 //!
 //! The Steam backend lives in the optional `marionette-steam` crate.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![deny(clippy::clone_on_ref_ptr)]
 
+mod boards;
 mod defs;
 mod offline;
 mod sync;
 
+pub use boards::{
+    BoardEvent, BoardRequest, BoardRow, Leaderboards, MAX_BOARD_NAME, MAX_DETAILS, MAX_PRESENCE, Presence,
+    RowRange, ScoreDisplay, SortOrder, check_board_name, check_presence,
+};
 pub use defs::{AchievementDef, AchievementsFile, StatDef, StatKind, parse_definitions};
 pub use offline::OfflinePlatform;
 pub use sync::{SyncReport, sync_dir};

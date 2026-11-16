@@ -119,3 +119,84 @@ fn bad_cloud_names() {
         assert_eq!(check_name(n).unwrap_err().code, codes::NAME);
     }
 }
+
+#[test]
+fn offline_leaderboards_keep_best_and_answer_every_request() {
+    use marionette_platform::{
+        BoardEvent, Leaderboards, MAX_BOARD_NAME, Presence, RowRange, ScoreDisplay, SortOrder,
+    };
+    let root = tmp("boards");
+    let mut p = OfflinePlatform::open(&root).unwrap();
+    p.set_player(42, "Sam");
+    // Missing without create; made with it.
+    let a = p.find("week_1_time", None);
+    let b = p.find(
+        "week_1_time",
+        Some((SortOrder::Ascending, ScoreDisplay::TimeMilliseconds)),
+    );
+    let long = "x".repeat(MAX_BOARD_NAME);
+    let c = p.find(&long, Some((SortOrder::Descending, ScoreDisplay::Numeric)));
+    let ev = p.poll();
+    assert_eq!(
+        ev,
+        vec![
+            BoardEvent::Found {
+                request: a,
+                board: "week_1_time".into(),
+                found: false
+            },
+            BoardEvent::Found {
+                request: b,
+                board: "week_1_time".into(),
+                found: true
+            },
+            BoardEvent::Found {
+                request: c,
+                board: long.clone(),
+                found: false
+            },
+        ]
+    );
+    // Ascending (times): lower is better; keep-best ignores a slower run.
+    p.upload("week_1_time", 9000, true, &[1, 2]);
+    p.upload("week_1_time", 9500, true, &[3]);
+    p.upload("week_1_time", 8000, true, &(0..100).collect::<Vec<_>>());
+    let ups: Vec<(bool, bool, i32)> = p
+        .poll()
+        .into_iter()
+        .filter_map(|e| match e {
+            BoardEvent::Uploaded {
+                ok, changed, rank, ..
+            } => Some((ok, changed, rank)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ups, vec![(true, true, 1), (true, false, 1), (true, true, 1)]);
+    p.download("week_1_time", RowRange::Friends);
+    match &p.poll()[..] {
+        [BoardEvent::Rows { rows, .. }] => {
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].score, 8000);
+            assert_eq!(rows[0].name, "Sam");
+            assert_eq!(rows[0].details.len(), 64, "details capped");
+        }
+        other => panic!("{other:?}"),
+    }
+    // Uploading to a board never found fails cleanly.
+    p.upload("nope", 1, true, &[]);
+    assert!(matches!(&p.poll()[..], [BoardEvent::Uploaded { ok: false, .. }]));
+    // Kept on disk.
+    let mut again = OfflinePlatform::open(&root).unwrap();
+    again.find("week_1_time", None);
+    assert!(matches!(
+        &again.poll()[..],
+        [BoardEvent::Found { found: true, .. }]
+    ));
+    // Presence.
+    p.set_presence("status", "Building").unwrap();
+    assert_eq!(p.presence().get("status").map(String::as_str), Some("Building"));
+    assert!(p.set_presence("", "x").is_err());
+    p.clear_presence();
+    assert!(p.presence().is_empty());
+    let _ = std::fs::remove_dir_all(&root);
+}
