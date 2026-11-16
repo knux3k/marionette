@@ -5,14 +5,14 @@
 
 use crate::builtin::{SimClock, add_builtin_systems};
 use crate::error::{Errors, Result};
-use crate::module::{EventLog, Modules, SceneDir, SimSnapshot, Stage, registry_with};
+use crate::module::{EventLog, Modules, SceneChange, SceneDir, SimSnapshot, Stage, registry_with};
 use crate::registry::Registry;
 use crate::rng::SimRng;
 use crate::scene;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SingleThreadedExecutor;
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// A copy of a simulation's whole state taken by [`Sim::capture_state`]. `Send`: turn it
@@ -210,11 +210,58 @@ impl Sim {
 
     pub fn step(&mut self) {
         self.schedule.run(&mut self.world);
+        self.change_scene();
         // bevy_ecs records every removed component (resources are entities, so taking a
         // resource out counts) until trackers are cleared; a bevy App does this once per
         // frame. Without it that record grows every tick forever (decision 0032). Nothing in
         // the engine reads removal records, so this does not change behavior or hashes.
         self.world.clear_trackers();
+    }
+
+    /// Honours a [`SceneChange`] a system left this tick (decision 0176): loads that scene in
+    /// place of the running one, as [`Sim::reload`] does (tick, RNG and event log kept), and
+    /// makes its folder the new base for relative asset paths. A file that cannot be read or
+    /// loaded leaves the world as it was and records a `scene_change_failed` event.
+    fn change_scene(&mut self) {
+        let Some(path) = self
+            .world
+            .get_resource_mut::<SceneChange>()
+            .map(|mut c| std::mem::take(&mut c.path))
+        else {
+            return;
+        };
+        if path.is_empty() {
+            return;
+        }
+        let file = {
+            let p = Path::new(&path);
+            if p.is_absolute() {
+                p.to_path_buf()
+            } else {
+                self.scene_dir.join(p)
+            }
+        };
+        let loaded = std::fs::read_to_string(&file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| self.reload(&text).map_err(|e| e.to_string()));
+        match loaded {
+            Ok(()) => {
+                if let Some(dir) = file.parent() {
+                    self.scene_dir = dir.to_path_buf();
+                    self.world.insert_resource(SceneDir(self.scene_dir.clone()));
+                }
+            }
+            Err(error) => {
+                let tick = self.tick();
+                self.world.resource_mut::<EventLog>().push(
+                    tick,
+                    "scene_change_failed",
+                    None,
+                    None,
+                    serde_json::json!({ "path": path, "error": error }),
+                );
+            }
+        }
     }
 
     pub fn run(&mut self, ticks: u64) {

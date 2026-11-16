@@ -1056,6 +1056,11 @@ type SaveFormat = {
   version: number;
 };
 
+/** A game's request to replace the running scene with another scene file (decision 0176): a title screen's Continue, Load or New game. The simulation honours it after the tick that set it, in headless and windowed runs alike, keeping the tick count, RNG and event log. A relative path resolves against the current [`SceneDir`]. Not saved with the scene beyond the tick it is set in, since the change empties it. */
+type SceneChange = {
+  path: string;
+};
+
 /** Hides screen UI under a layer (decision 0287): with `on`, screen nodes whose `layer` is below `min_layer` are neither drawn nor clicked. A photo mode hides the game's interface while its own overlay (a higher layer) stays; nodes on world canvases are not affected. */
 type ScreenUiCutoff = {
   min_layer: number;
@@ -1549,6 +1554,7 @@ interface Resources {
   RayTracing: RayTracing;
   RenderScale: RenderScale;
   SaveFormat: SaveFormat;
+  SceneChange: SceneChange;
   ScreenUiCutoff: ScreenUiCutoff;
   ShadowCascades: ShadowCascades;
   Shadows: Shadows;
