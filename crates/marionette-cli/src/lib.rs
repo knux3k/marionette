@@ -21,6 +21,7 @@ use std::process::ExitCode;
 mod audio_check;
 #[cfg(feature = "editor")]
 mod edit;
+mod interview;
 mod packaged;
 mod render;
 mod stability;
@@ -257,8 +258,10 @@ enum Command {
         #[command(subcommand)]
         command: GenerateCommand,
     },
-    /// Make a playable game from one idea (operations `game_brief` and `game_make`):
-    /// `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`.
+    /// Make a playable game from one idea (operations `game_interview`, `game_brief` and
+    /// `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`.
+    /// On a terminal it first asks the game interview (genre, setting, player, art style, ...);
+    /// elsewhere give `--answer id=value` or `--yes`.
     /// The level is proven winnable by the template's autopilot; art not found by the asset
     /// lookup order is drawn as placeholders until generated (`--generate`, or later
     /// `marionette generate run` in the game folder and `make --refresh`).
@@ -284,6 +287,13 @@ enum Command {
         /// Re-make the game in --path from its brief.json: new art in, tests re-pinned.
         #[arg(long, requires = "path")]
         refresh: bool,
+        /// Answer an interview question up front, e.g. `--answer genre=platformer` (repeatable;
+        /// ids and choices from `marionette op game_interview '{"prompt": "..."}'`).
+        #[arg(long = "answer", value_name = "ID=VALUE")]
+        answers: Vec<String>,
+        /// Skip the questions still open: they keep the guesses read from the prompt.
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
     /// Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise).
     Mcp {
@@ -703,7 +713,22 @@ fn run(cli: Cli, engine: Engine) -> ExitCode {
             view,
             generate,
             refresh,
-        } => make(&mut agent, prompt, path, brief, template, view, generate, refresh),
+            answers,
+            yes,
+        } => make(
+            &mut agent,
+            MakeArgs {
+                prompt,
+                path,
+                brief,
+                template,
+                view,
+                generate,
+                refresh,
+                answers,
+                yes,
+            },
+        ),
         Command::Generate { command } => match command {
             GenerateCommand::Plan { names, dir } => agent
                 .call("generate_plan", json!({ "names": names, "dir": dir }))
@@ -989,10 +1014,8 @@ fn approve_all(project: &str, read_only: bool) -> Result<Value, Errors> {
 }
 
 /// `{"ok": true, "command": ..., ...operation output}` for the shortcut commands.
-/// `marionette make`: a brief from the prompt (or file), then `game_make`.
-#[allow(clippy::too_many_arguments)]
-fn make(
-    agent: &mut Agent,
+/// The `marionette make` flags, owned by the command and moved into [`make`].
+struct MakeArgs {
     prompt: Option<String>,
     path: Option<String>,
     brief: Option<String>,
@@ -1000,26 +1023,37 @@ fn make(
     view: Option<String>,
     generate: bool,
     refresh: bool,
-) -> Result<Value, Errors> {
-    let mut input = json!({ "generate": generate, "refresh": refresh });
+    answers: Vec<String>,
+    yes: bool,
+}
+
+/// `marionette make`: the interview (prompt only), a brief from the prompt (or file), then
+/// `game_make`.
+fn make(agent: &mut Agent, args: MakeArgs) -> Result<Value, Errors> {
+    let mut input = json!({ "generate": args.generate, "refresh": args.refresh });
     let mut ask = json!({});
-    if let Some(file) = brief {
+    if let Some(file) = args.brief {
         let text = std::fs::read_to_string(&file)
             .map_err(|e| Errors::from(Diagnostic::error("io.read", format!("cannot read {file}: {e}"))))?;
         let b: Value = serde_json::from_str(&text).map_err(|e| {
             Errors::from(Diagnostic::error("agent.bad_input", format!("{file}: {e}")).file(file.clone()))
         })?;
         ask["brief"] = b;
-    } else if let Some(p) = prompt {
+    } else if let Some(p) = args.prompt {
         ask["prompt"] = json!(p);
     }
-    if let Some(t) = template {
+    if let Some(t) = args.template {
         ask["template"] = json!(t);
     }
-    if let Some(v) = view {
+    if let Some(v) = args.view {
         ask["view"] = json!(v);
     }
-    let path = match path {
+    if !args.refresh && ask.get("brief").is_none() && ask.get("prompt").is_some() {
+        let (answers, skip) = interview_answers(agent, &ask, &args.answers, args.yes)?;
+        ask["answers"] = Value::Object(answers);
+        input["skip_interview"] = json!(skip);
+    }
+    let path = match args.path {
         Some(p) => p,
         None => {
             let b = agent.call("game_brief", ask.clone())?;
@@ -1027,13 +1061,88 @@ fn make(
         }
     };
     input["path"] = json!(path);
-    if (!refresh || ask.get("brief").is_some())
+    if (!args.refresh || ask.get("brief").is_some())
         && let Value::Object(m) = ask
         && let Some(fields) = input.as_object_mut()
     {
         fields.extend(m);
     }
     agent.call("game_make", input).map(|v| merge("make", v))
+}
+
+/// The interview answers for a prompt-only make, and whether the person chose to skip the
+/// open questions (`--yes`, or Enter on a terminal). Off a terminal, a make with no answers and
+/// no `--yes` is refused with the questions listed, so a script or agent cannot skip the
+/// interview by accident.
+fn interview_answers(
+    agent: &mut Agent,
+    ask: &Value,
+    pairs: &[String],
+    yes: bool,
+) -> Result<(serde_json::Map<String, Value>, bool), Errors> {
+    use std::io::IsTerminal;
+    let mut answers =
+        interview::parse_pairs(pairs).map_err(|m| Errors::from(Diagnostic::error("agent.bad_input", m)))?;
+    if yes {
+        return Ok((answers, true));
+    }
+    let mut query = json!({ "prompt": ask["prompt"], "answers": answers });
+    for k in ["template", "view"] {
+        if let Some(v) = ask.get(k) {
+            // A short string; `ask` keeps its own copy for game_brief and game_make.
+            query[k] = v.clone();
+        }
+    }
+    let iv = agent.call("game_interview", query)?;
+    let open: &[Value] = iv["questions"].as_array().map_or(&[], Vec::as_slice);
+    if open.is_empty() {
+        return Ok((answers, false));
+    }
+    if std::io::stdin().is_terminal() && std::io::stderr().is_terminal() {
+        let mut err = std::io::stderr();
+        for n in iv["notes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            eprintln!("note: {n}");
+        }
+        let replies = interview::ask(open, &mut std::io::stdin().lock(), &mut err)
+            .map_err(|e| Errors::from(Diagnostic::error("io.read", format!("interview: {e}"))))?;
+        answers.extend(replies);
+        // The person saw every question; the ones left blank keep their guesses.
+        return Ok((answers, true));
+    }
+    if !answers.is_empty() {
+        return Ok((answers, false));
+    }
+    let list: Vec<String> = open
+        .iter()
+        .map(|q| {
+            let choices: Vec<&str> = q["choices"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|c| c["value"].as_str())
+                .collect();
+            let id = q["id"].as_str().unwrap_or("");
+            let guess = q["guess"].as_str().unwrap_or("");
+            if choices.is_empty() && guess.is_empty() {
+                id.to_string()
+            } else if choices.is_empty() {
+                format!("{id} (guess: {guess})")
+            } else {
+                format!("{id} ({})", choices.join("|"))
+            }
+        })
+        .collect();
+    Err(Diagnostic::error(
+        "starter.interview_needed",
+        format!("ask the person about the game first: {}", list.join("; ")),
+    )
+    .fix("pass --answer id=value for what the person said, or --yes if they asked to build without questions")
+    .into())
 }
 
 /// A folder name from a title: lowercase letters and digits joined by `-`.
@@ -1115,8 +1224,12 @@ fn human(value: &Value) -> String {
                     s("path")
                 )
             };
+            let wishes = value["wishes"]
+                .as_str()
+                .map(|w| format!("\nstill to build (asked for in the interview): {w}"))
+                .unwrap_or_default();
             format!(
-                "made \"{}\" ({} {}) in {}: the autopilot wins in {} s (seed {}); tests {} passed, {} failed; {}.\nplay: marionette run scenes/main.scene.json --project {}",
+                "made \"{}\" ({} {}) in {}: the autopilot wins in {} s (seed {}); tests {} passed, {} failed; {}.\nplay: marionette run scenes/main.scene.json --project {}{wishes}",
                 s("title"),
                 value["view"].as_str().unwrap_or(""),
                 value["template"].as_str().unwrap_or(""),

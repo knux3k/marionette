@@ -6,6 +6,8 @@
 //! 2. The same brief makes byte-identical files (levels, scripts, tests, hashes).
 //! 3. `refresh` keeps edits outside the script's CONFIG block and re-pins the tests.
 //! 4. Bad briefs are refused with every problem listed.
+//! 5. The interview (decision 0151): a bare prompt is refused until the person was asked;
+//!    answers change the brief and are kept in interview.json.
 
 use marionette_agent::Agent;
 use serde_json::{Value, json};
@@ -65,7 +67,10 @@ fn every_template_makes_a_game_the_autopilot_wins() {
     let mut agent = Agent::new(&root, false);
     for (name, prompt, view) in PROMPTS {
         let out = agent
-            .call("game_make", json!({"path": name, "prompt": prompt}))
+            .call(
+                "game_make",
+                json!({"path": name, "prompt": prompt, "skip_interview": true}),
+            )
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(out["view"], view, "{name}");
         assert_eq!(out["autoplay"]["won"], true, "{name}");
@@ -120,8 +125,19 @@ fn refresh_keeps_edits_outside_the_config_block() {
     let root = temp_root("refresh");
     let mut agent = Agent::new(&root, false);
     let out = agent
-        .call("game_make", json!({"path": "g", "prompt": PROMPTS[0].1}))
+        .call(
+            "game_make",
+            json!({"path": "g", "prompt": PROMPTS[0].1,
+                   "answers": {"style": "soft watercolor", "extra": "a lantern counter that glows"}}),
+        )
         .unwrap();
+    assert_eq!(out["wishes"], "a lantern counter that glows");
+    let iv: Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("g/interview.json")).unwrap()).unwrap();
+    assert_eq!(iv["answers"]["style"], "soft watercolor");
+    let brief0: Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("g/brief.json")).unwrap()).unwrap();
+    assert_eq!(brief0["style"], "soft watercolor");
     let title = out["title"].as_str().unwrap().to_string();
     let script = root.join("g/scenes/scripts/game.ts");
     let edited = std::fs::read_to_string(&script).unwrap().replace(
@@ -177,4 +193,61 @@ fn bad_briefs_list_every_problem() {
     let msgs: Vec<&str> = e.0.iter().map(|d| d.message.as_str()).collect();
     assert_eq!(e.0.len(), 4, "{msgs:?}");
     assert!(e.0.iter().all(|d| d.code == "starter.bad_brief"));
+}
+
+#[test]
+fn a_bare_prompt_needs_the_interview() {
+    let root = temp_root("interview");
+    let mut agent = Agent::new(&root, false);
+    let e = agent
+        .call("game_make", json!({"path": "g", "prompt": PROMPTS[0].1}))
+        .unwrap_err();
+    assert_eq!(e.0[0].code, "starter.interview_needed");
+    assert!(
+        !root.join("g").exists(),
+        "nothing is written before the interview"
+    );
+
+    let iv = agent
+        .call("game_interview", json!({"prompt": PROMPTS[0].1}))
+        .unwrap();
+    let ids: Vec<&str> = iv["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|q| q["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids[0], "genre");
+    assert!(ids.contains(&"extra"));
+    // Answered questions drop out; a platformer has no view question.
+    let iv = agent
+        .call(
+            "game_interview",
+            json!({"prompt": PROMPTS[0].1, "answers": {"genre": "platformer", "title": "Moth Run"}}),
+        )
+        .unwrap();
+    assert_eq!(iv["answered"], 2);
+    assert!(
+        iv["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|q| q["id"] != "genre" && q["id"] != "view")
+    );
+    let b = agent
+        .call(
+            "game_brief",
+            json!({"prompt": PROMPTS[0].1, "answers": {"genre": "platformer", "title": "Moth Run"}}),
+        )
+        .unwrap();
+    assert_eq!(b["brief"]["template"], "platformer");
+    assert_eq!(b["brief"]["title"], "Moth Run");
+    let e = agent
+        .call(
+            "game_interview",
+            json!({"prompt": "x", "answers": {"genre": "racing"}}),
+        )
+        .unwrap_err();
+    assert_eq!(e.0[0].code, "starter.bad_answer");
+    let _ = std::fs::remove_dir_all(&root);
 }

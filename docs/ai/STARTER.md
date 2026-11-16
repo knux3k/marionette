@@ -6,11 +6,25 @@ templates in `templates/*.ts`), operations in `crates/marionette-agent/src/start
 ## Use it
 
 ```bash
-marionette make "a 3d maze where a moth collects lanterns and avoids bats"   # folder from the title
+marionette make "a 3d maze where a moth collects lanterns and avoids bats"   # asks the interview first
+marionette make "a moth maze" --answer genre=maze --answer view=3d          # answers up front (or --yes)
 marionette make --brief my.brief.json --path games/my-game                   # your own brief
 marionette generate run --project games/my-game                              # paid art (keys on the machine)
 marionette make --refresh --path games/my-game                               # art in, tests re-pinned
 ```
+
+## Interview (decision 0151)
+
+Making from a prompt asks the person first. `game_interview {prompt, answers?}` returns the
+open questions (`genre`, `view`, `setting`, `player`, `pickups`, `enemy`, `goal`, `style`,
+`difficulty`, `length`, `title`, `extra`), each with choices or examples and the guess kept if
+unanswered, plus notes for ideas no template fits. Pass the replies as `answers` (strings by id)
+to `game_brief` or `game_make`. `game_make` refuses a bare prompt (`starter.interview_needed`)
+unless `skip_interview` is set because the person declined. The answers land in
+`interview.json`; `extra` becomes a handoff TODO and the output's `wishes`. On a terminal the
+CLI asks the questions itself; elsewhere give `--answer id=value` or `--yes`.
+
+## Operations
 
 As operations: `game_brief {prompt}` returns a brief and its slots without writing; improve it
 (title, pitch, style, one `describe` per slot, words, colors), then `game_make {path, brief}`.

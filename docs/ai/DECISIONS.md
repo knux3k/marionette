@@ -87,6 +87,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |
 | 0150 | Game starter: a brief (or a prompt) and genre templates with an autopilot make a playable, tested game (`game_brief`, `game_make`, `marionette make`) | accepted |
+| 0151 | Game interview before making from a prompt: fixed questions with guesses (`game_interview`), answers folded into the brief and kept in `interview.json`; a bare prompt is refused unless the person declined | accepted |
 | 0160 | Task skills in `.claude/skills` that agents load by themselves; compiled in, installed into games (`skills_install`), readable through operations, checked by a test | accepted |
 | 0161 | Handoff files in every game project (`docs/ai`, `docs/decisions`), one file per claim and session; `handoff_status`, `handoff_claim` (refuses overlaps, reserves decision blocks), `handoff_note` | accepted |
 | 0162 | Proofs in one file per area under `docs/ai/proofs/`; `PROOFS.md` is the index | accepted |

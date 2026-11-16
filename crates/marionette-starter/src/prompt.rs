@@ -175,6 +175,46 @@ const DEFAULT: Theme = Theme {
     ],
 };
 
+/// The settings the keyword reader knows (the first key of each theme), offered as
+/// suggestions by the interview.
+pub(crate) fn settings() -> Vec<&'static str> {
+    THEMES.iter().filter_map(|t| t.keys.first().copied()).collect()
+}
+
+/// The setting the keyword reader would pick for `prompt`, if any.
+pub(crate) fn setting_of(prompt: &str) -> Option<&'static str> {
+    let ws = words(prompt);
+    THEMES
+        .iter()
+        .find(|t| has(&ws, t.keys))
+        .and_then(|t| t.keys.first().copied())
+}
+
+/// Lowercase words of `prompt` that name a genre the starter has no template for.
+pub(crate) fn other_genres(prompt: &str) -> Vec<&'static str> {
+    const OTHER: &[&str] = &[
+        "shooter",
+        "racing",
+        "racer",
+        "puzzle",
+        "rpg",
+        "strategy",
+        "fighting",
+        "card",
+        "rhythm",
+        "survival",
+        "sandbox",
+        "tower",
+        "farming",
+        "sports",
+        "golf",
+        "stealth",
+        "roguelike",
+    ];
+    let ws = words(prompt);
+    OTHER.iter().copied().filter(|g| has(&ws, &[g])).collect()
+}
+
 fn words(prompt: &str) -> Vec<String> {
     prompt
         .split(|c: char| !(c.is_alphanumeric() || c == '-' || c == '\''))
@@ -243,7 +283,7 @@ fn subject_before(ws: &[String], verbs: &[&str]) -> Option<String> {
     (!STOP.contains(&w.as_str()) && !skip.contains(&w.as_str())).then(|| w.clone())
 }
 
-fn singular(plural: &str) -> String {
+pub(crate) fn singular(plural: &str) -> String {
     let mut words: Vec<&str> = plural.split(' ').collect();
     let last = words.pop().unwrap_or("");
     let one = if let Some(s) = last.strip_suffix("ies") {
@@ -263,7 +303,7 @@ fn singular(plural: &str) -> String {
     words.join(" ")
 }
 
-fn title_case(s: &str) -> String {
+pub(crate) fn title_case(s: &str) -> String {
     s.split(' ')
         .filter(|w| !w.is_empty())
         .map(|w| {

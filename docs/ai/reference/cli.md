@@ -21,7 +21,7 @@ Commands:
   op           Run one operation: `marionette op entity_create '{"scene": "...", "components": {...}}'`
   provider     AI providers: list them, show this project's choices and spending, switch one
   generate     Generate assets from recipes (last step of the asset lookup order): plan, run, list, and approve an image for a paid 3D model (a person only)
-  make         Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+  make         Make a playable game from one idea (operations `game_interview`, `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. On a terminal it first asks the game interview (genre, setting, player, art style, ...); elsewhere give `--answer id=value` or `--yes`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
   mcp          Serve operations as MCP tools over stdio (all of them unless `--tools` says otherwise)
   package      Package a game for players (operation `package_build`, decision 0140): a folder and a zip per target with the game binary, its runtime files, licenses and a manifest. The binary plays the entry scene when started with no arguments
   audio-check  Play a synth stress test through the real audio device and report glitch counters: callbacks that ran longer than the audio they made, stream underruns, dropped commands, stolen voices, clipping. Exit code 1 on any glitch, 2 if there is no audio device
@@ -614,7 +614,7 @@ Options:
 ## `marionette make`
 
 ```text
-Make a playable game from one idea (operations `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
+Make a playable game from one idea (operations `game_interview`, `game_brief` and `game_make`): `marionette make "a 3d maze where a moth collects lanterns and avoids bats"`. On a terminal it first asks the game interview (genre, setting, player, art style, ...); elsewhere give `--answer id=value` or `--yes`. The level is proven winnable by the template's autopilot; art not found by the asset lookup order is drawn as placeholders until generated (`--generate`, or later `marionette generate run` in the game folder and `make --refresh`)
 
 Usage: make [OPTIONS] [PROMPT]
 
@@ -651,6 +651,12 @@ Options:
 
       --refresh
           Re-make the game in --path from its brief.json: new art in, tests re-pinned
+
+      --answer <ID=VALUE>
+          Answer an interview question up front, e.g. `--answer genre=platformer` (repeatable; ids and choices from `marionette op game_interview '{"prompt": "..."}'`)
+
+  -y, --yes
+          Skip the questions still open: they keep the guesses read from the prompt
 
   -h, --help
           Print help

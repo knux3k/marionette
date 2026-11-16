@@ -1,12 +1,15 @@
-//! The game starter operations (decision 0150): `game_brief` turns a prompt into a brief;
+//! The game starter operations (decision 0150): `game_interview` lists the questions to ask
+//! the person before making a game from a prompt (decision 0151); `game_brief` turns a prompt
+//! (and the answers) into a brief;
 //! `game_make` turns a brief into a playable, tested project. Templates, levels and the brief
 //! format live in `marionette-starter`; this file resolves assets through the lookup order,
 //! writes the files, builds the scene, and lets the autopilot prove the level can be won.
 
 use crate::{Agent, Op, codes, op};
 use marionette_core::{Diagnostic, Errors};
+use marionette_starter::interview::{self, Answers, Question};
 use marionette_starter::template::{self, SlotKind};
-use marionette_starter::{Art, ArtMap, Brief, Template, View, codes as starter_codes, prompt};
+use marionette_starter::{Art, ArtMap, Brief, Template, View, codes as starter_codes};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -15,14 +18,20 @@ use std::path::Path;
 pub(crate) fn ops() -> Vec<Op> {
     vec![
         op(
+            "game_interview",
+            "Step one of making a game from an idea: returns the questions to ask the person (genre, view, setting, player, pickups, enemy, goal, art style, difficulty, length, title, anything else), each with choices or examples and the guess used if unanswered. Ask the person the open ones, call again with `answers` to see the guesses follow, then pass the same `answers` to game_brief or game_make. Writes nothing.",
+            false,
+            interview_op,
+        ),
+        op(
             "game_brief",
-            "Turns a one-line game idea into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.",
+            "Turns a one-line game idea (plus game_interview `answers`) into a game brief (marionette.brief/1: template, title, style, colors, one description per asset slot) without writing anything, or checks a brief you wrote. Read it, improve it (you write better briefs than the keyword reader), then pass it to game_make.",
             false,
             brief_op,
         ),
         op(
             "game_make",
-            "Makes a playable game project from a brief or a prompt: level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.",
+            "Makes a playable game project from a brief or from a prompt plus the person's game_interview `answers` (a bare prompt is refused unless `skip_interview` says the person declined the questions): level from the brief's seed, the template's TypeScript game script, scene recipe, input map, generation recipes for art not found by the asset lookup order (project files, CC0 pool), and tests. The template's autopilot must win the level (other seeds are tried if not), and doing nothing must not. `refresh` re-reads the project's brief.json, swaps in art built since, keeps edits outside the script's CONFIG block and re-pins the tests. `generate` runs generate_run for missing art first.",
             true,
             make_op,
         ),
@@ -52,6 +61,9 @@ struct BriefInput {
     /// Force a view (`2d` or `3d`; 3D is maze only).
     #[serde(default)]
     view: Option<View>,
+    /// The person's replies to game_interview, by question id.
+    #[serde(default)]
+    answers: Answers,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -80,12 +92,13 @@ fn kind_name(k: SlotKind) -> &'static str {
 fn brief_from(
     prompt_text: Option<&str>,
     brief: Option<Brief>,
+    answers: &Answers,
     t: Option<Template>,
     v: Option<View>,
 ) -> Result<Brief, Errors> {
     let b = match (brief, prompt_text) {
         (Some(b), _) => b,
-        (None, Some(p)) if !p.trim().is_empty() => prompt::brief_from_prompt(p, t, v),
+        (None, Some(p)) if !p.trim().is_empty() => interview::brief_from_answers(p, answers, t, v)?,
         _ => {
             return Err(bad(
                 "give a `prompt` or a `brief`",
@@ -98,7 +111,13 @@ fn brief_from(
 }
 
 fn brief_op(_agent: &mut Agent, input: BriefInput) -> Result<BriefOutput, Errors> {
-    let brief = brief_from(input.prompt.as_deref(), input.brief, input.template, input.view)?;
+    let brief = brief_from(
+        input.prompt.as_deref(),
+        input.brief,
+        &input.answers,
+        input.template,
+        input.view,
+    )?;
     let slots = template::slots(brief.template, brief.view)
         .iter()
         .map(|s| SlotInfo {
@@ -108,6 +127,66 @@ fn brief_op(_agent: &mut Agent, input: BriefInput) -> Result<BriefOutput, Errors
         })
         .collect();
     Ok(BriefOutput { brief, slots })
+}
+
+// ---------------------------------------------------------------------------------------
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct InterviewInput {
+    /// The game idea in the person's words.
+    prompt: String,
+    /// Replies so far, by question id.
+    #[serde(default)]
+    answers: Answers,
+    /// A template already decided (its question is then not asked).
+    #[serde(default)]
+    template: Option<Template>,
+    /// A view already decided.
+    #[serde(default)]
+    view: Option<View>,
+    /// Also list answered questions (default: only the open ones).
+    #[serde(default)]
+    all: bool,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct InterviewOutput {
+    /// Questions to ask, in order (open ones only unless `all`).
+    questions: Vec<Question>,
+    /// Questions answered so far.
+    answered: usize,
+    /// What the starter cannot do for this idea, to raise with the person.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notes: Vec<String>,
+    /// What to do next.
+    next: &'static str,
+}
+
+fn interview_op(_agent: &mut Agent, input: InterviewInput) -> Result<InterviewOutput, Errors> {
+    if input.prompt.trim().is_empty() {
+        return Err(bad(
+            "`prompt` is empty",
+            "give the game idea in the person's words",
+        ));
+    }
+    let (questions, notes) = interview::questions(&input.prompt, &input.answers, input.template, input.view)?;
+    let answered = questions.iter().filter(|q| q.answer.is_some()).count();
+    let questions = if input.all {
+        questions
+    } else {
+        questions.into_iter().filter(|q| q.answer.is_none()).collect()
+    };
+    Ok(InterviewOutput {
+        next: if questions.is_empty() {
+            "All answered: call game_make with `path`, `prompt` and these `answers` (or game_brief to review the brief first)."
+        } else {
+            "Ask the person these questions (several at once is fine; offer the guess as the default), then call game_make with `path`, `prompt` and their `answers`. Unanswered questions keep their guess."
+        },
+        questions,
+        answered,
+        notes,
+    })
 }
 
 // ---------------------------------------------------------------------------------------
@@ -125,6 +204,14 @@ struct MakeInput {
     template: Option<Template>,
     #[serde(default)]
     view: Option<View>,
+    /// The person's replies to game_interview, by question id. Needed with a `prompt` (or
+    /// `skip_interview`); recorded in the project's interview.json.
+    #[serde(default)]
+    answers: Answers,
+    /// The person asked to build from the prompt without questions: every question takes its
+    /// guess.
+    #[serde(default)]
+    skip_interview: bool,
     /// Re-make an existing starter project from its brief.json (or from `brief`).
     #[serde(default)]
     refresh: bool,
@@ -179,9 +266,14 @@ struct MakeOutput {
     /// AI handoff files and skills for agents working on the game: per operation, `written`
     /// or why not.
     handoff: Vec<String>,
+    /// What the person asked for beyond the template (interview question `extra`): build it
+    /// as game code next.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wishes: Option<String>,
 }
 
 const BRIEF_FILE: &str = "brief.json";
+const INTERVIEW_FILE: &str = "interview.json";
 
 fn pretty(v: &impl Serialize) -> Result<String, Errors> {
     crate::json_text(v)
@@ -226,8 +318,27 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
                     .into(),
             );
         }
-        brief_from(input.prompt.as_deref(), input.brief, input.template, input.view)?
+        if input.brief.is_none() && input.answers.is_empty() && !input.skip_interview {
+            return Err(Diagnostic::error(
+                starter_codes::INTERVIEW_NEEDED,
+                "a game from a bare prompt is the keyword reader's guess; interview the person first",
+            )
+            .fix("call game_interview with the prompt, ask the person its questions, then pass their replies as `answers`; set `skip_interview: true` only if the person asked to build without questions")
+            .into());
+        }
+        brief_from(
+            input.prompt.as_deref(),
+            input.brief,
+            &input.answers,
+            input.template,
+            input.view,
+        )?
     };
+    let wishes = input
+        .answers
+        .get("extra")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
     brief.check()?;
     if agent.read_only() {
         return Err(Diagnostic::error(codes::READ_ONLY, "game_make writes files").into());
@@ -290,6 +401,20 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         &mut files,
     )?;
 
+    // The person's own answers, so later agents know what was asked for and why.
+    if !input.answers.is_empty() {
+        write(
+            &game,
+            INTERVIEW_FILE,
+            pretty(&json!({
+                "format": "marionette.interview/1",
+                "prompt": input.prompt,
+                "answers": input.answers,
+            }))?,
+            &mut files,
+        )?;
+    }
+
     // The brief goes in first, so a project whose level could not be won can still be
     // fixed and refreshed.
     write(&game, BRIEF_FILE, pretty(&brief)?, &mut files)?;
@@ -351,13 +476,19 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     // AI handoff files and skills for agents working on the game (the handoff operations of
     // the skills work, decisions 0160 and 0161). A build without them reports it; that is not
     // an error. Existing handoff files are never overwritten.
-    let notes = [
-        "`brief.json`: the whole design (template, words, colors, one line per asset slot, seed). Change it, then run game_make with `refresh`.",
-        "`scenes/scripts/game.ts`: the game. game_make rewrites only its CONFIG block; the rest is yours.",
-        "`build.ops.json`: the scene recipe, rebuilt by game_make. Own scene operations go in `custom.ops.json`.",
-        "`assets/generated/*.recipe.json`: art still to generate (`marionette generate run`, then game_make `refresh`).",
-        "`tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); refresh re-pins them.",
+    let mut notes = vec![
+        "`brief.json`: the whole design (template, words, colors, one line per asset slot, seed). Change it, then run game_make with `refresh`.".to_string(),
+        "`scenes/scripts/game.ts`: the game. game_make rewrites only its CONFIG block; the rest is yours.".to_string(),
+        "`build.ops.json`: the scene recipe, rebuilt by game_make. Own scene operations go in `custom.ops.json`.".to_string(),
+        "`assets/generated/*.recipe.json`: art still to generate (`marionette generate run`, then game_make `refresh`).".to_string(),
+        "`tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); refresh re-pins them.".to_string(),
     ];
+    if !input.answers.is_empty() {
+        notes.push("`interview.json`: the person's prompt and answers to the game interview; check changes against it.".into());
+    }
+    if let Some(w) = &wishes {
+        notes.push(format!("TODO from the interview, not built by the template: {w}"));
+    }
     let mut handoff = Vec::new();
     for (name, input_json) in [
         (
@@ -402,6 +533,7 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         tests_passed: passed,
         tests_failed: failed,
         handoff,
+        wishes,
     })
 }
 
