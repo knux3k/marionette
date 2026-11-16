@@ -147,6 +147,16 @@ pub struct CharacterInput {
     pub jump: bool,
 }
 
+/// Game code places this character itself while the component is there (Unity's
+/// `CharacterController.enabled = false` while a script moves the transform: a climb, a
+/// grapple swing, a cutscene). Each step physics moves the body to the entity's `Transform`
+/// (translation and rotation) and does not walk it, apply gravity or look for ground;
+/// `CharacterState` and `PlanetState` keep their last values. Remove the component to hand
+/// the body back to the controller (set `CharacterState.vertical_velocity` first if the
+/// character should keep falling or rising).
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct CharacterPlaced {}
+
 /// Runtime state of a character controller. Written by physics.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
 pub struct CharacterState {
