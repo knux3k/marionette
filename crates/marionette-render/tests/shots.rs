@@ -220,3 +220,28 @@ fn screen_ui_under_the_cutoff_layer_is_not_drawn() {
     assert_eq!(at(&sim, 5), [0, 0, 0], "the game's layer-0 UI is hidden");
     assert_eq!(at(&sim, 35), [0, 0, 255], "the overlay above the cutoff stays");
 }
+
+#[test]
+fn gpu_copies_of_generated_images_stay_within_the_registry() {
+    let Some(gpu) = gpu() else { return };
+    let mut off = Offscreen::new(&gpu, W, H, 1, repo().join("examples"));
+    let base = off.cached_assets();
+    // One new run-time picture a frame, shown on a sprite, many more than the registry keeps.
+    for i in 0..(marionette_render::assets::generated::LIMIT + 20) {
+        let key = format!("shots-test-print-{i}");
+        let img = marionette_render::assets::Image::solid([200, 100, 50, 255], true);
+        marionette_render::assets::generated::put(&key, std::sync::Arc::new(img));
+        let sprite = format!(
+            r#", {{"id": 9, "components": {{"Sprite": {{"image": "generated:{key}", "size": {{"x": 2, "y": 2}},
+            "color": {{"r": 1, "g": 1, "b": 1, "a": 1}}, "layer": 0}},
+            "Transform": {{"translation": {{"x": 0, "y": 1, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0, "w": 1}}, "scale": {{"x": 1, "y": 1, "z": 1}}}}}}}}"#
+        );
+        let sim = stage(&sprite);
+        off.render(&gpu, &extract(&sim.world), None).unwrap();
+    }
+    let held = off.cached_assets() - base;
+    assert!(
+        held <= marionette_render::assets::generated::LIMIT + 4,
+        "the GPU cache follows the registry: {held}"
+    );
+}

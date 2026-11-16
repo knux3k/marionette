@@ -1328,12 +1328,19 @@ impl Renderer {
     }
 
     fn ensure_texture(&mut self, image: &str) -> Option<&String> {
+        const GENERATED: &str = "generated:";
         if !self.sprite_textures.contains_key(image) {
             let sampler = if image == "builtin:font" {
                 &self.nearest_sampler
             } else {
                 &self.sprite_sampler
             };
+            // A new run-time image: GPU copies of generated images the registry has dropped go
+            // too, so the cache stays within the registry's bound (decision 0286).
+            if image.starts_with(GENERATED) {
+                self.sprite_textures
+                    .retain(|k, _| k.strip_prefix(GENERATED).is_none_or(assets::generated::contains));
+            }
             // A camera screen (decision 0286) is black until its first shot is drawn.
             let loaded = if image.starts_with(marionette_core::shots::Shots::IMAGE_PREFIX) {
                 Ok(Image::solid([0, 0, 0, 255], true))
