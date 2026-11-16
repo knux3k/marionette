@@ -33,6 +33,8 @@ keep its own local best. Like achievements (0213), the same game code must run w
 
 ## Consequences
 
-- The Steam backend implements both on the flat API (a separate change: it adds `unsafe` C
-  calls, which need the owner's review first).
+- The Steam backend implements both on the flat API, plus the invite dialog, accepted
+  invites (callback 333) and cloud file times. Those are `unsafe` C calls: they merge only
+  after the owner's review. Callback struct offsets are checked against `repr(C)` mirrors in
+  a test, packed like `CallbackMsg` (4 bytes except on Windows).
 - Games keep their local best whenever an answer says `found: false` or `ok: false`.

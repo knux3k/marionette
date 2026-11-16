@@ -16,6 +16,22 @@ pub mod id {
     pub const LOBBY_MATCH_LIST: i32 = 510;
     pub const LOBBY_CREATED: i32 = 513;
     pub const NET_SESSION_REQUEST: i32 = 1251;
+    pub const GAME_LOBBY_JOIN_REQUESTED: i32 = 333;
+    pub const LEADERBOARD_FIND_RESULT: i32 = 1104;
+    pub const LEADERBOARD_SCORES_DOWNLOADED: i32 = 1105;
+    pub const LEADERBOARD_SCORE_UPLOADED: i32 = 1106;
+    pub const SORT_ASCENDING: i32 = 1;
+    pub const SORT_DESCENDING: i32 = 2;
+    pub const DISPLAY_NUMERIC: i32 = 1;
+    pub const DISPLAY_TIME_SECONDS: i32 = 2;
+    pub const DISPLAY_TIME_MILLISECONDS: i32 = 3;
+    pub const UPLOAD_KEEP_BEST: i32 = 1;
+    pub const UPLOAD_FORCE_UPDATE: i32 = 2;
+    pub const REQUEST_GLOBAL: i32 = 0;
+    pub const REQUEST_AROUND_USER: i32 = 1;
+    pub const REQUEST_FRIENDS: i32 = 2;
+    /// `LeaderboardEntry_t`: user u64, global rank, score, detail count, UGC handle u64.
+    pub const LEADERBOARD_ENTRY_SIZE: usize = if cfg!(windows) { 32 } else { 28 };
     pub const SEND_UNRELIABLE_NO_NAGLE: i32 = 1;
     pub const SEND_RELIABLE: i32 = 8;
     pub const SEND_AUTO_RESTART: i32 = 32;
@@ -49,6 +65,23 @@ pub mod offset {
     pub const MSG_DATA: usize = 0;
     pub const MSG_SIZE: usize = 8;
     pub const MSG_PEER: usize = 16;
+    /// `LeaderboardFindResult_t`: board u64 @0, found u8 @8 (same both ways).
+    pub const FIND_BOARD: usize = 0;
+    pub const FIND_FOUND: usize = 8;
+    /// `LeaderboardScoreUploaded_t`: success u8, board u64, score i32, changed u8, new rank i32.
+    pub const UP_SUCCESS: usize = 0;
+    pub const UP_CHANGED: usize = if cfg!(windows) { 20 } else { 16 };
+    pub const UP_RANK_NEW: usize = if cfg!(windows) { 24 } else { 20 };
+    /// `LeaderboardScoresDownloaded_t`: board u64 @0, entries handle u64 @8, count i32 @16.
+    pub const DOWN_ENTRIES: usize = 8;
+    pub const DOWN_COUNT: usize = 16;
+    /// `LeaderboardEntry_t` fields.
+    pub const ENTRY_USER: usize = 0;
+    pub const ENTRY_RANK: usize = 8;
+    pub const ENTRY_SCORE: usize = 12;
+    pub const ENTRY_DETAILS: usize = 16;
+    /// `GameLobbyJoinRequested_t`: lobby u64 @0, friend u64 @8.
+    pub const JOIN_REQUEST_LOBBY: usize = 0;
 }
 
 macro_rules! fns {
@@ -117,6 +150,16 @@ fns! {
     SteamAPI_ISteamRemoteStorage_FileDelete: fn(Ptr, *const c_char) -> bool;
     SteamAPI_ISteamRemoteStorage_GetFileCount: fn(Ptr) -> i32;
     SteamAPI_ISteamRemoteStorage_GetFileNameAndSize: fn(Ptr, c_int, *mut i32) -> *const c_char;
+    SteamAPI_ISteamRemoteStorage_GetFileTimestamp: fn(Ptr, *const c_char) -> i64;
+    SteamAPI_ISteamUserStats_FindOrCreateLeaderboard: fn(Ptr, *const c_char, c_int, c_int) -> u64;
+    SteamAPI_ISteamUserStats_FindLeaderboard: fn(Ptr, *const c_char) -> u64;
+    SteamAPI_ISteamUserStats_UploadLeaderboardScore: fn(Ptr, u64, c_int, i32, *const i32, c_int) -> u64;
+    SteamAPI_ISteamUserStats_DownloadLeaderboardEntries: fn(Ptr, u64, c_int, c_int, c_int) -> u64;
+    SteamAPI_ISteamUserStats_GetDownloadedLeaderboardEntry: fn(Ptr, u64, c_int, *mut u8, *mut i32, c_int) -> bool;
+    SteamAPI_ISteamFriends_GetFriendPersonaName: fn(Ptr, u64) -> *const c_char;
+    SteamAPI_ISteamFriends_SetRichPresence: fn(Ptr, *const c_char, *const c_char) -> bool;
+    SteamAPI_ISteamFriends_ClearRichPresence: fn(Ptr);
+    SteamAPI_ISteamFriends_ActivateGameOverlayInviteDialog: fn(Ptr, u64);
 }
 
 /// Interface accessors are versioned; newer libraries first. The first one found is used.
@@ -127,6 +170,7 @@ pub const USER: &[&str] = &[
 ];
 pub const UTILS: &[&str] = &["SteamAPI_SteamUtils_v010", "SteamAPI_SteamUtils_v009"];
 pub const MATCHMAKING: &[&str] = &["SteamAPI_SteamMatchmaking_v009"];
+pub const FRIENDS: &[&str] = &["SteamAPI_SteamFriends_v017"];
 pub const USER_STATS: &[&str] = &["SteamAPI_SteamUserStats_v013", "SteamAPI_SteamUserStats_v012"];
 pub const REMOTE_STORAGE: &[&str] = &[
     "SteamAPI_SteamRemoteStorage_v016",
@@ -155,6 +199,73 @@ pub unsafe fn interface(lib: &Library, names: &[&str]) -> Result<Ptr, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The callback structs as the SDK declares them, packed like `CallbackMsg`.
+    #[cfg_attr(not(windows), repr(C, packed(4)))]
+    #[cfg_attr(windows, repr(C))]
+    struct Uploaded {
+        success: u8,
+        board: u64,
+        score: i32,
+        changed: u8,
+        rank_new: i32,
+        rank_old: i32,
+    }
+
+    #[cfg_attr(not(windows), repr(C, packed(4)))]
+    #[cfg_attr(windows, repr(C))]
+    struct Entry {
+        user: u64,
+        rank: i32,
+        score: i32,
+        details: i32,
+        ugc: u64,
+    }
+
+    #[cfg_attr(not(windows), repr(C, packed(4)))]
+    #[cfg_attr(windows, repr(C))]
+    struct Downloaded {
+        board: u64,
+        entries: u64,
+        count: i32,
+    }
+
+    #[test]
+    fn leaderboard_offsets_match_the_structs() {
+        use std::mem::{offset_of, size_of};
+        assert_eq!(offset_of!(Uploaded, success), offset::UP_SUCCESS);
+        assert_eq!(offset_of!(Uploaded, changed), offset::UP_CHANGED);
+        assert_eq!(offset_of!(Uploaded, rank_new), offset::UP_RANK_NEW);
+        assert_eq!(offset_of!(Entry, user), offset::ENTRY_USER);
+        assert_eq!(offset_of!(Entry, rank), offset::ENTRY_RANK);
+        assert_eq!(offset_of!(Entry, score), offset::ENTRY_SCORE);
+        assert_eq!(offset_of!(Entry, details), offset::ENTRY_DETAILS);
+        assert_eq!(size_of::<Entry>(), id::LEADERBOARD_ENTRY_SIZE);
+        assert_eq!(offset_of!(Downloaded, entries), offset::DOWN_ENTRIES);
+        assert_eq!(offset_of!(Downloaded, count), offset::DOWN_COUNT);
+        let _ = (
+            Uploaded {
+                success: 0,
+                board: 0,
+                score: 0,
+                changed: 0,
+                rank_new: 0,
+                rank_old: 0,
+            },
+            Entry {
+                user: 0,
+                rank: 0,
+                score: 0,
+                details: 0,
+                ugc: 0,
+            },
+            Downloaded {
+                board: 0,
+                entries: 0,
+                count: 0,
+            },
+        );
+    }
 
     #[test]
     fn layouts_match_the_flat_api() {

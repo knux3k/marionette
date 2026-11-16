@@ -4,7 +4,10 @@
 //! networking messages (peer to peer through Valve's relays, NAT traversal included),
 //! [`marionette_net::Lobbies`] over Steam matchmaking, and
 //! [`marionette_platform::Achievements`] and [`marionette_platform::CloudFiles`] over user
-//! stats and remote storage.
+//! stats and remote storage, [`marionette_platform::Leaderboards`] over user-stats
+//! leaderboards (answers through the same manual callback dispatch) and
+//! [`marionette_platform::Presence`] over rich presence; lobby invites open the overlay's
+//! invite dialog and an accepted invite arrives as `LobbyEvent::InviteAccepted`.
 //!
 //! No Steamworks SDK file is in this repository. The game ships the redistributable
 //! `steam_api64.dll` / `libsteam_api.so` / `libsteam_api.dylib` from its own SDK download
@@ -25,7 +28,9 @@ use marionette_net::{
     Delivery, LobbyEvent, LobbyId, LobbyInfo, Micros, NetError, Packet, PeerId, Transport, TransportStats,
     Visibility,
 };
-use marionette_platform::{PlatformError, StatValue};
+use marionette_platform::{
+    BoardEvent, BoardRequest, BoardRow, PlatformError, RowRange, ScoreDisplay, SortOrder, StatValue,
+};
 use std::collections::{BTreeMap, VecDeque};
 use std::ffi::{CStr, CString, c_char};
 use std::path::{Path, PathBuf};
@@ -73,11 +78,14 @@ pub fn default_library() -> &'static str {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum Call {
     Create,
     Join(LobbyId),
     List,
+    Find { request: BoardRequest, board: String },
+    Upload { request: BoardRequest, board: String },
+    Download { request: BoardRequest, board: String },
 }
 
 struct Ifaces {
@@ -87,6 +95,7 @@ struct Ifaces {
     stats: Ptr,
     storage: Ptr,
     messages: Ptr,
+    friends: Ptr,
 }
 
 struct Inner {
@@ -95,6 +104,10 @@ struct Inner {
     pipe: i32,
     calls: BTreeMap<u64, Call>,
     lobby_events: VecDeque<LobbyEvent>,
+    /// Leaderboard handles by name, answers not yet polled, the last request number.
+    boards: BTreeMap<String, u64>,
+    board_events: VecDeque<BoardEvent>,
+    next_request: BoardRequest,
     shut: bool,
     // Declared last so it is dropped after everything that points into it.
     _lib: Library,
@@ -159,6 +172,7 @@ impl Steam {
             stats: iface(ffi::USER_STATS)?,
             storage: iface(ffi::REMOTE_STORAGE)?,
             messages: iface(ffi::NET_MESSAGES)?,
+            friends: iface(ffi::FRIENDS)?,
         };
         unsafe {
             (f.SteamAPI_ManualDispatch_Init)();
@@ -184,6 +198,9 @@ impl Steam {
             pipe,
             calls: BTreeMap::new(),
             lobby_events: VecDeque::new(),
+            boards: BTreeMap::new(),
+            board_events: VecDeque::new(),
+            next_request: 0,
             shut: false,
             _lib: lib,
         };
@@ -311,6 +328,13 @@ impl Inner {
                             param.cast(),
                         );
                     }
+                    id::GAME_LOBBY_JOIN_REQUESTED => {
+                        // A friend's invite accepted in the overlay (or "Join game").
+                        let lobby =
+                            std::ptr::read_unaligned(param.add(offset::JOIN_REQUEST_LOBBY).cast::<u64>());
+                        self.lobby_events
+                            .push_back(LobbyEvent::InviteAccepted(LobbyId(lobby)));
+                    }
                     id::LOBBY_DATA_UPDATE | id::LOBBY_CHAT_UPDATE => {
                         let lobby = std::ptr::read_unaligned(param.cast::<u64>());
                         self.lobby_events.push_back(LobbyEvent::Changed(LobbyId(lobby)));
@@ -320,6 +344,91 @@ impl Inner {
                 (self.f.SteamAPI_ManualDispatch_FreeLastCallback)(self.pipe);
             }
         }
+    }
+
+    /// Reads downloaded leaderboard rows (at most 100, a menu's worth), with names.
+    fn rows(&self, entries: u64, count: i32) -> Vec<BoardRow> {
+        let mut rows = Vec::new();
+        for k in 0..count.clamp(0, 100) {
+            let mut entry = [0u8; id::LEADERBOARD_ENTRY_SIZE];
+            let mut details = [0i32; marionette_platform::MAX_DETAILS];
+            // The buffer is the entry struct's size; details are capped at the array's length.
+            let got = unsafe {
+                (self.f.SteamAPI_ISteamUserStats_GetDownloadedLeaderboardEntry)(
+                    self.i.stats,
+                    entries,
+                    k,
+                    entry.as_mut_ptr(),
+                    details.as_mut_ptr(),
+                    details.len() as i32,
+                )
+            };
+            if !got {
+                continue;
+            }
+            let u64_at = |at: usize| {
+                entry
+                    .get(at..at + 8)
+                    .and_then(|b| b.try_into().ok())
+                    .map_or(0, u64::from_le_bytes)
+            };
+            let i32_at = |at: usize| {
+                entry
+                    .get(at..at + 4)
+                    .and_then(|b| b.try_into().ok())
+                    .map_or(0, i32::from_le_bytes)
+            };
+            let user = u64_at(offset::ENTRY_USER);
+            let n = i32_at(offset::ENTRY_DETAILS).clamp(0, details.len() as i32) as usize;
+            rows.push(BoardRow {
+                user,
+                name: self.persona(user),
+                score: i32_at(offset::ENTRY_SCORE),
+                rank: i32_at(offset::ENTRY_RANK),
+                details: details[..n].to_vec(),
+            });
+        }
+        rows
+    }
+
+    /// A Steam user's display name ("" when Steam does not know it yet).
+    fn persona(&self, user: u64) -> String {
+        let p = unsafe { (self.f.SteamAPI_ISteamFriends_GetFriendPersonaName)(self.i.friends, user) };
+        if p.is_null() {
+            return String::new();
+        }
+        // Steam owns the string until the next call; it is copied out at once.
+        unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
+    }
+
+    fn board_request(&mut self) -> BoardRequest {
+        self.next_request += 1;
+        self.next_request
+    }
+
+    /// An answer that needs no call (a board never found, a refused name): queued for poll.
+    fn board_failed(&mut self, call: Call) {
+        let ev = match call {
+            Call::Find { request, board } => BoardEvent::Found {
+                request,
+                board,
+                found: false,
+            },
+            Call::Upload { request, board } => BoardEvent::Uploaded {
+                request,
+                board,
+                ok: false,
+                changed: false,
+                rank: 0,
+            },
+            Call::Download { request, board } => BoardEvent::Rows {
+                request,
+                board,
+                rows: Vec::new(),
+            },
+            _ => return,
+        };
+        self.board_events.push_back(ev);
     }
 
     fn call_done(&mut self, call: Call, expected: i32, ok: bool, buf: &[u8]) {
@@ -357,6 +466,46 @@ impl Inner {
                         reason: format!("could not enter the lobby (response {response})"),
                     });
                 }
+            }
+            (Call::Find { request, board }, id::LEADERBOARD_FIND_RESULT) => {
+                let handle = read_u64(offset::FIND_BOARD);
+                let found = ok && handle != 0 && buf.get(offset::FIND_FOUND).is_some_and(|b| *b != 0);
+                if found {
+                    self.boards.insert(board.clone(), handle);
+                }
+                self.board_events.push_back(BoardEvent::Found {
+                    request,
+                    board,
+                    found,
+                });
+            }
+            (Call::Upload { request, board }, id::LEADERBOARD_SCORE_UPLOADED) => {
+                let success = ok && buf.get(offset::UP_SUCCESS).is_some_and(|b| *b != 0);
+                let changed = success && buf.get(offset::UP_CHANGED).is_some_and(|b| *b != 0);
+                let rank = if success {
+                    read_u32(offset::UP_RANK_NEW) as i32
+                } else {
+                    0
+                };
+                self.board_events.push_back(BoardEvent::Uploaded {
+                    request,
+                    board,
+                    ok: success,
+                    changed,
+                    rank,
+                });
+            }
+            (Call::Download { request, board }, id::LEADERBOARD_SCORES_DOWNLOADED) => {
+                let rows = if ok {
+                    self.rows(
+                        read_u64(offset::DOWN_ENTRIES),
+                        read_u32(offset::DOWN_COUNT) as i32,
+                    )
+                } else {
+                    Vec::new()
+                };
+                self.board_events
+                    .push_back(BoardEvent::Rows { request, board, rows });
             }
             (Call::List, id::LOBBY_MATCH_LIST) => {
                 let n = if ok { read_u32(0) } else { 0 };
@@ -620,6 +769,12 @@ impl marionette_net::Lobbies for SteamLobbies {
         s.dispatch();
         s.lobby_events.drain(..).collect()
     }
+
+    fn open_invite_dialog(&mut self, lobby: LobbyId) -> Result<(), NetError> {
+        let s = self.steam.inner();
+        unsafe { (s.f.SteamAPI_ISteamFriends_ActivateGameOverlayInviteDialog)(s.i.friends, lobby.0) };
+        Ok(())
+    }
 }
 
 /// Achievements, stats and cloud files on Steam. Achievement and stat ids are the API names
@@ -784,6 +939,19 @@ impl marionette_platform::CloudFiles for SteamPlatform {
         Ok(())
     }
 
+    fn modified(&self, name: &str) -> marionette_platform::Result<Option<u64>> {
+        marionette_platform::check_name(name)?;
+        let s = self.steam.inner();
+        let c = cstr(name);
+        unsafe {
+            if !(s.f.SteamAPI_ISteamRemoteStorage_FileExists)(s.i.storage, c.as_ptr()) {
+                return Ok(None);
+            }
+            let at = (s.f.SteamAPI_ISteamRemoteStorage_GetFileTimestamp)(s.i.storage, c.as_ptr());
+            Ok((at > 0).then_some(at as u64))
+        }
+    }
+
     fn list(&self) -> marionette_platform::Result<Vec<(String, u64)>> {
         let s = self.steam.inner();
         let mut out = Vec::new();
@@ -801,6 +969,136 @@ impl marionette_platform::CloudFiles for SteamPlatform {
         }
         out.sort();
         Ok(out)
+    }
+}
+
+impl marionette_platform::Leaderboards for SteamPlatform {
+    fn find(&mut self, board: &str, create: Option<(SortOrder, ScoreDisplay)>) -> BoardRequest {
+        let mut s = self.steam.inner();
+        let request = s.board_request();
+        let call = Call::Find {
+            request,
+            board: board.to_string(),
+        };
+        if marionette_platform::check_board_name(board).is_err() {
+            s.board_failed(call);
+            return request;
+        }
+        let c = cstr(board);
+        let h = unsafe {
+            match create {
+                Some((order, display)) => (s.f.SteamAPI_ISteamUserStats_FindOrCreateLeaderboard)(
+                    s.i.stats,
+                    c.as_ptr(),
+                    match order {
+                        SortOrder::Ascending => id::SORT_ASCENDING,
+                        SortOrder::Descending => id::SORT_DESCENDING,
+                    },
+                    match display {
+                        ScoreDisplay::Numeric => id::DISPLAY_NUMERIC,
+                        ScoreDisplay::TimeSeconds => id::DISPLAY_TIME_SECONDS,
+                        ScoreDisplay::TimeMilliseconds => id::DISPLAY_TIME_MILLISECONDS,
+                    },
+                ),
+                None => (s.f.SteamAPI_ISteamUserStats_FindLeaderboard)(s.i.stats, c.as_ptr()),
+            }
+        };
+        if h == 0 {
+            s.board_failed(call);
+        } else {
+            s.calls.insert(h, call);
+        }
+        request
+    }
+
+    fn upload(&mut self, board: &str, score: i32, keep_best: bool, details: &[i32]) -> BoardRequest {
+        let mut s = self.steam.inner();
+        let request = s.board_request();
+        let call = Call::Upload {
+            request,
+            board: board.to_string(),
+        };
+        let Some(&handle) = s.boards.get(board) else {
+            s.board_failed(call);
+            return request;
+        };
+        let n = details.len().min(marionette_platform::MAX_DETAILS);
+        let method = if keep_best {
+            id::UPLOAD_KEEP_BEST
+        } else {
+            id::UPLOAD_FORCE_UPDATE
+        };
+        // Steam copies the details before the call returns.
+        let h = unsafe {
+            (s.f.SteamAPI_ISteamUserStats_UploadLeaderboardScore)(
+                s.i.stats,
+                handle,
+                method,
+                score,
+                details.as_ptr(),
+                n as i32,
+            )
+        };
+        if h == 0 {
+            s.board_failed(call);
+        } else {
+            s.calls.insert(h, call);
+        }
+        request
+    }
+
+    fn download(&mut self, board: &str, range: RowRange) -> BoardRequest {
+        let mut s = self.steam.inner();
+        let request = s.board_request();
+        let call = Call::Download {
+            request,
+            board: board.to_string(),
+        };
+        let Some(&handle) = s.boards.get(board) else {
+            s.board_failed(call);
+            return request;
+        };
+        let (kind, from, to) = match range {
+            RowRange::Global { from, to } => (id::REQUEST_GLOBAL, from, to),
+            RowRange::AroundPlayer { before, after } => (id::REQUEST_AROUND_USER, -before, after),
+            RowRange::Friends => (id::REQUEST_FRIENDS, 0, 0),
+        };
+        let h = unsafe {
+            (s.f.SteamAPI_ISteamUserStats_DownloadLeaderboardEntries)(s.i.stats, handle, kind, from, to)
+        };
+        if h == 0 {
+            s.board_failed(call);
+        } else {
+            s.calls.insert(h, call);
+        }
+        request
+    }
+
+    fn poll(&mut self) -> Vec<BoardEvent> {
+        let mut s = self.steam.inner();
+        s.dispatch();
+        s.board_events.drain(..).collect()
+    }
+}
+
+impl marionette_platform::Presence for SteamPlatform {
+    fn set_presence(&mut self, key: &str, value: &str) -> marionette_platform::Result<()> {
+        marionette_platform::check_presence(key, value)?;
+        let s = self.steam.inner();
+        let (k, v) = (cstr(key), cstr(value));
+        if unsafe { (s.f.SteamAPI_ISteamFriends_SetRichPresence)(s.i.friends, k.as_ptr(), v.as_ptr()) } {
+            Ok(())
+        } else {
+            Err(perr(
+                marionette_platform::codes::UNAVAILABLE,
+                format!("Steam refused presence key {key}"),
+            ))
+        }
+    }
+
+    fn clear_presence(&mut self) {
+        let s = self.steam.inner();
+        unsafe { (s.f.SteamAPI_ISteamFriends_ClearRichPresence)(s.i.friends) };
     }
 }
 
