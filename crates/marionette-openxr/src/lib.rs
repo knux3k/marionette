@@ -503,6 +503,7 @@ pub fn run(mut sim: Sim, opts: XrOptions, hooks: &mut dyn XrHooks) -> Result<(Si
         });
     }
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, format, samples, opts.base_dir.clone());
+    let mut shots = marionette_render::ShotDraws::for_renderer(&renderer);
     renderer.set_streaming(true);
     let vignette = vignette::Vignette::new(&gpu.device, format);
 
@@ -610,6 +611,7 @@ pub fn run(mut sim: Sim, opts: XrOptions, hooks: &mut dyn XrHooks) -> Result<(Si
                 &opts,
                 &gpu,
                 &mut renderer,
+                &mut shots,
                 &vignette,
                 &session,
                 &space,
@@ -711,6 +713,7 @@ fn render_eyes(
     opts: &XrOptions,
     gpu: &marionette_render::Gpu,
     renderer: &mut Renderer,
+    shots: &mut marionette_render::ShotDraws,
     vignette: &vignette::Vignette,
     session: &xr::Session<xr::Vulkan>,
     space: &xr::Space,
@@ -771,9 +774,24 @@ fn render_eyes(
             height: eye.height,
         })
         .collect();
-    let pairs: Vec<(View, &Target)> = eye_views.iter().copied().zip(targets.iter()).collect();
+    // Camera shots (decision 0286) are drawn after the eyes, in the same frame.
+    shots.collect(&gpu.device, &mut sim.world);
+    let screen = eyes.first().map_or((1920, 1080), |e| (e.width, e.height));
+    shots.plan(
+        &gpu.device,
+        &mut sim.world,
+        [clear.r, clear.g, clear.b, clear.a],
+        screen,
+    );
+    let shot_views = shots.views();
+    let mut pairs: Vec<(View, &Target)> = eye_views.iter().copied().zip(targets.iter()).collect();
+    let screens = pairs.len();
+    pairs.extend(shot_views.iter().map(|(v, t)| (*v, t)));
     let mut encoder = gpu.device.create_command_encoder(&Default::default());
-    renderer.render_views(&frame, &pairs, &mut encoder);
+    renderer.render_views_ui(&frame, &pairs, screens, &mut encoder);
+    drop(pairs);
+    drop(shot_views);
+    shots.finish(&gpu.device, renderer, &mut encoder);
     let strength = sim.world.get_resource::<XrComfort>().map_or(0.0, |c| c.vignette);
     for (eye, &i) in eyes.iter().zip(&indices) {
         vignette.draw(
@@ -785,6 +803,7 @@ fn render_eyes(
         );
     }
     gpu.queue.submit([encoder.finish()]);
+    shots.submitted();
     for eye in eyes.iter_mut() {
         eye.swapchain
             .release_image()

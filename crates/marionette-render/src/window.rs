@@ -199,8 +199,12 @@ pub fn mouse_name(button: MouseButton) -> Option<&'static str> {
 /// Ties on layer go to the higher scene id (drawn later, so on top).
 pub fn button_at(world: &mut bevy_ecs::world::World, x: f32, y: f32, w: f32, h: f32) -> Option<String> {
     // Buttons on a world canvas take world pointers, not the mouse.
+    let cutoff = world
+        .get_resource::<marionette_core::ui::ScreenUiCutoff>()
+        .copied();
     let mut q = world.query_filtered::<(&SceneId, &UiNode, &UiButton, Option<&UiClip>), bevy_ecs::query::Without<UiOnCanvas>>();
     q.iter(world)
+        .filter(|(_, n, _, _)| marionette_core::ui::ScreenUiCutoff::shows(cutoff.as_ref(), n.layer))
         .filter(|(_, n, _, clip)| hit(n, *clip, x, y, w, h))
         .max_by_key(|(id, n, _, _)| (n.layer, id.0))
         .map(|(_, _, b, _)| b.action.clone())
@@ -216,6 +220,8 @@ struct Running {
     depth: wgpu::TextureView,
     vsync: bool,
     refresh: Option<f64>,
+    /// Camera shots the game asks for (decision 0286).
+    shots: crate::shots::ShotDraws,
 }
 
 struct App<'h> {
@@ -399,6 +405,7 @@ impl App<'_> {
         self.stats.refresh_hz = refresh;
         self.stats.size = (config.width, config.height);
         self.stats.fullscreen = self.opts.fullscreen;
+        let shots = crate::shots::ShotDraws::for_renderer(&renderer);
         Ok(Running {
             window,
             surface,
@@ -409,6 +416,7 @@ impl App<'_> {
             depth,
             vsync,
             refresh,
+            shots,
         })
     }
 
@@ -529,14 +537,23 @@ impl App<'_> {
             width: r.config.width,
             height: r.config.height,
         };
+        // Camera shots (decision 0286): finished read-backs go to the game, new ones are drawn
+        // after the screen's view in the same frame.
+        r.shots.collect(&r.gpu.device, &mut self.sim.world);
+        let c = cam.camera.clear_color;
+        let screen = (r.config.width, r.config.height);
+        r.shots
+            .plan(&r.gpu.device, &mut self.sim.world, [c.r, c.g, c.b, c.a], screen);
         let mut encoder = r.gpu.device.create_command_encoder(&Default::default());
-        r.renderer.render(
-            &frame,
-            &cam.view(r.config.width as f32 / r.config.height as f32),
-            &target,
-            &mut encoder,
-        );
+        let shot_views = r.shots.views();
+        let mut views = vec![(cam.view(r.config.width as f32 / r.config.height as f32), &target)];
+        views.extend(shot_views.iter().map(|(v, t)| (*v, t)));
+        r.renderer.render_views_ui(&frame, &views, 1, &mut encoder);
+        drop(views);
+        drop(shot_views);
+        r.shots.finish(&r.gpu.device, &mut r.renderer, &mut encoder);
         r.gpu.queue.submit([encoder.finish()]);
+        r.shots.submitted();
         r.window.pre_present_notify();
         r.gpu.queue.present(texture);
         let done = Instant::now();
@@ -1028,6 +1045,29 @@ mod tests {
         assert_eq!(at(&mut world, 350.0, 320.0).as_deref(), Some("quit"));
         assert_eq!(at(&mut world, 5.0, 5.0), None);
         assert_eq!(at(&mut world, 110.0, 10.0), None, "right edge is exclusive");
+    }
+
+    #[test]
+    fn buttons_under_the_cutoff_layer_take_no_clicks() {
+        let mut world = World::new();
+        button(&mut world, 1, (10.0, 10.0), 0, "start");
+        button(&mut world, 2, (10.0, 10.0), 5, "overlay");
+        let at = |w: &mut World| button_at(w, 20.0, 20.0, 800.0, 600.0);
+        assert_eq!(at(&mut world).as_deref(), Some("overlay"));
+        world.insert_resource(marionette_core::ui::ScreenUiCutoff {
+            on: true,
+            min_layer: 10,
+        });
+        assert_eq!(at(&mut world), None);
+        world.insert_resource(marionette_core::ui::ScreenUiCutoff {
+            on: false,
+            min_layer: 10,
+        });
+        assert_eq!(
+            at(&mut world).as_deref(),
+            Some("overlay"),
+            "off: everything takes clicks"
+        );
     }
 
     #[test]

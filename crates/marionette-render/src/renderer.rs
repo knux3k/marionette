@@ -1300,6 +1300,33 @@ impl Renderer {
     }
 
     /// Loads an image (once) as a sprite/UI texture.
+    /// Shows `view` (a texture this renderer can sample, `width` x `height`) wherever the
+    /// image `name` is used: camera screens drawn by shots (decision 0286).
+    pub fn set_image_view(&mut self, name: &str, view: &wgpu::TextureView, width: u32, height: u32) {
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shot image"),
+            layout: &self.sprite_tex_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                },
+            ],
+        });
+        self.sprite_textures.insert(
+            name.to_string(),
+            Ok(GpuTexture {
+                bind_group,
+                width,
+                height,
+            }),
+        );
+    }
+
     fn ensure_texture(&mut self, image: &str) -> Option<&String> {
         if !self.sprite_textures.contains_key(image) {
             let sampler = if image == "builtin:font" {
@@ -1307,7 +1334,13 @@ impl Renderer {
             } else {
                 &self.sprite_sampler
             };
-            let loaded = assets::load_image(image, &self.base_dir).map(|img| {
+            // A camera screen (decision 0286) is black until its first shot is drawn.
+            let loaded = if image.starts_with(marionette_core::shots::Shots::IMAGE_PREFIX) {
+                Ok(Image::solid([0, 0, 0, 255], true))
+            } else {
+                assets::load_image(image, &self.base_dir)
+            };
+            let loaded = loaded.map(|img| {
                 let view = create_texture_view(&self.device, &self.queue, &img);
                 GpuTexture {
                     bind_group: self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1825,7 +1858,20 @@ impl Renderer {
         views: &[(View, &Target)],
         encoder: &mut wgpu::CommandEncoder,
     ) -> RenderStats {
-        self.record(frame, views, None, encoder)
+        self.record(frame, views, views.len(), None, encoder)
+    }
+
+    /// [`Renderer::render_views`] where only the first `ui_views` views are screens: the
+    /// views after them (camera shots, decision 0286) get no screen UI, render scale or
+    /// foveation, and draw the world at their full size.
+    pub fn render_views_ui(
+        &mut self,
+        frame: &FrameData,
+        views: &[(View, &Target)],
+        ui_views: usize,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> RenderStats {
+        self.record(frame, views, ui_views.min(views.len()), None, encoder)
     }
 
     /// True when this device can draw both eyes in one pass (decision 0285).
@@ -1848,13 +1894,14 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
     ) -> RenderStats {
         let pairs = [(views[0], eyes[0]), (views[1], eyes[1])];
-        self.record(frame, &pairs, Some(both), encoder)
+        self.record(frame, &pairs, 2, Some(both), encoder)
     }
 
     fn record(
         &mut self,
         frame: &FrameData,
         views: &[(View, &Target)],
+        ui_views: usize,
         both: Option<&Target>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> RenderStats {
@@ -2120,7 +2167,12 @@ impl Renderer {
             Some(s) => s.internal((t.width, t.height)),
             None => (t.width, t.height),
         };
-        let outputs: Vec<(u32, u32)> = views.iter().map(|(_, t)| (t.width, t.height)).collect();
+        // Only screen views are scaled; shots after them draw at full size (decision 0286).
+        let outputs: Vec<(u32, u32)> = views
+            .iter()
+            .take(ui_views)
+            .map(|(_, t)| (t.width, t.height))
+            .collect();
         if !capture {
             // A capture leaves the views' internal images alone.
             self.scale.prepare(&self.device, &self.queue, scaled, &outputs);
@@ -2143,7 +2195,17 @@ impl Renderer {
             }
         }
         if bloom.is_some() {
-            let sizes: Vec<(u32, u32)> = views.iter().map(|(_, t)| world_size(t)).collect();
+            let sizes: Vec<(u32, u32)> = views
+                .iter()
+                .enumerate()
+                .map(|(i, (_, t))| {
+                    if i < ui_views {
+                        world_size(t)
+                    } else {
+                        (t.width, t.height)
+                    }
+                })
+                .collect();
             self.post.prepare(&self.device, &sizes);
         } else if !capture {
             // Frees the HDR targets of earlier frames with bloom.
@@ -2652,10 +2714,12 @@ impl Renderer {
         let mut uv: Vec<SpriteVertex> = Vec::new();
         let mut ui_idx: Vec<u32> = Vec::new();
         let mut ui_batches: Vec<Vec<(&str, std::ops::Range<u32>)>> = Vec::with_capacity(views.len());
-        for (_, target) in views {
+        for (vi, (_, target)) in views.iter().enumerate() {
             let (sw, sh) = (target.width as f32, target.height as f32);
             let mut view_batches: Vec<(&str, std::ops::Range<u32>)> = Vec::new();
-            for u in &frame.ui {
+            // Shots (decision 0286) see the world, not the screen's UI.
+            let screen_ui: &[_] = if vi < ui_views { &frame.ui } else { &[] };
+            for u in screen_ui {
                 let image = u.look.image();
                 let Some(Ok(tex)) = self.sprite_textures.get(image) else {
                     continue;
@@ -2961,7 +3025,9 @@ impl Renderer {
             let world_offset = (2 * i as u64 * VIEW_STRIDE) as u32;
             let ui_offset = world_offset + VIEW_STRIDE as u32;
             // The world is drawn into `target`: the output, or its internal image.
-            let internal = scaled.map(|s| self.scale.targets(s.internal((output.width, output.height))));
+            let internal = scaled
+                .filter(|_| i < ui_views)
+                .map(|s| self.scale.targets(s.internal((output.width, output.height))));
             let internal_target = internal.map(crate::scale::ScaleTargets::target);
             let target: &Target = internal_target.as_ref().unwrap_or(output);
             let foveate = internal.filter(|_| scaled.is_some_and(|s| s.foveation > 0.0));
@@ -2979,6 +3045,7 @@ impl Renderer {
                 let t = self.post.targets((target.width, target.height));
                 self.post.write(
                     &self.queue,
+                    t,
                     threshold,
                     intensity,
                     frame.exposure,

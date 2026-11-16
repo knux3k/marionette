@@ -153,3 +153,9 @@ Single-pass stereo (decision 0285):
   the same right eye as a pass per eye (largest difference 0) for the material ball (draw calls
   13 to 8) and skinned models (8 to 4); the bloom scene falls back to a pass per eye, identical.
 - Unit test `entry_points_pick_their_eye` (`renderer/multiview.rs`) checks the shader conversion.
+
+Camera shots (decision 0286):
+- Tests: `crates/marionette-render/tests/shots.rs` (a read-back from its own pose with no screen
+  UI, a camera screen showing its last picture and switching, bounded requests without a
+  renderer); unit test in `crates/marionette-core/src/shots.rs`. Run on a cloud container's
+  software Vulkan adapter only.
