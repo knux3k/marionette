@@ -221,10 +221,8 @@ impl HostedHost {
                     g.last_heard = self.now;
                 }
             }
-            Some(BYE) => {
-                if self.guests.contains_key(&p.from) {
-                    self.drop_guest(t, p.from, LeaveReason::Left);
-                }
+            Some(BYE) if self.guests.contains_key(&p.from) => {
+                self.drop_guest(t, p.from, LeaveReason::Left);
             }
             _ => {}
         }
