@@ -12,10 +12,16 @@
 mod backend;
 pub mod components;
 mod dims;
+pub mod game;
 pub mod planet;
 
 use bevy_ecs::prelude::*;
 use components::*;
+pub use game::{
+    BodyState, Contact, GameBody, Hit, QueryOptions, Target, add_body, body_contacts, body_keys, body_state,
+    overlap, push_body, raycast_all, raycast_first, remove_body, set_body_gravity_scale, set_body_pose,
+    set_body_velocity, shape_cast,
+};
 use marionette_core::actions::ActionState;
 use marionette_core::builtin::{DEFAULT_DT, FixedStep, SimClock};
 use marionette_core::module::{EventLog, Module, RayCaster, SceneDir, Stage};
@@ -44,6 +50,12 @@ pub enum Physics {
 
 pub struct PhysicsModule;
 
+/// The physics step as a system set, inside `Stage::Physics`. Game systems that set body
+/// velocities or poses this tick (a carried object) run `.before(PhysicsStep)`; ones that
+/// read the results (copying game bodies back into game data) run `.after(PhysicsStep)`.
+#[derive(bevy_ecs::schedule::SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PhysicsStep;
+
 /// What physics remembers about bodies beside the simulation state. Not saved: rebuilt on
 /// load, and on restore (with `adopt` set).
 #[derive(Resource, Default)]
@@ -55,6 +67,50 @@ pub(crate) struct BodyTracking {
     pub meshes: BTreeMap<u64, u64>,
     /// Restored from a snapshot: take the game meshes' current versions as built.
     pub adopt: bool,
+    /// The `Joint` each built joint was built from (a changed component rebuilds it).
+    pub joints: BTreeMap<u64, Joint>,
+    /// Restored from a snapshot: take the saved joints as built.
+    pub adopt_joints: bool,
+}
+
+/// Forces and impulses to apply this step, read from components in scene id order.
+#[derive(Default)]
+pub struct Pushes {
+    pub forces: Vec<(u64, [f32; 3], [f32; 3])>,
+    pub impulses: Vec<(u64, [f32; 3], [f32; 3])>,
+}
+
+fn v3(v: marionette_core::spatial::Vec3) -> [f32; 3] {
+    [v.x, v.y, v.z]
+}
+
+/// Joints, forces and impulses of the scene, each in scene id order. Impulses are set back
+/// to zero here: they apply once.
+fn gather(world: &mut World) -> (Vec<(u64, Joint)>, Pushes) {
+    let mut joints: Vec<(u64, Joint)> = world
+        .query::<(&SceneId, &Joint)>()
+        .iter(world)
+        .map(|(id, j)| (id.0, *j))
+        .collect();
+    joints.sort_by_key(|(id, _)| *id);
+    let mut p = Pushes {
+        forces: world
+            .query::<(&SceneId, &ExternalForce)>()
+            .iter(world)
+            .map(|(id, f)| (id.0, v3(f.force), v3(f.torque)))
+            .collect(),
+        impulses: Vec::new(),
+    };
+    p.forces.sort_by_key(|(id, ..)| *id);
+    let mut q = world.query::<(&SceneId, &mut ExternalImpulse)>();
+    for (id, mut i) in q.iter_mut(world) {
+        if *i != ExternalImpulse::default() {
+            p.impulses.push((id.0, v3(i.linear), v3(i.angular)));
+            *i = ExternalImpulse::default();
+        }
+    }
+    p.impulses.sort_by_key(|(id, ..)| *id);
+    (joints, p)
 }
 
 fn scene_ids(world: &mut World) -> BTreeMap<u64, Entity> {
@@ -75,6 +131,11 @@ impl Module for PhysicsModule {
         r.register_component::<CharacterController>();
         r.register_component::<CharacterState>();
         r.register_component::<CharacterInput>();
+        r.register_component::<CollisionLayers>();
+        r.register_component::<ContinuousCollision>();
+        r.register_component::<ExternalForce>();
+        r.register_component::<ExternalImpulse>();
+        r.register_component::<Joint>();
         r.register_component::<planet::GravityWell>();
         r.register_component::<planet::SphereFluid>();
         r.register_component::<planet::GravityZone>();
@@ -83,7 +144,7 @@ impl Module for PhysicsModule {
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {
-        schedule.add_systems(physics_tick.in_set(Stage::Physics));
+        schedule.add_systems(physics_tick.in_set(Stage::Physics).in_set(PhysicsStep));
     }
 
     fn init(&self, world: &mut World) -> Result<()> {
@@ -110,19 +171,35 @@ impl Module for PhysicsModule {
 
     fn save(&self, world: &World) -> Option<Vec<u8>> {
         let p = world.get_resource::<Physics>()?;
-        postcard::to_allocvec(p).ok()
+        // The world first, then joints and game bodies: a snapshot from before they existed
+        // is the first part alone and still loads.
+        let mut bytes = postcard::to_allocvec(p).ok()?;
+        let extra = match p {
+            Physics::D3(s) => postcard::to_allocvec(&s.extra),
+            Physics::D2(s) => postcard::to_allocvec(&s.extra),
+        };
+        bytes.extend(extra.ok()?);
+        Some(bytes)
     }
 
     fn load(&self, world: &mut World, bytes: &[u8]) -> Result<()> {
-        let p: Physics = postcard::from_bytes(bytes).map_err(|e| {
+        let bad = |e: postcard::Error| {
             Errors::from(Diagnostic::error(
                 codes::SNAPSHOT,
                 format!("cannot restore physics state: {e}"),
             ))
-        })?;
+        };
+        let (mut p, rest): (Physics, &[u8]) = postcard::take_from_bytes(bytes).map_err(bad)?;
+        if !rest.is_empty() {
+            match &mut p {
+                Physics::D3(s) => s.extra = postcard::from_bytes(rest).map_err(bad)?,
+                Physics::D2(s) => s.extra = postcard::from_bytes(rest).map_err(bad)?,
+            }
+        }
         world.insert_resource(p);
         world.insert_resource(BodyTracking {
             adopt: true,
+            adopt_joints: true,
             ..Default::default()
         });
         Ok(())
@@ -151,6 +228,17 @@ fn physics_tick(world: &mut World) {
         Physics::D3(s) => dims::d3::sync(s, world, &ids, &dir, &mut track),
         Physics::D2(s) => dims::d2::sync(s, world, &ids, &dir, &mut track),
     };
+    let (joints, pushes) = gather(world);
+    match &mut physics {
+        Physics::D3(s) => {
+            dims::d3::sync_joints(s, &joints, &mut track);
+            s.extra.pushes = pushes;
+        }
+        Physics::D2(s) => {
+            dims::d2::sync_joints(s, &joints, &mut track);
+            s.extra.pushes = pushes;
+        }
+    }
     world.insert_resource(track);
     if !errors.is_empty()
         && let Some(mut log) = world.get_resource_mut::<EventLog>()

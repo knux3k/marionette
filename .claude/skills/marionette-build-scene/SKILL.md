@@ -45,6 +45,9 @@ edit of a live session builds its world again each time, so batch those too.
 | Fire, sparks, smoke, dust | `ParticleEmitter` (image `builtin:soft`, blend Additive or Alpha); drawn from game time, no state |
 | Something visible in 2D | `Transform`, `Sprite` |
 | A solid object | `Collider`; add `RigidBody` to make it move |
+| Hinges, ropes, springs, welds | `Joint` (`other` scene id, 0 = world; limits, motors) |
+| Layers, fast bodies, pushes | `CollisionLayers`, `ContinuousCollision`, `ExternalForce`, `ExternalImpulse` |
+| Overlap and sweep checks | `observe_overlap`, `observe_shape_cast` (decision 0311) |
 | A player | `CharacterController` plus the actions it names |
 | Controls | resource `InputConfig` naming an action map file (`*.actions.json`); scripts read actions, never keys; gamepads bind as `pad:South`, `axis:LeftStickX` (up and right +) |
 | Sound | `AudioSource` (heard through an `AudioListener`) |

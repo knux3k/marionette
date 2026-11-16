@@ -36,6 +36,8 @@ Every operation is available as `marionette op <name> '<json>' --json` and as an
 | `observe_logs` | no | Session log entries since `cursor`; returns `next_cursor`. |
 | `observe_stats` | no | Tick, entity count and step / render timings of a session. |
 | `observe_raycast` | no | Cast a ray through the physics scene; returns the first entity hit, distance, point and normal. |
+| `observe_overlap` | no | Every entity and game body overlapping a shape (Ball, Cuboid, Capsule, Cylinder) at a pose, sorted; optional layer mask. |
+| `observe_shape_cast` | no | Sweep a shape along a direction; returns the first entity or game body hit, distance, point and normal. |
 | `observe_events` | no | Engine events so far (sound, jump, collision_started, collision_stopped), filtered and paged. Sounds carry gain and pan: this is the headless audio log. |
 | `editor_view` | no | The scene editor's view without a window: render it (panels, selection box, grid) to a PNG, list the entities under given pixels nearest first, and return the inspector's components for `select`. Camera: `eye` and `look_at`, else the scene's first camera; `frame` fits the selection (or the scene). |
 | `test_run` | no | Run scenario tests: every *.test.json under `path` (default `tests`), or one inline `scenario`. Returns pass/fail per assertion as data. |
@@ -797,6 +799,64 @@ Output:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `hit` | RaycastHit \| null |  | The hit, or null when the ray hits nothing (or the scene has no physics). |
+| `tick` | integer | yes |  |
+
+## `observe_overlap`
+
+Every entity and game body overlapping a shape (Ball, Cuboid, Capsule, Cylinder) at a pose, sorted; optional layer mask.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `direction` | array \| null |  | Shape cast only: direction (need not be unit length) and distance (default 1000). |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `layers` | integer \| null |  | Only colliders on these layers (`CollisionLayers.member` bits); default every layer. |
+| `max_distance` | number \| null |  |  |
+| `position` | array of number | yes |  |
+| `rotation` | array \| null |  | Quaternion x, y, z, w; default upright. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `shape` | QueryShape | yes |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hits` | array of QueryTarget | yes |  |
+| `tick` | integer | yes |  |
+
+## `observe_shape_cast`
+
+Sweep a shape along a direction; returns the first entity or game body hit, distance, point and normal.
+
+Mutating: no.
+
+Input:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `direction` | array \| null |  | Shape cast only: direction (need not be unit length) and distance (default 1000). |
+| `input` | string \| null |  | Scripted input for a `scene` target (`*.inputs.json`); ignored for sessions. |
+| `layers` | integer \| null |  | Only colliders on these layers (`CollisionLayers.member` bits); default every layer. |
+| `max_distance` | number \| null |  |  |
+| `position` | array of number | yes |  |
+| `rotation` | array \| null |  | Quaternion x, y, z, w; default upright. |
+| `scene` | string \| null |  |  |
+| `seed` | integer |  |  |
+| `session` | string \| null |  |  |
+| `shape` | QueryShape | yes |  |
+| `ticks` | integer |  |  |
+
+Output:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `hit` | ShapeCastHit \| null |  |  |
 | `tick` | integer | yes |  |
 
 ## `observe_events`

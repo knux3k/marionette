@@ -157,6 +157,27 @@ Rust type: `marionette_physics::components::Collider`.
 | `sensor` | boolean | yes | Detects overlaps (collision events) without pushing. |
 | `shape` | {Cuboid: {half_extents: object {x, y, z}}} \| {RoundCuboid: object {border, half_extents}} \| {Ball: {radius: number}} \| {Capsule: object {half_height, radius}} \| {Cylinder: object {half_height, radius}} \| {ConvexHull: {model: string}} \| {TriMesh: {model: string}} | yes | Collision shape. Sizes are before `Transform.scale` is applied. |
 
+### `CollisionLayers`
+
+Which collision layers a body is on and which it touches (Unity's layers and collision matrix, PhysX filter groups). Two colliders touch only when each one's `member` shares a bit with the other's `collides_with`. Queries take a layer mask too. Without this component a collider is on layer 1 (bit 0, Unity's Default layer) and touches every layer.
+
+Rust type: `marionette_physics::components::CollisionLayers`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `collides_with` | integer | yes | Bits of the layers it touches. |
+| `member` | integer | yes | Bits of the layers this collider is on (32 layers). |
+
+### `ContinuousCollision`
+
+Continuous collision detection for a fast dynamic body (Unity's `ContinuousDynamic`): it sweeps from its old to its new pose each step, so it cannot pass through a thin wall between two steps. Costs a little per body, so use it for thrown or shot things only.
+
+Rust type: `marionette_physics::components::ContinuousCollision`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | yes |  |
+
 ### `DestroyAt`
 
 Marks an entity for removal: at the end of the script stage of tick `tick` (or the first later one), the entity's script gets `onDestroy`, then the entity is removed. `engine.destroy` adds it; scene files may use it for a fixed lifetime.
@@ -189,6 +210,28 @@ Rust type: `marionette_core::spatial::Emissive`.
 | --- | --- | --- | --- |
 | `color` | object {a, b, g, r} | yes | Linear RGBA color, each channel 0..1. |
 | `intensity` | number | yes |  |
+
+### `ExternalForce`
+
+A force and torque applied to a dynamic body every tick while the component is there (Unity's `AddForce` in `FixedUpdate`, `ForceMode.Force`). World space, newtons and newton-metres (2D uses x and y for the force and z for the torque).
+
+Rust type: `marionette_physics::components::ExternalForce`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `force` | object {x, y, z} | yes |  |
+| `torque` | object {x, y, z} | yes |  |
+
+### `ExternalImpulse`
+
+A one-off push (Unity's `ForceMode.Impulse`): applied at the next step, then physics sets both values back to zero. World space, newton-seconds.
+
+Rust type: `marionette_physics::components::ExternalImpulse`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `angular` | object {x, y, z} | yes |  |
+| `linear` | object {x, y, z} | yes |  |
 
 ### `Follow`
 
@@ -280,6 +323,20 @@ Rust type: `marionette_jobs_ts::scene::JobSchedule`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `steps` | array of object {args, chunk, function, path} | yes |  |
+
+### `Joint`
+
+Joins this entity's body to another body (or to a fixed point in the world). Both need a `RigidBody` or `Collider`; the joint waits until both bodies exist and goes away with either of them or with this component.
+
+Rust type: `marionette_physics::components::Joint`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `anchor` | object {x, y, z} | yes | Where the joint sits, in this body's space (before scale). |
+| `collide_connected` | boolean | yes | Let the two joined bodies collide with each other (Unity's `enableCollision`). |
+| `kind` | "Fixed" \| "Ball" \| {Hinge: object {axis, max, min, motor_force, motor_speed}} \| {Slider: object {axis, max, min, motor_force, motor_speed}} \| {Rope: {max_length: number}} \| {Spring: object {damping, rest_length, stiffness}} | yes | What a [`Joint`] allows between its two bodies. |
+| `other` | integer | yes | Scene id of the other entity; 0 joins to the world at `other_anchor` (world space). |
+| `other_anchor` | object {x, y, z} | yes | Where it sits in the other body's space (world space when `other` is 0). |
 
 ### `LookAt`
 

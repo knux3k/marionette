@@ -445,6 +445,19 @@ type Collider = {
   };
 };
 
+/** Which collision layers a body is on and which it touches (Unity's layers and collision matrix, PhysX filter groups). Two colliders touch only when each one's `member` shares a bit with the other's `collides_with`. Queries take a layer mask too. Without this component a collider is on layer 1 (bit 0, Unity's Default layer) and touches every layer. */
+type CollisionLayers = {
+  /** Bits of the layers it touches. */
+  collides_with: number;
+  /** Bits of the layers this collider is on (32 layers). */
+  member: number;
+};
+
+/** Continuous collision detection for a fast dynamic body (Unity's `ContinuousDynamic`): it sweeps from its old to its new pose each step, so it cannot pass through a thin wall between two steps. Costs a little per body, so use it for thrown or shot things only. */
+type ContinuousCollision = {
+  enabled: boolean;
+};
+
 /** Marks an entity for removal: at the end of the script stage of tick `tick` (or the first later one), the entity's script gets `onDestroy`, then the entity is removed. `engine.destroy` adds it; scene files may use it for a fixed lifetime. */
 type DestroyAt = {
   tick: number;
@@ -487,6 +500,34 @@ type Environment = {
   image: string;
   /** Strength of the light and reflections from the environment. */
   intensity: number;
+};
+
+/** A force and torque applied to a dynamic body every tick while the component is there (Unity's `AddForce` in `FixedUpdate`, `ForceMode.Force`). World space, newtons and newton-metres (2D uses x and y for the force and z for the torque). */
+type ExternalForce = {
+  force: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  torque: {
+    x: number;
+    y: number;
+    z: number;
+  };
+};
+
+/** A one-off push (Unity's `ForceMode.Impulse`): applied at the next step, then physics sets both values back to zero. World space, newton-seconds. */
+type ExternalImpulse = {
+  angular: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  linear: {
+    x: number;
+    y: number;
+    z: number;
+  };
 };
 
 /** Length of one simulation tick in seconds. */
@@ -619,6 +660,62 @@ type JobSchedule = {
     /** Job file (`*.job.ts`), relative to the scene file. */
     path: string;
   }>;
+};
+
+/** Joins this entity's body to another body (or to a fixed point in the world). Both need a `RigidBody` or `Collider`; the joint waits until both bodies exist and goes away with either of them or with this component. */
+type Joint = {
+  /** Where the joint sits, in this body's space (before scale). */
+  anchor: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Let the two joined bodies collide with each other (Unity's `enableCollision`). */
+  collide_connected: boolean;
+  /** What a [`Joint`] allows between its two bodies. */
+  kind: "Fixed" | "Ball" | {
+    Hinge: {
+      axis: {
+        x: number;
+        y: number;
+        z: number;
+      };
+      max: number;
+      min: number;
+      motor_force: number;
+      motor_speed: number;
+    };
+  } | {
+    Slider: {
+      axis: {
+        x: number;
+        y: number;
+        z: number;
+      };
+      max: number;
+      min: number;
+      motor_force: number;
+      motor_speed: number;
+    };
+  } | {
+    Rope: {
+      max_length: number;
+    };
+  } | {
+    Spring: {
+      damping: number;
+      rest_length: number;
+      stiffness: number;
+    };
+  };
+  /** Scene id of the other entity; 0 joins to the world at `other_anchor` (world space). */
+  other: number;
+  /** Where it sits in the other body's space (world space when `other` is 0). */
+  other_anchor: {
+    x: number;
+    y: number;
+    z: number;
+  };
 };
 
 /** Turns on level of detail (decision 0080): a model part far enough away to look small draws a reduced version of its mesh (about half, then a quarter of the triangles, made when the model loads), and one smaller than `hide_below` is not drawn in views at all. Sizes are the part's bounding sphere diameter as a share of the screen height (1.0 fills it). Good start: 0.2, 0.06, 0.0 (never hide); 0.004 hides bolts at a distance. Parts under 64 triangles and skinned parts keep one level. Shadow maps keep far casters. */
@@ -1362,9 +1459,13 @@ interface Components {
   CharacterState: CharacterState;
   ChildOf: ChildOf;
   Collider: Collider;
+  CollisionLayers: CollisionLayers;
+  ContinuousCollision: ContinuousCollision;
   DestroyAt: DestroyAt;
   DirectionalLight: DirectionalLight;
   Emissive: Emissive;
+  ExternalForce: ExternalForce;
+  ExternalImpulse: ExternalImpulse;
   Follow: Follow;
   Grabbable: Grabbable;
   GravityWell: GravityWell;
@@ -1373,6 +1474,7 @@ interface Components {
   JobData: JobData;
   JobDraw: JobDraw;
   JobSchedule: JobSchedule;
+  Joint: Joint;
   LookAt: LookAt;
   Material: Material;
   Model: Model;
