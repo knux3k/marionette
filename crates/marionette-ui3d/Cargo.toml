@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 marionette-core.workspace = true
+marionette-input = { path = "../marionette-input" }
 marionette-assets = { path = "../marionette-assets" }
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true

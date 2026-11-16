@@ -83,6 +83,8 @@ pub struct UiRuntime {
     pub(crate) states: BTreeMap<u64, PanelState>,
     pub(crate) grabs: BTreeMap<u32, Grab>,
     pub(crate) down: BTreeMap<u32, bool>,
+    /// Canvas button clicks of this tick, pressed at the start of the next one.
+    pub(crate) taps: Vec<String>,
     cache: Mutex<BTreeMap<u64, Cached>>,
 }
 
@@ -93,6 +95,7 @@ impl UiRuntime {
             states: BTreeMap::new(),
             grabs: BTreeMap::new(),
             down: BTreeMap::new(),
+            taps: Vec::new(),
             cache: Mutex::new(BTreeMap::new()),
         }
     }

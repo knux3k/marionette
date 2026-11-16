@@ -2821,6 +2821,7 @@ dependencies = [
  "marionette-agent",
  "marionette-assets",
  "marionette-core",
+ "marionette-input",
  "marionette-render",
  "serde",
  "serde_json",

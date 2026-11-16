@@ -1,6 +1,7 @@
 //! The module: scene types, the tick system (anchors, facing, pointer interaction) and the
 //! draw hook that turns panels into world-space quads.
 
+use crate::canvas;
 use crate::components::*;
 use crate::font::FontData;
 use crate::layout::{self, Rect};
@@ -12,6 +13,7 @@ use marionette_core::builtin::{DEFAULT_DT, FixedStep, Position};
 use marionette_core::module::{Module, SceneDir, Stage};
 use marionette_core::scene::SceneId;
 use marionette_core::spatial::{Camera, QuadContext, QuadDrawHooks, QuadVertex, Transform, WorldQuads};
+use marionette_core::ui::{UiButton, UiClip, UiNode, UiOnCanvas, UiRect, UiText};
 use marionette_core::{Diagnostic, Errors, Registry, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -37,11 +39,17 @@ impl Module for Ui3dModule {
         r.register_component::<UiPanel>();
         r.register_component::<UiContent>();
         r.register_component::<UiAnchor>();
+        r.register_component::<UiCanvas>();
         r.register_resource::<UiFontConfig>();
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {
         schedule.add_systems(ui_tick.in_set(Stage::Logic));
+        schedule.add_systems(
+            canvas_taps
+                .in_set(Stage::Input)
+                .after(marionette_input::InputApplied),
+        );
     }
 
     fn init(&self, world: &mut World) -> Result<()> {
@@ -220,7 +228,12 @@ struct Hit {
 }
 
 fn hit(info: &PanelInfo, p: &UiPointer) -> Option<Hit> {
-    let n = info.rot * Vec3::Z;
+    plane_hit(info.centre, info.rot, info.panel.size.x, info.panel.size.y, p)
+}
+
+/// Where pointer `p` meets a `w` x `h` rectangle centred at `centre` facing `rot * +Z`.
+fn plane_hit(centre: Vec3, rot: Quat, w: f32, h: f32, p: &UiPointer) -> Option<Hit> {
+    let n = rot * Vec3::Z;
     let o = Vec3::from(p.origin);
     let (point, dist) = match p.kind {
         PointerKind::Ray => {
@@ -229,22 +242,21 @@ fn hit(info: &PanelInfo, p: &UiPointer) -> Option<Hit> {
             if denom >= -1e-6 {
                 return None;
             }
-            let t = (info.centre - o).dot(n) / denom;
+            let t = (centre - o).dot(n) / denom;
             if t < 0.0 {
                 return None;
             }
             (o + d * t, t * d.length())
         }
         PointerKind::Touch => {
-            let d = (o - info.centre).dot(n);
+            let d = (o - centre).dot(n);
             if !(-TOUCH_BEHIND..=TOUCH_HOVER).contains(&d) {
                 return None;
             }
             (o - n * d, d.abs())
         }
     };
-    let local = info.rot.inverse() * (point - info.centre);
-    let (w, h) = (info.panel.size.x, info.panel.size.y);
+    let local = rot.inverse() * (point - centre);
     let (x, y) = (local.x + w / 2.0, h / 2.0 - local.y);
     Some(Hit {
         dist,
@@ -255,13 +267,81 @@ fn hit(info: &PanelInfo, p: &UiPointer) -> Option<Hit> {
 }
 
 fn pressed(p: &UiPointer, h: Option<&Hit>, info: Option<&PanelInfo>) -> bool {
+    pressed_at(p, h, info.map(|i| (i.centre, i.rot)))
+}
+
+fn pressed_at(p: &UiPointer, h: Option<&Hit>, plane: Option<(Vec3, Quat)>) -> bool {
     match p.kind {
         PointerKind::Ray => p.pressed,
-        PointerKind::Touch => info.is_some_and(|i| {
-            let n = i.rot * Vec3::Z;
-            (Vec3::from(p.origin) - i.centre).dot(n) <= TOUCH_PRESS && h.is_some()
+        PointerKind::Touch => plane.is_some_and(|(centre, rot)| {
+            let n = rot * Vec3::Z;
+            (Vec3::from(p.origin) - centre).dot(n) <= TOUCH_PRESS && h.is_some()
         }),
     }
+}
+
+struct CanvasInfo {
+    id: u64,
+    centre: Vec3,
+    rot: Quat,
+    canvas: UiCanvas,
+}
+
+fn canvases(world: &World) -> Vec<CanvasInfo> {
+    let Some(mut q) = world.try_query::<(&SceneId, &UiCanvas, Option<&Transform>, Option<&Position>)>()
+    else {
+        return Vec::new();
+    };
+    let mut out: Vec<CanvasInfo> = q
+        .iter(world)
+        .map(|(id, c, t, p)| {
+            let (centre, rot) = pose(t, p);
+            CanvasInfo {
+                id: id.0,
+                centre,
+                rot,
+                canvas: *c,
+            }
+        })
+        .collect();
+    out.sort_by_key(|c| c.id);
+    out
+}
+
+/// The nodes on canvas `id`, in draw order.
+fn canvas_nodes(world: &World, id: u64) -> Vec<canvas::CanvasNode> {
+    let Some(mut q) = world.try_query::<(
+        &SceneId,
+        &UiOnCanvas,
+        &UiNode,
+        Option<&UiRect>,
+        Option<&UiText>,
+        Option<&UiClip>,
+        Option<&UiButton>,
+    )>() else {
+        return Vec::new();
+    };
+    let mut out: Vec<canvas::CanvasNode> = q
+        .iter(world)
+        .filter(|(_, on, ..)| on.canvas == id)
+        .map(|(sid, _, node, r, t, clip, b)| canvas::CanvasNode {
+            id: sid.0,
+            node: *node,
+            look: match (r, t) {
+                (Some(r), _) => canvas::CanvasLook::Rect(r.color),
+                (None, Some(t)) => canvas::CanvasLook::Text {
+                    text: t.text.clone(),
+                    size: t.size,
+                    color: t.color,
+                },
+                (None, None) => canvas::CanvasLook::None,
+            },
+            clip: clip.copied(),
+            action: b.map(|b| b.action.clone()).unwrap_or_default(),
+        })
+        .collect();
+    canvas::sort(&mut out);
+    out
 }
 
 /// Item under (x, y), if any (the last drawn wins; spacers and hidden items do not count).
@@ -306,10 +386,51 @@ fn ui_tick(world: &mut World) {
     rt.retain(&live);
     let mut states: BTreeMap<u64, layout::PanelState> = BTreeMap::new();
     let mut clicks: Vec<String> = Vec::new();
+    let boards = canvases(world);
 
     for p in &pointers {
         let was_down = rt.down.get(&p.id).copied().unwrap_or(false);
         let grab = rt.grabs.get(&p.id).map(|g| (g.panel, g.item));
+        // A world canvas nearer than every panel takes the pointer (no panel grab running):
+        // a press there clicks the top-most button under it, as the mouse does on a screen.
+        if grab.is_none() {
+            let board = boards
+                .iter()
+                .filter(|c| c.canvas.interactive)
+                .filter_map(|c| {
+                    plane_hit(c.centre, c.rot, c.canvas.size.x, c.canvas.size.y, p).map(|h| (c, h))
+                })
+                .filter(|(_, h)| h.inside)
+                .min_by(|a, b| a.1.dist.total_cmp(&b.1.dist));
+            let panel_dist = infos
+                .iter()
+                .filter(|i| i.panel.interactive)
+                .filter_map(|i| hit(i, p))
+                .filter(|h| h.inside)
+                .map(|h| h.dist)
+                .fold(f32::INFINITY, f32::min);
+            if let Some((c, h)) = board
+                && h.dist < panel_dist
+            {
+                let down = pressed_at(p, Some(&h), Some((c.centre, c.rot)));
+                if down && !was_down {
+                    let (px, py) = (
+                        h.x / c.canvas.size.x.max(1e-6) * c.canvas.pixels.x,
+                        h.y / c.canvas.size.y.max(1e-6) * c.canvas.pixels.y,
+                    );
+                    let nodes = canvas_nodes(world, c.id);
+                    if let Some(a) = canvas::button_at(&c.canvas, &nodes, px, py)
+                        && rt.taps.len() < MAX_EVENTS
+                    {
+                        // Like a mouse click on a screen button: pressed for the whole next
+                        // tick, so menu code that reads it before `Stage::Logic` sees it.
+                        rt.taps.push(a);
+                    }
+                }
+                rt.down.insert(p.id, down);
+                continue;
+            }
+        }
         // The grabbed panel keeps the pointer even when it slides off it (slider drags).
         let target = match grab {
             Some((panel, _)) => infos
@@ -493,6 +614,20 @@ fn ui_tick(world: &mut World) {
     world.insert_resource(UiEvents(events));
 }
 
+/// Presses the canvas buttons clicked last tick, after the input module set this tick's
+/// actions; the input module lets them go again on the following tick.
+fn canvas_taps(world: &mut World) {
+    let taps = match world.get_resource_mut::<UiRuntime>() {
+        Some(mut rt) if !rt.taps.is_empty() => std::mem::take(&mut rt.taps),
+        _ => return,
+    };
+    if let Some(mut actions) = world.get_resource_mut::<ActionState>() {
+        for a in taps {
+            actions.values.insert(a, 1.0);
+        }
+    }
+}
+
 /// Turns every visible panel into quads, far panels first so blending stacks correctly.
 fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
     let Some(rt) = world.get_resource::<UiRuntime>() else {
@@ -520,7 +655,13 @@ fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
         }
         visible.push((dist, id.0, panel, content, centre, rot));
     }
-    if visible.is_empty() {
+    let boards: Vec<(f32, CanvasInfo)> = canvases(world)
+        .into_iter()
+        .map(|c| (eye.distance(c.centre), c))
+        .filter(|(d, c)| c.canvas.max_distance <= 0.0 || *d <= c.canvas.max_distance)
+        .filter(|(_, c)| (eye - c.centre).dot(c.rot * Vec3::Z) > 0.0)
+        .collect();
+    if visible.is_empty() && boards.is_empty() {
         return;
     }
     visible.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
@@ -545,6 +686,33 @@ fn quad_hook(world: &World, ctx: &QuadContext, out: &mut Vec<WorldQuads>) {
                 (x0, yt, u0, v1),
             ] {
                 let w = centre + rot * Vec3::new(x, y, z);
+                quads.vertices.push(QuadVertex {
+                    position: w.to_array(),
+                    uv: [u, v],
+                    color: quad.color,
+                });
+            }
+        }
+    }
+    // Canvases after panels, far ones first; their nodes in screen draw order.
+    let mut boards = boards;
+    boards.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.id.cmp(&b.1.id)));
+    for (_, c) in boards {
+        let nodes = canvas_nodes(world, c.id);
+        let mesh = canvas::quads(&c.canvas, &nodes, &rt.font);
+        let (hw, hh) = (c.canvas.size.x / 2.0, c.canvas.size.y / 2.0);
+        for quad in &mesh {
+            let r = quad.rect;
+            let (x0, x1) = (r.x - hw, r.x + r.w - hw);
+            let (yt, yb) = (hh - r.y, hh - r.y - r.h);
+            let [u0, v0, u1, v1] = quad.uv;
+            for (x, y, u, v) in [
+                (x0, yb, u0, v0),
+                (x1, yb, u1, v0),
+                (x1, yt, u1, v1),
+                (x0, yt, u0, v1),
+            ] {
+                let w = c.centre + c.rot * Vec3::new(x, y, 0.0);
                 quads.vertices.push(QuadVertex {
                     position: w.to_array(),
                     uv: [u, v],

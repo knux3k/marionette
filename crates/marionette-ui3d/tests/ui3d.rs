@@ -541,3 +541,109 @@ fn heavy_text_cost() {
         },
     );
 }
+
+/// Screen UI nodes on a world canvas (decision 0202): drawn in the world, not on the screen,
+/// and a world ray presses their button as the mouse would on a screen of the canvas's size.
+#[test]
+fn screen_ui_on_a_world_canvas_is_drawn_there_and_a_ray_presses_its_button() {
+    use marionette_core::spatial::Color;
+    use marionette_core::ui::{Anchor, UiButton, UiNode, UiOnCanvas, UiRect, UiText};
+    let mut s = sim();
+    s.world
+        .insert_resource(marionette_core::actions::ActionState::default());
+    let at = |z: f32| Transform {
+        translation: CVec3::new(0.0, 0.0, z),
+        rotation: CQuat {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: 1.0,
+        },
+        scale: CVec3::new(1.0, 1.0, 1.0),
+    };
+    s.world.spawn((SceneId(20), UiCanvas::default(), at(0.0)));
+    let white = Color {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    let node = |offset: Vec2, size: Vec2, layer: i32| UiNode {
+        anchor: Anchor::Center,
+        offset,
+        size,
+        layer,
+    };
+    // A button in the middle of a 1280 x 720 screen, its label, and a node left on the screen.
+    s.world.spawn((
+        SceneId(21),
+        UiOnCanvas { canvas: 20 },
+        node(Vec2 { x: 0.0, y: 0.0 }, Vec2 { x: 200.0, y: 100.0 }, 1),
+        UiRect { color: white },
+        UiButton { action: "go".into() },
+    ));
+    s.world.spawn((
+        SceneId(22),
+        UiOnCanvas { canvas: 20 },
+        node(Vec2 { x: 0.0, y: 0.0 }, Vec2 { x: 100.0, y: 16.0 }, 2),
+        UiText {
+            text: "GO".into(),
+            size: 16.0,
+            color: white,
+        },
+    ));
+    s.world.spawn((
+        SceneId(23),
+        node(Vec2 { x: 0.0, y: 0.0 }, Vec2 { x: 10.0, y: 10.0 }, 0),
+        UiRect { color: white },
+    ));
+    let frame = extract(&s.world);
+    assert_eq!(frame.ui.len(), 1, "only the screen node is drawn on the screen");
+    assert_eq!(frame.ui[0].entity, 23);
+    // One rect and two letters, in the world on the canvas plane.
+    let q = &frame.quads[0];
+    assert_eq!(q.vertices.len(), 3 * 4);
+    assert!(q.vertices.iter().all(|v| v.position[2].abs() < 1e-6));
+    // The button covers 200 / 1280 of the 1.6 m width: 0.25 m wide, centred.
+    let xs: Vec<f32> = q.vertices[..4].iter().map(|v| v.position[0]).collect();
+    assert!(xs.iter().all(|x| (x.abs() - 0.125).abs() < 1e-4), "{xs:?}");
+
+    // A ray from the viewer at the centre presses it; a ray beside it does not.
+    let ray = |x: f32, pressed: bool| UiPointer {
+        id: 0,
+        kind: PointerKind::Ray,
+        origin: [0.0, 0.0, 1.0],
+        direction: [x, 0.0, -1.0],
+        pressed,
+        scroll: 0.0,
+    };
+    let pressed_go = |s: &mut Sim| {
+        s.world
+            .resource::<marionette_core::actions::ActionState>()
+            .values
+            .get("go")
+            .copied()
+            .unwrap_or(0.0)
+    };
+    set_pointer(&mut s, Some(ray(0.5, false)));
+    s.step();
+    set_pointer(&mut s, Some(ray(0.5, true)));
+    s.step();
+    assert_eq!(pressed_go(&mut s), 0.0, "beside the button");
+    set_pointer(&mut s, Some(ray(0.0, false)));
+    s.step();
+    set_pointer(&mut s, Some(ray(0.0, true)));
+    s.step();
+    assert_eq!(
+        pressed_go(&mut s),
+        0.0,
+        "pressed from the next tick, as a mouse click is"
+    );
+    s.step();
+    assert_eq!(pressed_go(&mut s), 1.0, "on the button");
+    assert!(
+        s.world
+            .resource::<marionette_core::actions::ActionState>()
+            .just_pressed("go")
+    );
+}

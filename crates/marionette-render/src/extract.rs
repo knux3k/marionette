@@ -289,7 +289,7 @@ pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
 /// sort by stable id, so the cost is proportional to what is drawn, and the order does not
 /// depend on storage layout.
 pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
-    use marionette_core::ui::{UiClip, UiImage, UiNode, UiRect, UiText};
+    use marionette_core::ui::{UiClip, UiImage, UiNode, UiOnCanvas, UiRect, UiText};
     let mut frame = FrameData::default();
     if let Some(a) = world.get_resource::<AmbientLight>() {
         frame.ambient = Vec3::new(a.color.r, a.color.g, a.color.b) * a.intensity;
@@ -457,14 +457,16 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
             });
         }
     }
-    if let Some(mut q) = world.try_query::<(
+    // Nodes on a world canvas are drawn by the canvas's module, not on the screen.
+    if let Some(mut q) = world.try_query_filtered::<(
         &SceneId,
         &UiNode,
         Option<&UiRect>,
         Option<&UiText>,
         Option<&UiImage>,
         Option<&UiClip>,
-    )>() {
+    ), bevy_ecs::query::Without<UiOnCanvas>>()
+    {
         for (id, node, r, t, i, clip) in q.iter(world) {
             let look = if let Some(r) = r {
                 Some(UiLook::Rect { color: rgba(r.color) })

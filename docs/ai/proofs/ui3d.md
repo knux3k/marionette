@@ -28,3 +28,12 @@ vertices (6.9 MB) per frame in that case, a headset, any font file other than th
 one (the TrueType path compiles and is used by `UiFontConfig`, but no test font is in the
 repository), minified text far away (no mip chain on the atlas; the far view shimmers less
 than a bitmap font but is not filtered).
+
+## World canvas (decision 0202)
+
+`cargo test -p marionette-ui3d`: `screen_ui_on_a_world_canvas_is_drawn_there_and_a_ray_presses_its_button`
+puts a button, its label and a plain screen node in a scene; only the plain node reaches the
+screen extract, the canvas draws one rect and two letters on its plane at the right size
+(200 px of 1280 = 0.25 m of 1.6 m), a ray beside the button sets nothing and a ray on it
+sets its action. Unit tests in `canvas.rs` check pixel-to-meter layout, top-most button by
+layer, clips cutting buttons and text. Not checked: a headset, `UiImage` on a canvas.

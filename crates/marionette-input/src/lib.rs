@@ -314,7 +314,7 @@ impl Module for InputModule {
     }
 
     fn add_systems(&self, schedule: &mut Schedule) {
-        schedule.add_systems(apply_input.in_set(Stage::Input));
+        schedule.add_systems(apply_input.in_set(Stage::Input).in_set(InputApplied));
     }
 
     fn init(&self, world: &mut World) -> Result<()> {
@@ -367,6 +367,11 @@ impl Module for InputModule {
         Ok(())
     }
 }
+
+/// The system that recomputes `ActionState` each tick. Systems that add their own presses for
+/// the tick (a world UI canvas's clicks) run `.after(InputApplied)` in `Stage::Input`.
+#[derive(bevy_ecs::schedule::SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InputApplied;
 
 /// Applies this tick's events and recomputes every action value.
 fn apply_input(world: &mut World) {

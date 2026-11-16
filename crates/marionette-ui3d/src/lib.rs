@@ -5,6 +5,9 @@
 //! - Input hook ([`runtime::UiPointers`]): any source (XR controllers, a mouse ray, a script)
 //!   writes rays or touch points; the panels produce [`runtime::UiEvents`] and change their
 //!   own values. Nothing here depends on a particular input source.
+//! - World canvases ([`components::UiCanvas`], decision 0202): screen UI nodes marked
+//!   `UiOnCanvas` are drawn on a rectangle in the world and pressed by the same pointers, so a
+//!   screen menu becomes a VR menu without changes.
 //! - Drawing: the module registers a `QuadDrawHook`; the renderer draws the quads with a
 //!   distance-field shader, so text is crisp at any size and distance.
 //!
@@ -13,6 +16,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![deny(clippy::clone_on_ref_ptr)]
 
+pub mod canvas;
 pub mod components;
 pub mod font;
 pub mod layout;

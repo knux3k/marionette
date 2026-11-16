@@ -691,6 +691,16 @@ Rust type: `marionette_core::ui::UiNode`.
 | `offset` | object {x, y} | yes |  |
 | `size` | object {x, y} | yes |  |
 
+### `UiOnCanvas`
+
+Draws the node on a world canvas instead of the screen (decision 0202): the canvas entity with scene id `canvas` (a `UiCanvas` of the `ui3d` module) gives the pixel size the node's anchor and offset are measured in, and a world pointer on the canvas presses its [`UiButton`]. The screen renderer and the window's mouse leave such nodes alone, so the same HUD or menu code can draw on a screen or, unchanged, in the world (a VR menu).
+
+Rust type: `marionette_core::ui::UiOnCanvas`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `canvas` | integer | yes |  |
+
 ### `UiRect`
 
 A filled rectangle.
