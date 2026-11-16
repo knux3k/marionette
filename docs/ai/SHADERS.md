@@ -36,7 +36,8 @@ fn vertex(v: ptr<function, Vertex>) { ... }                    // optional
 
 Bindings available to both functions: `game.params[k]` (`vec4`, `k` 0 to 3: material numbers
 `4k` to `4k+3`), `tex0` to `tex3` (`texture_2d<f32>`, white when not given, sampled as sRGB
-color), `game_samp` (linear, repeating). Use `textureSampleLevel` in `vertex`. Everything in
+color; `game:<name>` binds an image made in code, decision 0184), `game_samp` (linear,
+repeating; read pixel art with `textureLoad`). Use `textureSampleLevel` in `vertex`. Everything in
 `crates/marionette-render/src/shaders/pbr.wgsl` is visible too (for example `PI`, `view`).
 
 Options are comment lines anywhere in the source:

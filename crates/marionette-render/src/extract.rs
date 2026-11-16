@@ -58,6 +58,8 @@ pub struct FrameData {
     /// Meshes the game built in code, drawn by `mesh:<name>` assets (decision 0180). One
     /// shared copy: taking it costs a reference count.
     pub game_meshes: marionette_core::mesh::MeshMap,
+    /// Images the game made, drawn by `game:<name>` image names (decision 0184).
+    pub game_images: marionette_core::image::ImageMap,
     /// Shader sources stored by game code (decision 0181).
     pub game_shaders: std::sync::Arc<std::collections::BTreeMap<String, std::sync::Arc<str>>>,
     /// Distinct `ShaderMaterial`s of this frame's meshes (`MeshDraw::shader` indexes this).
@@ -556,6 +558,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
     frame.local_lights = local.into_iter().map(|(_, l)| l).collect();
     if let Some(meshes) = world.get_resource::<marionette_core::mesh::GameMeshes>() {
         frame.game_meshes = meshes.snapshot();
+    }
+    if let Some(images) = world.get_resource::<marionette_core::image::GameImages>() {
+        frame.game_images = images.snapshot();
     }
     {
         let tick = world

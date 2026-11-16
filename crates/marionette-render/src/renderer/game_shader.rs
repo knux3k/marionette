@@ -61,8 +61,8 @@ pub(crate) struct GameShading {
     /// Per shader name: the source it was built from and the result.
     shaders: BTreeMap<String, (Arc<str>, Result<GameShaderGpu, String>)>,
     /// Group 3 per distinct material (key: shader, params bits, textures).
-    groups: BTreeMap<String, wgpu::BindGroup>,
-    textures: BTreeMap<String, Result<wgpu::TextureView, String>>,
+    pub(super) groups: BTreeMap<String, wgpu::BindGroup>,
+    pub(super) textures: BTreeMap<String, Result<wgpu::TextureView, String>>,
     /// Per material of the current frame (`FrameData::shader_materials`, then one per bulk
     /// draw): (shader name, group key), or `None` when it cannot draw yet.
     frame: Vec<Option<(String, String)>>,
@@ -425,8 +425,11 @@ impl Renderer {
         }
         for t in m.textures.iter().take(MAX_SHADER_TEXTURES) {
             if !self.game.as_ref().is_some_and(|g| g.textures.contains_key(t)) {
-                let view = crate::assets::load_image(t, &self.base_dir)
-                    .map(|img| super::create_texture_view(&self.device, &self.queue, &img));
+                let view = match self.game_image_view(t) {
+                    Some(found) => found.map(|(view, ..)| view),
+                    None => crate::assets::load_image(t, &self.base_dir)
+                        .map(|img| super::create_texture_view(&self.device, &self.queue, &img)),
+                };
                 if let Some(g) = self.game.as_mut() {
                     g.textures.insert(t.clone(), view);
                 }
