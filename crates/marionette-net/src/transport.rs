@@ -99,6 +99,10 @@ pub trait Transport {
     fn send(&mut self, to: PeerId, delivery: Delivery, channel: u8, data: &[u8]) -> Result<(), NetError>;
     fn poll(&mut self, now: Micros);
     fn receive(&mut self) -> Option<Packet>;
+    /// Drops everything kept for `peer` (unacknowledged sends, partial messages). Sessions call
+    /// it when a peer leaves or times out, so a long-running host does not keep resending to
+    /// players who are gone.
+    fn forget(&mut self, _peer: PeerId) {}
     fn stats(&self) -> TransportStats {
         TransportStats::default()
     }

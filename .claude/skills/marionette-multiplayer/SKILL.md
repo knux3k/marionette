@@ -34,6 +34,13 @@ input into a frame, clients run frames in order, state hashes are compared every
 - The local player's own avatar and camera should move outside the sim at once and follow the
   sim's result (client input takes a round trip).
 
+## Host-owned worlds (hosted sessions)
+
+Host runs the world and streams it: `marionette_net::HostedHost` and `marionette_net::HostedGuest`, not
+lockstep (0214). Protocol text changes with the wire format; poll transport then session each
+frame; game messages off channel 255; `marionette_net::Endpoint::set_max_message` caps size.
+LAN: `marionette_net::LanBeacon` (host), `marionette_net::LanBrowser` (join page).
+
 ## Achievements, stats, cloud saves
 
 1. Write `*.achievements.json` (format `marionette.achievements`); check it with
@@ -41,7 +48,10 @@ input into a frame, clients run frames in order, state hashes are compared every
    the API names set up on the store's site.
 2. Use a `marionette_platform::Tracker` over `marionette_platform::OfflinePlatform` (tests, no store) or `Steam::platform()`. Call
    `store` at checkpoints, not every tick. Achievements never go in the scene.
-3. Cloud saves: Steam Auto-Cloud on the store's site needs no code; otherwise
+3. Leaderboards and presence: `marionette_platform::{Leaderboards, Presence}` (decision 0215).
+   `find`, then `upload`/`download`; answers come from `poll`, one per request. Keep the
+   game's own best when an answer says `found: false` or `ok: false`.
+4. Cloud saves: Steam Auto-Cloud on the store's site needs no code; otherwise
    `sync_dir(save_folder, &[".save"], cloud)` at start and after each save. A
    `.cloud-conflict` file means both machines changed a save: ask the player.
 
