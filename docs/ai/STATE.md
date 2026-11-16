@@ -13,7 +13,7 @@ check a feature there before building on it, and update its row when your work m
 
 | Line | Topic | Status |
 | --- | --- | --- |
-| 1 | Workspace, CI | Landed: fast check on pull requests, full suite on main, no merge queue on a personal repository (0260); code rules enforced: `unsafe` only in listed FFI files (0104, QuickJS copy reviewed), no `unwrap`/`expect`/`panic!` outside tests (0105). reference counts cloned with `Arc::clone` (0106). |
+| 1 | Workspace, CI | Landed: fast check on PRs, full suite on main, no merge queue on a personal repository (0260); code rules enforced: `unsafe` only in listed FFI files (0104, QuickJS copy reviewed), no `unwrap`/`expect`/`panic!` outside tests (0105). `Arc::clone` for reference counts (0106). |
 | 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
 | 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
@@ -45,7 +45,7 @@ check a feature there before building on it, and update its row when your work m
   their documentation; one agent listed all 15 from the repository unprompted in the session that wrote them; no
   session has been watched choosing one for a task, and other agents reading `.agents/skills` is assumed from the open format.
 - Headsets (0190): only a simulated headset; never worn (SteamVR, hands, haptics, 90 Hz).
-- Game meshes, shaders, 0280-0285 renderer work (0180-0182): lavapipe only.
+- Game meshes, shaders, 0280-0285 renderer work and images (0180-0182, 0184): lavapipe only.
 - Opt-in looks (0063): checked offscreen on one desktop GPU (numbers in the decision);
   not on AMD or Intel GPUs.
 - Bloom, local light shadows, environment, glTF emissive (0064-0067): checked

@@ -65,6 +65,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0181 | Game shaders: WGSL `surface`/`vertex` hooks spliced into the PBR shader (`ShaderMaterial`, `GameShaders`, `.wgsl` files), blend options, game time, `primitive:grid` | accepted |
 | 0182 | Game shader option `// @no_fog`: fog distance times a composed constant, for sky domes and backdrops | accepted |
 | 0183 | Colliders from game meshes: `TriMesh`/`ConvexHull` accept `mesh:<name>`, wait for the mesh, rebuild when it is stored again; `main_with_args` | accepted |
+| 0184 | Images made in game code: `GameImages` resource, `game:<name>` images for sprites, UI, world quads and shader textures, rewritten in place each frame | accepted |
 | 0080 | Frustum culling always on (pixel-identical, shadow casters kept); level of detail opt-in (`LevelOfDetail`, generated levels) | accepted |
 | 0081 | Render scale 0.5 to 2 with a clamped Catmull-Rom upscaler and sharpening (`RenderScale`), opt-in | accepted |
 | 0082 | Foveated rendering by skipping 2x2 quads outside an ellipse and filling them (`Foveation`), opt-in | accepted |

@@ -61,6 +61,8 @@ the data needs structs, 64-bit integers, or the last factor of speed.
   store it with `GameMeshes::set_in(world, "patch", mesh)`, draw `Model { asset:
   "mesh:patch" }`. Storing again rewrites it (same sizes reuse GPU buffers); culling, level of
   detail and shadows apply.
+- Image: `GameImages::set_in(world, "screen", GameImage { .. })`, show `game:screen` in a
+  sprite, UI image, world quad or shader texture; `update` it each frame (same texture).
 - Shader: WGSL with `fn surface(s: ptr<function, Surface>, i: SurfaceIn)` and/or
   `fn vertex(v: ptr<function, Vertex>)`, in a `.wgsl` file or stored with
   `GameShaders::set_in`; add `ShaderMaterial { shader, params, textures }` next to the

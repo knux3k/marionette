@@ -1,4 +1,4 @@
-# Proofs: game meshes and shaders (decisions 0180, 0181, 0183)
+# Proofs: game meshes, images and shaders (decisions 0180, 0181, 0183, 0184)
 
 ## Meshes (0180)
 
@@ -11,6 +11,14 @@
   (131,072 triangles).
 - `cargo test -p marionette-core mesh` (checks, normals, grid, versions).
 - Reference images unchanged (`matches_reference_images`) with the new vertex color attribute.
+
+## Images (0184)
+
+- `cargo test -p marionette-render --test game_image` (GPU, lavapipe): unknown name is
+  `render.asset` and works once stored, same-size `update` draws the new pixels with nothing
+  new cached, resize, removal. `--test game_shader a_game_image_binds_as_a_shader_texture_and_follows_updates`:
+  a `game:` shader texture follows in-place updates and a resize.
+- `cargo test -p marionette-core image` (checks, versions, frames keep their copy).
 
 ## Colliders from game meshes (0183)
 
