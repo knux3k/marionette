@@ -39,7 +39,8 @@ impl marionette_editor::Host for Host<'_> {
     }
     fn after_ticks(&mut self, sim: &mut Sim) {
         if let Some(p) = self.player.as_mut() {
-            for m in p.play_new(sim.events()) {
+            // Real seconds are not tracked here: no Doppler in the editor.
+            for m in p.frame(&mut sim.world, 0.0) {
                 self.note(m);
             }
         }

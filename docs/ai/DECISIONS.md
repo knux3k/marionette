@@ -111,6 +111,7 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0214 | Hosted sessions (host owns the world, guests connect), LAN discovery, received-message cap, `Transport::forget`, lobby invites | accepted |
 | 0215 | Leaderboards and rich presence behind interfaces, offline backend (`marionette-platform`) | accepted |
 | 0220 | Real-time synth crate (lock-free commands, sample-accurate notes, generators, disk streaming), offline render with numeric checks, `audio-check` device run | accepted |
+| 0221 | Game-made sounds (`SoundBank`, `bank:<name>`), synth commands from game systems (`SynthOutbox`), `SoundPitch` and event `pitch`, `Player::frame` | accepted |
 | 0230 | Round worlds: `GravityWell` (summed point gravity), `SphereFluid`, `PlanetCharacter` with up from gravity, `MoveIntent` in core | accepted |
 | 0231 | Navigation on round, changing worlds: cube-sphere cell grid per `NavSurface`, ground probing, `NavObstacle` stamps, crate `marionette-nav` | accepted |
 | 0232 | Many agents: capped search queue, shared goal searches, weighted A*, galloping smoothing, parallel steering, `Jobs::map_chunks_heavy` | accepted |

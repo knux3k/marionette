@@ -4,7 +4,11 @@
 //! heads between fixed ticks. Music stems start on one clock tick, so they stay in sync.
 
 use crate::music::Music;
-use crate::{AudioSource, Ear, Heard, OPEN_HZ, SoundSpatial, hear, listener_ear, load_sound, place};
+use crate::synth_host::SynthHost;
+use crate::{
+    AudioSource, Ear, Heard, OPEN_HZ, SoundBank, SoundPitch, SoundSpatial, SynthOutbox, hear, listener_ear,
+    load_sound, place,
+};
 use bevy_ecs::prelude::*;
 use kira::clock::{ClockHandle, ClockSpeed, ClockTime};
 use kira::effect::filter::{FilterBuilder, FilterHandle};
@@ -16,6 +20,7 @@ use marionette_core::module::EventLog;
 use marionette_core::scene::SceneId;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Most voices followed at once (bounded, MEMORY-AND-CRASHES.md). Past it, new one-shots
@@ -38,6 +43,17 @@ fn glide() -> Tween {
     Tween {
         duration: GLIDE,
         ..Default::default()
+    }
+}
+
+/// A bank sound as kira data: each mono sample on both channels (one copy, at conversion).
+pub(crate) fn bank_data(sound: &crate::BankSound) -> StaticSoundData {
+    let frames: Arc<[kira::Frame]> = sound.samples.iter().map(|v| kira::Frame::from_mono(*v)).collect();
+    StaticSoundData {
+        sample_rate: sound.rate,
+        frames,
+        settings: Default::default(),
+        slice: None,
     }
 }
 
@@ -67,6 +83,11 @@ pub struct Player {
     music: BTreeMap<u64, MusicVoice>,
     head: Option<([f32; 3], [f32; 4])>,
     last_ear: Option<[f32; 3]>,
+    /// The `SoundBank` buffers already converted (by `bank:` name), to convert each once.
+    bank_seen: BTreeMap<String, Arc<[f32]>>,
+    bank_version: Option<u64>,
+    /// The synth started for the world's `SynthOutbox` (decision 0221).
+    synth: Option<SynthHost>,
 }
 
 impl Player {
@@ -82,6 +103,9 @@ impl Player {
             music: BTreeMap::new(),
             head: None,
             last_ear: None,
+            bank_seen: BTreeMap::new(),
+            bank_version: None,
+            synth: None,
         })
     }
 
@@ -136,9 +160,12 @@ impl Player {
                 gain: detail["gain"].as_f64().unwrap_or(1.0) as f32,
                 pan: detail["pan"].as_f64().unwrap_or(0.0) as f32,
                 lowpass_hz: detail["lowpass_hz"].as_f64().unwrap_or(OPEN_HZ as f64) as f32,
-                pitch: 1.0,
+                pitch: detail["pitch"].as_f64().unwrap_or(1.0).clamp(0.05, 8.0) as f32,
             };
-            let mut data = base.volume(db(heard.gain)).panning(Panning(heard.pan));
+            let mut data = base
+                .volume(db(heard.gain))
+                .panning(Panning(heard.pan))
+                .playback_rate(PlaybackRate(heard.pitch as f64));
             if looping {
                 data = data.loop_region(..);
             }
@@ -206,17 +233,26 @@ impl Player {
             }
             self.last_ear = Some(e.position);
         }
-        let mut q = world.query::<(Entity, &SceneId, &AudioSource, Option<&SoundSpatial>)>();
-        let sources: BTreeMap<u64, (Entity, AudioSource, Option<SoundSpatial>)> = q
+        let mut q = world.query::<(
+            Entity,
+            &SceneId,
+            &AudioSource,
+            Option<&SoundSpatial>,
+            Option<&SoundPitch>,
+        )>();
+        #[allow(clippy::type_complexity)]
+        let sources: BTreeMap<u64, (Entity, AudioSource, Option<SoundSpatial>, f32)> = q
             .iter(world)
-            .map(|(e, id, s, sp)| (id.0, (e, s.clone(), sp.copied())))
+            // Owned copies: the world is read again (places) while these are used.
+            .map(|(e, id, s, sp, pi)| (id.0, (e, s.clone(), sp.copied(), pi.map_or(1.0, |p| p.rate))))
             .collect();
         let mut keep = Vec::with_capacity(self.voices.len());
         for mut v in std::mem::take(&mut self.voices) {
             if v.handle.state() == PlaybackState::Stopped {
                 continue;
             }
-            let Some((entity, source, spatial)) = sources.get(&v.id).filter(|(_, s, _)| s.sound == v.sound)
+            let Some((entity, source, spatial, rate)) =
+                sources.get(&v.id).filter(|(_, s, _, _)| s.sound == v.sound)
             else {
                 if v.looping {
                     v.handle.stop(glide());
@@ -233,7 +269,8 @@ impl Player {
             let h = hear(ear.as_ref(), pos, velocity, source.volume, spatial.as_ref());
             v.handle.set_volume(db(h.gain), glide());
             v.handle.set_panning(Panning(h.pan), glide());
-            v.handle.set_playback_rate(PlaybackRate(h.pitch as f64), glide());
+            v.handle
+                .set_playback_rate(PlaybackRate((h.pitch * rate).clamp(0.05, 8.0) as f64), glide());
             if let Some((_, f)) = v.filter.as_mut() {
                 f.set_cutoff(h.lowpass_hz as f64, glide());
             }
@@ -242,6 +279,82 @@ impl Player {
         self.voices = keep;
         self.update_music(world, &mut problems);
         problems
+    }
+
+    /// The whole per-frame job of a windowed runner: converts new `SoundBank` sounds, plays
+    /// new `sound` events, follows playing voices and music, and forwards the world's
+    /// `SynthOutbox` to a synth it starts on first use. Problems are returned, not fatal.
+    pub fn frame(&mut self, world: &mut World, dt: f32) -> Vec<String> {
+        self.sync_bank(world);
+        let mut problems = match world.get_resource::<EventLog>() {
+            Some(log) => self.play_new(log),
+            None => Vec::new(),
+        };
+        problems.extend(self.update(world, dt));
+        self.drain_outbox(world, &mut problems);
+        problems
+    }
+
+    /// Converts `SoundBank` buffers the player has not seen into kira data (mono to stereo
+    /// frames, once per buffer) and forgets names the bank no longer has.
+    fn sync_bank(&mut self, world: &World) {
+        let Some(bank) = world.get_resource::<SoundBank>() else {
+            return;
+        };
+        if self.bank_version == Some(bank.version()) {
+            return;
+        }
+        self.bank_version = Some(bank.version());
+        let gone: Vec<String> = self
+            .bank_seen
+            .keys()
+            .filter(|k| k.strip_prefix("bank:").is_none_or(|n| !bank.contains(n)))
+            .cloned()
+            .collect();
+        for k in gone {
+            self.bank_seen.remove(&k);
+            self.cache.remove(&k);
+        }
+        for (name, sound) in bank.iter() {
+            let key = format!("bank:{name}");
+            if self
+                .bank_seen
+                .get(&key)
+                .is_some_and(|a| Arc::ptr_eq(a, &sound.samples))
+            {
+                continue;
+            }
+            self.cache.insert(key.clone(), bank_data(sound));
+            self.bank_seen.insert(key, Arc::clone(&sound.samples));
+        }
+    }
+
+    fn drain_outbox(&mut self, world: &mut World, problems: &mut Vec<String>) {
+        let Some(mut out) = world.get_resource_mut::<SynthOutbox>() else {
+            return;
+        };
+        if self.synth.is_none() && !out.is_empty() {
+            match self.start_synth(out.voices.clamp(1, 256)) {
+                Ok(host) => self.synth = Some(host),
+                Err(e) => {
+                    problems.push(e);
+                    out.take();
+                    return;
+                }
+            }
+        }
+        let Some(host) = self.synth.as_mut() else {
+            return;
+        };
+        for c in out.take() {
+            if !host.handle.send(c) {
+                out.refused += 1;
+            }
+        }
+        host.handle.free_trash();
+        out.live = true;
+        out.rate = host.handle.stats().rate();
+        out.now = host.handle.now();
     }
 
     fn update_music(&mut self, world: &mut World, problems: &mut Vec<String>) {

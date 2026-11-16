@@ -33,6 +33,15 @@ never blocks it. Nothing in the callback allocates or locks (a test counts alloc
 - Long music and ambience: `open_stream(path, stats, settings)` then `install` the source.
   Only a ring of about a second is in memory. WAV and OGG; the file may be any rate.
 
+## From a game module (systems see only the world)
+
+- Sounds made in code: fill `marionette_audio::SoundBank` (`insert(name, rate, Arc<[f32]>)`,
+  mono, bounded) and play them as `bank:<name>` from an `AudioSource` or a `sound` event.
+  `SoundPitch { rate }` on the entity (or `pitch` in the event detail) sets the playback rate.
+- Synth notes and generators: push synth commands into `marionette_audio::SynthOutbox`; the windowed
+  player starts a synth on first use and forwards them each frame. `live`, `rate` and `now`
+  are written back; headless nothing plays (bounded, counted in `dropped`).
+
 ## On the real device
 
 `marionette audio-check --seconds 8 --voices 64` plays a stress run and reports
