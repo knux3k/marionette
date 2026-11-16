@@ -388,6 +388,12 @@ pub struct Foveation {
     pub inner_radius: f32,
 }
 
+/// Put on an entity to stop drawing it without removing it: its model, sprite, particles and
+/// lights are skipped until the component is taken off again (decision 0320). Physics,
+/// scripts and children are untouched; a child is hidden only if it has its own `Hidden`.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Hidden;
+
 /// Put on an entity with a `PointLight` or `SpotLight` to make that light cast shadows.
 /// A spot light uses one shadow map, a point light six (one per cube face); at most 24
 /// maps per frame, given to lights in entity id order (decision 0065). A model on the same

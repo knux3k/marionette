@@ -298,6 +298,15 @@ Rust type: `marionette_xr::Held`.
 | `offset_rotation` | object {w, x, y, z} | yes | Rotation as a unit quaternion (x, y, z, w). Identity is (0, 0, 0, 1). |
 | `offset_translation` | object {x, y, z} | yes | The object's pose relative to the grip. |
 
+### `Hidden`
+
+Put on an entity to stop drawing it without removing it: its model, sprite, particles and lights are skipped until the component is taken off again (decision 0320). Physics, scripts and children are untouched; a child is hidden only if it has its own `Hidden`.
+
+Rust type: `marionette_core::spatial::Hidden`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+
 ### `JobData`
 
 Named typed arrays that job functions read and write in place (decision 0070). Names are unique per entity. Saved with the scene and part of the state hash; keep arrays to what the game needs (every element is written in snapshots).
