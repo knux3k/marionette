@@ -1135,6 +1135,20 @@ type UiButton = {
   action: string;
 };
 
+/** Clips a node to a screen rectangle placed like a [`UiNode`] (decision 0175): the parts of the node outside it are not drawn and take no clicks. A scrolling list or a panned map puts the same clip on every node inside its view. */
+type UiClip = {
+  /** The screen point a node is placed relative to. */
+  anchor: "TopLeft" | "Top" | "TopRight" | "Left" | "Center" | "Right" | "BottomLeft" | "Bottom" | "BottomRight";
+  offset: {
+    x: number;
+    y: number;
+  };
+  size: {
+    x: number;
+    y: number;
+  };
+};
+
 /** An image (PNG relative to the scene, or a `builtin:` image) stretched over the node. */
 type UiImage = {
   /** Linear RGBA color, each channel 0..1. */
@@ -1384,6 +1398,7 @@ interface Components {
   SpriteRegion: SpriteRegion;
   Transform: Transform;
   UiButton: UiButton;
+  UiClip: UiClip;
   UiImage: UiImage;
   UiNode: UiNode;
   UiRect: UiRect;

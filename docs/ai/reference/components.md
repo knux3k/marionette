@@ -655,6 +655,18 @@ Rust type: `marionette_core::ui::UiButton`.
 | --- | --- | --- | --- |
 | `action` | string | yes |  |
 
+### `UiClip`
+
+Clips a node to a screen rectangle placed like a [`UiNode`] (decision 0175): the parts of the node outside it are not drawn and take no clicks. A scrolling list or a panned map puts the same clip on every node inside its view.
+
+Rust type: `marionette_core::ui::UiClip`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `anchor` | "TopLeft" \| "Top" \| "TopRight" \| "Left" \| "Center" \| "Right" \| "BottomLeft" \| "Bottom" \| "BottomRight" | yes | The screen point a node is placed relative to. |
+| `offset` | object {x, y} | yes |  |
+| `size` | object {x, y} | yes |  |
+
 ### `UiImage`
 
 An image (PNG relative to the scene, or a `builtin:` image) stretched over the node.

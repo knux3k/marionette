@@ -128,6 +128,7 @@ pub fn register_builtins(registry: &mut Registry) {
     registry.register_component::<ui::UiText>();
     registry.register_component::<ui::UiImage>();
     registry.register_component::<ui::UiButton>();
+    registry.register_component::<ui::UiClip>();
     registry.register_resource::<ui::WindowControl>();
 }
 

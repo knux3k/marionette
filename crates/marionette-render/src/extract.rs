@@ -139,6 +139,8 @@ pub struct UiDraw {
     pub entity: u64,
     pub node: marionette_core::ui::UiNode,
     pub look: UiLook,
+    /// Only the part inside this rectangle is drawn (decision 0175).
+    pub clip: Option<marionette_core::ui::UiClip>,
 }
 
 impl UiLook {
@@ -287,7 +289,7 @@ pub fn extract(world: &bevy_ecs::world::World) -> FrameData {
 /// sort by stable id, so the cost is proportional to what is drawn, and the order does not
 /// depend on storage layout.
 pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
-    use marionette_core::ui::{UiImage, UiNode, UiRect, UiText};
+    use marionette_core::ui::{UiClip, UiImage, UiNode, UiRect, UiText};
     let mut frame = FrameData::default();
     if let Some(a) = world.get_resource::<AmbientLight>() {
         frame.ambient = Vec3::new(a.color.r, a.color.g, a.color.b) * a.intensity;
@@ -461,8 +463,9 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
         Option<&UiRect>,
         Option<&UiText>,
         Option<&UiImage>,
+        Option<&UiClip>,
     )>() {
-        for (id, node, r, t, i) in q.iter(world) {
+        for (id, node, r, t, i, clip) in q.iter(world) {
             let look = if let Some(r) = r {
                 Some(UiLook::Rect { color: rgba(r.color) })
             } else if let Some(t) = t {
@@ -482,6 +485,7 @@ pub fn extract_at(world: &bevy_ecs::world::World, alpha: f32) -> FrameData {
                     entity: id.0,
                     node: *node,
                     look,
+                    clip: clip.copied(),
                 });
             }
         }

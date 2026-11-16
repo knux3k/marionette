@@ -2661,9 +2661,18 @@ impl Renderer {
                     continue;
                 };
                 let (x, y, w, h) = marionette_core::ui::layout(&u.node, sw, sh);
+                let clip = u.clip.map(|c| c.rect(sw, sh));
                 let start = ui_idx.len() as u32;
                 let mut quad =
                     |x0: f32, y0: f32, x1: f32, y1: f32, uv0: [f32; 2], uv1: [f32; 2], color: [f32; 4]| {
+                        // Clipped nodes lose what lies outside their clip (decision 0175).
+                        let ([x0, y0, x1, y1], uv0, uv1) = match clip {
+                            Some(c) => match marionette_core::ui::clip_quad([x0, y0, x1, y1], uv0, uv1, c) {
+                                Some(cut) => cut,
+                                None => return,
+                            },
+                            None => ([x0, y0, x1, y1], uv0, uv1),
+                        };
                         let base = uv.len() as u32;
                         for (px, py, tu, tv) in [
                             (x0, y0, uv0[0], uv0[1]),
