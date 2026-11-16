@@ -134,7 +134,9 @@ with ray queries.
 
 Meshes built in game code (`GameMeshes`, `mesh:<name>` assets, decision 0180) become
 ordinary one-part GPU models in `renderer/game_mesh.rs`, re-uploaded (in place when sizes
-match) when their version changes. Game shaders (`ShaderMaterial`, decision 0181,
+match) when their version changes. Images made in game code (`GameImages`, `game:<name>`, decision 0184) get one GPU texture each
+in `renderer/game_image.rs`, written in place when a new version keeps the size.
+Game shaders (`ShaderMaterial`, decision 0181,
 `renderer/game_shader.rs`) splice a game's WGSL `surface`/`vertex` functions into
 `pbr.wgsl`'s hook block; their material data is bind group 3 and the shader slot is part of
 the instanced group key.
