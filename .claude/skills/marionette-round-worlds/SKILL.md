@@ -26,6 +26,8 @@ All opt-in components; set the scene's `PhysicsSettings` gravity to zero when we
    follows it when the mesh is stored again after an edit.
 4. Scripts or AI steer it with `MoveIntent` (world velocity, `jump`) instead of actions.
 5. VR: put `XrCharacter` on the rig with this body (skill `marionette-make-vr`).
+6. Moves placed by game code (a climb, a grapple swing, a vault): insert `CharacterPlaced` and
+   set the `Transform` each tick; remove it to hand the body back (works on flat worlds too).
 
 ## Navigation
 

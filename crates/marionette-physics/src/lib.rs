@@ -131,6 +131,7 @@ impl Module for PhysicsModule {
         r.register_component::<CharacterController>();
         r.register_component::<CharacterState>();
         r.register_component::<CharacterInput>();
+        r.register_component::<CharacterPlaced>();
         r.register_component::<CollisionLayers>();
         r.register_component::<ContinuousCollision>();
         r.register_component::<ExternalForce>();

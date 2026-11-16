@@ -6,6 +6,10 @@
   20 m planet, staying 0.8 m above the ground (within 0.15 m) with up radial (cosine above
   0.999) every tick and reaching the far side; a dynamic crate falls and rests on the planet;
   a character on a moon with a ranged well stands on the moon; runs repeat bit for bit.
+- `cargo test -p marionette-physics --test character_placed` (decision 0312): with
+  `CharacterPlaced` a character on a round world holds the pose game code sets for 60 ticks
+  (no walking, no gravity, turned as set), follows a new pose next tick, and falls back onto
+  the ground once it is removed; runs repeat bit for bit.
 - `cargo test -p marionette-physics --lib planet`: gravity falls with distance and is linear
   inside, `range` cuts a well off, quaternion helpers, jetpack thrust and jumps, a neutral
   fluid floats and damps, up turns at `align_speed`.
