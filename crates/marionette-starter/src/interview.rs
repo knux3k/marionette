@@ -488,13 +488,11 @@ fn pitch(b: &Brief, prompt_text: &str) -> String {
             .to_string()
     };
     let verb = match b.template {
-        Template::Maze if b.pickup_count.is_some() => "collect",
         Template::Maze => "collect all the",
         Template::Platformer => "run, jump and grab the",
     };
-    let how_many = b.pickup_count.map_or(String::new(), |n| format!("{n} "));
     format!(
-        "Play as {}: {verb} {how_many}{}, avoid {} and reach {}. From the prompt: \"{}\"",
+        "Play as {}: {verb} {}, avoid {} and reach {}. From the prompt: \"{}\"",
         d("player"),
         b.words.pickups,
         d("enemy"),

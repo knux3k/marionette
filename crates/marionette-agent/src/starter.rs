@@ -534,53 +534,66 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         });
     }
 
-    // The handoff template's STATE.md is generic; say what this game really is. Only a fresh
-    // STATE.md (still holding the template's rows) is touched.
-    if !input.refresh {
-        let state = game.root().join("docs/ai/STATE.md");
-        if let Ok(text) = std::fs::read_to_string(&state) {
-            let count = |marks: &[char]| {
-                final_map
-                    .iter()
-                    .flat_map(|r| r.chars())
-                    .filter(|c| marks.contains(c))
-                    .count()
-            };
-            let enemy_mark = if brief.template == Template::Maze {
-                'G'
-            } else {
-                'e'
-            };
-            let text = text
-                .replace(
-                    "| Scenes | `scenes/main.scene.json` from the project template. |",
-                    &format!(
-                        "| Game | `{}` ({} {}): {} {}, {} enemies, seed {seed}; the autopilot wins in {:.1} s. |",
-                        brief.title,
-                        brief.template.name(),
-                        if brief.view == View::ThreeD { "3d" } else { "2d" },
-                        count(&['*']),
-                        brief.words.pickups,
-                        count(&[enemy_mark]),
-                        won_tick as f64 / 60.0,
-                    ),
-                )
-                .replace(
-                    "| Tests | `tests/main.test.json` passes. |",
-                    "| Tests | `tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); `game_make` with `refresh` re-pins both. |",
-                );
-            let text = if pending.is_empty() {
-                text
-            } else {
-                text.replacen(
-                    "- Nothing yet.",
-                    "- Some art is still a placeholder shape (`assets/generated/*.recipe.json`); check by running `marionette generate run` and then `game_make` with `refresh`.",
-                    1,
-                )
-            };
-            // A failed write leaves the template text, which is only stale, not wrong.
-            let _ = std::fs::write(&state, text);
+    // The handoff template's STATE.md is generic; say what this game really is. A fresh
+    // STATE.md gets the template's rows replaced; a refresh only rewrites the Game row it
+    // wrote before, so the counts never go stale and hand edits elsewhere stay.
+    let state = game.root().join("docs/ai/STATE.md");
+    if let Ok(text) = std::fs::read_to_string(&state) {
+        let count = |marks: &[char]| {
+            final_map
+                .iter()
+                .flat_map(|r| r.chars())
+                .filter(|c| marks.contains(c))
+                .count()
+        };
+        let enemy_mark = if brief.template == Template::Maze {
+            'G'
+        } else {
+            'e'
+        };
+        let enemies = count(&[enemy_mark]);
+        let game_row = format!(
+            "| Game | `{}` ({} {}): {} {}, {} {}, seed {seed}; the autopilot wins in {:.1} s. |",
+            brief.title,
+            brief.template.name(),
+            if brief.view == View::ThreeD { "3d" } else { "2d" },
+            count(&['*']),
+            brief.words.pickups,
+            enemies,
+            if enemies == 1 { "enemy" } else { "enemies" },
+            autoplay_seconds(won_tick),
+        );
+        let mut text = if input.refresh {
+            text.lines()
+                .map(|l| {
+                    if l.starts_with("| Game |") {
+                        game_row.as_str()
+                    } else {
+                        l
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n"
+        } else {
+            text.replace(
+                "| Scenes | `scenes/main.scene.json` from the project template. |",
+                &game_row,
+            )
+            .replace(
+                "| Tests | `tests/main.test.json` passes. |",
+                "| Tests | `tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); `game_make` with `refresh` re-pins both. |",
+            )
+        };
+        if !input.refresh && !pending.is_empty() {
+            text = text.replacen(
+                "- Nothing yet.",
+                "- Some art is still a placeholder shape (`assets/generated/*.recipe.json`); check by running `marionette generate run` and then `game_make` with `refresh`.",
+                1,
+            );
         }
+        // A failed write leaves the older text, which is only stale, not wrong.
+        let _ = std::fs::write(&state, text);
     }
 
     let tests = game.call("test_run", json!({}))?;
@@ -597,7 +610,7 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         generation,
         autoplay: Autoplay {
             won: true,
-            seconds: (won_tick as f64 / 60.0 * 10.0).round() / 10.0,
+            seconds: autoplay_seconds(won_tick),
             seed,
             tries: tried,
         },
@@ -815,6 +828,11 @@ fn build(
     }
     game.call("batch_run", json!({"file": "build.ops.json"}))?;
     Ok(())
+}
+
+/// Seconds the autopilot needed, to one decimal (the same number in the output and STATE.md).
+fn autoplay_seconds(won_tick: u64) -> f64 {
+    (won_tick as f64 / 60.0 * 10.0).round() / 10.0
 }
 
 fn max_ticks(brief: &Brief, map: &[String]) -> u64 {
