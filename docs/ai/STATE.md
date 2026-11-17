@@ -15,7 +15,7 @@ check a feature there before building on it, and update its row when your work m
 | --- | --- | --- |
 | 1 | Workspace, CI | Landed: fast check on PRs, full suite on main, no merge queue on a personal repository (0260); code rules enforced: `unsafe` only in listed FFI files (0104, QuickJS copy reviewed), no `unwrap`/`expect`/`panic!` outside tests (0105). `Arc::clone` for reference counts (0106). |
 | 2 | Core | Landed: save games (0076), indexed edits (0270), parent and child transforms (0272). |
-| 3 | Renderer | Landed: opt-in looks (0063 to 0067), culling and level of detail (0080), cascades, environments, probes, ray tracing (0090 to 0093), mipmaps, alpha, particles, BC7, stereo (0280 to 0285); optimization pass (0102 to 0109, 0300 to 0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md). Skinned game meshes with game shaders (0185). |
+| 3 | Renderer | Landed: opt-in looks (0063-0067), culling, level of detail (0080), cascades, environments, probes, ray tracing (0090-0093), mipmaps, alpha, particles, BC7, stereo (0280-0285); optimization pass (0102-0109, 0300-0304): realistic scene 6.45 ms vs Unity 13.4 windowed on an RTX 2080 (proofs/performance.md); skinned game meshes (0185). |
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
 | 6 | Input, physics, audio, UI | Landed: joints (0310, 0311), windowed play (0170-0175), game-mesh colliders (0183), 3D sound and music (0075), world UI (0200, 0201), synth (0220), game-made sounds (0221). |
