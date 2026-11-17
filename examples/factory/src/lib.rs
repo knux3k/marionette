@@ -639,6 +639,7 @@ fn draw_items(world: &World, frame: &BulkDrawContext, out: &mut Vec<BulkDraw>) {
             material: Some(*material),
             transforms,
             shader: None,
+            palettes: Vec::new(),
         });
     }
 }

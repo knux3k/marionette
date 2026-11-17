@@ -21,7 +21,7 @@ use wgpu::util::DeviceExt;
 
 mod game_image;
 mod game_mesh;
-mod game_shader;
+pub(crate) mod game_shader;
 pub(crate) mod multiview;
 pub(crate) mod variants;
 
@@ -208,6 +208,8 @@ struct MeshCalls<'a> {
     instances: Option<&'a wgpu::Buffer>,
     skinned: &'a [crate::skinning::SkinnedCall<'a>],
     deform_groups: &'a [wgpu::BindGroup],
+    /// Per skinned call: its game shader and group 3 when it draws with one (decision 0185).
+    skinned_game: &'a [Option<(&'a game_shader::GameShaderGpu, wgpu::BindGroup)>],
     skinned_instances: Option<&'a wgpu::Buffer>,
     /// Empty bind group for groups 1 and 2 of game shader depth pipelines.
     empty_group: Option<&'a wgpu::BindGroup>,
@@ -399,25 +401,39 @@ impl MeshCalls<'_> {
             .skinned
             .iter()
             .zip(self.deform_groups)
-            .filter(|(c, _)| c.look.blended() == (phase == Phase::Blended))
+            .enumerate()
+            .filter(|(_, (c, _))| c.look.blended() == (phase == Phase::Blended))
             // The prepass leaves cut-outs to the lit pass.
-            .filter(|(c, _)| !(c.look.masked && matches!(pipes, Pipes::Depth(_, _, None, _))));
+            .filter(|(_, (c, _))| !(c.look.masked && matches!(pipes, Pipes::Depth(_, _, None, _))));
         if let (Some(ib), false) = (self.skinned_instances, self.skinned.is_empty()) {
             let mut current: *const wgpu::RenderPipeline = std::ptr::null();
             let mut started = false;
-            for (call, group) in skinned_calls {
+            let mut bound_lights: *const wgpu::BindGroup = std::ptr::null();
+            for (i, (call, group)) in skinned_calls {
                 let Some(deform) = &call.part.deform else {
                     continue;
                 };
-                let pipeline = match pipes {
-                    Pipes::Lit(_, skinned, target) => skinned.get(call.look.variant as usize, target),
-                    Pipes::Depth(.., skinned) => skinned,
+                // Skinned game shaders (decision 0185): their own lit pipelines; in depth passes
+                // the standard skinned one (the game's `vertex` function does not move shadows),
+                // and none for shaders that cast no shadows or move vertices in the prepass.
+                let game = self.skinned_game.get(i).and_then(Option::as_ref);
+                let pipeline = match (pipes, game) {
+                    (Pipes::Lit(_, _, target), Some((g, _))) if target != variants::STEREO => {
+                        match &g.skinned {
+                            Some(p) => &p[hdr as usize],
+                            None => continue,
+                        }
+                    }
+                    (Pipes::Lit(_, skinned, target), _) => skinned.get(call.look.variant as usize, target),
+                    (Pipes::Depth(..), Some((g, _))) if !g.options.casts_shadows() => continue,
+                    (Pipes::Depth(..), Some((g, _))) if in_view && g.shadow.is_some() => continue,
+                    (Pipes::Depth(.., skinned), _) => skinned,
                 };
+                let game_lit = lights.is_some()
+                    && game.is_some()
+                    && !matches!(pipes, Pipes::Lit(_, _, variants::STEREO));
                 if !started {
                     pass.set_bind_group(0, view_group, &[offset]);
-                    if let Some(l) = lights {
-                        pass.set_bind_group(1, l, &[]);
-                    }
                     pass.set_vertex_buffer(1, ib.slice(..));
                     started = true;
                 }
@@ -425,10 +441,22 @@ impl MeshCalls<'_> {
                     pass.set_pipeline(pipeline);
                     current = pipeline;
                 }
-                if lights.is_some() {
+                if let Some(l) = lights {
+                    // Game shaders are built against the standard lights group (as above).
+                    let want = match (game_lit, self.game_lights) {
+                        (true, Some(std)) => std,
+                        _ => l,
+                    };
+                    if !std::ptr::eq(bound_lights, want) {
+                        pass.set_bind_group(1, want, &[]);
+                        bound_lights = want;
+                    }
                     pass.set_bind_group(2, call.material, &[]);
                 }
-                pass.set_bind_group(3, group, &[]);
+                match game {
+                    Some((_, game_group)) if game_lit => pass.set_bind_group(3, game_group, &[]),
+                    _ => pass.set_bind_group(3, group, &[]),
+                }
                 pass.set_vertex_buffer(0, call.part.vertices.slice(..));
                 pass.set_vertex_buffer(2, deform.skin_vertices.slice(..));
                 pass.set_index_buffer(call.part.indices.slice(..), wgpu::IndexFormat::Uint32);
@@ -2405,6 +2433,9 @@ impl Renderer {
             };
             let shader = game_slot(bulk.shader.as_ref().map(|_| game_shader::bulk_slot(frame, bi)));
             for (p, part) in model.parts.iter().enumerate() {
+                if part.deform.is_some() {
+                    continue; // a skinned game mesh: drawn by the deforming pass (decision 0185)
+                }
                 let (base_color, params) = instance_material(model, part, bulk.material);
                 let look = part_look(model, part, bulk.material.as_ref());
                 let identity = part.transform == Mat4::IDENTITY;
@@ -2666,6 +2697,14 @@ impl Renderer {
             &built.instances,
             &skinned_calls,
         );
+        // Skinned draws with a game shader get group 3 over this frame's skin buffers.
+        let skinned_game: Vec<Option<(&game_shader::GameShaderGpu, wgpu::BindGroup)>> = skinned_calls
+            .iter()
+            .map(|call| {
+                let game = self.game.as_ref()?;
+                game.skinned_draw(&self.device, call.game?, self.skinning.buffers(call))
+            })
+            .collect();
         for call in &skinned_calls {
             let n = call.instances.end - call.instances.start;
             stats.instances += n;
@@ -2883,6 +2922,7 @@ impl Renderer {
             instances: self.instance_buffer.as_ref(),
             skinned: &skinned_calls,
             deform_groups: &deform_groups,
+            skinned_game: &skinned_game,
             skinned_instances: self.skinning.instances.as_ref(),
             empty_group: self.game.as_ref().map(|g| &g.empty_group),
             game_lights: Some(&self.lights_group),

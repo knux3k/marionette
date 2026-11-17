@@ -110,12 +110,42 @@ impl Deform {
     }
 }
 
+impl Deform {
+    /// Skin data of a game mesh (decision 0185); `None` for a rigid one.
+    pub fn for_game_mesh(device: &wgpu::Device, mesh: &marionette_core::mesh::GameMesh) -> Option<Self> {
+        let n = mesh.positions.len();
+        if mesh.joints.len() != n || mesh.weights.len() != n || n == 0 {
+            return None;
+        }
+        let skin_vertices: Vec<SkinVertex> = mesh
+            .joints
+            .iter()
+            .zip(&mesh.weights)
+            .map(|(&joints, &weights)| SkinVertex { joints, weights })
+            .collect();
+        let skin_vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("game mesh skin vertices"),
+            contents: bytemuck::cast_slice(&skin_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        Some(Self {
+            skin: Some(0),
+            skin_vertices,
+            morph: None,
+            vertex_count: n as u32,
+        })
+    }
+}
+
 pub(crate) struct SkinnedCall<'a> {
     pub part: &'a GpuPart,
     pub material: &'a wgpu::BindGroup,
     /// Pipeline variant of the material (decision 0280).
     pub look: crate::renderer::variants::Look,
     pub instances: std::ops::Range<u32>,
+    /// Game shader material slot (decision 0185), as in `MeshDraw::shader`; drawn with the
+    /// standard skinned shader while that shader cannot draw.
+    pub game: Option<u32>,
 }
 
 pub(crate) struct Skinning {
@@ -158,16 +188,33 @@ fn storage_buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer
     })
 }
 
-const INSTANCE_ATTRS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
+pub(crate) const INSTANCE_ATTRS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
     3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
     7 => Float32x4, 8 => Float32x4, 12 => Float32x4, 9 => Uint32x4
 ];
-const SKIN_ATTRS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![10 => Uint16x4, 11 => Float32x4];
+pub(crate) const SKIN_ATTRS: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![10 => Uint16x4, 11 => Float32x4];
 
 /// The skinned shader: a PBR shader source (plain, or the ray tracing variant) with the
 /// deforming vertex stage appended.
 pub(crate) fn skinned_source(pbr: &str) -> String {
-    [pbr, include_str!("shaders/skinned.wgsl")].join("\n")
+    [
+        pbr,
+        include_str!("shaders/skinned.wgsl"),
+        include_str!("shaders/skin_core.wgsl"),
+    ]
+    .join("\n")
+}
+
+/// A skinned game shader (decision 0185): a composed game shader with the deforming vertex
+/// stage `vs_skinned_hooked` appended, its skin buffers at group 3 bindings 6 to 8.
+pub(crate) fn skinned_game_source(composed: &str) -> String {
+    [
+        composed,
+        include_str!("shaders/skin_core.wgsl"),
+        include_str!("shaders/skinned_game.wgsl"),
+    ]
+    .join("\n")
 }
 
 /// A depth-only skinned pipeline (groups view and deform) from vertex entry `entry`:
@@ -372,6 +419,16 @@ impl Skinning {
         })
     }
 
+    /// The palette, morph weight and morph delta buffers `call` reads this frame (bound at
+    /// group 3 bindings 6 to 8 by skinned game shaders, decision 0185).
+    pub fn buffers<'b>(&'b self, call: &'b SkinnedCall) -> [&'b wgpu::Buffer; 3] {
+        let deltas = match call.part.deform.as_ref().and_then(|d| d.morph.as_ref()) {
+            Some((deltas, _)) => deltas,
+            None => &self.no_deltas,
+        };
+        [&self.palettes, &self.weights, deltas]
+    }
+
     /// Uploads this frame's palettes, morph weights and instances (growing buffers when
     /// needed) and returns the group-3 bind group of each call.
     pub fn upload(
@@ -447,8 +504,8 @@ pub(crate) fn build<'a>(
 ) -> Built<'a> {
     let mut palettes: Vec<[[f32; 4]; 4]> = Vec::new();
     let mut morph_weights: Vec<f32> = Vec::new();
-    let mut groups: BTreeMap<(&str, usize, bool, crate::renderer::variants::Look), Vec<SkinnedInstance>> =
-        BTreeMap::new();
+    type GroupKey<'k> = (&'k str, usize, bool, crate::renderer::variants::Look, Option<u32>);
+    let mut groups: BTreeMap<GroupKey<'_>, Vec<SkinnedInstance>> = BTreeMap::new();
     for draw in &frame.meshes {
         let Some(Ok(model)) = models.get(&*draw.asset) else {
             continue;
@@ -505,7 +562,7 @@ pub(crate) fn build<'a>(
             let (base_color, params) = crate::renderer::instance_material(model, part, draw.material);
             let look = crate::renderer::part_look(model, part, draw.material.as_ref());
             groups
-                .entry((&*draw.asset, p, draw.material.is_some(), look))
+                .entry((&*draw.asset, p, draw.material.is_some(), look, draw.shader))
                 .or_default()
                 .push(SkinnedInstance {
                     inst: InstanceData {
@@ -518,9 +575,54 @@ pub(crate) fn build<'a>(
                 });
         }
     }
+    // Bulk draws of skinned game meshes (decision 0185): one palette per copy, given by the
+    // hook, in the mesh's model space (inverse bind matrices already applied).
+    for (bi, bulk) in frame.bulk.iter().enumerate() {
+        let Some(Ok(model)) = models.get(bulk.asset.as_str()) else {
+            continue;
+        };
+        let slot = bulk
+            .shader
+            .as_ref()
+            .map(|_| crate::renderer::game_shader::bulk_slot(frame, bi));
+        for (p, part) in model.parts.iter().enumerate() {
+            let Some(deform) = &part.deform else {
+                continue;
+            };
+            let joints = deform
+                .skin
+                .and_then(|s| model.skins.get(s))
+                .map_or(1, |s| s.joints.len().max(1));
+            let (base_color, params) = crate::renderer::instance_material(model, part, bulk.material);
+            let look = crate::renderer::part_look(model, part, bulk.material.as_ref());
+            let list = groups
+                .entry((bulk.asset.as_str(), p, bulk.material.is_some(), look, slot))
+                .or_default();
+            list.reserve(bulk.transforms.len());
+            for (i, t) in bulk.transforms.iter().enumerate() {
+                let base = palettes.len() as u32;
+                let given = bulk.palettes.get(i * joints..(i + 1) * joints);
+                for j in 0..joints {
+                    palettes.push(match given {
+                        Some(g) => affine(&g[j]),
+                        None => Mat4::IDENTITY.to_cols_array_2d(),
+                    });
+                }
+                list.push(SkinnedInstance {
+                    inst: InstanceData {
+                        model: affine(t),
+                        base_color,
+                        params,
+                        emissive: [0.0; 4],
+                    },
+                    deform: [base, 0, 0, deform.vertex_count],
+                });
+            }
+        }
+    }
     let mut instances = Vec::new();
     let mut calls = Vec::with_capacity(groups.len());
-    for ((asset, p, overridden, look), list) in groups {
+    for ((asset, p, overridden, look, game), list) in groups {
         let Some(Ok(model)) = models.get(asset) else {
             continue;
         };
@@ -537,6 +639,7 @@ pub(crate) fn build<'a>(
             material,
             look,
             instances: start..instances.len() as u32,
+            game,
         });
     }
     Built {
@@ -545,4 +648,14 @@ pub(crate) fn build<'a>(
         instances,
         calls,
     }
+}
+
+/// A 12-float affine transform (columns x, y, z, translation) as a 4x4 column matrix.
+fn affine(t: &[f32; 12]) -> [[f32; 4]; 4] {
+    [
+        [t[0], t[1], t[2], 0.0],
+        [t[3], t[4], t[5], 0.0],
+        [t[6], t[7], t[8], 0.0],
+        [t[9], t[10], t[11], 1.0],
+    ]
 }

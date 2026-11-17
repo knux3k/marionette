@@ -227,6 +227,7 @@ pub fn draw_job_data(world: &World, _frame: &BulkDrawContext, out: &mut Vec<Bulk
                 material: draw.material,
                 transforms,
                 shader: None,
+                palettes: Vec::new(),
             });
         }
     }

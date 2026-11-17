@@ -54,7 +54,9 @@ A `vertex` function also runs in shadow passes, so moved vertices cast moved sha
 
 ## Limits (v1)
 
-- Skinned or morphed parts keep the standard shader.
+- Morphed glTF parts keep the standard shader. Skinned parts (glTF and skinned game meshes,
+  decision 0185) get a skinned variant of the game shader; its `vertex` function does not run
+  in shadow passes.
 - Blended draws are not sorted back to front between objects.
 - Alpha-cutout (discarding pixels) does not cut shadows.
 - No full-screen or sky shaders yet (draw a sky as an inverted dome with `// @no_fog`, unlit); textures are 8-bit color images.

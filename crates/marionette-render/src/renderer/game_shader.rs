@@ -45,6 +45,10 @@ pub(crate) struct GameShaderGpu {
     /// Depth pipeline that runs the shader's `vertex` function; `None` uses the standard
     /// depth pipeline (no `vertex` function, or the shader casts no shadows).
     pub shadow: Option<wgpu::RenderPipeline>,
+    /// Lit pipelines for skinned meshes (decision 0185): [final target format, HDR target].
+    /// `None` when the skinned variant does not compile (skinned draws then use the standard
+    /// skinned shader).
+    pub skinned: Option<[wgpu::RenderPipeline; 2]>,
 }
 
 /// What a draw with a game shader needs: the shader and its material's group 3.
@@ -53,6 +57,12 @@ pub(crate) type GameDraw<'a> = (&'a GameShaderGpu, &'a wgpu::BindGroup);
 pub(crate) struct GameShading {
     game_layout: wgpu::BindGroupLayout,
     lit_layout: wgpu::PipelineLayout,
+    /// Group 3 of skinned game shaders: the game bindings plus the skin buffers (decision 0185).
+    skinned_layout: wgpu::BindGroupLayout,
+    skinned_lit_layout: wgpu::PipelineLayout,
+    /// The uniform buffer and images of each material group (key as in `groups`), to make the
+    /// skinned groups of a frame.
+    materials: BTreeMap<String, (wgpu::Buffer, Vec<wgpu::TextureView>)>,
     shadow_layout: wgpu::PipelineLayout,
     /// Bound at groups 1 and 2 in depth passes of shaders with a `vertex` function.
     pub empty_group: wgpu::BindGroup,
@@ -86,30 +96,47 @@ impl GameShading {
             },
             count: None,
         };
+        let game_entries = [
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            tex(1),
+            tex(2),
+            tex(3),
+            tex(4),
+            wgpu::BindGroupLayoutEntry {
+                binding: 5,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ];
         let game_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("game shader"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                tex(1),
-                tex(2),
-                tex(3),
-                tex(4),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
+            entries: &game_entries,
+        });
+        let skin = |binding, min| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: std::num::NonZeroU64::new(min),
+            },
+            count: None,
+        };
+        let mut skinned_entries = game_entries.to_vec();
+        skinned_entries.extend([skin(6, 64), skin(7, 4), skin(8, 16)]);
+        let skinned_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("skinned game shader"),
+            entries: &skinned_entries,
         });
         let empty_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("empty"),
@@ -127,6 +154,16 @@ impl GameShading {
                 Some(&r.lights_layout),
                 Some(&r.material_layout),
                 Some(&game_layout),
+            ],
+            immediate_size: 0,
+        });
+        let skinned_lit_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("skinned game shader"),
+            bind_group_layouts: &[
+                Some(&r.view_layout),
+                Some(&r.lights_layout),
+                Some(&r.material_layout),
+                Some(&skinned_layout),
             ],
             immediate_size: 0,
         });
@@ -154,6 +191,9 @@ impl GameShading {
         Self {
             game_layout,
             lit_layout,
+            skinned_layout,
+            skinned_lit_layout,
+            materials: BTreeMap::new(),
             shadow_layout,
             empty_group,
             sampler,
@@ -163,6 +203,41 @@ impl GameShading {
             textures: BTreeMap::new(),
             frame: Vec::new(),
         }
+    }
+
+    /// The skinned pipelines of material slot `slot` and its group 3 over this frame's skin
+    /// buffers (palettes, morph weights, morph deltas), if it can draw skinned (decision 0185).
+    pub fn skinned_draw(
+        &self,
+        device: &wgpu::Device,
+        slot: u32,
+        [palettes, weights, deltas]: [&wgpu::Buffer; 3],
+    ) -> Option<(&GameShaderGpu, wgpu::BindGroup)> {
+        let (shader, key) = self.frame.get(slot as usize)?.as_ref()?;
+        let gpu = self.shaders.get(shader)?.1.as_ref().ok()?;
+        gpu.skinned.as_ref()?;
+        let (uniform, views) = self.materials.get(key)?;
+        fn buffer(binding: u32, b: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
+            wgpu::BindGroupEntry {
+                binding,
+                resource: b.as_entire_binding(),
+            }
+        }
+        let mut entries = vec![buffer(0, uniform)];
+        for (i, v) in views.iter().enumerate() {
+            entries.push(tex(1 + i as u32, v));
+        }
+        entries.push(wgpu::BindGroupEntry {
+            binding: 5,
+            resource: wgpu::BindingResource::Sampler(&self.sampler),
+        });
+        entries.extend([buffer(6, palettes), buffer(7, weights), buffer(8, deltas)]);
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("skinned game shader material"),
+            layout: &self.skinned_layout,
+            entries: &entries,
+        });
+        Some((gpu, group))
     }
 
     /// The shader and group of material slot `slot` this frame, if it can draw.
@@ -416,7 +491,97 @@ impl Renderer {
                 "{err} (the game source starts at line {line} of the composed shader)"
             ));
         }
-        Ok(GameShaderGpu { options, lit, shadow })
+        let skinned = self.build_skinned_game_shader(&options, source, blend);
+        Ok(GameShaderGpu {
+            options,
+            lit,
+            shadow,
+            skinned,
+        })
+    }
+
+    /// The skinned variant of a game shader that compiled (decision 0185); `None` if it
+    /// does not compile (the rigid variant still draws).
+    fn build_skinned_game_shader(
+        &self,
+        options: &ShaderOptions,
+        source: &str,
+        blend: Option<wgpu::BlendState>,
+    ) -> Option<[wgpu::RenderPipeline; 2]> {
+        let (composed, _) = compose(source, options).ok()?;
+        let game = self.game.as_ref()?;
+        let device = &self.device;
+        let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("skinned game shader"),
+            source: wgpu::ShaderSource::Wgsl(crate::skinning::skinned_game_source(&composed).into()),
+        });
+        let buffers = [
+            Some(wgpu::VertexBufferLayout {
+                array_stride: size_of::<MeshVertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &MESH_ATTRS,
+            }),
+            Some(wgpu::VertexBufferLayout {
+                array_stride: size_of::<crate::skinning::SkinnedInstance>() as u64,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: &crate::skinning::INSTANCE_ATTRS,
+            }),
+            Some(wgpu::VertexBufferLayout {
+                array_stride: size_of::<crate::skinning::SkinVertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &crate::skinning::SKIN_ATTRS,
+            }),
+        ];
+        let lit_for = |format: wgpu::TextureFormat| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("skinned game shader"),
+                layout: Some(&game.skinned_lit_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_skinned_hooked"),
+                    compilation_options: Default::default(),
+                    buffers: &buffers,
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: if options.double_sided {
+                        None
+                    } else {
+                        Some(wgpu::Face::Back)
+                    },
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(options.blend == ShaderBlend::Opaque),
+                    depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: self.sample_count,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let lit = [lit_for(self.color_format), lit_for(crate::post::HDR_FORMAT)];
+        match pollster::block_on(scope.pop()) {
+            Some(_) => None,
+            None => Some(lit),
+        }
     }
 
     fn ensure_game_group(&mut self, key: &str, m: &ShaderMaterial) -> Result<(), String> {
@@ -474,6 +639,10 @@ impl Renderer {
             ],
         });
         game.groups.insert(key.to_string(), group);
+        // Kept to make the skinned groups of a frame (decision 0185); views are reference
+        // counted handles.
+        let views = views.into_iter().cloned().collect();
+        game.materials.insert(key.to_string(), (uniform, views));
         Ok(())
     }
 }

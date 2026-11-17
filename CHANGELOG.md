@@ -25,7 +25,7 @@ First public release. Feature levels (slice, usable, proven) are in `docs/ai/STA
 - `marionette make`: interview, brief and a playable, tested maze or platformer (2D or 3D),
   proven winnable by an autopilot.
 - TypeScript gameplay scripts with hot reload; parallel TypeScript jobs compiled to WebAssembly;
-  game modules in Rust without forking the engine; game WGSL shaders and meshes made in code.
+  game modules in Rust without forking the engine; game WGSL shaders and meshes made in code, skinned meshes bent per copy by joint palettes.
 - Physics (Rapier) with joints and character bodies; navigation and gravity on round planets.
 - Input with keyboard, mouse and gamepads; windowed play; save slots with autosave and migration.
 - Audio files, 3D sound, layered music, a synth and streamed audio.
