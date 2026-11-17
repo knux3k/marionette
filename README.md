@@ -91,7 +91,8 @@ Every command and flag: [docs/ai/reference/cli.md](docs/ai/reference/cli.md). Ev
 - People: [Getting started](docs/GETTING-STARTED.md),
   [Connect your AI](docs/CONNECT-YOUR-AI.md), [Changelog](CHANGELOG.md),
   [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), [Design](docs/DESIGN.md).
-- AI agents: start at [docs/ai/START-HERE.md](docs/ai/START-HERE.md) and
+- AI agents making a game with the engine: the `marionette-make-game` skill in `.claude/skills`
+  and [Getting started](docs/GETTING-STARTED.md). AI agents changing the engine: start at [docs/ai/START-HERE.md](docs/ai/START-HERE.md) and
   [AGENTS.md](AGENTS.md) (the same as [CLAUDE.md](CLAUDE.md)). The `docs/ai` folder is written
   for agents: short, exact and checked by tests. Decisions are in [docs/decisions/](docs/decisions/).
 

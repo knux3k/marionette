@@ -219,6 +219,11 @@ struct MakeInput {
     /// providers.json, keys and spend caps), then use what was built.
     #[serde(default)]
     generate: bool,
+    /// With `refresh`: replace the script's CONFIG block even though it was edited by hand
+    /// (the old block is saved to `.config.backup`). Without it, a hand-edited block stops the
+    /// refresh.
+    #[serde(default)]
+    overwrite_config: bool,
     /// Seeds to try when the autopilot cannot win a level (default 8).
     #[serde(default)]
     tries: Option<u32>,
@@ -273,6 +278,9 @@ struct MakeOutput {
 }
 
 const BRIEF_FILE: &str = "brief.json";
+/// The CONFIG block the last build wrote, to tell a hand edit from the starter's own output.
+const GENERATED_CONFIG: &str = ".config.generated";
+const CONFIG_BACKUP: &str = ".config.backup";
 const INTERVIEW_FILE: &str = "interview.json";
 
 fn pretty(v: &impl Serialize) -> Result<String, Errors> {
@@ -422,14 +430,23 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
     // Level: the brief's seed first; if the autopilot cannot win it, the next seeds.
     let tries = input.tries.unwrap_or(8).clamp(1, 64);
     let mut outcome = None;
+    let mut final_map: Vec<String> = Vec::new();
     let mut seed = brief.seed;
     for attempt in 0..tries {
         seed = brief.seed + attempt as u64;
         let map = template::level(&brief, seed);
-        build(&mut game, &brief, &art, &map, input.refresh)?;
+        build(
+            &mut game,
+            &brief,
+            &art,
+            &map,
+            input.refresh,
+            input.overwrite_config,
+        )?;
         let limit = max_ticks(&brief, &map);
         if let Some(t) = autoplay_win(&game, limit)? {
             outcome = Some((t, attempt + 1));
+            final_map = map;
             break;
         }
     }
@@ -464,7 +481,12 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
         &mut files,
     )?;
     write(&game, BRIEF_FILE, pretty(&brief)?, &mut files)?;
-    write(&game, "README.md", template::readme(&brief), &mut files)?;
+    write(
+        &game,
+        "README.md",
+        template::readme(&brief, &final_map),
+        &mut files,
+    )?;
     files.extend([
         template::SCRIPT.to_string(),
         "build.ops.json".into(),
@@ -510,6 +532,55 @@ fn make_op(agent: &mut Agent, input: MakeInput) -> Result<MakeOutput, Errors> {
                     .join("; ")
             ),
         });
+    }
+
+    // The handoff template's STATE.md is generic; say what this game really is. Only a fresh
+    // STATE.md (still holding the template's rows) is touched.
+    if !input.refresh {
+        let state = game.root().join("docs/ai/STATE.md");
+        if let Ok(text) = std::fs::read_to_string(&state) {
+            let count = |marks: &[char]| {
+                final_map
+                    .iter()
+                    .flat_map(|r| r.chars())
+                    .filter(|c| marks.contains(c))
+                    .count()
+            };
+            let enemy_mark = if brief.template == Template::Maze {
+                'G'
+            } else {
+                'e'
+            };
+            let text = text
+                .replace(
+                    "| Scenes | `scenes/main.scene.json` from the project template. |",
+                    &format!(
+                        "| Game | `{}` ({} {}): {} {}, {} enemies, seed {seed}; the autopilot wins in {:.1} s. |",
+                        brief.title,
+                        brief.template.name(),
+                        if brief.view == View::ThreeD { "3d" } else { "2d" },
+                        count(&['*']),
+                        brief.words.pickups,
+                        count(&[enemy_mark]),
+                        won_tick as f64 / 60.0,
+                    ),
+                )
+                .replace(
+                    "| Tests | `tests/main.test.json` passes. |",
+                    "| Tests | `tests/autoplay.test.json` (the autopilot wins) and `tests/idle.test.json` (doing nothing does not win); `game_make` with `refresh` re-pins both. |",
+                );
+            let text = if pending.is_empty() {
+                text
+            } else {
+                text.replacen(
+                    "- Nothing yet.",
+                    "- Some art is still a placeholder shape (`assets/generated/*.recipe.json`); check by running `marionette generate run` and then `game_make` with `refresh`.",
+                    1,
+                )
+            };
+            // A failed write leaves the template text, which is only stale, not wrong.
+            let _ = std::fs::write(&state, text);
+        }
     }
 
     let tests = game.call("test_run", json!({}))?;
@@ -671,12 +742,37 @@ fn resolve_art(
 }
 
 /// Writes the script (or replaces its config block), the scene recipe, and rebuilds the scene.
-fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh: bool) -> Result<(), Errors> {
+fn build(
+    game: &mut Agent,
+    brief: &Brief,
+    art: &ArtMap,
+    map: &[String],
+    refresh: bool,
+    overwrite_config: bool,
+) -> Result<(), Errors> {
     let config = template::config(brief, art, map);
     let script_path = game.root().join(template::SCRIPT);
     let script = if refresh && script_path.is_file() {
         let old = std::fs::read_to_string(&script_path)
             .map_err(|e| bad(format!("cannot read the script: {e}"), "check the file"))?;
+        // The block the last build wrote is kept beside the project; a different block now
+        // means someone edited it, and this refresh would silently erase that.
+        if let (Some(block), Ok(written)) = (
+            template::current_config(&old),
+            std::fs::read_to_string(game.root().join(GENERATED_CONFIG)),
+        ) && block != written
+        {
+            if !overwrite_config {
+                return Err(Diagnostic::error(
+                    starter_codes::CONFIG_EDITED,
+                    format!("the CONFIG block in {} was edited by hand; a refresh would erase the edit", template::SCRIPT),
+                )
+                .file(template::SCRIPT)
+                .fix("put the change in brief.json instead (pickup_count, enemy_count, words, size, seed), or move the edit outside the CONFIG block; or pass `overwrite_config: true` to replace the block and keep the old one in .config.backup")
+                .into());
+            }
+            game.write_file(CONFIG_BACKUP, block.as_bytes())?;
+        }
         template::replace_config(&old, &template::config_block(&config)).ok_or_else(|| {
             Errors::from(
                 Diagnostic::error(
@@ -696,6 +792,7 @@ fn build(game: &mut Agent, brief: &Brief, art: &ArtMap, map: &[String], refresh:
         template::script(brief, &config)
     };
     game.write_file(template::SCRIPT, script.as_bytes())?;
+    game.write_file(GENERATED_CONFIG, template::config_block(&config).as_bytes())?;
     let mut ops = template::build_ops(brief, map);
     // A person's own scene operations run after the template's.
     let custom = game.root().join("custom.ops.json");
