@@ -86,6 +86,8 @@ Files are in `docs/decisions/`. Add a line here with every new record.
 | 0109 | Sun shadow maps leave out casters whose shadow lands outside the views' frustums seen along the light | accepted |
 | 0110 | Bulk draw hooks get the frame's camera (`BulkDrawContext`: alpha, eye, forward) | accepted |
 | 0140 | Game packages per target with one command (`marionette package`); Linux held to the glibc 2.31 Steam runtime floor; Steam Frame = Linux ARM64 | accepted |
+| 0141 | First public release 0.1.0: prebuilt `marionette` for Windows x64 and Linux x64 (glibc 2.31, `dist`, with `net`), licenses and THIRD-PARTY.txt in each archive, draft GitHub release from a `v*` tag, human guides | accepted |
+| 0142 | Every commit scanned for secrets in CI (pinned gitleaks, `.gitleaks.toml` with Anthropic, DashScope and Tripo key formats), part of the CI gate | accepted |
 | 0130 | Scene editor view: crate `marionette-editor` (feature `editor`), overlay as UI draws, CPU picking, edits as operation calls with undo, offscreen `editor_view` | accepted |
 | 0150 | Game starter: a brief (or a prompt) and genre templates with an autopilot make a playable, tested game (`game_brief`, `game_make`, `marionette make`) | accepted |
 | 0151 | Game interview before making from a prompt: fixed questions with guesses (`game_interview`), answers folded into the brief and kept in `interview.json`; a bare prompt is refused unless the person declined | accepted |

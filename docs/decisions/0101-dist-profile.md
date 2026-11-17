@@ -6,7 +6,7 @@ Date: 2026-11-13. Status: accepted.
 
 `release` uses Cargo defaults: no LTO, 16 codegen units, `opt-level = 3`. The suite (decision
 0100) was run with five variants built from the same source, in a 4-core x86-64 cloud VM and
-on the owner's desktop (Ryzen 7 2700X, RTX 2080).
+on the owner's desktop (8-core desktop CPU, RTX 2080).
 
 ## Measurements
 
