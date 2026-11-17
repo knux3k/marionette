@@ -282,6 +282,7 @@ fn bulk_draws_take_a_game_shader() {
             params: vec![0.0, 1.0, 0.0],
             textures: Vec::new(),
         }),
+        palettes: Vec::new(),
     });
     let mut off = Offscreen::new(&gpu, W, H, 4, repo().join("examples"));
     off.render(&gpu, &frame, None).unwrap();

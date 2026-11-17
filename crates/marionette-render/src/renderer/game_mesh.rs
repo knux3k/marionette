@@ -95,9 +95,12 @@ impl Renderer {
         let vbytes: &[u8] = bytemuck::cast_slice(&vertices);
         let ibytes: &[u8] = bytemuck::cast_slice(&mesh.indices);
 
-        // Same sizes as before: write in place, no new allocation.
-        if let Some(mut model) = previous
+        let deform = crate::skinning::Deform::for_game_mesh(&self.device, mesh);
+        // Same sizes as before: write in place, no new allocation (rigid meshes only; a
+        // skinned one gets its skin buffer anew).
+        if let Some(mut model) = previous.filter(|_| deform.is_none())
             && let [part] = model.parts.as_mut_slice()
+            && part.deform.is_none()
             && part.vertices.size() == vbytes.len() as u64
             && part.indices.size() == ibytes.len() as u64
             && part.lods.len() == lods.len()
@@ -131,7 +134,7 @@ impl Renderer {
             material: 0,
             transform: glam::Mat4::IDENTITY,
             node: None,
-            deform: None,
+            deform,
             colors,
             bounds,
             lods: lods
@@ -153,7 +156,16 @@ impl Renderer {
         GpuModel {
             parts: vec![part],
             materials: vec![(self.plain_material.clone(), MaterialData::default())],
-            skins: Vec::new(),
+            // A skinned mesh has one skin of `joint_count` joints. Its joints name no node and
+            // its inverse bind matrices are identity: an entity drawing it shows the bind pose,
+            // a bulk draw gives the palettes itself (decision 0185).
+            skins: match mesh.joint_count() {
+                0 => Vec::new(),
+                n => vec![crate::skinning::GpuSkin {
+                    joints: vec![usize::MAX; n],
+                    inverse_bind: vec![glam::Mat4::IDENTITY; n],
+                }],
+            },
             rest: Vec::new(),
             rest_morph: Vec::new(),
             bounds: mesh

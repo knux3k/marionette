@@ -458,7 +458,7 @@ pub struct RayTracing {
 /// Many copies of one model drawn from a module's own arrays (belt items, crowds,
 /// particles), without one entity per copy. Built at render time by a [`BulkDrawHooks`]
 /// function, so the simulation pays nothing for it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct BulkDraw {
     /// Model asset, as in [`Model::asset`].
     pub asset: String,
@@ -469,6 +469,12 @@ pub struct BulkDraw {
     pub transforms: Vec<[f32; 12]>,
     /// A game shader for every copy (decision 0181); `None` uses the standard shader.
     pub shader: Option<crate::shader::ShaderMaterial>,
+    /// Joint palettes of a skinned game mesh (decision 0185): for copy `i`, entries
+    /// `i * J .. (i + 1) * J` where `J` is the mesh's `joint_count()`, each the joint's
+    /// current matrix in the mesh's model space times its inverse bind matrix, in the same
+    /// 12-float layout as `transforms`. Empty, or for a rigid mesh: ignored (copies draw in
+    /// the bind pose). Copies past the end of the list draw in the bind pose.
+    pub palettes: Vec<[f32; 12]>,
 }
 
 /// What a bulk draw hook knows about the frame being drawn. Not simulation state.

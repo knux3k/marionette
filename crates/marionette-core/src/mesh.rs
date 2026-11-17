@@ -19,6 +19,9 @@ pub const MESH_PREFIX: &str = "mesh:";
 /// Most reduced levels of detail a mesh can carry (matches the renderer's levels).
 pub const MAX_MESH_LODS: usize = 2;
 
+/// Most joints a skinned game mesh can have (decision 0185).
+pub const MAX_MESH_JOINTS: usize = 256;
+
 /// One mesh made in code: an indexed triangle list.
 ///
 /// Only `positions` and `indices` are required. Empty `normals` are computed (smooth,
@@ -40,6 +43,12 @@ pub struct GameMesh {
     /// `LevelOfDetail` resource. Empty: the renderer simplifies the mesh itself under
     /// `LevelOfDetail`, as it does for glTF models.
     pub lods: Vec<Vec<u32>>,
+    /// Skin (decision 0185): up to four joints per vertex (indices below
+    /// [`MAX_MESH_JOINTS`]) and their weights (summing to 1). Empty: a rigid mesh. Positions
+    /// are in the bind pose; a bulk draw bends the mesh with one joint palette per copy
+    /// ([`crate::spatial::BulkDraw::palettes`]). Give both or neither.
+    pub joints: Vec<[u16; 4]>,
+    pub weights: Vec<[f32; 4]>,
 }
 
 /// What is wrong with a mesh, as text for a diagnostic.
@@ -80,6 +89,28 @@ impl GameMesh {
                 ));
             }
         }
+        if self.joints.len() != self.weights.len() || (!self.joints.is_empty() && self.joints.len() != n) {
+            return Err(format!(
+                "{} joint and {} weight entries for {n} positions (give one of each per position, or none)",
+                self.joints.len(),
+                self.weights.len()
+            ));
+        }
+        if let Some(j) = self
+            .joints
+            .iter()
+            .flatten()
+            .find(|&&j| j as usize >= MAX_MESH_JOINTS)
+        {
+            return Err(format!("joint {j}; at most {MAX_MESH_JOINTS} joints"));
+        }
+        if let Some(w) = self
+            .weights
+            .iter()
+            .find(|w| w.iter().any(|x| !x.is_finite() || *x < 0.0))
+        {
+            return Err(format!("joint weights {w:?} must be finite and not negative"));
+        }
         if self.lods.len() > MAX_MESH_LODS {
             return Err(format!(
                 "{} reduced levels; at most {MAX_MESH_LODS}",
@@ -101,6 +132,22 @@ impl GameMesh {
             }
         }
         Ok(())
+    }
+
+    /// Joints the skin uses (the highest joint index with a weight, plus one); 0 for a
+    /// rigid mesh. A bulk draw gives this many palette entries per copy.
+    pub fn joint_count(&self) -> usize {
+        self.joints
+            .iter()
+            .zip(&self.weights)
+            .flat_map(|(j, w)| {
+                j.iter()
+                    .zip(w)
+                    .filter(|(_, w)| **w > 0.0)
+                    .map(|(j, _)| *j as usize + 1)
+            })
+            .max()
+            .unwrap_or(0)
     }
 
     /// Smooth normals, area-weighted, from the full-detail triangles. Vertices on no
@@ -295,6 +342,23 @@ mod tests {
             vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0]],
             vec![0, 1, 2],
         )
+    }
+
+    #[test]
+    fn skins_need_one_joint_and_weight_entry_per_vertex() {
+        let mut m = tri();
+        assert_eq!(m.joint_count(), 0);
+        m.joints = vec![[0, 0, 0, 0], [1, 0, 0, 0], [3, 1, 0, 0]];
+        assert!(m.validate().unwrap_err().contains("joint and"));
+        m.weights = vec![[1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]];
+        assert!(m.validate().is_ok());
+        // Joint 3 has no weight, so the skin uses joints 0 and 1.
+        assert_eq!(m.joint_count(), 2);
+        m.weights[0][0] = -1.0;
+        assert!(m.validate().unwrap_err().contains("not negative"));
+        m.weights[0][0] = 1.0;
+        m.joints[0][0] = MAX_MESH_JOINTS as u16;
+        assert!(m.validate().unwrap_err().contains("at most"));
     }
 
     #[test]

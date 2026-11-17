@@ -60,7 +60,9 @@ the data needs structs, 64-bit integers, or the last factor of speed.
 - Mesh: build a GameMesh (`marionette_core::mesh`; `GameMesh::grid` for height fields),
   store it with `GameMeshes::set_in(world, "patch", mesh)`, draw `Model { asset:
   "mesh:patch" }`. Storing again rewrites it (same sizes reuse GPU buffers); culling, level of
-  detail and shadows apply.
+  detail and shadows apply. Bending meshes (creatures posed by your own code): give the mesh
+  `joints` and `weights`, draw it from a bulk draw hook with one joint palette per copy in
+  `BulkDraw::palettes` (joint matrix times inverse bind); game shaders work on it too.
 - Image: `GameImages::set_in(world, "screen", GameImage { .. })`, show `game:screen` in a
   sprite, UI image, world quad or shader texture; `update` it each frame (same texture).
 - Shader: WGSL with `fn surface(s: ptr<function, Surface>, i: SurfaceIn)` and/or
