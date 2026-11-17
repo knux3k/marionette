@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 mod files;
-mod licenses;
+pub mod licenses;
 pub mod zip;
 
 pub use files::{DEFAULT_EXCLUDES, PackageFile, glob_match};

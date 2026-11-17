@@ -1,0 +1,120 @@
+name: Release
+
+# Prebuilt `marionette` binaries (decision 0141). A pull request that touches the release path
+# builds and checks both archives as workflow artifacts. Pushing a `v*` tag does the same and
+# then opens a DRAFT GitHub release with the archives and SHA256SUMS; a person reads the draft
+# and presses Publish. Nothing here pushes tags, publishes crates or changes the repository.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/release-archive.sh
+      - crates/marionette-package/**
+      - CHANGELOG.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  DRIFT_HASH: 7441258fdf64141911d44e0608c48498897564168684fdd86cd244e149926558
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            triple: x86_64-unknown-linux-gnu
+            bin: target/x86_64-unknown-linux-gnu/dist/marionette
+          - name: windows-x64
+            os: windows-latest
+            triple: x86_64-pc-windows-msvc
+            bin: target/x86_64-pc-windows-msvc/dist/marionette.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.name }}
+      - name: Version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but Cargo.toml says $version"; exit 1; }
+          grep -q "^## \[$version\]" CHANGELOG.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+      # Linux: held to glibc 2.31 like game packages (decision 0140), so the binary runs on
+      # older distributions; linked against the ALSA and udev libraries of that release.
+      - name: Build (Linux, glibc 2.31)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev pkg-config mesa-vulkan-drivers
+          pip install ziglang
+          cargo install cargo-zigbuild --locked
+          scripts/package-sysroots.sh target/sysroots > sysroots.env
+          . ./sysroots.env
+          PKG_CONFIG_ALLOW_CROSS=1 PKG_CONFIG_SYSROOT_DIR="$MARIONETTE_SYSROOT_X86_64" \
+            PKG_CONFIG_LIBDIR="$MARIONETTE_SYSROOT_X86_64/usr/lib/x86_64-linux-gnu/pkgconfig" \
+            cargo zigbuild --locked --profile dist -p marionette-cli --features net --target x86_64-unknown-linux-gnu.2.31
+          newest=$(objdump -T "${{ matrix.bin }}" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
+          echo "newest glibc symbol: $newest"
+          test "$(printf '%s\nGLIBC_2.31\n' "$newest" | sort -V | tail -n 1)" = GLIBC_2.31
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cargo build --locked --profile dist -p marionette-cli --features net --target x86_64-pc-windows-msvc
+      # The getting-started path with the built binary: version, drift hash, make a game, test it.
+      - name: Smoke test
+        shell: bash
+        run: |
+          bin="$PWD/${{ matrix.bin }}"
+          "$bin" --version
+          hash=$("$bin" run examples/drift.scene.json --headless --ticks 1000 --seed 1)
+          test "$hash" = "$DRIFT_HASH" || { echo "drift hash $hash"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+          "$bin" make "a 2d platformer where a fox collects acorns" --path fox --yes
+          "$bin" --project fox --json op test_run '{}' | tee result.json
+          grep -q '"failed":0' result.json
+      - name: Archive
+        shell: bash
+        run: |
+          archive=$(scripts/release-archive.sh ${{ matrix.name }} ${{ matrix.triple }} ${{ matrix.bin }} target/release-archives)
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marionette-${{ matrix.name }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  draft-release:
+    name: draft GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Draft release with checksums and the changelog section
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          cd dist && sha256sum marionette-* > SHA256SUMS && cd ..
+          awk -v v="$version" '/^## \[/{p = index($0, "[" v "]") > 0; next} p' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* --draft --verify-tag \
+            --title "Marionette $version" --notes-file notes.md

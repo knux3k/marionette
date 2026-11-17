@@ -1,0 +1,41 @@
+# Secret scan for every pull request and every push to main (decision 0142). Run locally with
+# `gitleaks git --config .gitleaks.toml --log-opts=--all`. The default rules plus the key
+# formats of the providers the engine talks to. Allowlists are narrow: one field name, one
+# test file; never a whole folder of real code.
+
+title = "Marionette secret scan"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "anthropic-key-any-length"
+description = "Anthropic API key"
+regex = '''sk-ant-[A-Za-z0-9_\-]{20,}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "dashscope-or-openai-style-key"
+description = "sk- style API key (DashScope/Qwen, OpenAI-compatible endpoints)"
+regex = '''\bsk-[A-Za-z0-9]{20,}\b'''
+keywords = ["sk-"]
+
+[[rules]]
+id = "tripo-api-key"
+description = "Tripo API key"
+regex = '''\btsk_[A-Za-z0-9_\-]{16,}'''
+keywords = ["tsk_"]
+
+[[rules]]
+id = "provider-key-assignment"
+description = "A provider key variable set to a value"
+regex = '''(DASHSCOPE_API_KEY|TRIPO_API_KEY|ANTHROPIC_API_KEY|OPENAI_API_KEY)\s*=\s*['"]?[A-Za-z0-9_\-]{12,}'''
+keywords = ["_API_KEY"]
+
+[allowlist]
+description = "Known non-secrets"
+# Generated-asset provenance records carry `cache_key`: the SHA-256 of the request (decision 0045).
+regexTarget = "match"
+regexes = ['''cache_key"?:\s*"[0-9a-f]{64}''']
+# Key-file parser tests use obviously fake keys (0123456789...).
+paths = ['''crates/marionette-providers/src/keys\.rs''']

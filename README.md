@@ -1,109 +1,97 @@
 # Marionette
 
-An open source game engine built to be driven by coding AIs. Everything is text, it runs
-with no window, it describes itself as JSON Schema, and it reports errors as data.
+An open source game engine built to be driven by coding AIs, such as Claude Code, Codex, Gemini
+CLI or Cursor, with a person steering. Everything is a text file, every action is a command with
+JSON in and out, the whole engine is offered to AI agents as MCP tools, it runs with no window
+for tests, and its errors say what went wrong and how to fix it.
 
-Status: early. Plan lines 1, 2, 3 and 5 of [`docs/DESIGN.md`](docs/DESIGN.md) are in place and line 6 (input, physics, audio, UI) is in progress: an ECS
-world, a schema registry, a canonical JSON scene format with a validator, a deterministic
-fixed-step loop, a wgpu renderer (glTF PBR models and 2D sprites) with offscreen screenshots,
-and the `marionette` CLI.
+Written in Rust on wgpu. Runs on Windows and Linux. Licensed MIT OR Apache-2.0.
+
+**Status: 0.1.0, early.** The core (scenes, deterministic simulation, tests, operations, MCP) is
+solid and heavily tested. Rendering, physics, input, saves, scripting, the editor and packaging
+are usable. VR, networking, ray tracing and several importers are first slices. Each feature's
+level, with evidence, is in [docs/ai/STATUS.md](docs/ai/STATUS.md). Expect breaking changes before 1.0.
+
+## What you get
+
+- **A game from one sentence.** `marionette make "a 2d platformer where a fox collects acorns"`
+  writes a playable, tested game project, proven winnable by an autopilot.
+- **AI-first tooling.** More than 100 operations (create entities, run, look at a screenshot, test,
+  profile) as a CLI and as an MCP server; skills that teach an agent the engine's procedures;
+  handoff files so several agents can share a project.
+- **Deterministic simulation.** Same seed, same inputs, same state hash on every machine, so
+  tests and replays are exact.
+- **Rendering:** PBR with glTF models, shadows, sky, HDR environments, bloom, fog, particles,
+  level of detail, MSAA, optional ray-traced reflections, sprites and screen UI.
+- **Gameplay:** TypeScript scripts, parallel TypeScript jobs compiled to WebAssembly, game code
+  in Rust, Rapier physics, navigation on round planets, saves, audio and a synth, OpenXR
+  headsets, co-op lockstep networking with optional Steam.
+- **Assets:** a public CC0 asset pool, Unity and Unreal importers and porting tools, and optional
+  image and 3D model generation with your own provider keys and a spend cap.
+- **Shipping:** `marionette package` builds a zip per target (Windows, Linux, Steam Deck, Steam
+  Frame) with the licenses included.
 
 ## Quick start
 
-Requires stable Rust (MSVC toolchain on Windows).
+1. Get `marionette`: download the archive for your system from the
+   [releases page](https://github.com/knux3k/marionette/releases), unpack it and put the folder
+   on your `PATH`. Or build it from source (needs Rust 1.95 or newer):
 
-```bash
-cargo build
-cargo run -p marionette-cli -- run examples/drift.scene.json --headless --ticks 1000 --seed 1 --json
-```
+   ```bash
+   git clone https://github.com/knux3k/marionette
+   cd marionette
+   cargo install --locked --path crates/marionette-cli
+   ```
 
-Commands (all accept `--json`):
+2. Make a game and play it:
+
+   ```bash
+   marionette make "a 2d platformer where a fox collects acorns and avoids hedgehogs" --path fox
+   marionette run scenes/main.scene.json --project fox
+   ```
+
+3. Connect your coding AI (Claude Code shown; any MCP client works):
+
+   ```bash
+   cd fox
+   claude mcp add marionette -- marionette --project . mcp --tools core --lean
+   claude
+   ```
+
+   Then ask it for changes in plain words: "make the hedgehogs faster and add a second level".
+
+The full path, including tests, art and packaging a game for players, is in
+**[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)**. How to use the AI app subscription you
+already have, other agents, and provider API keys is in
+**[docs/CONNECT-YOUR-AI.md](docs/CONNECT-YOUR-AI.md)**.
+
+## Commands
+
+All commands accept `--json` and print one JSON object.
 
 | Command | What it does |
 | --- | --- |
-| `marionette schema` | JSON Schema of the scene format and every component and resource |
-| `marionette validate <scene>` | Checks a scene; errors have a code, line, entity and suggested fix |
-| `marionette run <scene> --headless --ticks N --seed S` | Simulates and prints a SHA-256 state hash |
-| `marionette run <scene>` | Opens a window (Escape closes; `--ticks N` closes after N ticks) |
-| `marionette edit <scene>` | Opens the scene editor: right mouse + WASD to fly, click to inspect, P to play; keys in its bottom bar |
-| `marionette screenshot <scene> --ticks N --seed S --camera ID --size WxH --out f.png` | Renders one PNG with no window |
-| `marionette bench <scene> --frames N --size WxH` | Measures offscreen frame time |
-| `marionette ops` | Lists every operation with its JSON Schemas |
-| `marionette op <name> '<json>'` | Runs one operation (`--project DIR`, `--read-only`) |
-| `marionette mcp [--tools core,pool,...] [--lean]` | Serves operations as MCP tools over stdio (all by default) |
-| `marionette provider use <kind> <provider>` | Switches the AI provider for `language`, `image` or `model3d` (`provider list`, `provider status`) |
+| `marionette make "<idea>"` | Makes a playable, tested game project |
+| `marionette run <scene>` | Plays a scene in a window (`--headless --ticks N --seed S` prints a state hash instead) |
+| `marionette edit <scene>` | Opens the scene editor |
+| `marionette screenshot <scene> --out f.png` | Renders one image with no window |
+| `marionette op <name> '<json>'` | Runs one operation; `marionette ops --brief` lists them |
+| `marionette mcp` | Serves the operations as MCP tools over stdio |
+| `marionette provider list` | AI providers for generation and whether their keys are set |
+| `marionette package <game>` | Builds a zip of the game for players |
+| `marionette validate <scene>` | Checks a scene; errors carry a code, location and suggested fix |
 
-Operations: `project_init`, `project_validate`, `project_schema`, `scene_create`,
-`scene_validate`, `scene_format`, `scene_run`, `entity_create`, `entity_update`,
-`entity_delete`, `component_set`, `component_remove`, `session_start`, `session_step`,
-`session_stop`, `session_list`, `session_save`, `observe_tree`, `observe_query`,
-`observe_entity`, `observe_screenshot`, `observe_logs`, `observe_stats`, `test_run`,
-`library_*`, `license_check_text`, `pool_admission_check`, `provider_list`, `provider_status`,
-`provider_use`, `provider_generate`. Full list: `docs/ai/reference/operations.md`.
+Every command and flag: [docs/ai/reference/cli.md](docs/ai/reference/cli.md). Every operation:
+[docs/ai/reference/operations.md](docs/ai/reference/operations.md).
 
-AI providers default to an offline mock. Real providers read keys from environment variables
-(`ANTHROPIC_API_KEY`, `DASHSCOPE_API_KEY`, `TRIPO_API_KEY`) and are limited by a spend cap the
-owner sets (`MARIONETTE_SPEND_CAP_USD`); see decision 0019.
+## Documentation
 
-Start a game project:
-
-```bash
-marionette op project_init '{"path": "mygame"}' --json
-```
-
-## Connecting an agent over MCP
-
-Claude Code: add a `.mcp.json` file in the game project's folder (or run
-`claude mcp add marionette -- marionette --project . mcp --tools core --lean`):
-
-```json
-{
-  "mcpServers": {
-    "marionette": {
-      "command": "marionette",
-      "args": ["--project", ".", "mcp", "--tools", "core", "--lean"]
-    }
-  }
-}
-```
-
-`--tools core` lists only the edit, run, observe and test operations (about a third of the
-table); add groups as the game needs them, for example `--tools core,anim,pool`, or leave the
-flag out for all of them. `--lean` leaves output schemas out of the listing. Together they cut
-the tool listing the client keeps in context to a small fraction (decision 0061).
-
-Use `"args": ["--project", ".", "--read-only", "mcp"]` for an agent that may look but not change
-anything.
-
-Any other MCP client: start the process `marionette --project <game folder> mcp` and speak MCP
-over its stdin/stdout (newline-delimited JSON-RPC 2.0). Tool results carry `structuredContent`;
-failures have `isError: true` and `{"ok": false, "diagnostics": [...]}`. Agents without MCP can
-call the same operations with `marionette op <name> '<json>' --json`.
-
-## Skills
-
-The engine ships task skills: short, tested procedures (build a scene, find or generate assets,
-write a script or a job, port Unity or Unreal code, light a scene, animate, test, find a
-slowdown, add Rust code). A new project (`project_init`) gets them in `.claude/skills` and
-`.agents/skills`, where agents that support skills load the matching one by themselves;
-`marionette op skills_install '{}'` adds or refreshes them in an existing project. Any other
-agent reads them with `skills_list` and `skills_get`.
-
-## Handoffs
-
-Every project carries what the next agent needs: `docs/ai/START-HERE.md`, `docs/ai/STATE.md`,
-one claim file per piece of work in progress, one note per session, and decision records. An
-agent starts with `handoff_status`, claims work with `handoff_claim` (refused when it overlaps
-another agent's claim; it also reserves decision numbers) and ends with `handoff_note`.
-`marionette op handoff_init '{}'` adds the files to an existing project.
-| `marionette scene fmt <scene> [--check]` | Rewrites a scene in canonical form |
-
-## For agents
-
-Start at [`docs/ai/START-HERE.md`](docs/ai/START-HERE.md).
-
-Read [`AGENTS.md`](AGENTS.md) (same as [`CLAUDE.md`](CLAUDE.md)) for build steps, design
-principles and determinism rules. Decisions are recorded in [`docs/decisions/`](docs/decisions/).
+- People: [Getting started](docs/GETTING-STARTED.md),
+  [Connect your AI](docs/CONNECT-YOUR-AI.md), [Changelog](CHANGELOG.md),
+  [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), [Design](docs/DESIGN.md).
+- AI agents: start at [docs/ai/START-HERE.md](docs/ai/START-HERE.md) and
+  [AGENTS.md](AGENTS.md) (the same as [CLAUDE.md](CLAUDE.md)). The `docs/ai` folder is written
+  for agents: short, exact and checked by tests. Decisions are in [docs/decisions/](docs/decisions/).
 
 ## License
 
@@ -111,3 +99,7 @@ Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
 [MIT license](LICENSE-MIT) at your option. Unless you explicitly state otherwise, any
 contribution intentionally submitted for inclusion in this work, as defined in the Apache-2.0
 license, shall be dual licensed as above, without any additional terms or conditions.
+
+Prebuilt binaries and packaged games include `THIRD-PARTY.txt` with the license of every Rust
+crate linked in. Most are MIT or Apache-2.0; the audio decoder (symphonia) and one audio buffer
+crate are MPL-2.0, whose source is available unchanged on crates.io. The asset pool is CC0.

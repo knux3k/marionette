@@ -178,10 +178,27 @@ jobs:
 
   # The one check to require on main and in the merge queue. It passes when every job it
   # needs passed or was skipped on purpose (the heavy jobs skip on pull requests).
+  secrets:
+    name: secret scan
+    # Decision 0142: every pull request and every push to main scans the whole history (about
+    # two seconds) with gitleaks and `.gitleaks.toml`; a finding fails the CI gate.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.28.0 (checksum pinned)
+        run: |
+          curl -fsSL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+      - name: Scan every commit
+        run: ./gitleaks git --config .gitleaks.toml --log-opts=--all --redact --no-banner .
+
   gate:
     name: CI gate
     if: always()
-    needs: [test, stability, perf, leaks, xr]
+    needs: [test, stability, perf, leaks, xr, secrets]
     runs-on: ubuntu-latest
     steps:
       - name: All needed jobs passed or were skipped

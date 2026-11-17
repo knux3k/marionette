@@ -19,11 +19,12 @@ check a feature there before building on it, and update its row when your work m
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
 | 6 | Input, physics, audio, UI | Landed: joints (0310, 0311), windowed play (0170-0175), game-mesh colliders (0183), 3D sound and music (0075), world UI (0200, 0201), synth (0220), game-made sounds (0221). |
-| 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
+| 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made. |
 | 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
 | 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later | OpenXR (0190), inspector (0130), co-op networking, achievements, cloud saves, Steam (0210 to 0213) landed; rest not started. |
 | - | Game packages | Landed (0140): Windows, Linux, Steam Deck, Steam Frame (ARM64). |
+| - | Public release | 0.1.0 ready, untagged (0141, 0142). |
 
 ## UNVERIFIED
 
