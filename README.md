@@ -35,7 +35,9 @@ level, with evidence, is in [docs/ai/STATUS.md](docs/ai/STATUS.md). Expect break
 
 1. Get `marionette`: download the archive for your system from the
    [releases page](https://github.com/knux3k/marionette/releases), unpack it and put the folder
-   on your `PATH`. Or build it from source (needs Rust 1.95 or newer):
+   on your `PATH`. Or build it from source (needs Rust 1.95 or newer; on Debian or Ubuntu first run
+   `sudo apt update && sudo apt install libasound2-dev libudev-dev pkg-config`, and expect a
+   first build of about 5 minutes):
 
    ```bash
    git clone https://github.com/knux3k/marionette
