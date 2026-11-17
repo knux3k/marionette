@@ -35,7 +35,9 @@ level, with evidence, is in [docs/ai/STATUS.md](docs/ai/STATUS.md). Expect break
 
 1. Get `marionette`: download the archive for your system from the
    [releases page](https://github.com/knux3k/marionette/releases), unpack it and put the folder
-   on your `PATH`. Or build it from source (needs Rust 1.95 or newer):
+   on your `PATH`. Or build it from source (needs Rust 1.95 or newer; on Debian or Ubuntu first run
+   `sudo apt update && sudo apt install libasound2-dev libudev-dev pkg-config`, and expect a
+   first build of about 5 minutes):
 
    ```bash
    git clone https://github.com/knux3k/marionette
@@ -89,7 +91,8 @@ Every command and flag: [docs/ai/reference/cli.md](docs/ai/reference/cli.md). Ev
 - People: [Getting started](docs/GETTING-STARTED.md),
   [Connect your AI](docs/CONNECT-YOUR-AI.md), [Changelog](CHANGELOG.md),
   [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), [Design](docs/DESIGN.md).
-- AI agents: start at [docs/ai/START-HERE.md](docs/ai/START-HERE.md) and
+- AI agents making a game with the engine: the `marionette-make-game` skill in `.claude/skills`
+  and [Getting started](docs/GETTING-STARTED.md). AI agents changing the engine: start at [docs/ai/START-HERE.md](docs/ai/START-HERE.md) and
   [AGENTS.md](AGENTS.md) (the same as [CLAUDE.md](CLAUDE.md)). The `docs/ai` folder is written
   for agents: short, exact and checked by tests. Decisions are in [docs/decisions/](docs/decisions/).
 

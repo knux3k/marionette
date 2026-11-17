@@ -8,7 +8,7 @@
 //! is cheap. Answers are plain strings keyed by question id; [`brief_from_answers`] folds them
 //! into a [`Brief`].
 
-use crate::{Brief, Difficulty, Size, Template, View, codes, prompt};
+use crate::{Brief, Difficulty, Size, Template, View, codes, level, prompt};
 use marionette_core::{Diagnostic, Errors};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -147,11 +147,25 @@ const SPECS: &[Spec] = &[
         examples: &["paper lanterns", "star crystals"],
     },
     Spec {
+        id: "pickup_count",
+        ask: "How many must the player collect? (a number from 1 to 12)",
+        why: "Exactly this many pickups are placed in the maze; the HUD and win check use the real count.",
+        choices: &[],
+        examples: &["3", "7"],
+    },
+    Spec {
         id: "enemy",
         ask: "What must the player avoid?",
         why: "The enemy art.",
         choices: &[],
         examples: &["a hungry night bat", "a security drone"],
+    },
+    Spec {
+        id: "enemy_count",
+        ask: "How many enemies? (a number from 0 to 6)",
+        why: "Exactly this many enemies are placed in the maze.",
+        choices: &[],
+        examples: &["1", "3"],
     },
     Spec {
         id: "goal",
@@ -222,6 +236,7 @@ pub fn questions(
         // A forced template or view is already decided: no need to ask.
         if (spec.id == "genre" && template.is_some())
             || (spec.id == "view" && (view.is_some() || brief.template != Template::Maze))
+            || (matches!(spec.id, "pickup_count" | "enemy_count") && brief.template != Template::Maze)
         {
             continue;
         }
@@ -276,6 +291,17 @@ fn guess_of(id: &str, prompt_text: &str, answers: &Answers, brief: &Brief) -> St
             .to_string(),
         "player" | "enemy" | "goal" => slot(id),
         "pickups" => brief.words.pickups.clone(),
+        "pickup_count" => brief
+            .pickup_count
+            .map_or_else(|| level::default_pickups(brief.size), |n| n as usize)
+            .to_string(),
+        "enemy_count" => brief
+            .enemy_count
+            .map_or_else(
+                || level::default_enemies(brief.size, brief.difficulty),
+                |n| n as usize,
+            )
+            .to_string(),
         "style" => brief.style.clone(),
         "difficulty" => match brief.difficulty {
             Difficulty::Easy => "easy",
@@ -399,6 +425,22 @@ pub fn brief_from_answers(
         Some("medium") => b.size = Size::Medium,
         _ => {}
     }
+    if b.template == Template::Maze {
+        // A count answer wins; else a number the prompt gave ("3 gems") is the guess.
+        let count = |id: &str| -> Result<Option<u32>, Errors> {
+            match answer(answers, id) {
+                Some(v) => v.trim().parse::<u32>().map(Some).map_err(|_| {
+                    Errors(vec![bad(
+                        format!("answer `{id}` must be a whole number, got `{v}`"),
+                        "write it like 3".into(),
+                    )])
+                }),
+                None => Ok(None),
+            }
+        };
+        b.pickup_count = count("pickup_count")?.or_else(|| prompt::count_of(prompt_text, &b.words.pickups));
+        b.enemy_count = count("enemy_count")?;
+    }
     let named = |id: &str| answer(answers, id).is_some();
     if named("player") || named("pickups") || named("enemy") || named("goal") {
         b.pitch = pitch(&b, prompt_text);
@@ -446,11 +488,13 @@ fn pitch(b: &Brief, prompt_text: &str) -> String {
             .to_string()
     };
     let verb = match b.template {
+        Template::Maze if b.pickup_count.is_some() => "collect",
         Template::Maze => "collect all the",
         Template::Platformer => "run, jump and grab the",
     };
+    let how_many = b.pickup_count.map_or(String::new(), |n| format!("{n} "));
     format!(
-        "Play as {}: {verb} {}, avoid {} and reach {}. From the prompt: \"{}\"",
+        "Play as {}: {verb} {how_many}{}, avoid {} and reach {}. From the prompt: \"{}\"",
         d("player"),
         b.words.pickups,
         d("enemy"),

@@ -506,6 +506,8 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
         style,
         difficulty,
         size,
+        pickup_count: None,
+        enemy_count: None,
         seed: seed_of(prompt),
         words: Words {
             pickups: last.chars().take(20).collect(),
@@ -519,9 +521,43 @@ pub fn brief_from_prompt(prompt: &str, template: Option<Template>, view: Option<
     }
 }
 
+/// A count the prompt gives for a thing, like "3 gems" or "collect three shiny gems": a number
+/// or number word at most one word before `plural` (or its singular).
+pub fn count_of(prompt_text: &str, plural: &str) -> Option<u32> {
+    let words: Vec<String> = prompt_text
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
+        .collect();
+    let plural = plural.trim().to_lowercase();
+    let single = singular(&plural);
+    let num = |w: &str| -> Option<u32> {
+        const NAMES: [&str; 12] = [
+            "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+        ];
+        w.parse()
+            .ok()
+            .or_else(|| NAMES.iter().position(|n| *n == w).map(|i| i as u32 + 1))
+    };
+    (1..words.len()).find_map(|i| {
+        let w = words[i].as_str();
+        if w != plural && w != single {
+            return None;
+        }
+        // The number sits right before the thing, or before one describing word.
+        num(&words[i - 1]).or_else(|| i.checked_sub(2).and_then(|j| num(&words[j])))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn counts_come_from_the_prompt() {
+        assert_eq!(count_of("collect 3 gems then reach the exit", "gems"), Some(3));
+        assert_eq!(count_of("grab four shiny gems", "gems"), Some(4));
+        assert_eq!(count_of("collect all the gems", "gems"), None);
+    }
 
     #[test]
     fn reads_the_main_phrases() {

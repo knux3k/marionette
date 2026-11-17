@@ -32,9 +32,12 @@ rerolled, so a made game is always winnable.
 
 ## Changing a made game
 
-- Design (words, colors, art, difficulty, seed): edit `brief.json`, then `game_make` with
+- Design (words, colors, art, difficulty, seed, and for a maze `pickup_count` 1 to 12 and
+  `enemy_count` 0 to 6): edit `brief.json`, then `game_make` with
   `refresh`. Refresh rewrites only the CONFIG block of the gameplay script and re-pins the tests.
-- Gameplay: edit the script outside its CONFIG markers; refresh keeps it. Extra scene
+- Gameplay: edit the script outside its CONFIG markers; refresh keeps it. Never hand-edit
+  inside CONFIG: refresh stops with `starter.config_edited` (`overwrite_config` replaces it and
+  keeps `.config.backup`). Extra scene
   operations go in `custom.ops.json`, which every rebuild appends.
 - A newer template: delete the gameplay script (your edits go with it) and refresh.
 

@@ -251,3 +251,76 @@ fn a_bare_prompt_needs_the_interview() {
     assert_eq!(e.0[0].code, "starter.bad_answer");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// 6. Counts (decision 0152): a number in the prompt or an answer sets the maze's pickups and
+///    enemies exactly; the README and STATE.md state the real counts; a refresh refuses to
+///    erase a hand-edited CONFIG block unless told to, and keeps a backup when it does.
+#[test]
+fn counts_are_exact_and_refresh_protects_hand_edits() {
+    let root = temp_root("counts");
+    let mut agent = Agent::new(&root, false);
+    let out = agent
+        .call(
+            "game_make",
+            json!({"path": "g", "prompt": "a garden maze: collect 3 gems then reach the exit",
+                   "template": "maze",
+                   "answers": {"pickups": "gems", "enemy_count": "1", "length": "small"}}),
+        )
+        .unwrap();
+    assert_eq!(out["tests_failed"], 0, "{out}");
+    let script = root.join("g/scenes/scripts/game.ts");
+    let text = std::fs::read_to_string(&script).unwrap();
+    // The map rows are quoted in the CONFIG block: count the marks there.
+    let marks = |m: char| {
+        text.lines()
+            .filter(|l| l.trim_start().starts_with('"') && l.contains('#'))
+            .flat_map(|l| l.chars())
+            .filter(|c| *c == m)
+            .count()
+    };
+    assert_eq!(marks('*'), 3, "pickup count");
+    assert_eq!(marks('G'), 1, "enemy count");
+    let readme = std::fs::read_to_string(root.join("g/README.md")).unwrap();
+    assert!(readme.contains("This level has 3 gems, 1 enemies"), "{readme}");
+    let state = std::fs::read_to_string(root.join("g/docs/ai/STATE.md")).unwrap();
+    assert!(state.contains("3 gems, 1 enemies"), "{state}");
+    assert!(state.contains("autoplay.test.json") && !state.contains("main.test.json"));
+
+    // Out-of-range counts are refused.
+    let brief_path = root.join("g/brief.json");
+    let mut brief: Value = serde_json::from_str(&std::fs::read_to_string(&brief_path).unwrap()).unwrap();
+    brief["pickup_count"] = json!(40);
+    std::fs::write(&brief_path, serde_json::to_string_pretty(&brief).unwrap()).unwrap();
+    let e = agent
+        .call("game_make", json!({"path": "g", "refresh": true}))
+        .unwrap_err();
+    assert_eq!(e.0[0].code, "starter.bad_brief");
+    brief["pickup_count"] = json!(4);
+    std::fs::write(&brief_path, serde_json::to_string_pretty(&brief).unwrap()).unwrap();
+
+    // A hand edit inside the CONFIG block stops the refresh.
+    std::fs::write(&script, text.replace("\"lives\"", "\"lives\": 9, \"oldlives\"")).unwrap();
+    let e = agent
+        .call("game_make", json!({"path": "g", "refresh": true}))
+        .unwrap_err();
+    assert_eq!(e.0[0].code, "starter.config_edited");
+    assert!(std::fs::read_to_string(&script).unwrap().contains("\"lives\": 9"));
+    // Told to overwrite, it does, and keeps the old block.
+    let again = agent
+        .call(
+            "game_make",
+            json!({"path": "g", "refresh": true, "overwrite_config": true}),
+        )
+        .unwrap();
+    assert_eq!(again["tests_failed"], 0, "{again}");
+    assert!(
+        std::fs::read_to_string(root.join("g/.config.backup"))
+            .unwrap()
+            .contains("\"lives\": 9")
+    );
+    // A plain refresh works again.
+    agent
+        .call("game_make", json!({"path": "g", "refresh": true}))
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&root);
+}

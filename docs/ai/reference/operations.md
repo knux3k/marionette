@@ -2532,6 +2532,7 @@ Input:
 | `answers` | object |  | The person's replies to game_interview, by question id. Needed with a `prompt` (or `skip_interview`); recorded in the project's interview.json. |
 | `brief` | Brief \| null |  |  |
 | `generate` | boolean |  | Run generate_run for slots still waiting for art (paid providers follow the project's providers.json, keys and spend caps), then use what was built. |
+| `overwrite_config` | boolean |  | With `refresh`: replace the script's CONFIG block even though it was edited by hand (the old block is saved to `.config.backup`). Without it, a hand-edited block stops the refresh. |
 | `path` | string | yes | Project folder to create (must not exist or be empty), or to refresh. |
 | `prompt` | string \| null |  |  |
 | `refresh` | boolean |  | Re-make an existing starter project from its brief.json (or from `brief`). |

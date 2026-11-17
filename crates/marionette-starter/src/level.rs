@@ -32,7 +32,37 @@ impl Rng {
 }
 
 /// Maze legend: `#` wall, `.` floor, `P` player start, `G` enemy start, `*` pickup, `E` goal.
+/// Pickups a maze of this size has unless the brief sets `pickup_count`.
+pub fn default_pickups(size: Size) -> usize {
+    match size {
+        Size::Small => 5,
+        Size::Medium => 7,
+        Size::Large => 9,
+    }
+}
+
+/// Enemies a maze has unless the brief sets `enemy_count`.
+pub fn default_enemies(size: Size, difficulty: Difficulty) -> usize {
+    let base = match difficulty {
+        Difficulty::Easy => 1,
+        Difficulty::Normal => 2,
+        Difficulty::Hard => 3,
+    };
+    base + usize::from(size == Size::Large)
+}
+
 pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
+    maze_with(seed, size, difficulty, None, None)
+}
+
+/// A maze with exactly `pickups` and `enemies` when given (the brief's counts).
+pub fn maze_with(
+    seed: u64,
+    size: Size,
+    difficulty: Difficulty,
+    pickups: Option<usize>,
+    enemies: Option<usize>,
+) -> Vec<String> {
     let (cw, ch) = match size {
         Size::Small => (7, 5),
         Size::Medium => (9, 6),
@@ -108,16 +138,8 @@ pub fn maze(seed: u64, size: Size, difficulty: Difficulty) -> Vec<String> {
         .unwrap_or(start);
     g[goal.1][goal.0] = b'E';
 
-    let pickups = match size {
-        Size::Small => 5,
-        Size::Medium => 7,
-        Size::Large => 9,
-    };
-    let enemies = match difficulty {
-        Difficulty::Easy => 1,
-        Difficulty::Normal => 2,
-        Difficulty::Hard => 3,
-    } + usize::from(size == Size::Large);
+    let pickups = pickups.unwrap_or_else(|| default_pickups(size));
+    let enemies = enemies.unwrap_or_else(|| default_enemies(size, difficulty));
 
     // Spread pickups and enemies: each new one is the cell farthest (in a straight line)
     // from everything placed so far; enemies also keep their distance from the start.

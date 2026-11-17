@@ -204,7 +204,13 @@ pub fn recipes(brief: &Brief, slot: &Slot) -> Vec<(String, Value)> {
 /// The generated level for a brief and seed.
 pub fn level(brief: &Brief, seed: u64) -> Vec<String> {
     match brief.template {
-        Template::Maze => level::maze(seed, brief.size, brief.difficulty),
+        Template::Maze => level::maze_with(
+            seed,
+            brief.size,
+            brief.difficulty,
+            brief.pickup_count.map(|n| n as usize),
+            brief.enemy_count.map(|n| n as usize),
+        ),
         Template::Platformer => level::platformer(seed, brief.size, brief.difficulty),
     }
 }
@@ -366,6 +372,13 @@ pub fn replace_config(source: &str, block: &str) -> Option<String> {
     let a = source.find(CONFIG_BEGIN)?;
     let b = source[a..].find(CONFIG_END)? + a + CONFIG_END.len();
     Some(format!("{}{}{}", &source[..a], block, &source[b..]))
+}
+
+/// The config block (markers included) as it stands in a script.
+pub fn current_config(source: &str) -> Option<&str> {
+    let a = source.find(CONFIG_BEGIN)?;
+    let b = source[a..].find(CONFIG_END)? + a + CONFIG_END.len();
+    Some(&source[a..b])
 }
 
 fn binding(input: &str, scale: f64) -> Value {
@@ -536,7 +549,7 @@ pub fn idle_test(ticks: u64, hash: &str) -> Value {
 pub const IDLE_TICKS: u64 = 1200;
 
 /// The project's README.
-pub fn readme(brief: &Brief) -> String {
+pub fn readme(brief: &Brief, map: &[String]) -> String {
     let controls = match brief.template {
         Template::Maze => "Arrows or WASD move. R restarts after a win or loss. F1 toggles the autopilot.",
         Template::Platformer => {
@@ -548,8 +561,29 @@ pub fn readme(brief: &Brief) -> String {
     } else {
         format!("{}\n\n", brief.pitch.trim())
     };
+    // What the level really holds (the pitch may quote the prompt's own numbers).
+    let count = |marks: &[char]| {
+        map.iter()
+            .flat_map(|r| r.chars())
+            .filter(|c| marks.contains(c))
+            .count()
+    };
+    let enemy_mark = if brief.template == Template::Maze {
+        'G'
+    } else {
+        'e'
+    };
+    let contents = format!(
+        "This level has {} {}, {} enemies and {} rows by {} columns (seed {}).\n\n",
+        count(&['*']),
+        brief.words.pickups,
+        count(&[enemy_mark]),
+        map.len(),
+        map.first().map_or(0, |r| r.chars().count()),
+        brief.seed,
+    );
     format!(
-        "# {title}\n\n{pitch}Made with the Marionette game starter (`game_make`, template `{template}`, decision 0150).\n\n\
+        "# {title}\n\n{pitch}{contents}Made with the Marionette game starter (`game_make`, template `{template}`, decision 0150).\n\n\
          {controls}\n\n\
          ## Files\n\n\
          - `brief.json`: the whole design (template, words, colors, one line per asset slot, seed).\n\
@@ -558,7 +592,7 @@ pub fn readme(brief: &Brief) -> String {
          - `assets/generated/*.recipe.json`: art still to generate (`marionette generate run`).\n\
          - `tests/`: the autopilot wins (`autoplay.test.json`); doing nothing does not (`idle.test.json`).\n\n\
          ## Change it\n\n\
-         Edit `brief.json`, then `marionette op game_make '{{\"path\": \"<this folder>\", \"refresh\": true}}'` from the\n\
+         Edit `brief.json` (for example `pickup_count`, `enemy_count`, `words`, `seed`), then `marionette op game_make '{{\"path\": \"<this folder>\", \"refresh\": true}}'` from the\n\
          parent project. After `marionette generate run`, the same refresh swaps the placeholders for the\n\
          generated art and re-pins the tests.\n",
         title = brief.title,

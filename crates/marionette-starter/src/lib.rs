@@ -34,6 +34,8 @@ pub mod codes {
     pub const UNWINNABLE: &str = "starter.unwinnable";
     /// A refresh found a script without its config markers.
     pub const NO_CONFIG_BLOCK: &str = "starter.no_config_block";
+    /// A refresh would overwrite a CONFIG block that was edited by hand.
+    pub const CONFIG_EDITED: &str = "starter.config_edited";
     /// An interview answer names no question, or is not one of its choices.
     pub const BAD_ANSWER: &str = "starter.bad_answer";
     /// A game was asked for from a bare prompt without interviewing the person first.
@@ -201,6 +203,13 @@ pub struct Brief {
     pub difficulty: Difficulty,
     #[serde(default)]
     pub size: Size,
+    /// Exactly this many pickups in the level (maze only, 1 to 12). Default: set by `size`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pickup_count: Option<u32>,
+    /// Exactly this many enemies in the level (maze only, 0 to 6). Default: set by `difficulty`
+    /// and `size`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enemy_count: Option<u32>,
     /// Level seed. The same brief always makes the same files.
     #[serde(default = "default_seed")]
     pub seed: u64,
@@ -244,6 +253,21 @@ impl Brief {
                 "the platformer template is 2D only".into(),
                 "use \"view\": \"2d\", or the maze template for 3D",
             ));
+        }
+        if self.template != Template::Maze && (self.pickup_count.is_some() || self.enemy_count.is_some()) {
+            problems.push(bad(
+                "pickup_count and enemy_count are for the maze template only".into(),
+                "remove them, or use the maze template",
+            ));
+        }
+        if self.pickup_count.is_some_and(|n| !(1..=12).contains(&n)) {
+            problems.push(bad(
+                "pickup_count must be 1 to 12".into(),
+                "for example \"pickup_count\": 3",
+            ));
+        }
+        if self.enemy_count.is_some_and(|n| n > 6) {
+            problems.push(bad("enemy_count must be 0 to 6".into(), "0 means no enemies"));
         }
         let slots = template::slots(self.template, self.view);
         for name in self.assets.keys() {
