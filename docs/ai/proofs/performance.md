@@ -50,12 +50,12 @@ Numbers and budgets: `docs/ai/PERFORMANCE.md`.
   changes, a held bench lock refuses the run and the run removes its own lock.
 - Build settings, same source, suite `core/1`: `release`, thin LTO, fat LTO + 1 codegen unit,
   1 codegen unit, fat LTO + `x86-64-v3`. Every state hash and every image hash (same GPU)
-  equal to `release`, in the cloud (lavapipe) and on a Ryzen 7 2700X with an RTX 2080.
+  equal to `release`, in the cloud (lavapipe) and on an 8-core desktop CPU with an RTX 2080.
   Timing results: decision 0101.
 
 Baseline, `release`, one run (p50 / p99 ms per tick; allocations per tick):
 
-| Case | Cloud 4-core VM | Ryzen 7 2700X | Allocs/tick |
+| Case | Cloud 4-core VM | 8-core desktop CPU | Allocs/tick |
 | --- | --- | --- | --- |
 | startup/engine (build engine) | 2.97 / 5.35 | 2.78 / 3.29 | |
 | startup/process (new process to first tick) | 13.7 | 79.6 (Windows) | |
@@ -76,7 +76,7 @@ target of the optimization pass.
 
 ## Realistic scene against Unity (decision 0284)
 
-First run, 2026-11-14, main at `223fbc6`, Ryzen 7 2700X, RTX 2080, `--profile dist`; Unity
+First run, 2026-11-14, main at `223fbc6`, 8-core desktop CPU, RTX 2080, `--profile dist`; Unity
 6000.3.4f1, URP 17.3.0, an empty project built by `tools/unity-bench` (no script changes
 needed). 1920x1080, 4x MSAA, 1,000 timed frames after warm-up. Marionette on Vulkan, offscreen;
 Unity on Direct3D 12, a window, vertical sync off.

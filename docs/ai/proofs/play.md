@@ -79,7 +79,7 @@ Line 6 (input, physics, audio, UI):
   decoder is shared); the PC figures. Planned PC run (Unity lock free, PC idle 5 minutes):
   `cargo run --release -p marionette-cli -- audio-check --seconds 30 --voices 128`, then 256,
   expecting `pass: true`; record `max_block_us` and the device rate here.
-- Real-device runs (2026-11-13, Ryzen 7 2700X, USB speakers, 48 kHz, release build,
+- Real-device runs (2026-11-13, 8-core desktop CPU, USB speakers, 48 kHz, release build,
   `audio-check --seconds 30`, no Unity, no other bench running). The device calls back with
   96 frames (2 ms), so the deadline is tight. Run 1 (loud test mix, before the counters):
   64 voices clean; 128 voices 3 slow callbacks; 256 voices 12. Run 2 (current check, quiet mix

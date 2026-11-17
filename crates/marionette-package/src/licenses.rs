@@ -12,31 +12,52 @@ use std::process::Command;
 
 /// Returns how many third-party crates were listed.
 pub(crate) fn write(opts: &Options, game: &Game, target: &Target, dir: &Path) -> Result<usize, Errors> {
+    let manifest = game.rust_package.as_ref().map(|_| opts.game.join("Cargo.toml"));
+    let root_name = game.rust_package.as_deref().unwrap_or("marionette-cli");
+    write_for(
+        &opts.workspace,
+        manifest.as_deref(),
+        root_name,
+        target.triple,
+        "Rust crates linked into this game's binary",
+        dir,
+    )
+}
+
+/// Writes `marionette-LICENSE-MIT`, `marionette-LICENSE-APACHE` and `THIRD-PARTY.txt` into
+/// `dir` for the binary built from package `root_name` for `triple`. `manifest` points at a
+/// game's own `Cargo.toml`; `None` uses the engine workspace. `heading` starts the list. The
+/// release workflow calls this for the `marionette` binary itself (decision 0141), through
+/// the example `engine_licenses`. Returns how many third-party crates were listed.
+pub fn write_for(
+    workspace: &Path,
+    manifest: Option<&Path>,
+    root_name: &str,
+    triple: &str,
+    heading: &str,
+    dir: &Path,
+) -> Result<usize, Errors> {
     std::fs::create_dir_all(dir).map_err(|e| io(dir, e))?;
     for name in ["LICENSE-MIT", "LICENSE-APACHE"] {
-        let from = opts.workspace.join(name);
+        let from = workspace.join(name);
         if from.is_file() {
             std::fs::copy(&from, dir.join(format!("marionette-{name}"))).map_err(|e| io(&from, e))?;
         }
     }
     let mut cmd = Command::new("cargo");
-    cmd.current_dir(&opts.workspace).args([
+    cmd.current_dir(workspace).args([
         "metadata",
         "--locked",
         "--format-version",
         "1",
         "--filter-platform",
-        target.triple,
+        triple,
     ]);
     // Features unify across the workspace in `cargo metadata`, so the list can name a few
     // crates the binary leaves out: more attribution than needed, never less.
-    let root_name = match &game.rust_package {
-        Some(pkg) => {
-            cmd.arg("--manifest-path").arg(opts.game.join("Cargo.toml"));
-            pkg.clone()
-        }
-        None => "marionette-cli".to_string(),
-    };
+    if let Some(manifest) = manifest {
+        cmd.arg("--manifest-path").arg(manifest);
+    }
     let out = marionette_host::output(cmd).map_err(|e| toolchain(format!("cannot run cargo: {e}")))?;
     if !out.status.success() {
         return Err(build_error("cargo metadata", &out.stderr));
@@ -56,7 +77,7 @@ pub(crate) fn write(opts: &Options, game: &Game, target: &Target, dir: &Path) ->
         .collect();
     let Some(root) = packages
         .iter()
-        .find(|(_, p)| p["name"] == root_name.as_str() && p["source"].is_null())
+        .find(|(_, p)| p["name"] == root_name && p["source"].is_null())
         .map(|(id, _)| *id)
     else {
         return Err(toolchain(format!("cargo metadata did not list `{root_name}`")));
@@ -80,9 +101,9 @@ pub(crate) fn write(opts: &Options, game: &Game, target: &Target, dir: &Path) ->
             }
         }
     }
-    let mut list = String::from(
-        "Rust crates linked into this game's binary, with their licenses.\n\
-         License texts follow the list; identical texts appear once.\n\n",
+    let mut list = format!(
+        "{heading}, with their licenses.\n\
+         License texts follow the list; identical texts appear once.\n\n"
     );
     let mut texts: BTreeMap<String, (String, Vec<String>)> = BTreeMap::new();
     let mut count = 0;
