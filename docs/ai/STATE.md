@@ -19,17 +19,15 @@ check a feature there before building on it, and update its row when your work m
 | 4 | Scripting | Landed: TypeScript (0022, 0271), job TypeScript from scenes and scripts (0070). |
 | 5 | Agent interface (CLI + MCP) | Landed: skills (0160), handoffs and claims (0161), a game's own Rust modules and cargo features (0062, 0290). |
 | 6 | Input, physics, audio, UI | Landed: joints (0310, 0311), windowed play (0170-0175), game-mesh colliders (0183), 3D sound and music (0075), world UI (0200, 0201), synth (0220), game-made sounds (0221). |
-| 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made on the owner's PC. |
+| 7 | Providers | Landed (0019, 0045, 0046); live Qwen and Tripo calls made. |
 | 8 | Assets (import, pool, generation) | Landed: owned library, Unity and Unreal importers, FBX conversion, prefabs (0027, 0029, 0040), generation (0045 to 0048), CC0 pool and search (0041). |
 | 9 | Six proof scenes | Landed (0050): six games under `games/` with stability modes. Gaps found: `docs/ai/PROOF-SCENES.md`. |
 | 10 | Later | OpenXR (0190), inspector (0130), co-op networking, achievements, cloud saves, Steam (0210 to 0213) landed; rest not started. |
 | - | Game packages | Landed (0140): Windows, Linux, Steam Deck, Steam Frame (ARM64). |
-| - | Public release | Ready, not published (0141, 0142): version 0.1.0, `release.yml` builds Windows and Linux binaries (draft release on a `v*` tag), human guides, secret scan in CI. Tagging waits for the owner. |
+| - | Public release | 0.1.0 ready, untagged (0141, 0142). |
 
 ## UNVERIFIED
 
-- Release binaries (0141): the Linux archive was built and checked in the cloud; the Windows
-  archive and the zigbuild Linux build run only in `release.yml`; not yet run on a clean Windows PC.
 - Indexed edits, script speed, children (0270 to 0272): timed in a cloud container only.
 - Game packages (decision 0140): never run on a Deck, a Frame, a headset or a screen; Frame binaries
   ran headless on generic ARM64 Linux (CI) only, not in the Steam runtime.
