@@ -281,9 +281,9 @@ fn counts_are_exact_and_refresh_protects_hand_edits() {
     assert_eq!(marks('*'), 3, "pickup count");
     assert_eq!(marks('G'), 1, "enemy count");
     let readme = std::fs::read_to_string(root.join("g/README.md")).unwrap();
-    assert!(readme.contains("This level has 3 gems, 1 enemies"), "{readme}");
+    assert!(readme.contains("This level has 3 gems, 1 enemy"), "{readme}");
     let state = std::fs::read_to_string(root.join("g/docs/ai/STATE.md")).unwrap();
-    assert!(state.contains("3 gems, 1 enemies"), "{state}");
+    assert!(state.contains("3 gems, 1 enemy"), "{state}");
     assert!(state.contains("autoplay.test.json") && !state.contains("main.test.json"));
 
     // Out-of-range counts are refused.
@@ -318,9 +318,14 @@ fn counts_are_exact_and_refresh_protects_hand_edits() {
             .unwrap()
             .contains("\"lives\": 9")
     );
-    // A plain refresh works again.
+    // A plain refresh works again, and the handoff and README state the new count.
     agent
         .call("game_make", json!({"path": "g", "refresh": true}))
         .unwrap();
+    let state = std::fs::read_to_string(root.join("g/docs/ai/STATE.md")).unwrap();
+    assert!(state.contains("4 gems, 1 enemy"), "{state}");
+    let readme = std::fs::read_to_string(root.join("g/README.md")).unwrap();
+    assert!(readme.contains("This level has 4 gems, 1 enemy"), "{readme}");
+    assert!(!readme.contains("collect 3 gems"), "{readme}");
     let _ = std::fs::remove_dir_all(&root);
 }

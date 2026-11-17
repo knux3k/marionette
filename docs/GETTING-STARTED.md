@@ -29,7 +29,10 @@ cd marionette
 cargo install --locked --path crates/marionette-cli
 ```
 
-The first build takes several minutes. Add `--features net` to that command if you want the
+The first build takes 5 to 10 minutes. `cargo install` puts `marionette` in `~/.cargo/bin`; if the
+command is not found, add that folder to your `PATH`. After a plain `cargo build --release`, run
+`target/release/marionette` instead. Without a terminal (an AI agent), `marionette make` needs
+`--answer id=value` for each question or `--yes`; list the ids with `marionette op game_interview`. Add `--features net` to that command if you want the
 engine to call paid image and 3D model providers with your own keys (prebuilt binaries already
 include it; see [Connect your AI](CONNECT-YOUR-AI.md)).
 

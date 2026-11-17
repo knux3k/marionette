@@ -28,3 +28,10 @@ erased by `refresh`, and the generated `docs/ai/STATE.md` named tests that do no
 Refusing every CONFIG difference (brief changes also change the block, so only a difference
 from the last generated block counts); a count field for the platformer (its pickups sit on
 generated platforms, so an exact count is a separate design).
+
+## Follow-up (same day)
+
+The rerun showed the handoff going stale after a change. A refresh now rewrites the `Game` row
+of `docs/ai/STATE.md` it wrote earlier (counts, seconds, "1 enemy"), the README drops the
+quoted prompt from the pitch, and the generated pitch no longer states a count (the README
+line "This level has N ..." does, from the real map).

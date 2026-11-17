@@ -556,10 +556,13 @@ pub fn readme(brief: &Brief, map: &[String]) -> String {
             "Arrows or A/D run, Space/W/Up jump. R restarts after a win or loss. F1 toggles the autopilot."
         }
     };
-    let pitch = if brief.pitch.trim().is_empty() {
+    // The pitch ends with the prompt it came from, whose numbers may no longer be true after
+    // a change; the README keeps the sentence and states the real counts below it.
+    let pitch_text = brief.pitch.split(" From the prompt:").next().unwrap_or("").trim();
+    let pitch = if pitch_text.is_empty() {
         String::new()
     } else {
-        format!("{}\n\n", brief.pitch.trim())
+        format!("{pitch_text}\n\n")
     };
     // What the level really holds (the pitch may quote the prompt's own numbers).
     let count = |marks: &[char]| {
@@ -574,10 +577,15 @@ pub fn readme(brief: &Brief, map: &[String]) -> String {
         'e'
     };
     let contents = format!(
-        "This level has {} {}, {} enemies and {} rows by {} columns (seed {}).\n\n",
+        "This level has {} {}, {} {} and {} rows by {} columns (seed {}).\n\n",
         count(&['*']),
         brief.words.pickups,
         count(&[enemy_mark]),
+        if count(&[enemy_mark]) == 1 {
+            "enemy"
+        } else {
+            "enemies"
+        },
         map.len(),
         map.first().map_or(0, |r| r.chars().count()),
         brief.seed,
